@@ -1,0 +1,9 @@
+{
+  "name": "tk-afk-cocos",
+  "uuid": "d4a7d0bc-7ee6-42d6-b81c-9220553cc7b8",
+  "version": "1.0.0",
+  "creator": {
+    "version": "3.8.8"
+  },
+  "description": "挂机定三国 Cocos Creator migration workspace"
+}

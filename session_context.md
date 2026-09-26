@@ -16,6 +16,15 @@
 
 ## 最近交接（新 → 旧）
 
+### Cocos Creator 迁移骨架与命令行构建验证 · Codex · 已实施待验收
+
+时间：2026-09-27 02:58（Asia/Shanghai）；执行者：Codex；状态：已实施待验收。
+
+- 概要：新增 `cocos-client/` Cocos Creator 3.8.8 并行工程、可打开的 Main.scene 和 CocosBootstrap 画布/点击/本地存储验证组件；新增 `scripts/cocos-build.sh` 以本机 Creator 命令行构建 Web、微信、抖音，并将小游戏生成包 AppID 与现有平台配置同步。旧版静态检查跳过 Cocos 生成目录，避免误扫引擎文件。
+- 验证：本机 Web、微信、抖音三种 Cocos CLI 构建成功；浏览器实看画面，点击关卡数字变化、刷新后保留，控制台无错误/警告；微信和抖音生成包 AppID 分别核对为 `wx03eb4074ce45033b` 和 `ttdd05abb8437df5b602`；V1 smoke 422/422、static-check 369/369，通过脚本语法检查。
+- 边界：当前 Cocos 工程只是技术链路骨架，关卡与挂机数值为演示，原版战斗、招募、挂机结算、存档迁移与平台设备适配尚未实现；未做微信/抖音开发者工具及真机验收，不能视作 V2 玩法包或可发布产品。保留工作区既有 assets_gen 删除、预览生成物变动、.zcodeignore、douyin-template 及 session_context 两处空行差异。
+- 下一步：按 `cocos-client/README.md` 顺序迁移内核、战斗、主线/挂机、招募养成及双平台适配，逐项对照 V1 验收。
+
 ### V2核心功能开发第一批 · Codex · 已实施待验收
 
 时间：2026-09-27；执行者：Codex；状态：已实施待验收。
