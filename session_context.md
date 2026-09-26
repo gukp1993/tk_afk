@@ -16,6 +16,17 @@
 
 ## 最近交接（新 → 旧）
 
+### 抽卡改版：120 将四档武将池 + 固定概率招募 · zcode · 已实施，待验收
+
+时间：2026-09-26；执行者：zcode（含 2 个并行子 agent：legacy 审计 / 全池战斗模拟）
+
+按用户指令实施抽卡改版：①抽卡去保底改四档固定概率（SSR 2%/SR 10%/R 28%/N 60%，`config.GACHA` 只留 rates，`state.summon` 只留 total，旧档向后兼容）；②`utils/heroes.js` 全量重建 120 将（白N37/蓝R43/紫SR24/橙SSR16，蜀32魏35吴27群26，28 个旧 id 基本保留），每将必杀技+被动按三国演义典故设计，全部落在既有引擎效果集内；③稀有度四档化适配：RARITIES/RARITY 改 N/R/SR/SSR（maxStar 2/3/4/5）、点将台概率图例面板、卡面金框阈值 `rarity===4`、编队/图鉴 maxStar、商店自选池档位与商品名着色；④smoke 保底断言改概率分布断言。并行子 agent 结论：legacy 审计无崩溃级引用（legacy 自身 utils 不存在本就不能独立运行，若同跑会有错档显示，按「legacy 不做 UI 迭代维护」原则记录不修）；120 将全池模拟 474 场无 NaN、效果语义 29 项全过。修复过程中发现并处理：ui.wrap 未显式设置 textAlign 被右对齐污染（整行画出画布外）；svgctx 测宽偏窄造成预览断行假阳性（CJK 1.0em→1.08em）；夏侯惇 id 重建时 xiahouddun→xiahoudun 导致 stages.js 敌人引用悬空（已同步）。
+
+- **决定**：抽卡无保底为用户明确口径；战斗引擎三缺陷顺手修复（`ENERGY_ATK` 普攻回能接线——怒气原只能靠受击攒、法师/辅助 2/3 放不出大，接线后随机阵容大招覆盖 61/120→**120/120**；`strongestEnemy` 改取 maxHp 最高者对齐技能文案；沉默从硬控改仅禁大招、hot/dot 不再被控制状态跳过，原 hasSilence 为死代码）。
+- **验证**：`node build.js` 各 26 文件；`node test/smoke.js` 361/361；`node test/static-check.js` 287/287；全池模拟复跑 1418 断言过（3 个旧断言翻转属预期）；离屏 18 屏重出，heroes/formation/shop/summon/summon-result 经视觉 agent 验收通过；6 个 commit（8dd32ce feat / a726f99 fix / a1ef951 chore / 9beb444+2a660a5 docs / 91e71d4 chore）已推送远程。
+- **遗留（待产品决定）**：①战斗超时固定判 B 方负（引擎既定）；②`src/screens/battle.js` finish() 无条件调 winCampaign、战败也发首通（剧情关卡会话已登记归其 P1）；③模拟脚本 `/tmp/battle_sim_120.js` 可复跑；④抽卡动效三段式与立绘方案（本会话早前提案）仍未排期。
+- 下一步：用户验收——微信开发者工具导入 wechat/（抖音 douyin/）实测点将台招募、四档配色与战斗节奏；如觉 SSR 2% 出货体感过冷，只调 `config.GACHA.rates` 即可。
+
 ### 剧情关卡需求方案提案（对标三国演义） · zcode · 无变更（提案待拍板）
 
 时间：2026-09-26；执行者：zcode
