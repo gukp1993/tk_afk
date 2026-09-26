@@ -11,7 +11,7 @@
 ./scripts/cocos-build.sh bytedance-mini-game
 ```
 
-微信、抖音 Cocos 包在 `build/wechatgame/`、`build/bytedance-mini-game/`。构建脚本从旧平台配置同步 AppID。目前已接入真实存档、主线战斗、自动出征与练兵、挂机、召唤、英雄、共享军械、集市、塔和演武的基础入口；画面与完整交互仍在对照迁移，尚未通过双平台开发者工具及真机验收。下面的 `src/`、`utils/`、`wechat/`、`douyin/` 是对照和回归基线，在功能验收前保留。
+微信、抖音 Cocos 包在 `build/wechatgame/`、`build/bytedance-mini-game/`。构建脚本从旧平台配置同步 AppID。目前已接入真实存档、主线战斗、自动出征与练兵、挂机、召唤、英雄、共享军械、集市、塔和演武的基础入口；抖音开发者工具模拟器已验证主线首战与结算，微信开发者工具和两平台真机仍需验收。画面与完整交互仍在对照迁移。下面的 `src/`、`utils/`、`wechat/`、`douyin/` 是对照和回归基线，在功能验收前保留。
 
 小游戏默认执行发布构建以缩减主包，Web 默认调试构建；需要排查小游戏时可用 `COCOS_DEBUG=true ./scripts/cocos-build.sh wechatgame` 临时覆盖。打包后仍须检查实际主包大小及开发者工具提示。
 
