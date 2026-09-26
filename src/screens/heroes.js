@@ -47,7 +47,7 @@ module.exports = {
     });
     let y = 92;
     if (this.firstWinChoice.available) {
-      ui.btn(8, y, 359, 32, { text: '首胜奖励：选择一张初始名将同名卡', style: 'gold', size: 12, id: 'starter-pick-open', cb: () => { this.showStarterPick = true; } });
+      ui.btn(8, y, 359, 32, { text: '首胜奖励：选择一名初始武将，自动升 1 星', style: 'gold', size: 12, id: 'starter-pick-open', cb: () => { this.showStarterPick = true; } });
       y += 40;
     }
 
@@ -103,7 +103,7 @@ module.exports = {
   drawStarterPick() {
     const ids = ['liubei', 'guanyu', 'zhangfei'];
     const close = () => { this.showStarterPick = false; };
-    const box = ui.modal('首胜奖励 · 选择一张同名卡', 22, Math.max(94, (app.H - 236) / 2), 331, 236);
+    const box = ui.modal('首胜奖励 · 选择一名武将升星', 22, Math.max(94, (app.H - 236) / 2), 331, 236);
     ui.setModalClose(close);
     ui.tap(0, 0, app.W, app.H, close, 'starter-pick-mask');
     ids.forEach((id, i) => {
@@ -114,7 +114,7 @@ module.exports = {
       ui.btn(x + 7, y + 94, 82, 30, { text: '选择', style: 'gold', size: 11, id: 'starter-pick-' + id, cb: () => {
         const r = store.claimFirstWinChoice(id);
         if (!r.ok) { ui.toast(r.msg); return; }
-        close(); this.refresh(); ui.toast('获得 ' + h.name + ' 同名卡 +1');
+        close(); this.refresh(); ui.toast(h.name + ' 自动升至 ★' + r.star);
       } });
     });
   }

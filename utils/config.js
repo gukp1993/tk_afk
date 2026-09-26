@@ -43,14 +43,6 @@ const AUTO_BATTLE = {
   trainingBatchLevelGain: 2
 };
 
-// 升星兼容旧配置：个人英雄系统不再消耗兵魂。
-const ASCEND_COST = [
-  { same: 1, food: 0, gold: 2000 },
-  { same: 1, food: 0, gold: 8000 },
-  { same: 2, food: 0, gold: 25000 },
-  { same: 2, food: 0, gold: 70000 },
-  { same: 3, food: 0, gold: 160000 }
-];
 const FOOD_VALUE = { 1: 1, 2: 2, 3: 4, 4: 8 };
 
 // 等级消耗
@@ -124,7 +116,7 @@ const AD = {
 
 module.exports = {
   FACTIONS, BEATS, FACTION_ADV, CLASSES, RARITIES,
-  LEVEL_CAPS, MAX_LEVEL, PLAYER_LEVEL, BATTLE_XP, AUTO_BATTLE, ASCEND_COST, FOOD_VALUE,
+  LEVEL_CAPS, MAX_LEVEL, PLAYER_LEVEL, BATTLE_XP, AUTO_BATTLE, FOOD_VALUE,
   goldCost, expCost, idleRates, IDLE_CAP_HOURS, ARMORY_IRON_PER_HOUR,
   FAST_REWARD_HOURS, FAST_REWARD_COST, FAST_REWARD_DAILY,
   GACHA, factionBonus, FORMATION_ROWS, BATTLE, ARENA, AD

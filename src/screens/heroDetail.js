@@ -92,24 +92,19 @@ module.exports = {
     ui.btn(262, y + 9, 91, 38, { text: '军械图鉴 ›', style: 'ghost', size: 10, id: 'hero-armory', cb: () => app.push('armory') });
     y += 74;
 
-    // 玩家等级由战斗成长；此页只管理武将个人星级。
+    // 玩家等级由战斗成长；重复抽到同名武将时自动升星。
     this.secTitle('成 长', y); y += 24;
     ui.panel(8, y, 359, 114);
     const xpNeed = store.playerXpNeeded(this.v.player.level);
     ui.text('玩家等级 Lv.' + this.v.player.level + ' · 全体武将共用', 20, y + 10, { size: 12, color: T.GOLD_HI, bold: true });
     ui.bar(20, y + 30, 332, 7, this.v.player.level >= C.MAX_LEVEL ? 1 : this.v.player.exp / xpNeed, 'gold');
     ui.text(this.v.player.level >= C.MAX_LEVEL ? '等级已达上限' : '战斗经验 ' + F.fmtNum(this.v.player.exp) + ' / ' + F.fmtNum(xpNeed), 20, y + 43, { size: 10, color: T.DIM });
-    if (this.v.asc && this.v.asc.ok) {
-      const a = this.v.asc;
-      ui.text('升星 ' + a.from + ' → ' + a.to + ' · 同名卡 ' + a.cards + '/' + a.needCards + ' · 铜钱 ' + F.fmtNum(a.gold) + '/' + F.fmtNum(a.needGold), 20, y + 63, { size: 9, color: T.DIM });
-      ui.btn(20, y + 78, 332, 28, { text: '升至 ★' + a.to + '（属性 +' + Math.round((C.STAR_MULT - 1) * 100) + '% / 星）', style: 'gold', size: 12, disabled: !a.can, id: 'asc', cb: () => this.doAscend() });
-    } else {
-      ui.text('已达最高星级 ★' + this.v.maxStar, 20, y + 72, { size: 11, color: T.DIM });
-    }
+    ui.text(own.star >= this.v.maxStar ? '星级 ★' + own.star + ' / ★' + this.v.maxStar + ' · 已满星' : '星级 ★' + own.star + ' / ★' + this.v.maxStar, 20, y + 64, { size: 11, color: T.GOLD_HI });
+    ui.text(own.star >= this.v.maxStar ? '满星后重复卡可兑换英雄碎片' : '抽到重复的 ' + def.name + ' 会自动升星，无需铜钱', 20, y + 83, { size: 10, color: T.DIM });
     y += 122;
     if (own.cards > 0) {
       ui.panel(8, y, 359, 52);
-      ui.text('同名卡 ' + own.cards + ' 张' + (own.lockedCards ? ' · 已保护' : ''), 18, y + 10, { size: 11, color: T.GOLD_HI });
+      ui.text((own.star >= this.v.maxStar ? '满星后额外卡 ' : '保留同名卡 ') + own.cards + ' 张' + (own.lockedCards ? ' · 已保护' : ''), 18, y + 10, { size: 11, color: T.GOLD_HI });
       ui.btn(172, y + 9, 82, 30, { text: own.lockedCards ? '取消保护' : '保护', style: 'ghost', size: 10, id: 'card-lock', cb: () => {
         const r = store.setCardsLocked(this.params.id, !own.lockedCards); if (r.ok) this.refresh();
       } });
@@ -135,17 +130,6 @@ module.exports = {
     ctx.fillRect(8, y + 3, 3, 12);
     ui.text(t, 16, y + 2, { size: 13, color: T.GOLD, bold: true });
     ctx.restore();
-  },
-  doAscend() {
-    const preview = store.ascendPreview(this.params.id);
-    if (!preview.ok || !preview.can) { ui.toast(preview.msg || '同名卡或铜钱不足'); return; }
-    const beforePower = store.calcHero(this.params.id).power;
-    const r = store.ascend(this.params.id);
-    if (!r.ok) ui.toast(r.msg); else {
-      const afterPower = store.calcHero(this.params.id).power;
-      ui.toast('升至 ★' + r.star + ' · 战力 ' + F.fmtNum(beforePower) + '→' + F.fmtNum(afterPower));
-    }
-    this.refresh();
   },
   convertOne() {
     const h = this.v.def, own = this.v.own;

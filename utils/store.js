@@ -21,7 +21,7 @@ function defaultState() {
   C.BATTLE.STARTER.forEach(id => { roster[id] = newHero(id); });
   roster.mengda = newHero('mengda');
   return {
-    v: 5, createdAt: Date.now(), name: '主公',
+    v: 6, createdAt: Date.now(), name: '主公',
     player: { level: 1, exp: 0 },
     res: { gold: 100000, gem: 1888, scroll: 12, token: 20, shard: 0, iron: 60 },
     roster,
@@ -189,31 +189,57 @@ function migrateSaveV4(raw) {
   return raw;
 }
 
+// v5→v6：旧档中未用于手动升星的同名卡，按每张卡自动升一星；满星后余卡继续保留。
+function migrateSaveV5(raw) {
+  raw.roster = raw.roster || {};
+  raw.migrations = raw.migrations || {};
+  if (!(raw.migrations.autoStarDuplicatesV1 && raw.migrations.autoStarDuplicatesV1.applied)) {
+    Object.keys(raw.roster).forEach(id => {
+      const own = raw.roster[id], def = H.getHero(id);
+      if (!own || !def || own.lockedCards) return;
+      const maxStar = C.RARITIES[def.rarity].maxStar;
+      own.star = Math.max(0, Math.min(maxStar, Math.floor(Number(own.star) || 0)));
+      own.cards = Math.max(0, Math.floor(Number(own.cards) || 0));
+      const used = Math.min(own.cards, maxStar - own.star);
+      own.star += used;
+      own.cards -= used;
+    });
+    raw.migrations.autoStarDuplicatesV1 = { applied: true };
+  }
+  raw.v = 6;
+  return raw;
+}
+
 function load() {
   const raw = rawGet(SAVE_KEY);
   if (raw && raw.v === 1) {
     rawSet(SAVE_KEY + '.backup.v3', JSON.parse(JSON.stringify(raw)));
-    state = migrateSaveV4(migrateSaveV3(migrateSaveV2(migrateSaveV1(raw))));
+    state = migrateSaveV5(migrateSaveV4(migrateSaveV3(migrateSaveV2(migrateSaveV1(raw)))));
     save();
   } else if (raw && raw.v === 2) {
     rawSet(SAVE_KEY + '.backup.v3', JSON.parse(JSON.stringify(raw)));
-    state = migrateSaveV4(migrateSaveV3(migrateSaveV2(raw)));
+    state = migrateSaveV5(migrateSaveV4(migrateSaveV3(migrateSaveV2(raw))));
     save();
   } else if (raw && raw.v === 3) {
     rawSet(SAVE_KEY + '.backup.v3', JSON.parse(JSON.stringify(raw)));
-    state = migrateSaveV4(migrateSaveV3(raw));
+    state = migrateSaveV5(migrateSaveV4(migrateSaveV3(raw)));
     save();
   } else if (raw && raw.v === 4) {
     rawSet(SAVE_KEY + '.backup.v4', JSON.parse(JSON.stringify(raw)));
-    state = migrateSaveV4(raw);
+    state = migrateSaveV5(migrateSaveV4(raw));
     normalizeState(state);
     // Persist normalized fields and abandon any battle interrupted before this load.
     save();
   } else if (raw && raw.v === 5) {
+    rawSet(SAVE_KEY + '.backup.v5', JSON.parse(JSON.stringify(raw)));
+    state = migrateSaveV5(raw);
+    normalizeState(state);
+    save();
+  } else if (raw && raw.v === 6) {
     state = raw;
     normalizeState(state);
     save();
-  } else if (raw && raw.v > 5) {
+  } else if (raw && raw.v > 6) {
     throw new Error('存档版本较新，停止加载以保护数据');
   } else if (raw) {
     throw new Error('存档版本无法识别，保留原数据并停止加载');
@@ -305,8 +331,20 @@ function allRoster() {
 }
 function getOwned(id) { return state.roster[id]; }
 function addHeroCard(id) {
-  if (state.roster[id]) state.roster[id].cards += 1;
-  else state.roster[id] = newHero(id);
+  const def = H.getHero(id);
+  if (!def) return { id, isNew: false, autoStar: false, star: 0, cards: 0 };
+  if (!state.roster[id]) {
+    state.roster[id] = newHero(id);
+    return { id, isNew: true, autoStar: false, fromStar: 0, star: 0, cards: 0 };
+  }
+  const own = state.roster[id], fromStar = own.star || 0;
+  const maxStar = C.RARITIES[def.rarity].maxStar;
+  if (own.star < maxStar) {
+    own.star += 1;
+    return { id, isNew: false, autoStar: true, fromStar, star: own.star, maxStar, cards: own.cards || 0 };
+  }
+  own.cards = (own.cards || 0) + 1;
+  return { id, isNew: false, autoStar: false, fromStar, star: own.star, maxStar, cards: own.cards, overflow: true };
 }
 function crystalInfo() {
   return { top5: [], cap: state.player.level, count: Object.keys(state.roster).length };
@@ -475,26 +513,14 @@ function foodPoints(exceptId) {
   return pts;
 }
 function ascend(id) {
-  return withSavedMutation(() => {
-    const own = state.roster[id];
-    if (!own || !H.getHero(id)) return { ok: false, msg: '未拥有该武将' };
-    const maxStar = C.RARITIES[H.getHero(id).rarity].maxStar;
-    if (own.star >= maxStar) return { ok: false, msg: '已达最高星级' };
-    const cost = [{ same: 1, gold: 2000 }, { same: 1, gold: 8000 }, { same: 2, gold: 25000 }, { same: 2, gold: 70000 }, { same: 3, gold: 160000 }][own.star];
-    if (own.cards < cost.same) return { ok: false, msg: '同名武将卡不足' };
-    if (state.res.gold < cost.gold) return { ok: false, msg: '铜钱不足' };
-    own.cards -= cost.same; state.res.gold -= cost.gold; own.star += 1;
-    return { ok: true, star: own.star };
-  });
+  if (!state.roster[id] || !H.getHero(id)) return { ok: false, msg: '未拥有该武将' };
+  return { ok: false, msg: '抽到重复武将时会自动升星，无需手动操作或铜钱' };
 }
 function ascendPreview(id) {
   const own = state.roster[id];
   if (!own) return { ok: false, msg: '未拥有该武将' };
   const maxStar = C.RARITIES[H.getHero(id).rarity].maxStar;
-  if (own.star >= maxStar) return { ok: false, msg: '已达最高星级' };
-  const costs = [{ same: 1, gold: 2000 }, { same: 1, gold: 8000 }, { same: 2, gold: 25000 }, { same: 2, gold: 70000 }, { same: 3, gold: 160000 }];
-  const cost = costs[own.star];
-  return { ok: true, from: own.star, to: own.star + 1, cards: own.cards, needCards: cost.same, gold: state.res.gold, needGold: cost.gold, level: state.player.level, can: own.cards >= cost.same && state.res.gold >= cost.gold };
+  return { ok: true, from: own.star, to: Math.min(maxStar, own.star + 1), maxStar, cards: own.cards, level: state.player.level, can: false, auto: true };
 }
 function dismiss(id) {
   return { ok: false, msg: '武将本体永久保留；请在满星后兑换多余同名卡' };
@@ -533,8 +559,8 @@ function useChoiceVoucher(rarity, id) {
     if (!h || h.rarity !== (key === 'ssr' ? 4 : 3)) return { ok: false, msg: '请选择对应稀有度的武将' };
     if (!(state.vouchers[key] > 0)) return { ok: false, msg: '自选券不足' };
     state.vouchers[key] -= 1;
-    const isNew = !state.roster[id]; addHeroCard(id);
-    return { ok: true, id, isNew, level: state.player.level, cards: state.roster[id].cards };
+    const received = addHeroCard(id);
+    return { ok: true, ...received, level: state.player.level };
   });
 }
 function firstWinChoice() {
@@ -543,9 +569,9 @@ function firstWinChoice() {
 function claimFirstWinChoice(id) {
   return withSavedMutation(() => {
     if (!state.heroProgress.firstWinChoicePending || state.heroProgress.firstWinChoiceGranted || !['liubei', 'guanyu', 'zhangfei'].includes(id)) return { ok: false, msg: '当前不能领取该奖励' };
-    addHeroCard(id);
+    const received = addHeroCard(id);
     state.heroProgress.firstWinChoicePending = false; state.heroProgress.firstWinChoiceGranted = true;
-    return { ok: true, id, cards: state.roster[id].cards };
+    return { ok: true, ...received };
   });
 }
 
@@ -785,6 +811,9 @@ function pickHeroOfRarity(rarity) {
   return pool[Math.floor(Math.random() * pool.length)].id;
 }
 function doSummon(type) {
+  return withSavedMutation(() => doSummonMutation(type));
+}
+function doSummonMutation(type) {
   // type: scroll1 | scroll10 | gem10
   const g = C.GACHA;
   const count = type === 'scroll1' ? 1 : 10;
@@ -803,15 +832,14 @@ function doSummon(type) {
     state.summon.total += 1;
     const rarity = rollRarity();
     const id = pickHeroOfRarity(rarity);
-    const isNew = !state.roster[id];
-    addHeroCard(id);
-    results.push({ id, rarity, isNew, star: 0 });
+    const received = addHeroCard(id);
+    results.push({ id, rarity, ...received });
   }
   bumpQuest('q_summon1', 1);
   return { ok: true, results };
 }
 function grantCard(id) {
-  addHeroCard(id);
+  return withSavedMutation(() => ({ ok: true, ...addHeroCard(id) }));
 }
 
 // ---------- 战役 / 塔 / 演武 ----------
@@ -1112,7 +1140,7 @@ module.exports = {
   getFormationCalc, setFormationSlot, applyFormation, formationFactionBonus, teamPower, playerUnits, enemyUnits,
   getArmoryBonuses, getArmoryState, armoryUnlock, armorySelect, armoryUpgrade, armoryClaimBox, grantArmoryItem, applyArmoryRecommendations,
   addEquip, equipInventory, equipTo, unequip, enhanceEquip, fodderPickIds, salvageEquip, salvageBatch, isEquipped,
-  migrateSaveV1, migrateSaveV2, migrateSaveV3, migrateSaveV4, normalizeState,
+  migrateSaveV1, migrateSaveV2, migrateSaveV3, migrateSaveV4, migrateSaveV5, normalizeState,
   idlePending, idleTick, claimIdle, fastReward,
   doSummon, rollRarity, pickHeroOfRarity,
   winCampaign, winTower, arenaFight, beginBattle, settleBattle,

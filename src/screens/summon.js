@@ -134,7 +134,7 @@ module.exports = {
     ui.setModalClose(close);
     ui.modal('召唤结果 · ' + list.length + ' 名英雄', 8, 24, 359, app.H - 88);
     ui.tap(8, 24, 359, app.H - 88, () => {}, 'summon-result-panel');
-    ui.text('新英雄已加入群英录，重复英雄保留为同名卡', 187, 61, { size: 10, color: T.DIM, align: 'center' });
+    ui.text('新英雄直接入队；抽到重复武将自动升星，无需铜钱', 187, 61, { size: 10, color: T.DIM, align: 'center' });
     const cols = list.length > 1 ? 3 : 1;
     const cw = 90, chh = 106, gap = 10;
     const totalW = Math.min(cols, list.length) * (cw + gap) - gap;
@@ -198,9 +198,12 @@ module.exports = {
         if (r.isNew) {
           roundRectFill(ui, x + cw - 30, y + 4, 26, 13, 4, 'rgba(192,138,62,0.95)');
           ui.text('NEW', x + cw - 17, y + 6.5, { size: 8, color: '#3a2408', bold: true, align: 'center', baseline: 'top' });
+        } else if (r.autoStar) {
+          roundRectFill(ui, x + cw - 38, y + 4, 34, 13, 4, 'rgba(192,138,62,0.95)');
+          ui.text('升至★' + r.star, x + cw - 21, y + 6.5, { size: 8, color: '#3a2408', bold: true, align: 'center', baseline: 'top' });
         } else {
           roundRectFill(ui, x + cw - 32, y + 4, 28, 13, 4, 'rgba(0,0,0,0.6)');
-          ui.text('+1卡', x + cw - 18, y + 6.5, { size: 8, color: T.DIM, align: 'center', baseline: 'top' });
+          ui.text('满星+1', x + cw - 18, y + 6.5, { size: 7, color: T.DIM, align: 'center', baseline: 'top' });
         }
       }
     });

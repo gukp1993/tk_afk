@@ -41,7 +41,7 @@ for (const useFirstWinChoice of [false, true]) for (let seed = 1; seed <= 20; se
       campaignWins += 1; recoveryRounds = 0;
       if (stage === 1 && useFirstWinChoice && store.firstWinChoice().available) {
         const picked = store.claimFirstWinChoice('liubei');
-        if (picked.ok && store.ascendPreview('liubei').can) ascendedFirstWin = store.ascend('liubei').ok;
+        if (picked.ok) ascendedFirstWin = store.getOwned('liubei').star === 1;
       }
       stage += 1; continue;
     }

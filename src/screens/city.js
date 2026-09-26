@@ -111,8 +111,8 @@ module.exports = {
     if (!goal) return '';
     const a = goal.action || {}, p = goal.progress || {}, reward = goal.rewardPreview || {};
     if (p.remaining != null) return '进度 ' + p.current + '/' + p.target + ' · 章末宝箱与阶段自选权益';
-    if (a.focusFirstWin) return '选择一张初始名将同名卡';
-    if (a.id && a.focus === 'ascend') return '确认升星后，等级继续与全体武将共享';
+    if (a.focusFirstWin) return '选择一名初始武将自动升星';
+    if (a.id && a.focus === 'ascend') return '重复武将卡会自动升星';
     if (a.boxQ) return '待选军械箱 · 品质 ' + a.boxQ;
     if (a.pickRarity) return '待用 ' + (a.pickRarity === 3 ? 'SR' : 'SSR') + ' 自选券';
     if (a.recommendations) return a.recommendations.length + ' 个部位有免费提升';

@@ -140,12 +140,28 @@ ok(s0.res.iron === repeatIron + 25, 'duplicate catalog entry converts to quality
   ok(oldSave.equips.e1.tier === undefined && oldSave.equips.e1.enh === undefined, 'legacy fields removed');
 }
 
-// 10. 升阶（给同名卡+兵魂）
-s0.roster[someId].cards = 5;
-s0.res.gold = 1e8;
-const st0 = s0.roster[someId].star;
-const asc = store.ascend(someId);
-ok(asc.ok, 'ascend ok: ' + JSON.stringify(asc));
+// 10. 重复武将自动升星，不消耗铜钱；满星后的重复卡保留为库存。
+const liubei = s0.roster.liubei;
+liubei.star = 0; liubei.cards = 0; liubei.lockedCards = false;
+const goldBeforeDuplicate = s0.res.gold;
+const duplicate = store.addHeroCard('liubei');
+ok(duplicate.autoStar && duplicate.star === 1 && liubei.cards === 0, 'duplicate hero immediately raises one star');
+ok(s0.res.gold === goldBeforeDuplicate, 'automatic star-up costs no gold');
+liubei.star = 5; liubei.cards = 0;
+const overflow = store.addHeroCard('liubei');
+ok(!overflow.autoStar && overflow.overflow && liubei.cards === 1, 'max-star duplicate remains as convertible card');
+const disabledAscend = store.ascend('liubei');
+ok(!disabledAscend.ok && s0.res.gold === goldBeforeDuplicate, 'manual ascension is disabled and spends nothing');
+const firstSSR = heroes.HEROES.find(h => h.rarity === 4);
+if (!s0.roster[firstSSR.id]) store.addHeroCard(firstSSR.id);
+s0.roster[firstSSR.id].star = 0; s0.roster[firstSSR.id].cards = 0;
+const summonGold = s0.res.gold, summonGem = s0.res.gem, oldRandom = Math.random;
+Math.random = () => 0;
+let forcedSummon;
+try { forcedSummon = store.doSummon('gem10'); } finally { Math.random = oldRandom; }
+ok(forcedSummon.ok && forcedSummon.results.every(x => x.id === firstSSR.id), 'forced ten-pull resolves sequential duplicate copies');
+ok(forcedSummon.results.filter(x => x.autoStar).length === 5 && forcedSummon.results.filter(x => x.overflow).length === 5, 'ten-pull auto-stars to max then preserves overflow');
+ok(s0.res.gold === summonGold && s0.res.gem === summonGem - require('../utils/config').GACHA.costTenGold, 'auto-star ten-pull spends gems only, no gold');
 
 // 11. 塔/演武/任务/商店
 const tr = store.winTower(1);
@@ -402,6 +418,21 @@ ok(story.CHAPTERS.reduce((s, c) => s + c.stages.length, 0) === 120, 'story total
   ok(legacy.armory.selected.weapon === 'weapon_ssr_a' && legacy.armory.slotStars.weapon === 2, 'v4 migration selects strongest old weapon and inherits shared stars');
   ok(legacy.armory.unlocked.weapon_ssr_a && legacy.armory.unlocked.armor_r, 'v4 migration unlocks unique legacy catalog entries');
   ok(legacy.res.iron >= 225 && legacy.armory.boxes[1] === 1, 'v4 migration converts duplicate and restores progressed milestone box');
+}
+
+// v5→v6：旧库存卡用于自动补星，满星后的余卡保留；受保护卡保持不变。
+{
+  const legacy = { v:5, roster:{
+    liubei:{ id:'liubei', star:0, cards:2, lockedCards:false },
+    guanyu:{ id:'guanyu', star:4, cards:3, lockedCards:false },
+    zhangfei:{ id:'zhangfei', star:1, cards:2, lockedCards:true }
+  } };
+  store.migrateSaveV5(legacy);
+  ok(legacy.v === 6 && legacy.roster.liubei.star === 2 && legacy.roster.liubei.cards === 0, 'v5 migration turns available duplicates into stars');
+  ok(legacy.roster.guanyu.star === 5 && legacy.roster.guanyu.cards === 2, 'v5 migration retains cards beyond max star');
+  ok(legacy.roster.zhangfei.star === 1 && legacy.roster.zhangfei.cards === 2, 'v5 migration preserves protected card inventory');
+  store.migrateSaveV5(legacy);
+  ok(legacy.roster.guanyu.star === 5 && legacy.roster.guanyu.cards === 2, 'v5 migration marker prevents repeating conversion');
 }
 
 // 章末宝箱 + 奖励实际入账

@@ -107,7 +107,7 @@ module.exports = {
       const picked = store.useChoiceVoucher(this.pickRarity, h.id);
       if (!picked.ok) { ui.toast(picked.msg); return; }
       this.pickList = null;
-      ui.toast(picked.isNew ? '解锁 ' + h.name + '，共享 Lv.' + picked.level : h.name + ' 同名卡 +1');
+      ui.toast(picked.isNew ? '解锁 ' + h.name + '，共享 Lv.' + picked.level : picked.autoStar ? h.name + ' 自动升至 ★' + picked.star : h.name + ' 已满星，额外卡 +1');
         this.refresh();
       }, 'ssrpick-' + h.id);
       ui.heroFace(x + 5, y + 5, cw - 10, h, {});
