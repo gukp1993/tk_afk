@@ -139,7 +139,8 @@ class SvgCtx {
   measureText(str) {
     str = '' + str;
     let w = 0;
-    for (const ch of str) w += ch.charCodeAt(0) > 255 ? 1 : 0.56;
+    // CJK 按 1.08em 估宽（与 headless Chrome 楷体回退渲染对齐，偏保守防溢出）
+    for (const ch of str) w += ch.charCodeAt(0) > 255 ? 1.08 : 0.56;
     const size = parseFloat((this.font.match(/(\d+(?:\.\d+)?)px/) || [0, 14])[1]);
     return { width: w * size * (this.font.indexOf('bold') >= 0 ? 1.02 : 1) };
   }
