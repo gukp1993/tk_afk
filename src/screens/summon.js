@@ -10,7 +10,7 @@ const F = require('../../utils/fmt');
 module.exports = {
   name: 'summon',
   scroll: {}, scrollReg: {},
-  result: null, revealCount: 0, revealTimer: 0, busy: false,
+  result: null, revealCount: 0, revealTimer: 0, busy: false, confirmPull: null,
 
   onEnter() { this.refresh(); },
   refresh() {
@@ -106,17 +106,43 @@ module.exports = {
 
     // 结果弹层
     if (this.result) this.drawResult();
+    if (this.confirmPull) this.drawPullConfirm();
   },
 
   pull(type) {
     if (this.busy) return;
+    this.confirmPull = type;
+  },
+  cancelPull() { this.confirmPull = null; },
+  drawPullConfirm() {
+    const type = this.confirmPull;
+    const cost = type === 'scroll1' ? { key: 'scroll', amount: 1, label: '招募令' }
+      : type === 'scroll10' ? { key: 'scroll', amount: 10, label: '招募令' }
+        : { key: 'gem', amount: C.GACHA.costTenGold, label: '元宝' };
+    const current = Number(store.getState().res[cost.key]) || 0;
+    const after = current - cost.amount;
+    const h = 190, y = Math.max(45, (app.H - h) / 2), x = 24, w = app.W - 48;
+    ui.setModalClose(() => this.cancelPull());
+    ui.modal('确认招募', x, y, w, h);
+    ui.tap(x, y, w, h, () => {}, 'summon-confirm-mask');
+    ui.text((type === 'scroll1' ? '招募 1 名武将' : '招募 10 名武将'), app.W / 2, y + 48, { size: 16, color: T.GOLD_HI, bold: true, align: 'center' });
+    ui.text('消耗 ' + cost.label + ' ×' + F.fmtNum(cost.amount), app.W / 2, y + 78, { size: 13, color: T.TEXT, align: 'center' });
+    ui.text(cost.label + '：' + F.fmtNum(current) + ' → ' + F.fmtNum(Math.max(0, after)), app.W / 2, y + 101, { size: 11, color: after >= 0 ? T.DIM : T.RED, align: 'center' });
+    ui.btn(x + 18, y + 132, 132, 36, { text: '再想想', style: 'ghost', id: 'summon-confirm-cancel', cb: () => this.cancelPull() });
+    ui.btn(x + w - 150, y + 132, 132, 36, { text: '确认招募', style: 'gold', id: 'summon-confirm-yes', disabled: after < 0, cb: () => this.executePull(type) });
+  },
+  executePull(type) {
+    if (!this.confirmPull || this.busy) return;
+    this.confirmPull = null;
     const r = store.doSummon(type);
     if (!r.ok) { ui.toast(r.msg); return; }
+    const inFormation = store.getState().formation;
     this.result = r.results.map(x => {
       const def = heroes.getHero(x.id);
       return {
         ...x, name: def.name, surname: def.name.slice(0, 1),
-        faction: def.faction, rarity: def.rarity, title: def.title
+        faction: def.faction, rarity: def.rarity, title: def.title,
+        inFormation: inFormation.indexOf(x.id) >= 0
       };
     });
     this.scroll.result = 0;
@@ -195,25 +221,33 @@ module.exports = {
         ui.text(r.surname, x + cw / 2, y + 22, { size: 30, bold: true, align: 'center', color: '#fff6e0' });
         ui.text(r.name, x + cw / 2, y + 62, { size: 13, bold: true, align: 'center' });
         ui.text(rar.name, x + cw / 2, y + 78, { size: 12, color: rar.color, bold: true, align: 'center' });
+        if (r.autoStar && r.powerDelta > 0) ui.text((r.inFormation ? '出战战力 +' : '武将战力 +') + F.fmtNum(r.powerDelta), x + cw / 2, y + 93, { size: 8, color: T.GOLD_HI, align: 'center' });
         if (r.isNew) {
           roundRectFill(ui, x + cw - 30, y + 4, 26, 13, 4, 'rgba(192,138,62,0.95)');
           ui.text('NEW', x + cw - 17, y + 6.5, { size: 8, color: '#3a2408', bold: true, align: 'center', baseline: 'top' });
         } else if (r.autoStar) {
-          roundRectFill(ui, x + cw - 38, y + 4, 34, 13, 4, 'rgba(192,138,62,0.95)');
-          ui.text('升至★' + r.star, x + cw - 21, y + 6.5, { size: 8, color: '#3a2408', bold: true, align: 'center', baseline: 'top' });
+          roundRectFill(ui, x + cw - 48, y + 4, 44, 13, 4, 'rgba(192,138,62,0.95)');
+          ui.text('★' + r.fromStar + '→' + r.star, x + cw - 26, y + 6.5, { size: 7, color: '#3a2408', bold: true, align: 'center', baseline: 'top' });
         } else {
-          roundRectFill(ui, x + cw - 32, y + 4, 28, 13, 4, 'rgba(0,0,0,0.6)');
-          ui.text('满星+1', x + cw - 18, y + 6.5, { size: 7, color: T.DIM, align: 'center', baseline: 'top' });
+          roundRectFill(ui, x + cw - 39, y + 4, 35, 13, 4, 'rgba(0,0,0,0.6)');
+          ui.text('留存×' + r.cards, x + cw - 21.5, y + 6.5, { size: 7, color: T.DIM, align: 'center', baseline: 'top' });
         }
       }
     });
     ui.endScroll();
     const buttonY = app.H - 106;
     if (contentH > viewH) ui.text('上下滑动查看全部英雄', 187, buttonY - 19, { size: 10, color: T.DIM, align: 'center' });
-    ui.btn(117, buttonY, 140, 34, {
-      text: this.busy ? '揭示中…' : '确 定', style: 'gold', size: 14, disabled: this.busy, id: 'summon-ok',
-      cb: () => { this.result = null; this.refresh(); }
-    });
+    if (this.busy) {
+      ui.btn(42, buttonY, 132, 34, { text: '立即揭示', style: 'ghost', size: 12, id: 'summon-skip-reveal', cb: () => { this.revealCount = list.length; this.busy = false; } });
+      ui.btn(201, buttonY, 132, 34, { text: '揭示中…', style: 'gold', size: 12, disabled: true, id: 'summon-ok' });
+    } else {
+      const firstNew = list.find(r => r.isNew);
+      ui.btn(30, buttonY, 145, 34, { text: firstNew ? '查看新武将' : '完成', style: firstNew ? 'ghost' : 'gold', size: 12, id: 'summon-view-hero', cb: () => {
+        this.result = null; this.refresh();
+        if (firstNew) app.push('heroDetail', { id: firstNew.id });
+      } });
+      ui.btn(200, buttonY, 145, 34, { text: '完成', style: 'gold', size: 12, id: 'summon-ok', cb: () => { this.result = null; this.refresh(); } });
+    }
   }
 };
 function roundRectFill(uiIns, x, y, w, h, r, style) {

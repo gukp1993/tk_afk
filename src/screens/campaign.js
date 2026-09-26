@@ -18,10 +18,11 @@ function stageTitle(n) {
 
 module.exports = {
   ...home,
-  name: 'campaign', scroll: {}, scrollReg: {}, showMap: false,
+  name: 'campaign', scroll: {}, scrollReg: {}, showMap: false, showStagePreview: false,
   onEnter() {
     home.onEnter.call(this);
     this.showMap = false;
+    this.showStagePreview = false;
   },
   draw() {
     const s = store.getState(), v = this.view, ctx = ui.ctx;
@@ -41,7 +42,8 @@ module.exports = {
       ctx.save(); ctx.translate(x, y); ctx.scale(scale, scale);
       art.drawBanner(ctx, 0, 0, { state, label: '' + n }); ctx.restore();
       ui.tap(x - 17, y - 37 * scale, 47 * scale, 48 * scale, () => {
-        ui.toast('第 ' + n + ' 关 · ' + stageTitle(n) + (state === 'cleared' ? ' · 已通关' : state === 'locked' ? ' · 通关前一关后开放' : ' · 点击自动出征开始'));
+        if (state === 'current') this.showStagePreview = true;
+        else ui.toast('第 ' + n + ' 关 · ' + stageTitle(n) + (state === 'cleared' ? ' · 已通关' : ' · 通关前一关后开放'));
       }, 'campaign-node-' + n);
       if (state === 'current') {
         const labelY = Math.min(y + 9, campY - 22);
@@ -68,6 +70,7 @@ module.exports = {
     this.drawActions(v);
     if (this.showQuests) this.drawQuests();
     else if (this.showIdle) this.drawIdle();
+    else if (this.showStagePreview) this.drawStagePreview();
     else if (this.showMap) this.drawMapOverview(chapter);
   },
   drawHeader(s, v, chapter) {
@@ -104,11 +107,14 @@ module.exports = {
     art.drawChest(ui.ctx, 286, campY + 14, 60, { ready: canClaim });
     ui.text('挂机宝箱', 316, campY + 70, { size: 11, bold: true, align: 'center', color: '#f4e8bf' });
     ui.tap(266, campY + 8, 98, 75, () => canClaim ? this.claimFreeRewards() : ui.toast('挂机收益积累中'), 'campaign-chest');
-    const y = app.H - 185;
-    ui.panel(10, y, 355, 44, { fill: '#ded2ae', r: 5 });
+    const y = app.H - 194;
+    ui.panel(10, y, 355, 52, { fill: '#ded2ae', r: 5 });
     const minutes = Math.floor(idle.hours * 60);
     ui.text(idle.full ? '挂机收益已满' : '积累 ' + Math.floor(minutes / 60) + '时' + minutes % 60 + '分', 21, y + 6, { size: 11, color: INK, bold: true });
     ui.text('铜钱 ' + F.fmtNum(idle.gold) + ' · 精铁 ' + idle.iron + ' · 招募令 ' + idle.scroll, 21, y + 26, { size: 9, color: '#74684a' });
+    const rateNow = C.idleRates(store.getState().campaign.cleared), rateNext = C.idleRates(store.getState().campaign.cleared + 1);
+    const rateGain = Math.max(0, rateNext.gold - rateNow.gold);
+    ui.text(rateGain ? '本关通关后挂机铜钱/时 +' + F.fmtNum(rateGain) : '当前挂机速率已按关卡结算', 21, y + 40, { size: 8, color: '#74684a' });
     ui.btn(230, y + 6, 125, 32, { text: canClaim ? '一键收获' : '收益积累中', style: 'gold', size: 13, disabled: !canClaim, id: 'idle-claim', cb: () => this.claimFreeRewards() });
   },
   drawActions(v) {
@@ -139,8 +145,28 @@ module.exports = {
       ui.panel(b.x, yy, b.w, 34, { fill: current ? '#375c4b' : '#302b1c', r: 3 });
       ui.text(String(n).padStart(2, '0') + '  ' + stageTitle(n), b.x + 9, yy + 10, { size: 12, color: current ? '#fff0c4' : T.TEXT });
       ui.text(cleared ? '已通关' : current ? '当前' : '未开放', b.x + b.w - 9, yy + 12, { size: 10, color: current ? GOLD : T.DIM, align: 'right' });
+      if (current) ui.tap(b.x, yy, b.w, 34, () => { this.showMap = false; this.showStagePreview = true; }, 'chapter-current-stage');
     }
     ui.endScroll();
     ui.btn(b.x, y + h - 43, b.w, 31, { text: '返回战役', style: 'gold', id: 'campaign-map-close', cb: close });
+  },
+  drawStagePreview() {
+    const stageNo = store.getState().campaign.cleared + 1;
+    const def = stages.makeStageEnemies(stageNo), reward = store.campaignRewardPreview(stageNo);
+    const close = () => { this.showStagePreview = false; };
+    const h = Math.min(408, app.H - 40), y = Math.max(20, (app.H - h) / 2);
+    ui.setModalClose(close);
+    const b = ui.modal('第 ' + stageNo + ' 关 · ' + stageTitle(stageNo), 16, y, 343, h);
+    ui.text(def.isBoss ? '名将镇守 · 首通奖励' : '敌阵与首通奖励', b.x, b.y + 2, { size: 11, color: GOLD, bold: true });
+    const names = def.units.map(u => u.hero.name + ' Lv.' + u.level + (u.isBoss ? ' · 首领' : '')).slice(0, 5);
+    names.forEach((name, i) => ui.text(name, b.x, b.y + 25 + i * 20, { size: 10, color: '#e4d5ae' }));
+    const rewardY = b.y + 132;
+    ui.panel(b.x, rewardY, b.w, 87, { fill: '#302a1c', r: 4 });
+    ui.text('确定奖励：铜钱 +' + F.fmtNum(reward.gold) + ' · 元宝 +' + F.fmtNum(reward.gem) + ' · 招募令 +' + reward.scroll, b.x + 9, rewardY + 9, { size: 9, color: T.TEXT });
+    ui.text(reward.first ? '首通：65% 概率获得随机军械' : '重复挑战奖励 · 不重复领取首通奖励', b.x + 9, rewardY + 32, { size: 9, color: T.DIM });
+    ui.text(reward.armoryBox ? '里程碑：军械自选箱 ×1' : '挂机铜钱/时：通关后 +' + Math.max(0, C.idleRates(stageNo).gold - C.idleRates(stageNo - 1).gold), b.x + 9, rewardY + 55, { size: 9, color: T.GOLD_HI });
+    const team = store.getFormationCalc().filter(Boolean).slice(0, 5).map(u => u.name);
+    ui.text('出战：' + (team.length ? team.join(' · ') : '尚未编队'), b.x, rewardY + 100, { size: 9, color: T.DIM });
+    ui.btn(b.x, y + h - 44, b.w, 32, { text: '自动出征', style: 'jade', size: 14, id: 'stage-preview-deploy', disabled: !team.length, cb: () => { close(); app.push('battle', { mode: 'campaign', auto: true }); } });
   }
 };

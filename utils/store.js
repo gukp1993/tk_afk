@@ -333,18 +333,25 @@ function getOwned(id) { return state.roster[id]; }
 function addHeroCard(id) {
   const def = H.getHero(id);
   if (!def) return { id, isNew: false, autoStar: false, star: 0, cards: 0 };
+  const before = state.roster[id] ? heroFeedback(id) : null;
   if (!state.roster[id]) {
     state.roster[id] = newHero(id);
-    return { id, isNew: true, autoStar: false, fromStar: 0, star: 0, cards: 0 };
+    return { id, isNew: true, autoStar: false, fromStar: 0, star: 0, cards: 0, after: heroFeedback(id) };
   }
   const own = state.roster[id], fromStar = own.star || 0;
   const maxStar = C.RARITIES[def.rarity].maxStar;
   if (own.star < maxStar) {
     own.star += 1;
-    return { id, isNew: false, autoStar: true, fromStar, star: own.star, maxStar, cards: own.cards || 0 };
+    const after = heroFeedback(id);
+    return { id, isNew: false, autoStar: true, fromStar, star: own.star, maxStar, cards: own.cards || 0, before, after,
+      powerDelta: after.power - before.power, statDelta: { hp: after.hp - before.hp, atk: after.atk - before.atk, def: after.def - before.def } };
   }
   own.cards = (own.cards || 0) + 1;
   return { id, isNew: false, autoStar: false, fromStar, star: own.star, maxStar, cards: own.cards, overflow: true };
+}
+function heroFeedback(id) {
+  const h = calcHero(id);
+  return { power: h.power, hp: h.stats.hp, atk: h.stats.atk, def: h.stats.def };
 }
 function crystalInfo() {
   return { top5: [], cap: state.player.level, count: Object.keys(state.roster).length };
@@ -774,6 +781,9 @@ function claimIdle(double) {
   return withSavedMutation(() => claimIdleInternal(double));
 }
 function fastReward(free) {
+  return withSavedMutation(() => fastRewardMutation(free));
+}
+function fastRewardMutation(free) {
   if (state.fast.count >= C.FAST_REWARD_DAILY) return { ok: false, msg: '今日快速收获次数已用完' };
   if (!free) {
     if (state.res.gem < C.FAST_REWARD_COST) return { ok: false, msg: '元宝不足' };
@@ -845,6 +855,24 @@ function grantCard(id) {
 // ---------- 战役 / 塔 / 演武 ----------
 // 章末宝箱：每章第 10 关（名将关）首通额外发放
 const CHAPTER_CHEST = { gem: 100, scroll: 1 };
+function campaignRewardPreview(stageIdx) {
+  stageIdx = Math.max(1, Math.floor(Number(stageIdx) || 1));
+  const first = stageIdx === state.campaign.cleared + 1;
+  const isBoss = require('./stages').chapterOf(stageIdx).isBoss;
+  if (!first) return { first: false, stage: stageIdx,
+    gold: Math.floor(600 * Math.pow(1.05, stageIdx) * 0.3) + Math.floor(400 * Math.pow(1.05, stageIdx) * 0.3),
+    gem: 0, scroll: 0, armoryChance: 0, armoryBox: 0, isBoss };
+  const milestoneQ = stageIdx === 10 ? 1 : stageIdx === 30 ? 2 : stageIdx === 60 ? 3 : 0;
+  return {
+    first: true, stage: stageIdx,
+    gold: Math.floor(2000 * Math.pow(1.05, stageIdx)) + Math.floor(1400 * Math.pow(1.05, stageIdx)),
+    gem: 30 + (isBoss ? CHAPTER_CHEST.gem : 0),
+    scroll: (isBoss ? 1 : 0) + (isBoss ? CHAPTER_CHEST.scroll : 0),
+    armoryChance: 0.65,
+    armoryBox: milestoneQ && !(state.armory.claimedMilestones[milestoneQ]) ? milestoneQ : 0,
+    isBoss
+  };
+}
 function winCampaign(stageIdx) {
   // stageIdx 从 1 开始
   const first = stageIdx === state.campaign.cleared + 1;
@@ -1121,6 +1149,9 @@ function applyReward(r) {
 
 // ---------- 商铺 ----------
 function buyGood(goodId) {
+  return withSavedMutation(() => buyGoodMutation(goodId));
+}
+function buyGoodMutation(goodId) {
   const good = IT.SHOP_GOODS.find(g => g.id === goodId);
   if (!good) return { ok: false };
   const bought = state.buyLog.buys[goodId] || 0;
@@ -1143,7 +1174,7 @@ module.exports = {
   migrateSaveV1, migrateSaveV2, migrateSaveV3, migrateSaveV4, migrateSaveV5, normalizeState,
   idlePending, idleTick, claimIdle, fastReward,
   doSummon, rollRarity, pickHeroOfRarity,
-  winCampaign, winTower, arenaFight, beginBattle, settleBattle,
+  winCampaign, campaignRewardPreview, winTower, arenaFight, beginBattle, settleBattle,
   markStorySeen, isStorySeen,
   questList, claimQuest, activePoints, claimActiveChest, claimAllDailyRewards, claimFreeRewards, bumpQuest, applyReward,
   interruptBattle, setAutoBattleSpeed,

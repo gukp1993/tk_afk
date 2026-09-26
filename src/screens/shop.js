@@ -11,7 +11,7 @@ const CUR_ICON = { gold: '🪙', gem: '💵', scroll: '📜', token: '🎫', sha
 module.exports = {
   name: 'shop',
   scroll: {}, scrollReg: {},
-  pickList: null, pickRarity: 0,
+  pickList: null, pickRarity: 0, confirmBuyId: null,
 
   onEnter(params) {
     store.checkDailyReset();
@@ -67,15 +67,38 @@ module.exports = {
     ui.endScroll();
 
     if (this.pickList) this.drawPick();
+    if (this.confirmBuyId) this.drawBuyConfirm();
   },
   buy(g) {
+    this.confirmBuyId = g.id;
+  },
+  drawBuyConfirm() {
+    const item = items.SHOP_GOODS.find(g => g.id === this.confirmBuyId);
+    if (!item) { this.confirmBuyId = null; return; }
+    const amount = Number(store.getState().res[item.cur]) || 0;
+    const after = amount - item.price;
+    const x = 24, w = app.W - 48, h = 194, y = Math.max(40, (app.H - h) / 2);
+    ui.setModalClose(() => { this.confirmBuyId = null; });
+    ui.modal('确认兑换', x, y, w, h);
+    ui.tap(x, y, w, h, () => {}, 'shop-buy-mask');
+    ui.text(item.name, app.W / 2, y + 48, { size: 16, color: T.GOLD_HI, bold: true, align: 'center' });
+    ui.text('消耗 ' + (store.CURRENCY_NAME[item.cur] || item.cur) + ' ×' + F.fmtNum(item.price), app.W / 2, y + 78, { size: 12, color: T.TEXT, align: 'center' });
+    ui.text('持有 ' + F.fmtNum(amount) + ' → 兑换后 ' + F.fmtNum(Math.max(0, after)), app.W / 2, y + 100, { size: 10, color: after >= 0 ? T.DIM : T.RED, align: 'center' });
+    ui.btn(x + 18, y + 138, 132, 36, { text: '取消', style: 'ghost', id: 'shop-buy-cancel', cb: () => { this.confirmBuyId = null; } });
+    ui.btn(x + w - 150, y + 138, 132, 36, { text: '确认兑换', style: 'gold', id: 'shop-buy-confirm', disabled: after < 0, cb: () => this.executeBuy(item) });
+  },
+  executeBuy(g) {
+    if (!this.confirmBuyId) return;
+    this.confirmBuyId = null;
     const r = store.buyGood(g.id);
     if (!r.ok) { ui.toast(r.msg || '购买失败'); return; }
     if (g.give.ssrPick || g.give.srPick) {
       this.pickRarity = g.give.ssrPick ? 4 : 3;
       this.buildPickList();
     } else {
-      ui.toast('购买成功');
+      const reward = g.give || {}, names = { gold: '铜钱', gem: '元宝', scroll: '招募令', iron: '精铁', token: '演武令', shard: '碎片' };
+      const gained = Object.keys(names).filter(k => reward[k]).map(k => names[k] + ' +' + F.fmtNum(reward[k])).join(' · ');
+      ui.toast(gained || '购买成功');
     }
     this.refresh();
   },

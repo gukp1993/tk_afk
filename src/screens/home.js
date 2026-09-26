@@ -11,7 +11,7 @@ const progression = require('../../utils/progression');
 
 module.exports = {
   name: 'home',
-  scroll: {}, scrollReg: {}, showQuests: false, showIdle: false,
+  scroll: {}, scrollReg: {}, showQuests: false, showIdle: false, confirmFastReward: false,
   onEnter() {
     store.checkDailyReset();
     this.showQuests = false; this.showIdle = false;
@@ -169,10 +169,30 @@ module.exports = {
     const quick = C.idleRates(s.campaign.cleared);
     const quickText = '铜钱 +' + F.fmtNum(Math.floor(C.FAST_REWARD_HOURS * quick.gold)) + ' · 招募令 +' + Math.floor(C.FAST_REWARD_HOURS * quick.scrollPerHour);
     ui.wrap('离线也会积累收益，最多储存 ' + C.IDLE_CAP_HOURS + ' 小时。', b.x, b.y + 2, b.w, 17, { size: 12 });
+    ui.text('当前每小时：铜钱 ' + F.fmtNum(quick.gold) + ' · 招募令 ' + quick.scrollPerHour + ' · 精铁 ' + C.ARMORY_IRON_PER_HOUR, b.x, b.y + 24, { size: 9, color: T.DIM });
     ui.btn(b.x, b.y + 44, b.w, 42, { text: '看广告 · 双倍领取', sub: '铜钱、招募令双倍；精铁正常领取 · 今日 ' + left + ' 次', style: 'gold', id: 'idle-ad2x', disabled: left <= 0 || !(idle.gold || idle.exp || idle.scroll), cb: () => ads.showRewarded('idle2x', () => this.claimIdle(true), msg => ui.toast(msg)) });
-    ui.btn(b.x, b.y + 98, b.w, 42, { text: '快速收获 · ' + C.FAST_REWARD_COST + ' 元宝', sub: quickText + ' · 今日 ' + s.fast.count + '/' + C.FAST_REWARD_DAILY, style: 'plain', id: 'idle-fast', disabled: s.fast.count >= C.FAST_REWARD_DAILY, cb: () => { const r = store.fastReward(false); ui.toast(r.ok ? '快速收获：铜钱 +' + F.fmtNum(r.gold) + ' · 招募令 +' + r.scroll : r.msg); this.refresh(); } });
-    ui.btn(b.x, b.y + 152, b.w, 42, { text: '看广告 · 免费快速收获', sub: quickText + ' · 今日剩余 ' + fast + ' 次', style: 'ghost', id: 'idle-adfast', disabled: fast <= 0, cb: () => ads.showRewarded('fast', () => { const r = store.fastReward(true); ui.toast(r.ok ? '快速收获：铜钱 +' + F.fmtNum(r.gold) + ' · 招募令 +' + r.scroll : r.msg); this.refresh(); }, msg => ui.toast(msg)) });
-    ui.btn(b.x, b.y + 208, b.w, 34, { text: '返回' + (this.name === 'campaign' ? '战役' : '主城'), id: 'idle-close', cb: close });
+    ui.btn(b.x, b.y + 92, b.w, 42, { text: '快速收获 · ' + C.FAST_REWARD_COST + ' 元宝', sub: quickText + ' · 今日 ' + s.fast.count + '/' + C.FAST_REWARD_DAILY, style: 'plain', id: 'idle-fast', disabled: s.fast.count >= C.FAST_REWARD_DAILY, cb: () => { this.confirmFastReward = true; } });
+    ui.btn(b.x, b.y + 140, b.w, 42, { text: '看广告 · 免费快速收获', sub: quickText + ' · 今日剩余 ' + fast + ' 次', style: 'ghost', id: 'idle-adfast', disabled: fast <= 0, cb: () => ads.showRewarded('fast', () => { const r = store.fastReward(true); ui.toast(r.ok ? '快速收获：铜钱 +' + F.fmtNum(r.gold) + ' · 招募令 +' + r.scroll : r.msg); this.refresh(); }, msg => ui.toast(msg)) });
+    ui.btn(b.x, b.y + 190, b.w, 34, { text: '返回' + (this.name === 'campaign' ? '战役' : '主城'), id: 'idle-close', cb: close });
+    if (this.confirmFastReward) this.drawFastRewardConfirm();
+  },
+  drawFastRewardConfirm() {
+    const s = store.getState(), rate = C.idleRates(s.campaign.cleared);
+    const gold = Math.floor(C.FAST_REWARD_HOURS * rate.gold), scroll = Math.floor(C.FAST_REWARD_HOURS * rate.scrollPerHour);
+    const x = 24, w = app.W - 48, h = 188, y = Math.max(45, (app.H - h) / 2);
+    ui.setModalClose(() => { this.confirmFastReward = false; });
+    ui.modal('确认快速收获', x, y, w, h);
+    ui.tap(x, y, w, h, () => {}, 'fast-reward-confirm-mask');
+    ui.text('消耗 ' + C.FAST_REWARD_COST + ' 元宝 · 获得 ' + C.FAST_REWARD_HOURS + ' 小时收益', app.W / 2, y + 49, { size: 13, color: T.GOLD_HI, align: 'center', bold: true });
+    ui.text('元宝：' + F.fmtNum(s.res.gem) + ' → ' + F.fmtNum(Math.max(0, s.res.gem - C.FAST_REWARD_COST)), app.W / 2, y + 78, { size: 11, color: T.DIM, align: 'center' });
+    ui.text('铜钱 +' + F.fmtNum(gold) + ' · 招募令 +' + scroll, app.W / 2, y + 101, { size: 11, color: T.TEXT, align: 'center' });
+    ui.btn(x + 18, y + 132, 132, 36, { text: '取消', style: 'ghost', id: 'fast-reward-cancel', cb: () => { this.confirmFastReward = false; } });
+    ui.btn(x + w - 150, y + 132, 132, 36, { text: '确认收获', style: 'gold', id: 'fast-reward-confirm', disabled: s.res.gem < C.FAST_REWARD_COST, cb: () => {
+      this.confirmFastReward = false;
+      const r = store.fastReward(false);
+      ui.toast(r.ok ? '快速收获：铜钱 +' + F.fmtNum(r.gold) + ' · 招募令 +' + r.scroll : r.msg);
+      this.refresh();
+    } });
   },
   drawQuests() {
     const v = this.view, close = () => { this.showQuests = false; this.refresh(); };

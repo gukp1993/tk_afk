@@ -10,6 +10,7 @@ const items = require('../../utils/items');
 const C = require('../../utils/config');
 const F = require('../../utils/fmt');
 const autoBattle = require('../../utils/auto-battle');
+const progression = require('../../utils/progression');
 
 // 战场坐标（逻辑 px，设计宽 375）：铺满竖屏
 const POS = {
@@ -36,7 +37,11 @@ module.exports = {
     this.result = null;
     this.over = false;
     this.autoEnabled = !!params.auto;
-    this.autoSummary = { wins: 0, stages: 0, gainedXP: 0, gold: 0, gem: 0, scroll: 0, iron: 0, recent: [] };
+    this.autoStartedAt = Date.now();
+    this.autoStartLevel = store.playerLevel();
+    this.autoStartStage = store.getState().campaign.cleared + 1;
+    this.autoStartRate = C.idleRates(store.getState().campaign.cleared);
+    this.autoSummary = { battles: 0, wins: 0, losses: 0, stages: 0, gainedXP: 0, gold: 0, gem: 0, scroll: 0, iron: 0, recent: [] };
     this.autoStopReason = '';
     this.speed = this.autoEnabled ? ((store.getState().settings || {}).autoBattleSpeed || C.AUTO_BATTLE.defaultSpeed) : 1;
     this.autoState = autoBattle.createState();
@@ -83,6 +88,10 @@ module.exports = {
       else { this.battleId = null; this.cleanupFailure = null; }
     } else if (cmd.type === 'stopped') {
       this.autoStopReason = this.autoStopReason || cmd.reason;
+      this.autoSummary.elapsedSec = Math.max(0, Math.floor((Date.now() - this.autoStartedAt) / 1000));
+      this.autoSummary.levelGain = Math.max(0, store.playerLevel() - this.autoStartLevel);
+      this.autoSummary.endStage = store.getState().campaign.cleared + 1;
+      this.autoSummary.rateAfter = C.idleRates(store.getState().campaign.cleared);
       this.over = true;
       this.result = null;
     }
@@ -275,7 +284,9 @@ module.exports = {
       if (this.mode === 'tower') nextLabel = '挑战下一层';
     }
     if (this.autoEnabled) {
+      this.autoSummary.battles += 1;
       if (win) this.autoSummary.wins += 1;
+      else this.autoSummary.losses += 1;
       if (this.mode === 'campaign' && win) this.autoSummary.stages += 1;
       this.autoSummary.gainedXP += settled.gainedXP || 0;
       if (rw && this.mode === 'campaign' && win) {
@@ -379,12 +390,15 @@ module.exports = {
     ui.btn(188, app.H - 42, 100, 30, { text: '跳过战斗', style: 'gold', size: 13, id: 'skip', cb: () => this.skip() });
   },
   drawAutoStatus() {
-    const y = app.H - 150;
+    const y = app.H - 168;
     const status = this.autoState && this.autoState.status;
-    ui.panel(10, y, 355, 106, { fill: 'rgba(20,14,8,0.94)' });
+    ui.panel(10, y, 355, 118, { fill: 'rgba(20,14,8,0.94)' });
     let title = status === 'suspended' ? '自动出征已暂停' : status === 'resultDelay' ? '战果结算 · 即将继续' : status === 'fighting' ? (this.mode === 'training' ? '连续练兵' : '自动出征') : '自动出征已停止';
     ui.text(title + '  ×' + this.speed, 22, y + 8, { size: 14, color: T.GOLD_HI, bold: true });
-    let detail = this.autoStopReason || (this.autoState && this.autoState.reason === 'recovery-exhausted' ? '暂时受阻，收获材料提升后再出征' : this.mode === 'training' ? '胜利获得经验 · 有限批次' : '遇阻后有限练兵恢复');
+    const reasonText = { 'manual-stop': '已按指令停止', 'stopped-after-battle': '本场结束后停止', 'recovery-exhausted': '暂时受阻，收获材料提升后再出征', 'training-loss': '练兵失败，已停止', 'level-max': '主公等级已满', 'replaced-by-battle': '为其他战斗让出队伍' };
+    let detail = status === 'stopped' ? (reasonText[this.autoStopReason] || reasonText[this.autoState.reason] || '自动出征已结束')
+      : status === 'suspended' ? '切到其他页面时仍在运行；系统后台时会暂停'
+        : this.mode === 'training' ? '连续练兵 · 有限批次' : '第 ' + (this.stage || store.getState().campaign.cleared + 1) + ' 关 · 进行中';
     ui.text(detail, 22, y + 30, { size: 10, color: T.TEXT });
     if (this.saveFailure) {
       ui.text('结算暂未保存；保存成功前不会开始下一场。', 187, y + 56, { size: 9, color: T.RED_HI, align: 'center' });
@@ -402,19 +416,33 @@ module.exports = {
       ui.btn(205, y + 78, 150, 24, { text: '返回主城', style: 'ghost', size: 10, id: 'auto-interrupt-exit', cb: () => app.pop() });
       return;
     }
-    ui.text('推进 ' + this.autoSummary.stages + ' 关 · 胜利 ' + this.autoSummary.wins + ' · 经验 +' + F.fmtNum(this.autoSummary.gainedXP), 22, y + 48, { size: 9, color: T.DIM });
-    ui.text('铜钱 +' + F.fmtNum(this.autoSummary.gold) + ' · 元宝 +' + F.fmtNum(this.autoSummary.gem) + ' · 令 +' + this.autoSummary.scroll + ' · 铁 +' + this.autoSummary.iron, 22, y + 61, { size: 8, color: T.DIM });
+    const elapsed = status === 'stopped' ? this.autoSummary.elapsedSec : Math.floor((Date.now() - this.autoStartedAt) / 1000);
+    ui.text('关卡 ' + this.autoStartStage + '→' + (this.autoSummary.endStage || store.getState().campaign.cleared + 1) + ' · 战斗 ' + this.autoSummary.battles + ' 场（胜' + this.autoSummary.wins + '/败' + this.autoSummary.losses + '） · ' + Math.floor(elapsed / 60) + '分' + elapsed % 60 + '秒', 22, y + 47, { size: 8, color: T.DIM });
+    ui.text('铜钱 +' + F.fmtNum(this.autoSummary.gold) + ' · 元宝 +' + F.fmtNum(this.autoSummary.gem) + ' · 招募令 +' + this.autoSummary.scroll + ' · 精铁 +' + this.autoSummary.iron, 22, y + 60, { size: 8, color: T.DIM });
+    const rateAfter = this.autoSummary.rateAfter || C.idleRates(store.getState().campaign.cleared);
+    ui.text('经验 +' + F.fmtNum(this.autoSummary.gainedXP) + ' · 等级 +' + (this.autoSummary.levelGain || 0) + ' · 挂机铜钱/时 ' + F.fmtNum(this.autoStartRate.gold) + '→' + F.fmtNum(rateAfter.gold), 22, y + 73, { size: 8, color: T.DIM });
     if (status === 'stopped') {
-      ui.btn(14, y + 78, 166, 24, { text: '返回主城', style: 'ghost', size: 10, id: 'auto-home', cb: () => app.pop() });
-      ui.btn(190, y + 78, 170, 24, { text: this.mode === 'training' ? '再练一批' : '重新出征', style: 'gold', size: 10, id: 'auto-restart', cb: () => { const m = this.mode; this.onEnter({ mode: m, auto: true }); } });
+      const blocked = this.autoStopReason === 'recovery-exhausted' || this.autoState.reason === 'recovery-exhausted';
+      ui.btn(14, y + 88, 166, 24, { text: blocked ? '前往提升' : '返回战役', style: 'ghost', size: 10, id: 'auto-home', cb: () => blocked ? this.openGrowthSuggestion() : app.pop() });
+      ui.btn(190, y + 88, 170, 24, { text: this.mode === 'training' ? '再练一批' : '重新出征', style: 'gold', size: 10, id: 'auto-restart', cb: () => { const m = this.mode; this.onEnter({ mode: m, auto: true }); } });
     } else {
-      ui.btn(14, y + 78, 72, 24, { text: '×' + this.speed, style: 'ghost', size: 10, id: 'auto-speed', cb: () => { this.speed = this.speed >= 4 ? 1 : this.speed * 2; store.setAutoBattleSpeed(this.speed); } });
-      ui.btn(94, y + 78, 117, 24, { text: '本场后停止', style: 'ghost', size: 10, id: 'auto-stop-after', cb: () => this.sendAuto({ type: 'stopAfterBattle' }) });
-      ui.btn(219, y + 78, 68, 24, { text: '停止', style: 'ghost', size: 10, id: 'auto-stop', cb: () => this.sendAuto({ type: 'stop', reason: 'manual-stop' }) });
-      ui.btn(295, y + 78, 66, 24, { text: '剧情', style: 'plain', size: 10, id: 'auto-story', disabled: !this.cfg.story || this.mode !== 'campaign', cb: () => this.openStoryManually() });
+      ui.btn(14, y + 88, 72, 24, { text: '×' + this.speed, style: 'ghost', size: 10, id: 'auto-speed', cb: () => { this.speed = this.speed >= 4 ? 1 : this.speed * 2; store.setAutoBattleSpeed(this.speed); } });
+      ui.btn(94, y + 88, 117, 24, { text: '本场后停止', style: 'ghost', size: 10, id: 'auto-stop-after', cb: () => this.sendAuto({ type: 'stopAfterBattle' }) });
+      ui.btn(219, y + 88, 68, 24, { text: '停止', style: 'ghost', size: 10, id: 'auto-stop', cb: () => this.sendAuto({ type: 'stop', reason: 'manual-stop' }) });
+      ui.btn(295, y + 88, 66, 24, { text: '剧情', style: 'plain', size: 10, id: 'auto-story', disabled: !this.cfg.story || this.mode !== 'campaign', cb: () => this.openStoryManually() });
     }
     if (status === 'suspended') ui.btn(249, y + 7, 102, 24, { text: '继续', style: 'gold', size: 10, id: 'auto-resume', cb: () => this.sendAuto({ type: 'resume', reason: 'background' }) });
     if (this.result && this.result.lines) ui.text(this.result.lines[0], 187, y - 8, { size: 9, color: T.GOLD, align: 'center' });
+  },
+  openGrowthSuggestion() {
+    const goal = progression.getNextGoal(store.getState(), store), a = goal && goal.action;
+    if (!a) { ui.toast('暂时没有可处理的成长目标'); return; }
+    if (a.type === 'heroes') app.switchTab('heroes', { focusFirstWin: true });
+    else if (a.type === 'heroDetail') app.push('heroDetail', { id: a.id, focus: a.focus });
+    else if (a.type === 'armory') app.push('armory', a.boxQ ? { boxQ: a.boxQ } : { recommendations: a.recommendations });
+    else if (a.type === 'shop') app.push('shop', { pickRarity: a.pickRarity });
+    else if (a.type === 'campaign') { app.switchTab('campaign'); ui.toast(goal.title); }
+    else ui.toast(goal.title || '暂时没有可处理的成长目标');
   },
   drawResult() {
     const ctx = ui.ctx;
@@ -461,7 +489,7 @@ module.exports = {
       });
     } else {
       ui.btn(bx + 14, by + bh - 46, 128, 30, {
-        text: r.win ? '—' : '复活暂不可用', style: 'plain', size: 11, disabled: true, id: 'res-revive-off'
+        text: r.win ? '—' : '查看成长', style: r.win ? 'plain' : 'gold', size: 11, disabled: !!r.win, id: 'res-growth', cb: () => this.openGrowthSuggestion()
       });
     }
     ui.btn(bx + 153, by + bh - 46, 128, 30, {

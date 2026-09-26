@@ -13,6 +13,8 @@ const app = {
   stack: [],             // 导航栈（push/pop）
   tab: 'campaign',
   hidden: false,
+  autoSession: null,
+  battleConflict: null,
   TABS: [
     { key: 'home', icon: '城', text: '主城' },
     { key: 'journey', icon: '图', text: '玩法' },
@@ -61,11 +63,12 @@ const app = {
         ui.onTouchEnd(p.x, p.y);
       } else ui.onTouchEnd(ui.touch ? ui.touch.x : 0, ui.touch ? ui.touch.y : 0);
     });
-    api.onTouchCancel && api.onTouchCancel(() => { ui.touch = null; ui.pressedId = null; });
+    api.onTouchCancel && api.onTouchCancel(() => ui.invalidateTouches());
     api.onHide && api.onHide(() => {
       this.hidden = true;
       const active = this.top();
       if (active && active.onHide) active.onHide();
+      if (this.autoSession && this.autoSession !== active && this.autoSession.onHide) this.autoSession.onHide();
       store.save();
     });
     api.onShow && api.onShow(() => {
@@ -73,6 +76,7 @@ const app = {
       this.last = Date.now();
       const active = this.top();
       if (active && active.onShow) active.onShow();
+      if (this.autoSession && this.autoSession !== active && this.autoSession.onShow) this.autoSession.onShow();
     });
     // 节流自动存档：开发者工具「编译」重启不触发 onHide，仅靠事件保存会表现为丢档；
     // 心跳把丢失窗口压到间隔内，真机上与 onHide 双保险
@@ -87,33 +91,60 @@ const app = {
 
   switchTab(name, params) {
     if (!this.scenes[name]) return;
+    ui.invalidateTouches();
     const active = this.top();
-    if (active && active.onExit) active.onExit('tab');
+    if (active && active !== this.autoSession && active.onExit) active.onExit('tab');
     ui.hitAreas = []; ui.dragAreas = [];
     this.tab = name;
     this.stack = [];
+    if (name === 'campaign' && this.hasAutoSession()) {
+      this.stack = [this.autoSession];
+      return;
+    }
     const s = this.scenes[name];
     if (s && s.onEnter) s.onEnter(params || {});
   },
   push(name, params) {
     const s = this.scenes[name];
     if (!s) return;
+    if (name === 'battle' && !(params && params.auto) && this.autoSession === s && !this.isAutoSessionRunning()) this.autoSession = null;
+    if (name === 'battle' && params && params.auto && this.isAutoSessionRunning()) {
+      this.tab = 'campaign'; this.stack = [this.autoSession]; ui.invalidateTouches();
+      return;
+    }
+    if (name === 'battle' && this.isAutoSessionRunning() && !(params && params.auto)) {
+      this.battleConflict = { params: params || {} };
+      ui.invalidateTouches();
+      return;
+    }
+    ui.invalidateTouches();
     const active = this.top();
-    if (active && active.onExit) active.onExit('push');
+    if (active && active !== this.autoSession && active.onExit) active.onExit('push');
     ui.hitAreas = []; ui.dragAreas = [];
     s.params = params || {};
     if (s.onEnter) s.onEnter(params);
     this.stack.push(s);
+    if (name === 'battle' && params && params.auto) this.autoSession = s;
   },
   pop() {
+    ui.invalidateTouches();
     ui.hitAreas = []; ui.dragAreas = [];
     const s = this.stack.pop();
-    if (s && s.onExit) s.onExit('pop');
+    if (s && s !== this.autoSession && s.onExit) s.onExit('pop');
+    if (s === this.autoSession && !this.isAutoSessionRunning()) this.autoSession = null;
     const top = this.top();
     if (top && top.onEnter) top.onEnter();
   },
   top() {
     return this.stack.length ? this.stack[this.stack.length - 1] : this.scenes[this.tab];
+  },
+  isAutoSessionRunning() {
+    const state = this.autoSession && this.autoSession.autoState;
+    return !!(state && ['fighting', 'resultDelay', 'suspended'].includes(state.status));
+  },
+  hasAutoSession() {
+    const state = this.autoSession && this.autoSession.autoState;
+    return !!(state && state.status !== 'idle');
   },
 
   frame() {
@@ -125,6 +156,8 @@ const app = {
     const s = this.top();
     if (s) {
       if (!this.hidden && s.update) s.update(dt);
+      const session = this.autoSession;
+      if (!this.hidden && session && session !== s && this.isAutoSessionRunning() && session.update) session.update(dt);
       ui.begin(this.ctx, this.W, this.H, dt);
       // 背景
       const ctx = this.ctx;
@@ -137,7 +170,8 @@ const app = {
       ctx.fillRect(0, 0, this.W, this.H);
       if (s.draw) s.draw(dt);
       this.drawFloatersIfBattle(s, dt);
-      if (!this.stack.length && !ui.modalActive) this.drawTabBar();
+      if ((!this.stack.length || s === this.autoSession) && !ui.modalActive) this.drawTabBar();
+      if (this.battleConflict) this.drawBattleConflict();
       ui.drawFloaters(dt);
       ui.drawToast();
       ads.frame(dt); // 模拟广告覆盖层（置顶）
@@ -169,7 +203,7 @@ const app = {
       ctx.font = T.font(20);
       ctx.globalAlpha = active ? 1 : 0.6;
       ctx.fillStyle = active ? '#e9c47a' : '#a6906c';
-      ctx.fillText(t.icon, cx, y + 20);
+      ctx.fillText(t.key === 'campaign' && this.isAutoSessionRunning() ? '⚔' : t.key === 'campaign' && this.hasAutoSession() ? '✓' : t.icon, cx, y + 20);
       ctx.font = T.font(12, active);
       ctx.fillText(t.text, cx, y + 39);
       ctx.globalAlpha = 1;
@@ -183,6 +217,33 @@ const app = {
       }
     });
     ctx.restore();
+  },
+  drawBattleConflict() {
+    const x = 24, w = this.W - 48, h = 176, y = Math.max(45, (this.H - h) / 2);
+    const close = () => { this.battleConflict = null; };
+    ui.setModalClose(close);
+    ui.modal('已有自动出征', x, y, w, h);
+    ui.tap(x, y, w, h, () => {}, 'battle-conflict-mask');
+    ui.text('先结束当前自动出征，才能开始这场战斗。', this.W / 2, y + 51, { size: 12, color: T.TEXT, align: 'center' });
+    ui.btn(x + 18, y + 112, 132, 36, { text: '返回继续推图', style: 'ghost', id: 'battle-conflict-cancel', cb: close });
+    ui.btn(x + w - 150, y + 112, 132, 36, { text: '结束并开始', style: 'gold', id: 'battle-conflict-stop', cb: () => this.resolveBattleConflict(true) });
+  },
+  resolveBattleConflict(confirm) {
+    if (!this.battleConflict) return;
+    if (!confirm) { this.battleConflict = null; return; }
+    const params = this.battleConflict.params || {};
+    const session = this.autoSession;
+    if (session && session.sendAuto) session.sendAuto({ type: 'stop', reason: 'replaced-by-battle' });
+    const pending = store.getState().battle.pending;
+    if (pending && session && pending.id === session.battleId) {
+      this.battleConflict = null;
+      ui.toast('当前战斗尚未安全中断，请先重试保存');
+      return;
+    }
+    this.battleConflict = null;
+    if (this.autoSession === session && !this.isAutoSessionRunning()) this.autoSession = null;
+    this.stack = [];
+    this.push('battle', params);
   },
 
   // 通用页面头（返回 + 标题）

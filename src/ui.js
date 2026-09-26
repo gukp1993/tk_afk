@@ -25,6 +25,7 @@ const ui = {
   floaters: [],
   toastMsg: null, toastUntil: 0,
   time: 0,
+  touchGeneration: 0,
 
   begin(ctx, W, H, dt) {
     this.ctx = ctx; this.W = W; this.H = H;
@@ -37,7 +38,7 @@ const ui = {
 
   // ---------- 触摸（由 app 层喂入） ----------
   onTouchStart(x, y) {
-    this.touch = { sx: x, sy: y, x, y, moved: false, dragKey: null, dragScene: null };
+    this.touch = { sx: x, sy: y, x, y, moved: false, dragKey: null, dragScene: null, generation: this.touchGeneration };
     // 命中滚动区域（后注册者优先）
     for (let i = this.dragAreas.length - 1; i >= 0; i--) {
       const d = this.dragAreas[i];
@@ -73,10 +74,15 @@ const ui = {
     this._updateTouchScroll(t, x, y);
     this.touch = null;
     const wasPressed = this.pressedId; this.pressedId = null;
-    if (!t.moved) {
+    if (!t.moved && t.generation === this.touchGeneration) {
       const hit = this.hitAt(x, y);
       if (hit && hit.id === wasPressed && hit.cb) hit.cb();
     }
+  },
+  invalidateTouches() {
+    this.touchGeneration++;
+    this.touch = null;
+    this.pressedId = null;
   },
   hitAt(x, y) {
     for (let i = this.hitAreas.length - 1; i >= 0; i--) {
