@@ -198,6 +198,7 @@ const ui = {
 
   // ---------- 按钮 ----------
   BTN_STYLE: {
+    jade: { g: ['#54877a', '#2e6258'], border: '#cbd9a0', color: '#fff3cf' },
     gold: { g: ['#f0cd7c', '#c08a3e'], border: '#f4dd9e', color: '#3a2408' },
     red: { g: ['#d4553a', '#96291a'], border: '#e88a6a', color: '#ffe8d8' },
     ghost: { g: ['rgba(217,169,78,0.08)', 'rgba(217,169,78,0.04)'], border: T.LINE_HI, color: T.GOLD },

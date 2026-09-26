@@ -172,7 +172,7 @@ module.exports = {
     ui.btn(b.x, b.y + 44, b.w, 42, { text: '看广告 · 双倍领取', sub: '铜钱、招募令双倍；精铁正常领取 · 今日 ' + left + ' 次', style: 'gold', id: 'idle-ad2x', disabled: left <= 0 || !(idle.gold || idle.exp || idle.scroll), cb: () => ads.showRewarded('idle2x', () => this.claimIdle(true), msg => ui.toast(msg)) });
     ui.btn(b.x, b.y + 98, b.w, 42, { text: '快速收获 · ' + C.FAST_REWARD_COST + ' 元宝', sub: quickText + ' · 今日 ' + s.fast.count + '/' + C.FAST_REWARD_DAILY, style: 'plain', id: 'idle-fast', disabled: s.fast.count >= C.FAST_REWARD_DAILY, cb: () => { const r = store.fastReward(false); ui.toast(r.ok ? '快速收获：铜钱 +' + F.fmtNum(r.gold) + ' · 招募令 +' + r.scroll : r.msg); this.refresh(); } });
     ui.btn(b.x, b.y + 152, b.w, 42, { text: '看广告 · 免费快速收获', sub: quickText + ' · 今日剩余 ' + fast + ' 次', style: 'ghost', id: 'idle-adfast', disabled: fast <= 0, cb: () => ads.showRewarded('fast', () => { const r = store.fastReward(true); ui.toast(r.ok ? '快速收获：铜钱 +' + F.fmtNum(r.gold) + ' · 招募令 +' + r.scroll : r.msg); this.refresh(); }, msg => ui.toast(msg)) });
-    ui.btn(b.x, b.y + 208, b.w, 34, { text: '返回主城', id: 'idle-close', cb: close });
+    ui.btn(b.x, b.y + 208, b.w, 34, { text: '返回' + (this.name === 'campaign' ? '战役' : '主城'), id: 'idle-close', cb: close });
   },
   drawQuests() {
     const v = this.view, close = () => { this.showQuests = false; this.refresh(); };
@@ -203,6 +203,6 @@ module.exports = {
       else ui.toast(r.changed ? '日常已领取：' + (this.rewardText(r.rewards) || '奖励到账') : '暂无可领取日常');
       this.refresh();
     } });
-    ui.btn(b.x + 164, y + h - 46, b.w - 164, 34, { text: '返回主城', id: 'quests-close', cb: close });
+    ui.btn(b.x + 164, y + h - 46, b.w - 164, 34, { text: '返回' + (this.name === 'campaign' ? '战役' : '主城'), id: 'quests-close', cb: close });
   }
 };

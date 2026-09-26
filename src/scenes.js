@@ -5,6 +5,7 @@ const { app, ui } = require('./app');
 
 // 城镇视图沿用 home 的任务与挂机业务。
 app.register('home', require('./screens/city'));
+app.register('campaign', require('./screens/campaign'));
 app.register('heroes', require('./screens/heroes'));
 app.register('summon', require('./screens/summon'));
 app.register('bag', require('./screens/bag'));

@@ -12,6 +12,7 @@ global.wx = {
 global.requestAnimationFrame = () => {}; // frame() 只执行当前帧，不启动循环
 
 const { app, ui } = require('../src/scenes');
+const initialTab = app.tab;
 const store = require('../utils/store');
 store.load();
 let passed = 0, failed = 0;
@@ -204,9 +205,9 @@ test('无关闭回调的遮罩仍阻挡底层点击', () => {
   assert.strictEqual(count, 0);
 });
 
-test('五个底部入口已注册，首次打开默认主城', () => {
-  assert.strictEqual(app.tab, 'home');
-  assert.deepStrictEqual(app.TABS.map(tab => tab.key), ['home', 'heroes', 'summon', 'bag', 'journey']);
+test('五个底部入口已注册，首次打开默认战役', () => {
+  assert.strictEqual(initialTab, 'campaign');
+  assert.deepStrictEqual(app.TABS.map(tab => tab.key), ['home', 'journey', 'campaign', 'heroes', 'bag']);
   app.TABS.forEach(tab => assert(app.scenes[tab.key], '未注册场景：' + tab.key));
 });
 

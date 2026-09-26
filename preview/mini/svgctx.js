@@ -20,7 +20,9 @@ class SvgCtx {
     this._path = [];
     this._dash = null;
   }
-  save() { this.stack.push({ m: this.m.slice(), alpha: this.globalAlpha, dash: this._dash }); }
+  save() { this.stack.push({ m: this.m.slice(), alpha: this.globalAlpha, dash: this._dash,
+    styles: { fillStyle: this.fillStyle, strokeStyle: this.strokeStyle, lineWidth: this.lineWidth,
+      font: this.font, textAlign: this.textAlign, textBaseline: this.textBaseline } }); }
   // 每帧开始：清空累计指令
   newFrame() {
     this.ops = []; this.defs = []; this.defId = 0;
@@ -35,6 +37,7 @@ class SvgCtx {
     const s = this.stack.pop();
     if (!s) return;
     this.m = s.m; this.globalAlpha = s.alpha; this._dash = s.dash;
+    if (s.styles) Object.assign(this, s.styles);
     if (s.isClipGroup) this.ops.push('</g>');
   }
   transform(a, b, c, d, e, f) {
@@ -78,7 +81,7 @@ class SvgCtx {
     for (let i = 0; i <= steps; i++) {
       const a = a0 + (a1 - a0) * (i / steps);
       const px = x + Math.cos(a) * r, py = y + Math.sin(a) * r;
-      this._path.push((i === 0 ? 'M' : 'L') + this.apply(px, py));
+      this._path.push((this._path.length ? 'L' : 'M') + this.apply(px, py));
     }
   }
   clip() {
@@ -111,7 +114,7 @@ class SvgCtx {
       this.ops.push(`<circle cx="${c.circle[0][0]}" cy="${c.circle[0][1]}" r="${c.circle[1]}" fill="${fill ? style : 'none'}" stroke="${fill ? 'none' : style}" stroke-width="${this.lineWidth}" opacity="${this.globalAlpha}"/>`);
     });
     if (segs.length) this._emitPath(segs.join(''), style, fill);
-    this._path = [];
+    // Canvas 的 fill/stroke 不清空当前路径，下一次 beginPath 才重置。
   }
   _emitPath(d, style, fill) {
     const attrs = [

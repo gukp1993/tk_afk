@@ -81,8 +81,8 @@ function rect(id) {
   return { x, y, w, h };
 }
 
-test('游戏首次进入注册的建筑主城', () => {
-  assert.strictEqual(app.tab, 'home');
+test('游戏默认战役首页，建筑主城仍独立注册并可进入', () => {
+  assert.strictEqual(app.tab, 'campaign');
   assert.strictEqual(app.scenes.home, city);
   home(812);
   assert.strictEqual(app.top(), city);

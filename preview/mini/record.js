@@ -16,12 +16,13 @@ const storage = {};
 global.requestAnimationFrame = (cb) => rafQueue.push(cb);
 global.wx = {
   createCanvas() {
-    const ctx = new SvgCtx(750, 1624);
+    // SVG 记录逻辑分辨率；设备像素比由真实 Canvas 预览另行检查。
+    const ctx = new SvgCtx(375, 812);
     wx.__ctx = ctx;
-    return { width: 750, height: 1624, getContext: () => ctx };
+    return { width: 375, height: 812, getContext: () => ctx };
   },
-  getWindowInfo() { return { screenWidth: 375, screenHeight: 812, pixelRatio: 2 }; },
-  getSystemInfoSync() { return { screenWidth: 375, screenHeight: 812, pixelRatio: 2 }; },
+  getWindowInfo() { return { screenWidth: 375, screenHeight: 812, pixelRatio: 1 }; },
+  getSystemInfoSync() { return { screenWidth: 375, screenHeight: 812, pixelRatio: 1 }; },
   onTouchStart() {}, onTouchMove() {}, onTouchEnd() {}, onTouchCancel() {},
   onHide() {},
   setStorageSync(k, v) { storage[k] = JSON.parse(JSON.stringify(v)); },
@@ -46,7 +47,7 @@ require('../../src/scenes'); // 场景注册表（与平台入口 game.js 共用
 const { app } = require('../../src/app');
 const store = require('../../utils/store');
 app.init(); // 平台入口 game.js 的启动序列：init + 默认 tab
-app.switchTab('home');
+app.switchTab('campaign');
 
 // ---------- 丰富预览数据 ----------
 const s = store.getState();
@@ -75,6 +76,18 @@ function snap(name) {
   const svg = app.ctx.takeSVG ? '' : '';
   shots.push([name, app.canvas.getContext().takeSVG()]);
 }
+
+// 战役首页：新玩家、章末名将与本章地图（内存演示档）。
+const previewCleared = s.campaign.cleared;
+s.campaign.cleared = 0;
+app.switchTab('campaign');
+snap('campaign');
+s.campaign.cleared = previewCleared;
+app.switchTab('campaign');
+snap('campaign-boss');
+app.scenes.campaign.showMap = true;
+snap('campaign-map');
+app.scenes.campaign.showMap = false;
 
 // 1. 主城
 app.switchTab('home');

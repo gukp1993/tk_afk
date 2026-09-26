@@ -2,4 +2,4 @@
 const { app } = require('./src/scenes');
 
 app.init();
-app.switchTab('home');
+app.switchTab('campaign');

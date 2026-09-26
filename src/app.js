@@ -11,14 +11,14 @@ const app = {
   scale: 1, W: 375, H: 812,
   scenes: {},            // name -> scene 对象
   stack: [],             // 导航栈（push/pop）
-  tab: 'home',
+  tab: 'campaign',
   hidden: false,
   TABS: [
     { key: 'home', icon: '城', text: '主城' },
+    { key: 'journey', icon: '图', text: '玩法' },
+    { key: 'campaign', icon: '战', text: '战役' },
     { key: 'heroes', icon: '将', text: '英雄' },
-    { key: 'summon', icon: '召', text: '召唤' },
-    { key: 'bag', icon: '囊', text: '背包' },
-    { key: 'journey', icon: '征', text: '玩法' }
+    { key: 'bag', icon: '囊', text: '背包' }
   ],
   last: 0,
 
@@ -164,12 +164,13 @@ const app = {
       const cx = each * i + each / 2;
       const active = this.tab === t.key;
       ui.tap(each * i, y, each, h, () => this.switchTab(t.key), 'tab-' + t.key);
+      if (active) ui.panel(each * i + 2, y + 2, each - 4, h - 4, { fill: t.key === 'campaign' ? '#675235' : '#3d3020', r: 3, ornate: true });
       ctx.textAlign = 'center';
       ctx.font = T.font(20);
       ctx.globalAlpha = active ? 1 : 0.6;
       ctx.fillStyle = active ? '#e9c47a' : '#a6906c';
       ctx.fillText(t.icon, cx, y + 20);
-      ctx.font = T.font(10);
+      ctx.font = T.font(12, active);
       ctx.fillText(t.text, cx, y + 39);
       ctx.globalAlpha = 1;
       if (active) {
