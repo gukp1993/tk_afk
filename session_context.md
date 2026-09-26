@@ -16,6 +16,12 @@
 
 ## 最近交接（新 → 旧）
 
+### 小游戏平台变现渠道问答（纯问答） · zcode · 无变更
+
+时间：2026-09-26；执行者：zcode
+
+纯问答：调研微信/抖音之外可走「流量主式」广告分成的分发平台。国内：QQ 小游戏、支付宝小游戏（流量主/灯火 IAA）、百度小游戏（百青藤）、快手小游戏、华为/小米/OPPO/vivo 快游戏（各厂商广告 SDK，激励视频为主力）、4399/233乐园等 H5 联运（联运分成而非广告流量主）。海外网页游戏平台：Poki（广告分成约 50/50）、CrazyGames（广告分成+内购）、Yandex Games（YAN 激励视频，俄区/东欧/中东）、GameDistribution/Playgama HTML5 分发网络（Playgama 分成 70→90% 阶梯）、Telegram Mini Apps（第三方广告网 Adsgram，TON 结算）；Facebook Instant Games 正在关停（官方公告存量网页游戏 2026-09-30 后不再可用），不投入。结合本项目判断：utils/platform.js + src/ads/bridge.js 契约即多平台扩展地基（AGENTS.md「新增平台=复制平台目录+bridge 扩展」路径成立），国内类微信 API 平台（QQ/支付宝）接入成本最低，海外平台需做 Web 版构建+各平台 SDK 的 bridge 实现。会话内交付，未改代码；具体门槛/分成比例随平台政策变动，答复中已注明以官方文档为准。
+
 ### 抖音 AppID 接入（测试不发布） · zcode · 已实施，待验收
 
 时间：2026-09-26；执行者：zcode
