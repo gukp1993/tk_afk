@@ -3,7 +3,8 @@
 // 新增场景：src/screens/ 新文件 + 本文件 register + app.js 底部导航登记（TABS）三处同步
 const { app, ui } = require('./app');
 
-app.register('home', require('./screens/home'));
+// 城镇视图沿用 home 的任务与挂机业务。
+app.register('home', require('./screens/city'));
 app.register('heroes', require('./screens/heroes'));
 app.register('summon', require('./screens/summon'));
 app.register('bag', require('./screens/bag'));

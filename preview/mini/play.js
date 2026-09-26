@@ -34,6 +34,7 @@ const {app,ui}=load('src/scenes.js'),store=load('utils/store.js');app.init();
 // 演示数据仅在显式 demo 参数下使用，不接触设备存档。
 if(query.has('demo')){const s=store.getState();s.res.gold=500000;s.res.exp=500000;s.res.scroll=88;s.res.gem=18888;s.campaign.cleared=19;['zhaoyun','zhugeliang','zhouyu','lvbu','huatuo','guojia','huangzhong','sunshangxiang','daqiao','zhangjiao','zhenji','taishici'].forEach(id=>store.addHeroCard(id));for(let i=0;i<16;i++)store.addEquip(i%4+1,['weapon','armor','helm','boots'][i%4]);}
 const page=query.get('page')||'home';app.switchTab(app.TABS.some(t=>t.key===page)?page:'home');
+if(page==='home'&&query.has('townBottom'))app.scenes.home.scroll.town=10000;
 if(page==='bag'&&query.has('equips'))app.scenes.bag.section='equips';
 if(page==='quests')app.scenes.home.showQuests=true;
 if(page==='idle')app.scenes.home.showIdle=true;
