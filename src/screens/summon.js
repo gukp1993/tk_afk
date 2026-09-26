@@ -1,4 +1,4 @@
-// 点将台：招募单抽/十连、元宝十连、保底进度、翻牌揭示
+// 点将台：招募单抽/十连、元宝十连、固定概率公示、翻牌揭示
 const { app, ui } = require('../app');
 const ads = require('../ads');
 const T = require('../theme');
@@ -59,7 +59,7 @@ module.exports = {
       ctx.beginPath(); ctx.moveTo(0, 20); ctx.lineTo(0, 62); ctx.stroke();
     }
     ctx.restore();
-    ui.text('点  将  台', cx, y + 14, { size: 22, color: T.GOLD_HI, bold: true, align: 'center' });
+    ui.text('召唤 · 点将台', cx, y + 14, { size: 22, color: T.GOLD_HI, bold: true, align: 'center' });
     ui.text('聚天下英杰 · 成千秋霸业', cx, y + 42, { size: 10, color: T.DIM, align: 'center' });
     ctx.save();
     ctx.translate(cx, cy);
@@ -88,7 +88,7 @@ module.exports = {
     // 招募按钮
     ui.btn(8, y, 110, 46, { text: '招募 ×1', sub: '📜 招募令 ×1', style: 'ghost', size: 14, id: 'pull1', cb: () => this.pull('scroll1') });
     ui.btn(126, y, 113, 46, { text: '招募 ×10', sub: '📜 招募令 ×10', style: 'gold', size: 14, id: 'pull10', cb: () => this.pull('scroll10') });
-    ui.btn(247, y, 112, 46, { text: '元宝十连', sub: '💵 2880', style: 'gold', size: 14, id: 'pullG', cb: () => this.pull('gem10') });
+    ui.btn(247, y, 112, 46, { text: '元宝十连', sub: '💵 ' + C.GACHA.costTenGold, style: 'gold', size: 14, id: 'pullG', cb: () => this.pull('gem10') });
     y += 54;
     // 看广告免费招募
     const adLeft = ads.remaining('summon');
@@ -119,6 +119,7 @@ module.exports = {
         faction: def.faction, rarity: def.rarity, title: def.title
       };
     });
+    this.scroll.result = 0;
     this.revealCount = 0;
     this.revealTimer = 0;
     this.busy = true;
@@ -126,23 +127,22 @@ module.exports = {
   },
   drawResult() {
     const list = this.result;
-    const ctx = ui.ctx;
-    ctx.save();
-    ctx.fillStyle = 'rgba(8,4,2,0.92)';
-    ctx.fillRect(0, 0, app.W, app.H);
-    ctx.restore();
-    ui.setModalClose(() => {
+    // 结果窗口和底部确认固定在导航栏上方，短屏只滚动卡片。
+    const close = () => {
       if (!this.busy) { this.result = null; this.refresh(); }
-    });
-    ui.tap(0, 0, app.W, app.H, () => {
-      if (!this.busy) { this.result = null; this.refresh(); }
-    }, 'summon-mask');
-    ui.text('点 将 · ' + list.length + ' 连', 187, 120, { size: 20, color: T.GOLD_HI, bold: true, align: 'center' });
+    };
+    ui.setModalClose(close);
+    ui.modal('召唤结果 · ' + list.length + ' 名英雄', 8, 24, 359, app.H - 88);
+    ui.tap(8, 24, 359, app.H - 88, () => {}, 'summon-result-panel');
+    ui.text('新英雄已加入群英录，重复英雄保留为同名卡', 187, 61, { size: 10, color: T.DIM, align: 'center' });
     const cols = list.length > 1 ? 3 : 1;
-    const cw = 74, chh = 100, gap = 10;
+    const cw = 90, chh = 106, gap = 10;
     const totalW = Math.min(cols, list.length) * (cw + gap) - gap;
     const x0 = (app.W - totalW) / 2;
-    const y0 = 165;
+    const y0 = 86;
+    const contentH = Math.ceil(list.length / cols) * (chh + gap) - gap;
+    const viewH = Math.min(contentH, app.H - 216);
+    ui.beginScroll(this, 'result', 20, y0, 335, viewH, contentH);
     list.forEach((r, i) => {
       const col = i % cols, row = Math.floor(i / cols);
       const x = x0 + col * (cw + gap);
@@ -204,7 +204,10 @@ module.exports = {
         }
       }
     });
-    ui.btn(137, y0 + Math.ceil(list.length / cols) * (chh + gap) + 16, 100, 32, {
+    ui.endScroll();
+    const buttonY = app.H - 106;
+    if (contentH > viewH) ui.text('上下滑动查看全部英雄', 187, buttonY - 19, { size: 10, color: T.DIM, align: 'center' });
+    ui.btn(117, buttonY, 140, 34, {
       text: this.busy ? '揭示中…' : '确 定', style: 'gold', size: 14, disabled: this.busy, id: 'summon-ok',
       cb: () => { this.result = null; this.refresh(); }
     });

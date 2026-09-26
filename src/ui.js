@@ -29,6 +29,9 @@ const ui = {
   begin(ctx, W, H, dt) {
     this.ctx = ctx; this.W = W; this.H = H;
     this.hitAreas = []; this.dragAreas = [];
+    this.scrollState = null;
+    this.modalActive = false;
+    this._modalClose = null;
     this.time += dt;
   },
 
@@ -52,7 +55,7 @@ const ui = {
     if (!this.touch) return;
     this.touch.x = x; this.touch.y = y;
     if (Math.abs(x - this.touch.sx) > 6 || Math.abs(y - this.touch.sy) > 6) this.touch.moved = true;
-    if (this.touch.dragKey) {
+    if (this.touch.dragKey && this.touch.moved) {
       const s = this.touch.dragScene;
       const reg = s.scrollReg[this.touch.dragKey] || {};
       let v = this.touch.startScroll - (y - this.touch.sy);
@@ -80,6 +83,15 @@ const ui = {
   },
 
   tap(x, y, w, h, cb, id) {
+    const st = this.scrollState;
+    if (st) {
+      y -= st.off;
+      const right = Math.min(x + w, st.x + st.w);
+      const bottom = Math.min(y + h, st.y + st.h);
+      x = Math.max(x, st.x); y = Math.max(y, st.y);
+      w = right - x; h = bottom - y;
+      if (w <= 0 || h <= 0) return;
+    }
     this.hitAreas.push({ x, y, w, h, cb, id: id || ('z' + this.hitAreas.length) });
   },
 
@@ -326,7 +338,8 @@ const ui = {
     scene.scroll = scene.scroll || {};
     scene.scrollReg = scene.scrollReg || {};
     scene.scrollReg[key] = { contentH, viewH: h };
-    const off = scene.scroll[key] || 0;
+    const off = Math.max(0, Math.min(scene.scroll[key] || 0, Math.max(0, contentH - h)));
+    scene.scroll[key] = off;
     ctx.save();
     ctx.beginPath();
     ctx.rect(x, y, w, h);
@@ -361,12 +374,19 @@ const ui = {
   // 返回内容区 {x,y,w,h}；点击遮罩关闭
   modal(title, x, y, w, h, closable) {
     const ctx = this.ctx;
+    this.modalActive = true;
+    this.hitAreas = [];
+    this.dragAreas = [];
     ctx.save();
     ctx.fillStyle = 'rgba(0,0,0,0.72)';
     ctx.fillRect(0, 0, this.W, this.H);
     ctx.restore();
-    this.tap(0, 0, this.W, this.H, closable === false ? null : (this._modalClose || null), 'mask-' + title);
+    // 兼容场景在 modal() 前后注册关闭回调；点击时读取本帧回调。
+    this.tap(0, 0, this.W, this.H, () => {
+      if (closable !== false && this._modalClose) this._modalClose();
+    }, 'mask-' + title);
     this.panel(x, y, w, h, { ornate: true, r: 10 });
+    this.tap(x, y, w, h, () => {}, 'modal-body-' + title);
     if (title) {
       this.text(title, x + w / 2, y + 14, { size: 16, color: T.GOLD_HI, bold: true, align: 'center' });
       // 标题两侧装饰线

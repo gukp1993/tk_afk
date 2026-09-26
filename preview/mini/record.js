@@ -116,6 +116,13 @@ app.scenes.summon.pull('scroll10');
 frames(70); // 揭示完成
 snap('summon-result');
 
+// 背包：资源与装备两页
+app.switchTab('bag');
+snap('bag-resources');
+app.scenes.bag.section = 'equips';
+snap('bag-equips');
+app.scenes.bag.section = 'resources';
+
 // 7. 王庭
 app.switchTab('journey');
 snap('journey');

@@ -51,13 +51,13 @@ jsFiles.forEach(p => {
   }
 });
 
-// 3. 场景注册完备（src/scenes.js 集中注册 11 个场景）
+// 3. 场景注册完备（src/scenes.js 集中注册所有场景）
 const scenesJs = fs.readFileSync(path.join(ROOT, 'src', 'scenes.js'), 'utf8');
-['home', 'heroes', 'summon', 'journey', 'heroDetail', 'formation', 'tower', 'arena', 'forge', 'shop', 'battle']
+['home', 'heroes', 'summon', 'bag', 'journey', 'heroDetail', 'formation', 'tower', 'arena', 'forge', 'shop', 'battle']
   .forEach(s => ok(new RegExp("register\\('" + s + "'").test(scenesJs), 'scene registered: ' + s));
 
 // 4. 屏幕对象必需的方法
-['home', 'heroes', 'summon', 'journey', 'heroDetail', 'formation', 'tower', 'arena', 'forge', 'shop', 'battle'].forEach(s => {
+['home', 'heroes', 'summon', 'bag', 'journey', 'heroDetail', 'formation', 'tower', 'arena', 'forge', 'shop', 'battle'].forEach(s => {
   const p = path.join(ROOT, 'src', 'screens', s + '.js');
   if (!fs.existsSync(p)) return;
   const code = fs.readFileSync(p, 'utf8');

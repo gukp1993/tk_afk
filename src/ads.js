@@ -76,7 +76,8 @@ function frame(dt) {
   ctx.fillStyle = 'rgba(0,0,0,0.82)';
   ctx.fillRect(0, 0, ui.W, ui.H);
   ctx.restore();
-  ui.tap(0, 0, ui.W, ui.H, null, 'ad-mask'); // 挡住底层所有点击
+  ui.hitAreas = []; ui.dragAreas = [];
+  ui.tap(0, 0, ui.W, ui.H, () => {}, 'ad-mask'); // 阻挡点击与滚动穿透
 
   const w = 300, h = 200, x = (ui.W - w) / 2, y = (ui.H - h) / 2 - 20;
   ui.panel(x, y, w, h, { ornate: true });

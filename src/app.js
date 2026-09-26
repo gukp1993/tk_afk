@@ -13,10 +13,11 @@ const app = {
   stack: [],             // 导航栈（push/pop）
   tab: 'home',
   TABS: [
-    { key: 'home', icon: '🏯', text: '主城' },
-    { key: 'heroes', icon: '⚔', text: '群英' },
-    { key: 'summon', icon: '📜', text: '点将' },
-    { key: 'journey', icon: '🏛', text: '王庭' }
+    { key: 'home', icon: '城', text: '主城' },
+    { key: 'heroes', icon: '将', text: '英雄' },
+    { key: 'summon', icon: '召', text: '召唤' },
+    { key: 'bag', icon: '囊', text: '背包' },
+    { key: 'journey', icon: '征', text: '玩法' }
   ],
   last: 0,
 
@@ -62,6 +63,8 @@ const app = {
   register(name, scene) { this.scenes[name] = scene; },
 
   switchTab(name) {
+    if (!this.scenes[name]) return;
+    ui.hitAreas = []; ui.dragAreas = [];
     this.tab = name;
     this.stack = [];
     const s = this.scenes[name];
@@ -70,11 +73,13 @@ const app = {
   push(name, params) {
     const s = this.scenes[name];
     if (!s) return;
+    ui.hitAreas = []; ui.dragAreas = [];
     s.params = params || {};
     if (s.onEnter) s.onEnter(params);
     this.stack.push(s);
   },
   pop() {
+    ui.hitAreas = []; ui.dragAreas = [];
     const s = this.stack.pop();
     if (s && s.onExit) s.onExit();
     const top = this.top();
@@ -105,7 +110,7 @@ const app = {
       ctx.fillRect(0, 0, this.W, this.H);
       if (s.draw) s.draw(dt);
       this.drawFloatersIfBattle(s, dt);
-      if (!this.stack.length) this.drawTabBar();
+      if (!this.stack.length && !ui.modalActive) this.drawTabBar();
       ui.drawFloaters(dt);
       ui.drawToast();
       ads.frame(dt); // 模拟广告覆盖层（置顶）
@@ -174,15 +179,14 @@ const app = {
     const s = store.getState();
     const F = require('../utils/fmt');
     const list = keys || ['gold', 'gem', 'scroll', 'exp'];
-    const names = { gold: '🪙', gem: '💵', scroll: '📜', exp: '📕', token: '🎫', shard: '💠' };
-    let x = 8;
-    list.forEach(k => {
-      const v = k === 'scroll' || k === 'token' || k === 'shard' ? s.res[k] : F.fmtNum(s.res[k]);
-      const label = names[k] + ' ' + v;
-      const w = ui.textWidth(label, 11) + 18;
+    const names = { gold: '铜钱', gem: '元宝', scroll: '招募令', exp: '兵书', token: '演武令', shard: '碎片' };
+    const w = (this.W - 16 - (list.length - 1) * 5) / list.length;
+    list.forEach((k, i) => {
+      const x = 8 + i * (w + 5);
+      const label = names[k] + ' ' + F.fmtNum(s.res[k]);
       uiPanelPill(this, x, y, w, 20);
-      ui.text(label, x + w / 2, y + 10, { size: 11, color: T.GOLD_HI, align: 'center', baseline: 'middle' });
-      x += w + 6;
+      const size = ui.textWidth(label, 10) <= w - 8 ? 10 : 8;
+      ui.text(label, x + w / 2, y + 10, { size, color: T.GOLD_HI, align: 'center', baseline: 'middle' });
     });
   }
 };

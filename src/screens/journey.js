@@ -24,7 +24,7 @@ module.exports = {
   draw() {
     app.resBar(10, ['gold', 'gem', 'scroll', 'token', 'shard']);
     let y = 42;
-    ui.text('王 庭 诸 玩 法', 12, y, { size: 14, color: T.GOLD, bold: true });
+    ui.text('玩法 · 王庭', 12, y, { size: 14, color: T.GOLD, bold: true });
     y += 26;
 
     const hubs = [
@@ -47,6 +47,6 @@ module.exports = {
     y += h * 2 + 30;
 
     ui.text('「挂机定三国」放置卡牌 · v2.0.0', 187, y, { size: 10, color: T.DIM, align: 'center' });
-    ui.wrap('玩法闭环：挂机收益 → 养成武将 → 推进战役 → 解锁更强玩法', 40, y + 18, 295, 13, { size: 10 });
+    ui.wrap('挑战群英塔获取资源，在演武场切磋阵容；装备培养与物资兑换也在这里。', 40, y + 18, 295, 13, { size: 10 });
   }
 };

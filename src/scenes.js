@@ -6,6 +6,7 @@ const { app, ui } = require('./app');
 app.register('home', require('./screens/home'));
 app.register('heroes', require('./screens/heroes'));
 app.register('summon', require('./screens/summon'));
+app.register('bag', require('./screens/bag'));
 app.register('journey', require('./screens/journey'));
 app.register('heroDetail', require('./screens/heroDetail'));
 app.register('formation', require('./screens/formation'));
