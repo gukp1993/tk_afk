@@ -1,4 +1,4 @@
-// 武将详情：属性/技能/装备/升级/升阶/上阵/遣散/重置
+// 武将详情：属性/技能/装备/升星/上阵。等级统一由玩家经验提升。
 const { app, ui } = require('../app');
 const T = require('../theme');
 const store = require('../../utils/store');
@@ -11,7 +11,7 @@ module.exports = {
   name: 'heroDetail',
   scroll: {}, scrollReg: {},
   pickEquipSlot: null,
-  showDismiss: false,
+  showConvertConfirm: false,
 
   onEnter() { this.refresh(); },
   refresh() {
@@ -26,10 +26,10 @@ module.exports = {
       calc, def, own, maxStar,
       critText: Math.round((calc.stats.crit || 0.05) * 100) + '%',
       inFormation: s.formation.indexOf(id) >= 0,
-      isTop5: store.crystalInfo().top5.some(t => t.id === id),
-      effNote: calc.level > own.lv ? '共鸣等级生效中' : '',
-      asc: own.star < maxStar ? C.ASCEND_COST[own.star] : null,
-      foodPts: store.foodPoints(id)
+      isTop5: false,
+      effNote: '共享玩家等级',
+      asc: store.ascendPreview(id),
+      player: s.player
     };
   },
 
@@ -45,12 +45,12 @@ module.exports = {
 
     // 头部名片
     ui.panel(8, y, 359, 96, { ornate: true });
-    ui.heroFace(18, y + 8, 80, calc, { mark: this.v.isTop5 ? '共鸣' : null });
+    ui.heroFace(18, y + 8, 80, calc, {});
     ui.text(def.name, 108, y + 8, { size: 20, bold: true });
     ui.text(T.RARITY[def.rarity].name, 108 + ui.textWidth(def.name, 20, true) + 8, y + 11, { size: 13, color: T.RARITY[def.rarity].color, bold: true });
     ui.text(def.title + ' · ' + T.FACTION[def.faction].name + ' · ' + ui.classNameOf(def.cls), 108, y + 34, { size: 11, color: T.DIM });
     ui.stars(108, y + 48, this.v.maxStar, own.star, 11);
-    ui.text('Lv.' + calc.level + (this.v.effNote ? '  (' + this.v.effNote + ')' : ''), 108, y + 62, { size: 12 });
+    ui.text('全体共享 Lv.' + calc.level, 108, y + 62, { size: 12 });
     ui.text('战力 ' + F.fmtNum(calc.power), 108, y + 78, { size: 12, color: T.GOLD });
     y += 104;
 
@@ -107,40 +107,43 @@ module.exports = {
     });
     y += 68;
 
-    // 养成
-    this.secTitle('养 成', y); y += 24;
-    ui.panel(8, y, 359, 150);
-    ui.btn(20, y + 10, 108, 30, { text: '升 级', style: 'gold', size: 13, id: 'lv1', cb: () => this.doLevel(1) });
-    ui.btn(136, y + 10, 108, 30, { text: '升级 ×10', style: 'gold', size: 13, id: 'lv10', cb: () => this.doLevel(10) });
-    ui.btn(252, y + 10, 100, 30, { text: '重 置', style: 'ghost', size: 13, disabled: own.lv < 2, id: 'reset', cb: () => this.doReset() });
-    if (this.v.asc) {
+    // 玩家等级由战斗成长；此页只管理武将个人星级。
+    this.secTitle('成 长', y); y += 24;
+    ui.panel(8, y, 359, 114);
+    const xpNeed = store.playerXpNeeded(this.v.player.level);
+    ui.text('玩家等级 Lv.' + this.v.player.level + ' · 全体武将共用', 20, y + 10, { size: 12, color: T.GOLD_HI, bold: true });
+    ui.bar(20, y + 30, 332, 7, this.v.player.level >= C.MAX_LEVEL ? 1 : this.v.player.exp / xpNeed, 'gold');
+    ui.text(this.v.player.level >= C.MAX_LEVEL ? '等级已达上限' : '战斗经验 ' + F.fmtNum(this.v.player.exp) + ' / ' + F.fmtNum(xpNeed), 20, y + 43, { size: 10, color: T.DIM });
+    if (this.v.asc && this.v.asc.ok) {
       const a = this.v.asc;
-      ui.wrap('升阶至 ★' + (own.star + 1) + '：同名卡 ' + a.same + ' 张 · 兵魂点 ' + this.v.foodPts + '/' + a.food + ' · 铜钱 ' + F.fmtNum(a.gold), 20, y + 50, 330, 12, { size: 10 });
-      ui.btn(20, y + 76, 332, 30, {
-        text: '升  阶', style: 'gold', size: 14, id: 'asc',
-        disabled: !(own.cards >= a.same && this.v.foodPts >= a.food && store.getState().res.gold >= a.gold),
-        cb: () => {
-          const r = store.ascend(this.params.id);
-          if (!r.ok) ui.toast(r.msg); else ui.toast('升阶成功！当前 ★' + r.star);
-          this.refresh();
-        }
-      });
+      ui.text('升星 ' + a.from + ' → ' + a.to + ' · 同名卡 ' + a.cards + '/' + a.needCards + ' · 铜钱 ' + F.fmtNum(a.gold) + '/' + F.fmtNum(a.needGold), 20, y + 63, { size: 9, color: T.DIM });
+      ui.btn(20, y + 78, 332, 28, { text: '升至 ★' + a.to + '（属性 +' + Math.round((C.STAR_MULT - 1) * 100) + '% / 星）', style: 'gold', size: 12, disabled: !a.can, id: 'asc', cb: () => this.doAscend() });
     } else {
-      ui.text('已达最高品阶 ★' + this.v.maxStar, 20, y + 56, { size: 11, color: T.DIM });
+      ui.text('已达最高星级 ★' + this.v.maxStar, 20, y + 72, { size: 11, color: T.DIM });
     }
-    ui.btn(20, y + 114, 160, 28, {
+    y += 122;
+    if (own.cards > 0) {
+      ui.panel(8, y, 359, 52);
+      ui.text('同名卡 ' + own.cards + ' 张' + (own.lockedCards ? ' · 已保护' : ''), 18, y + 10, { size: 11, color: T.GOLD_HI });
+      ui.btn(172, y + 9, 82, 30, { text: own.lockedCards ? '取消保护' : '保护', style: 'ghost', size: 10, id: 'card-lock', cb: () => {
+        const r = store.setCardsLocked(this.params.id, !own.lockedCards); if (r.ok) this.refresh();
+      } });
+      const canConvert = own.star >= this.v.maxStar && !own.lockedCards;
+      ui.btn(260, y + 9, 94, 30, { text: '换 1 张碎片', style: 'plain', size: 10, disabled: !canConvert, id: 'card-convert', cb: () => this.convertOne() });
+      y += 60;
+    }
+    ui.btn(20, y + 8, 160, 30, {
       text: this.v.inFormation ? '下 阵' : '上 阵', style: this.v.inFormation ? 'ghost' : 'gold', size: 13,
       id: 'form', cb: () => this.toggleFormation()
     });
-    ui.btn(192, y + 114, 160, 28, { text: '遣 散', style: 'red', size: 13, id: 'dismiss', cb: () => { this.showDismiss = true; } });
-    y += 160;
+    y += 42;
     this.contentH = y + 20;
 
     ui.endScroll();
 
     // 装备选择弹窗
     if (this.pickEquipSlot) this.drawEquipPicker();
-    if (this.showDismiss) this.drawDismiss();
+    if (this.showConvertConfirm) this.drawConvertConfirm();
   },
   secTitle(t, y) {
     const ctx = ui.ctx;
@@ -157,19 +160,37 @@ module.exports = {
     if (add.def) p.push('防+' + add.def);
     return p.join(' ') || '—';
   },
-  doLevel(n) {
-    const done = store.levelUp(this.params.id, n);
-    if (!done) {
-      const own = store.getState().roster[this.params.id];
-      ui.toast(own.lv >= store.levelCap(this.params.id) ? '已达品阶等级上限，先升阶' : '铜钱或兵书不足');
-    } else ui.toast('升级 ×' + done);
+  doAscend() {
+    const preview = store.ascendPreview(this.params.id);
+    if (!preview.ok || !preview.can) { ui.toast(preview.msg || '同名卡或铜钱不足'); return; }
+    const r = store.ascend(this.params.id);
+    if (!r.ok) ui.toast(r.msg); else ui.toast('升星成功！当前 ★' + r.star + '，等级保持不变');
     this.refresh();
   },
-  doReset() {
-    const r = store.resetHero(this.params.id);
-    if (!r.ok) ui.toast(r.msg);
-    else ui.toast('已重置，返还铜钱 ' + F.fmtNum(r.gold));
-    this.refresh();
+  convertOne() {
+    const h = this.v.def, own = this.v.own;
+    if (own.star < this.v.maxStar || own.lockedCards || own.cards < 1) { ui.toast('仅可兑换未保护的满星多余卡'); return; }
+    const run = confirmHigh => {
+      const r = store.convertCards([{ id: h.id, count: 1, confirmHigh }]);
+      if (!r.ok) { ui.toast(r.msg); return; }
+      this.refresh(); ui.toast('获得英雄碎片 ×' + r.shards);
+    };
+    if (h.rarity >= 3) {
+      this.showConvertConfirm = true;
+    } else run(false);
+  },
+  drawConvertConfirm() {
+    const h = this.v.def, shards = h.rarity === 4 ? 60 : 15;
+    const box = ui.modal('兑换高稀有度同名卡？', 44, 244, 287, 160);
+    ui.setModalClose(() => { this.showConvertConfirm = false; });
+    ui.wrap('消耗 ' + h.name + ' 1 张，获得英雄碎片 ×' + shards + '。兑换后不能撤回。', box.x, box.y + 6, box.w, 14, { size: 10 });
+    ui.btn(box.x, box.y + 78, 124, 30, { text: '取消', style: 'ghost', size: 12, id: 'convert-cancel', cb: () => { this.showConvertConfirm = false; } });
+    ui.btn(box.x + 136, box.y + 78, 124, 30, { text: '确认兑换', style: 'red', size: 12, id: 'convert-confirm', cb: () => {
+      this.showConvertConfirm = false;
+      const r = store.convertCards([{ id: h.id, count: 1, confirmHigh: true }]);
+      if (!r.ok) ui.toast(r.msg); else ui.toast('获得英雄碎片 ×' + r.shards);
+      this.refresh();
+    } });
   },
   toggleFormation() {
     const id = this.params.id;
@@ -223,20 +244,4 @@ module.exports = {
     });
     ui.endScroll();
   },
-  drawDismiss() {
-    const box = ui.modal('遣 散 武 将', 50, 220, 275, 150);
-    ui.setModalClose(() => { this.showDismiss = false; });
-    ui.wrap('遣散后该武将离队（编队中不可遣散），按品质返还英雄碎片与铜钱。确定？', box.x, box.y, box.w, 14, { size: 11 });
-    ui.btn(box.x, box.y + 62, 120, 28, { text: '取消', style: 'ghost', size: 13, id: 'dk-no', cb: () => { this.showDismiss = false; } });
-    ui.btn(box.x + 130, box.y + 62, 120, 28, {
-      text: '确定遣散', style: 'red', size: 13, id: 'dk-yes',
-      cb: () => {
-        const r = store.dismiss(this.params.id);
-        if (!r.ok) { ui.toast(r.msg); return; }
-        this.showDismiss = false;
-        ui.toast('遣散成功');
-        app.pop();
-      }
-    });
-  }
 };

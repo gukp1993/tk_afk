@@ -19,25 +19,31 @@ let state = null;
 function defaultState() {
   const roster = {};
   C.BATTLE.STARTER.forEach(id => { roster[id] = newHero(id); });
+  roster.mengda = newHero('mengda');
   return {
-    v: 3, createdAt: Date.now(), name: '主公',
-    res: { gold: 60000, exp: 40000, gem: 1888, scroll: 12, token: 20, shard: 0 },
+    v: 4, createdAt: Date.now(), name: '主公',
+    player: { level: 1, exp: 0 },
+    res: { gold: 100000, gem: 1888, scroll: 12, token: 20, shard: 0 },
     roster,
-    formation: ['guanyu', 'zhangfei', 'liaohua', 'liubei', null],
+    formation: ['zhangfei', 'guanyu', 'liaohua', 'liubei', 'mengda'],
     campaign: { cleared: 0, storySeen: {} },
     tower: { best: 0 },
     arena: { points: 1000, wins: 0, losses: 0, attempts: C.ARENA.DAILY },
     equips: {}, nextEquip: 1,
-    idle: { last: Date.now(), gold: 0, exp: 0, scroll: 0 },
+    idle: { last: Date.now(), gold: 0, scroll: 0 },
     fast: { day: '', count: 0 },
     daily: { day: '', quests: {}, claimed: [], active: [] },
     summon: { total: 0 },
+    vouchers: { sr: 0, ssr: 0 },
+    heroProgress: { starterMengdaGranted: true, firstWinChoiceGranted: false, firstWinChoicePending: false, chapterOneVoucherGranted: false },
+    battle: { nextSeq: 1, pending: null, lastSettled: null },
+    migrations: {},
     ads: { day: '', counts: {} },
     buyLog: { day: '', buys: {} },
     settings: { speed: 1 }
   };
 }
-function newHero(id) { return { id, lv: 1, star: 0, cards: 0, equip: { weapon: null, armor: null, helm: null, boots: null } }; }
+function newHero(id) { return { id, star: 0, cards: 0, lockedCards: false, equip: { weapon: null, armor: null, helm: null, boots: null } }; }
 
 // 旧档 v1（tier 1-6 / enh 0-12）→ v2（q 品质 1-4 / stars 星级 / faction 阵营）
 // 导出供冒烟测试直测；映射保持战力大致连续（旧 t6+12 ≈ 新 SSR 5★）
@@ -63,16 +69,93 @@ function migrateSaveV2(raw) {
   return raw;
 }
 
+// v3兵书→铜钱、个人等级→玩家等级。只补偿旧档仍能重建的投入，迁移标记阻止重复返还。
+function migrateSaveV3(raw) {
+  if (raw.migrations && raw.migrations.playerLevelV2 && raw.migrations.playerLevelV2.applied) {
+    raw.v = 4;
+    return raw;
+  }
+  raw.res = raw.res || {};
+  raw.roster = raw.roster || {};
+  raw.campaign = raw.campaign || { cleared: 0 };
+  raw.daily = raw.daily || { day: '', quests: {}, claimed: [], active: [] };
+  raw.idle = raw.idle || { last: Date.now(), gold: 0, exp: 0, scroll: 0 };
+
+  // 先按旧速率结算一次剩余离线收益，随后把挂机兵书一并折铜钱。
+  const oldCleared = raw.campaign.cleared || 0;
+  const oldRate = { gold: Math.floor(1800 + 260 * oldCleared), exp: Math.floor(1200 + 170 * oldCleared), scrollPerHour: 0.25 };
+  const elapsed = Math.max(0, (Date.now() - (raw.idle.last || Date.now())) / 3600000);
+  const hours = Math.min(C.IDLE_CAP_HOURS, elapsed);
+  const idleGold = Math.min(C.IDLE_CAP_HOURS * oldRate.gold, (raw.idle.gold || 0) + hours * oldRate.gold);
+  const idleExp = Math.min(C.IDLE_CAP_HOURS * oldRate.exp, (raw.idle.exp || 0) + hours * oldRate.exp);
+  const idleScroll = Math.min(C.IDLE_CAP_HOURS * oldRate.scrollPerHour, (raw.idle.scroll || 0) + hours * oldRate.scrollPerHour);
+
+  const ids = Object.keys(raw.roster).filter(id => H.getHero(id));
+  const sorted = ids.slice().sort((a, b) => (raw.roster[b].lv || 1) - (raw.roster[a].lv || 1) || a.localeCompare(b));
+  const anchor = sorted[0] || null;
+  const level = anchor ? Math.max(1, Math.min(C.MAX_LEVEL, Math.floor(raw.roster[anchor].lv || 1))) : 1;
+  let refundGold = 0, refundBooks = 0;
+  ids.forEach(id => {
+    const own = raw.roster[id];
+    if (!own) return;
+    if (id !== anchor) {
+      const lv = Math.max(1, Math.min(C.MAX_LEVEL, Math.floor(own.lv || 1)));
+      for (let n = 1; n < lv; n++) { refundGold += C.goldCost(n); refundBooks += C.expCost(n); }
+    }
+    delete own.lv;
+  });
+
+  const books = Math.floor((raw.res.exp || 0) + idleExp);
+  raw.res.gold = Math.floor((raw.res.gold || 0) + refundGold + refundBooks + books);
+  delete raw.res.exp;
+  raw.player = { level, exp: 0 };
+  raw.idle = { last: Date.now(), gold: idleGold, scroll: idleScroll };
+  raw.vouchers = raw.vouchers || { sr: 0, ssr: 0 };
+  raw.heroProgress = raw.heroProgress || { starterMengdaGranted: false, firstWinChoiceGranted: false, firstWinChoicePending: false, chapterOneVoucherGranted: false };
+  raw.heroProgress.starterMengdaGranted = true;
+  if (H.getHero('mengda') && !raw.roster.mengda) raw.roster.mengda = newHero('mengda');
+  raw.formation = Array.isArray(raw.formation) ? raw.formation.slice(0, 5) : [];
+  while (raw.formation.length < 5) raw.formation.push(null);
+  if (!raw.formation[4] && raw.roster.mengda) raw.formation[4] = 'mengda';
+  raw.battle = raw.battle || { nextSeq: 1, pending: null, lastSettled: null };
+  raw.battle.nextSeq = Math.max(1, raw.battle.nextSeq || 1);
+  raw.migrations = raw.migrations || {};
+  raw.migrations.playerLevelV2 = { applied: true, anchorId: anchor, compensationGold: refundGold + refundBooks + books };
+  raw.daily.quests = raw.daily.quests || {};
+  if (raw.daily.quests.q_levelup) raw.daily.quests.q_battle1 = Math.max(raw.daily.quests.q_battle1 || 0, raw.daily.quests.q_levelup);
+  delete raw.daily.quests.q_levelup;
+  if (raw.campaign.cleared >= 1 && !raw.heroProgress.firstWinChoiceGranted) raw.heroProgress.firstWinChoicePending = true;
+  if (raw.campaign.cleared >= 10 && !raw.heroProgress.chapterOneVoucherGranted) {
+    raw.vouchers.sr += 1;
+    raw.heroProgress.chapterOneVoucherGranted = true;
+  }
+  raw.v = 4;
+  return raw;
+}
+
 function load() {
   const raw = rawGet(SAVE_KEY);
   if (raw && raw.v === 1) {
-    state = migrateSaveV2(migrateSaveV1(raw));
+    rawSet(SAVE_KEY + '.backup.v3', JSON.parse(JSON.stringify(raw)));
+    state = migrateSaveV3(migrateSaveV2(migrateSaveV1(raw)));
     save();
   } else if (raw && raw.v === 2) {
-    state = migrateSaveV2(raw);
+    rawSet(SAVE_KEY + '.backup.v3', JSON.parse(JSON.stringify(raw)));
+    state = migrateSaveV3(migrateSaveV2(raw));
     save();
   } else if (raw && raw.v === 3) {
+    rawSet(SAVE_KEY + '.backup.v3', JSON.parse(JSON.stringify(raw)));
+    state = migrateSaveV3(raw);
+    save();
+  } else if (raw && raw.v === 4) {
     state = raw;
+    normalizeState(state);
+    // Persist normalized fields and abandon any battle interrupted before this load.
+    save();
+  } else if (raw && raw.v > 4) {
+    throw new Error('存档版本较新，停止加载以保护数据');
+  } else if (raw) {
+    throw new Error('存档版本无法识别，保留原数据并停止加载');
   } else {
     state = defaultState();
     save();
@@ -80,6 +163,29 @@ function load() {
   // 离线挂机结算
   idleTick();
   return state;
+}
+function normalizeState(s) {
+  s.player = s.player || { level: 1, exp: 0 };
+  s.player.level = Math.max(1, Math.min(C.MAX_LEVEL, Math.floor(s.player.level || 1)));
+  s.player.exp = s.player.level >= C.MAX_LEVEL ? 0 : Math.max(0, Math.floor(s.player.exp || 0));
+  s.res = s.res || {}; ['gold', 'gem', 'scroll', 'token', 'shard'].forEach(k => { if (!Number.isFinite(s.res[k])) s.res[k] = 0; });
+  s.roster = s.roster || {}; s.vouchers = s.vouchers || { sr: 0, ssr: 0 };
+  s.heroProgress = s.heroProgress || { starterMengdaGranted: true, firstWinChoiceGranted: false, firstWinChoicePending: false, chapterOneVoucherGranted: false };
+  s.battle = s.battle || { nextSeq: 1, pending: null, lastSettled: null };
+  s.idle = s.idle || { last: Date.now(), gold: 0, scroll: 0 };
+  if (!Array.isArray(s.formation)) s.formation = [null, null, null, null, null];
+  s.formation.length = 5;
+  Object.keys(s.roster).forEach(id => {
+    const h = s.roster[id]; if (!h) return;
+    delete h.lv;
+    if (!h.equip) h.equip = { weapon: null, armor: null, helm: null, boots: null };
+    if (!Number.isFinite(h.star)) h.star = 0;
+    if (!Number.isFinite(h.cards)) h.cards = 0;
+  });
+  if (s.battle.pending) {
+    s.battle.lastSettled = { id: s.battle.pending.id, outcome: 'interrupted', gainedXP: 0, reward: null };
+    s.battle.pending = null;
+  }
 }
 function save() {
   if (state) idleTick();
@@ -108,29 +214,33 @@ function addHeroCard(id) {
   if (state.roster[id]) state.roster[id].cards += 1;
   else state.roster[id] = newHero(id);
 }
-// 共鸣水晶：前 5 高等级决定共鸣等级
 function crystalInfo() {
-  const list = Object.keys(state.roster).map(id => ({ id, lv: state.roster[id].lv }));
-  list.sort((a, b) => b.lv - a.lv);
-  const top5 = list.slice(0, 5);
-  const cap = top5.length >= 5 ? top5[4].lv : 1;
-  return { top5, cap, count: list.length };
+  return { top5: [], cap: state.player.level, count: Object.keys(state.roster).length };
 }
 function effectiveLevel(id) {
-  const own = state.roster[id];
-  const info = crystalInfo();
-  const inTop5 = info.top5.some(t => t.id === id);
-  return inTop5 ? own.lv : Math.max(own.lv, info.cap) === info.cap ? info.cap : Math.min(own.lv, info.cap);
+  return state.roster[id] ? state.player.level : 1;
+}
+function playerLevel() { return state.player.level; }
+function playerXpNeeded(level) { return level >= C.MAX_LEVEL ? 0 : Math.floor(C.PLAYER_LEVEL.baseXP + C.PLAYER_LEVEL.stepXP * (level - 1)); }
+function addPlayerXP(amount) {
+  let gained = Math.max(0, Math.floor(Number(amount) || 0));
+  if (state.player.level >= C.MAX_LEVEL) { state.player.exp = 0; return { gained: 0, before: C.MAX_LEVEL, after: C.MAX_LEVEL, exp: 0, need: 0 }; }
+  const before = state.player.level;
+  state.player.exp += gained;
+  while (state.player.level < C.MAX_LEVEL && state.player.exp >= playerXpNeeded(state.player.level)) {
+    state.player.exp -= playerXpNeeded(state.player.level);
+    state.player.level += 1;
+  }
+  if (state.player.level >= C.MAX_LEVEL) state.player.exp = 0;
+  return { gained, before, after: state.player.level, exp: state.player.exp, need: state.player.level >= C.MAX_LEVEL ? 0 : playerXpNeeded(state.player.level) };
 }
 function levelCap(id) {
-  const own = state.roster[id];
-  const caps = C.LEVEL_CAPS;
-  return caps[Math.min(own.star, caps.length - 1)];
+  return C.MAX_LEVEL;
 }
 function calcHero(id) {
   const own = state.roster[id];
   const def = H.getHero(id);
-  const lv = Math.min(effectiveLevel(id), levelCap(id));
+  const lv = effectiveLevel(id);
   const star = own.star;
   let stats = H.heroStatsStar(def, lv, star);
   // 装备加成
@@ -151,23 +261,13 @@ function calcHero(id) {
   return {
     id, name: def.name, surname: def.name.slice(0, 1), title: def.title, quote: def.quote,
     faction: def.faction, cls: def.cls,
-    rarity: def.rarity, level: lv, realLevel: own.lv, star, cards: own.cards, ult: def.ult,
+    rarity: def.rarity, level: lv, realLevel: lv, star, cards: own.cards, ult: def.ult,
     passive: def.passive.mods || {}, passiveDef: def.passive, stats, power, cap: levelCap(id),
     equip: own.equip
   };
 }
 function levelUp(id, times) {
-  const own = state.roster[id];
-  let done = 0;
-  for (let i = 0; i < (times || 1); i++) {
-    if (own.lv >= levelCap(id)) break;
-    const g = C.goldCost(own.lv), e = C.expCost(own.lv);
-    if (state.res.gold < g || state.res.exp < e) break;
-    state.res.gold -= g; state.res.exp -= e;
-    own.lv += 1; done += 1;
-  }
-  if (done > 0) bumpQuest('q_levelup', 1);
-  return done;
+  return 0;
 }
 // 兵魂点：同阵营其他武将的卡
 function foodPoints(exceptId) {
@@ -184,58 +284,74 @@ function foodPoints(exceptId) {
 }
 function ascend(id) {
   const own = state.roster[id];
+  if (!own || !H.getHero(id)) return { ok: false, msg: '未拥有该武将' };
   const maxStar = C.RARITIES[H.getHero(id).rarity].maxStar;
-  if (own.star >= maxStar) return { ok: false, msg: '已达最高品阶' };
-  const cost = C.ASCEND_COST[own.star];
+  if (own.star >= maxStar) return { ok: false, msg: '已达最高星级' };
+  const cost = [{ same: 1, gold: 2000 }, { same: 1, gold: 8000 }, { same: 2, gold: 25000 }, { same: 2, gold: 70000 }, { same: 3, gold: 160000 }][own.star];
   if (own.cards < cost.same) return { ok: false, msg: '同名武将卡不足' };
-  if (foodPoints(id) < cost.food) return { ok: false, msg: '同阵营兵魂点不足' };
   if (state.res.gold < cost.gold) return { ok: false, msg: '铜钱不足' };
   own.cards -= cost.same;
-  let need = cost.food;
-  // 优先消耗低品质卡
-  const order = [1, 2, 3];
-  for (const r of order) {
-    if (need <= 0) break;
-    for (const hid of Object.keys(state.roster)) {
-      if (hid === id || need <= 0) continue;
-      const h = H.getHero(hid);
-      if (!h || h.faction !== H.getHero(id).faction || C.FOOD_VALUE[h.rarity] !== r) continue;
-      while (state.roster[hid].cards > 0 && need > 0) {
-        state.roster[hid].cards -= 1; need -= 1;
-      }
-    }
-  }
   state.res.gold -= cost.gold;
   own.star += 1;
   return { ok: true, star: own.star };
 }
-function dismiss(id) {
+function ascendPreview(id) {
   const own = state.roster[id];
-  if (!own) return { ok: false, msg: '未拥有' };
-  if (state.formation.indexOf(id) >= 0) return { ok: false, msg: '编队中的武将无法遣散' };
-  const r = H.getHero(id).rarity;
-  const gain = r === 3 ? { shard: 40, gold: 100000 } : r === 2 ? { shard: 15, gold: 20000 } : { shard: 5, gold: 5000 };
-  // 返还装备
-  for (const slot of Object.keys(own.equip || {})) {
-    if (own.equip[slot]) delete state.equips[own.equip[slot]];
-  }
-  delete state.roster[id];
-  state.formation = state.formation.map(x => (x === id ? null : x));
-  state.res.shard += gain.shard; state.res.gold += gain.gold;
-  return { ok: true, gain };
+  if (!own) return { ok: false, msg: '未拥有该武将' };
+  const maxStar = C.RARITIES[H.getHero(id).rarity].maxStar;
+  if (own.star >= maxStar) return { ok: false, msg: '已达最高星级' };
+  const costs = [{ same: 1, gold: 2000 }, { same: 1, gold: 8000 }, { same: 2, gold: 25000 }, { same: 2, gold: 70000 }, { same: 3, gold: 160000 }];
+  const cost = costs[own.star];
+  return { ok: true, from: own.star, to: own.star + 1, cards: own.cards, needCards: cost.same, gold: state.res.gold, needGold: cost.gold, level: state.player.level, can: own.cards >= cost.same && state.res.gold >= cost.gold };
+}
+function dismiss(id) {
+  return { ok: false, msg: '武将本体永久保留；请在满星后兑换多余同名卡' };
 }
 function resetHero(id) {
-  // 重置等级，返还七成资源
+  return { ok: false, msg: '所有武将共用玩家等级，无需重置' };
+}
+
+function convertCards(entries) {
+  const rates = { 1: 1, 2: 3, 3: 15, 4: 60 };
+  let total = 0, detail = [];
+  (entries || []).forEach(x => {
+    const own = state.roster[x.id], def = H.getHero(x.id), count = Math.floor(x.count || 0);
+    if (!own || !def || own.lockedCards || count <= 0 || count > own.cards || own.star < C.RARITIES[def.rarity].maxStar || (def.rarity >= 3 && !x.confirmHigh)) return;
+    total += count * rates[def.rarity]; own.cards -= count; detail.push({ id: x.id, count, shards: count * rates[def.rarity] });
+  });
+  if (!total) return { ok: false, msg: '没有可兑换的多余同名卡' };
+  state.res.shard += total;
+  return { ok: true, shards: total, detail };
+}
+function setCardsLocked(id, locked) {
   const own = state.roster[id];
-  if (!own || own.lv <= 1) return { ok: false, msg: '无需重置' };
-  const info = crystalInfo();
-  if (info.top5.slice(0, 5).some(t => t.id === id)) return { ok: false, msg: '共鸣核心武将暂不可重置' };
-  let gold = 0, exp = 0;
-  for (let lv = 1; lv < own.lv; lv++) { gold += C.goldCost(lv); exp += C.expCost(lv); }
-  state.res.gold += Math.floor(gold * 0.7);
-  state.res.exp += Math.floor(exp * 0.7);
-  own.lv = 1;
-  return { ok: true, gold: Math.floor(gold * 0.7), exp: Math.floor(exp * 0.7) };
+  if (!own) return { ok: false, msg: '未拥有该武将' };
+  own.lockedCards = !!locked;
+  return { ok: true, locked: own.lockedCards };
+}
+function addChoiceVoucher(rarity, count) {
+  const key = Number(rarity) === 4 || rarity === 'ssr' ? 'ssr' : 'sr';
+  state.vouchers[key] = Math.max(0, state.vouchers[key] || 0) + Math.max(1, count || 1);
+  return state.vouchers[key];
+}
+function useChoiceVoucher(rarity, id) {
+  const key = Number(rarity) === 4 || rarity === 'ssr' ? 'ssr' : 'sr';
+  const h = H.getHero(id);
+  if (!h || h.rarity !== (key === 'ssr' ? 4 : 3)) return { ok: false, msg: '请选择对应稀有度的武将' };
+  if (!(state.vouchers[key] > 0)) return { ok: false, msg: '自选券不足' };
+  state.vouchers[key] -= 1;
+  const isNew = !state.roster[id];
+  addHeroCard(id);
+  return { ok: true, id, isNew, level: state.player.level, cards: state.roster[id].cards };
+}
+function firstWinChoice() {
+  return { available: !!state.heroProgress.firstWinChoicePending, claimed: !!state.heroProgress.firstWinChoiceGranted };
+}
+function claimFirstWinChoice(id) {
+  if (!state.heroProgress.firstWinChoicePending || state.heroProgress.firstWinChoiceGranted || !['liubei', 'guanyu', 'zhangfei'].includes(id)) return { ok: false, msg: '当前不能领取该奖励' };
+  addHeroCard(id);
+  state.heroProgress.firstWinChoicePending = false; state.heroProgress.firstWinChoiceGranted = true;
+  return { ok: true, id, cards: state.roster[id].cards };
 }
 
 // ---------- 编队 ----------
@@ -388,10 +504,10 @@ function salvageBatch(q) {
 function idlePending() {
   idleTick();
   const rate = C.idleRates(state.campaign.cleared);
-  const gold = Math.floor(state.idle.gold), exp = Math.floor(state.idle.exp), scroll = Math.floor(state.idle.scroll);
+  const gold = Math.floor(state.idle.gold), scroll = Math.floor(state.idle.scroll);
   const hours = rate.gold > 0 ? state.idle.gold / rate.gold : 0;
   const full = state.idle.gold >= C.IDLE_CAP_HOURS * rate.gold - 1;
-  return { gold, exp, scroll, hours, full };
+  return { gold, exp: 0, scroll, hours, full };
 }
 function idleTick() {
   // 把离线时间折算进累计（入 state.idle 缓存）
@@ -399,22 +515,21 @@ function idleTick() {
   const addH = Math.min(C.IDLE_CAP_HOURS, (now - state.idle.last) / 3600000);
   const rate = C.idleRates(state.campaign.cleared);
   state.idle.gold += addH * rate.gold;
-  state.idle.exp += addH * rate.exp;
+  if (state.idle.exp) { state.idle.gold += state.idle.exp; state.idle.exp = 0; }
   state.idle.scroll += addH * rate.scrollPerHour;
-  const capG = C.IDLE_CAP_HOURS * rate.gold, capE = C.IDLE_CAP_HOURS * rate.exp;
+  const capG = C.IDLE_CAP_HOURS * rate.gold;
   state.idle.gold = Math.min(state.idle.gold, capG);
-  state.idle.exp = Math.min(state.idle.exp, capE);
   state.idle.scroll = Math.min(state.idle.scroll, C.IDLE_CAP_HOURS * rate.scrollPerHour);
   state.idle.last = now;
 }
 function claimIdle(double) {
   idleTick();
-  let g = Math.floor(state.idle.gold), e = Math.floor(state.idle.exp), s = Math.floor(state.idle.scroll);
-  if (double) { g *= 2; e *= 2; s *= 2; }
-  state.res.gold += g; state.res.exp += e; state.res.scroll += s;
-  state.idle.gold = 0; state.idle.exp = 0; state.idle.scroll = 0;
+  let g = Math.floor(state.idle.gold), s = Math.floor(state.idle.scroll);
+  if (double) { g *= 2; s *= 2; }
+  state.res.gold += g; state.res.scroll += s;
+  state.idle.gold -= Math.floor(state.idle.gold); state.idle.scroll -= Math.floor(state.idle.scroll);
   bumpQuest('q_idle1', 1);
-  return { gold: g, exp: e, scroll: s, double: !!double };
+  return { gold: g, exp: 0, scroll: s, double: !!double };
 }
 function fastReward(free) {
   if (state.fast.count >= C.FAST_REWARD_DAILY) return { ok: false, msg: '今日快速收获次数已用完' };
@@ -424,10 +539,10 @@ function fastReward(free) {
     state.fast.count += 1;
   }
   const rate = C.idleRates(state.campaign.cleared);
-  const g = Math.floor(C.FAST_REWARD_HOURS * rate.gold), e = Math.floor(C.FAST_REWARD_HOURS * rate.exp);
+  const g = Math.floor(C.FAST_REWARD_HOURS * rate.gold);
   const s = Math.floor(C.FAST_REWARD_HOURS * rate.scrollPerHour);
-  state.res.gold += g; state.res.exp += e; state.res.scroll += s;
-  return { ok: true, gold: g, exp: e, scroll: s, free: !!free };
+  state.res.gold += g; state.res.scroll += s;
+  return { ok: true, gold: g, exp: 0, scroll: s, free: !!free };
 }
 
 // ---------- 广告 ----------
@@ -489,12 +604,12 @@ const CHAPTER_CHEST = { gem: 100, scroll: 1 };
 function winCampaign(stageIdx) {
   // stageIdx 从 1 开始
   const first = stageIdx === state.campaign.cleared + 1;
-  const reward = { gold: 0, exp: 0, gem: 0, scroll: 0, equip: null, chest: null };
+  const reward = { gold: 0, gem: 0, scroll: 0, equip: null, chest: null };
   if (first) {
     state.campaign.cleared = stageIdx;
     reward.gem = 30;
     reward.gold = Math.floor(2000 * Math.pow(1.05, stageIdx));
-    reward.exp = Math.floor(1400 * Math.pow(1.05, stageIdx));
+    reward.gold += Math.floor(1400 * Math.pow(1.05, stageIdx)); // 旧兵书奖励并入铜钱
     const { isBoss } = require('./stages').chapterOf(stageIdx);
     if (isBoss) {
       reward.scroll = 1;
@@ -509,7 +624,7 @@ function winCampaign(stageIdx) {
   } else {
     // 重复挑战仍给小额奖励
     reward.gold = Math.floor(600 * Math.pow(1.05, stageIdx) * 0.3);
-    reward.exp = Math.floor(400 * Math.pow(1.05, stageIdx) * 0.3);
+    reward.gold += Math.floor(400 * Math.pow(1.05, stageIdx) * 0.3);
   }
   // 奖励入账（首通含章末宝箱；此前 gold/exp/gem/scroll 只展示未入账）
   applyReward(reward);
@@ -536,10 +651,11 @@ function winTower(floor) {
     if (floor % 10 === 0) reward.shard = 10;
   }
   bumpQuest('q_tower1', 1);
+  applyReward(reward);
   return reward;
 }
-function arenaFight(win, diff) {
-  state.arena.attempts = Math.max(0, state.arena.attempts - 1);
+function arenaFight(win, diff, reserved) {
+  if (!reserved) state.arena.attempts = Math.max(0, state.arena.attempts - 1);
   let delta = 0, tokens = 0;
   if (win) {
     delta = Math.round(14 + 8 * diff);
@@ -554,6 +670,105 @@ function arenaFight(win, diff) {
   state.res.token += tokens;
   bumpQuest('q_arena1', 1);
   return { delta, tokens, points: state.arena.points };
+}
+
+// 每个对局开始时发ID并冻结等级/关卡；同一结算ID幂等，所有变化一次保存。
+function beginBattle(spec) {
+  spec = spec || {};
+  if (state.battle.pending) {
+    state.battle.lastSettled = { id: state.battle.pending.id, outcome: 'interrupted', gainedXP: 0, reward: null };
+    state.battle.pending = null;
+  }
+  if (spec.mode === 'arena') {
+    if (state.arena.attempts <= 0) return { ok: false, msg: '今日演武次数不足' };
+    state.arena.attempts -= 1;
+  }
+  const seq = state.battle.nextSeq++;
+  const id = 'b' + seq;
+  const mode = spec.mode || 'campaign', index = spec.index || 0;
+  const first = mode === 'campaign' ? index === state.campaign.cleared + 1
+    : mode === 'tower' ? index === state.tower.best + 1 : false;
+  state.battle.pending = {
+    id, mode, index,
+    referenceLevel: Math.max(1, Math.floor(spec.referenceLevel || state.player.level)),
+    levelAtStart: state.player.level, first,
+    diff: spec.diff || 1, startedAt: Date.now()
+  };
+  save();
+  return { ok: true, ...state.battle.pending };
+}
+
+function battleXP(pending, win) {
+  if (!win || state.player.level >= C.MAX_LEVEL) return 0;
+  const base = C.BATTLE_XP.base + C.BATTLE_XP.perEnemyLevel * pending.referenceLevel;
+  if (pending.mode === 'campaign') {
+    if (pending.first) return Math.floor(base * C.BATTLE_XP.campaignFirst);
+    const rate = Math.max(0.2, Math.min(1, pending.referenceLevel / Math.max(1, pending.levelAtStart)));
+    return Math.floor(base * C.BATTLE_XP.campaignRepeat * rate);
+  }
+  if (pending.mode === 'tower') return pending.first ? Math.floor(base * C.BATTLE_XP.towerFirst) : 0;
+  if (pending.mode === 'arena') return Math.floor(base * C.BATTLE_XP.arenaWin);
+  if (pending.mode === 'training') return Math.floor(base * C.BATTLE_XP.training);
+  return 0;
+}
+
+function settleBattle(battleId, outcome) {
+  outcome = outcome || {};
+  const last = state.battle.lastSettled;
+  if (last && last.id === battleId) return { ok: true, alreadySettled: true, ...last.summary };
+  const pending = state.battle.pending;
+  if (!pending || pending.id !== battleId) return { ok: false, msg: '战斗已失效，未发放奖励' };
+
+  const original = state, backup = JSON.parse(JSON.stringify(state));
+  state = JSON.parse(JSON.stringify(state));
+  try {
+    const win = outcome.win === true;
+    let reward = null;
+    if (pending.mode === 'campaign') {
+      if (win) {
+        reward = winCampaign(pending.index);
+        if (pending.index === 1 && !state.heroProgress.firstWinChoiceGranted && !state.heroProgress.firstWinChoicePending) state.heroProgress.firstWinChoicePending = true;
+        if (pending.index >= 10 && !state.heroProgress.chapterOneVoucherGranted) {
+          state.vouchers.sr += 1; state.heroProgress.chapterOneVoucherGranted = true;
+        }
+      }
+    } else if (pending.mode === 'tower') {
+      if (win) reward = winTower(pending.index);
+    } else if (pending.mode === 'arena') {
+      reward = arenaFight(win, pending.diff, true);
+    }
+    if (win) bumpQuest('q_battle1', 1);
+    const xp = battleXP(pending, win);
+    const level = addPlayerXP(xp);
+    state.battle.pending = null;
+    const summary = {
+      id: battleId, mode: pending.mode, outcome: win ? 'win' : 'loss',
+      levelBefore: level.before, levelAfter: level.after, gainedXP: level.gained,
+      playerExp: level.exp, needXP: level.need, reward, firstWinChoicePending: state.heroProgress.firstWinChoicePending
+    };
+    state.battle.lastSettled = { id: battleId, outcome: summary.outcome, gainedXP: level.gained, reward, summary };
+    const committed = state;
+    state = original;
+    mergeStateInPlace(original, committed);
+    save();
+    return { ok: true, alreadySettled: false, ...summary };
+  } catch (err) {
+    state = original;
+    mergeStateInPlace(original, backup);
+    return { ok: false, msg: '结算未保存，请重试', error: err && err.message };
+  }
+}
+
+function mergeStateInPlace(target, source) {
+  Object.keys(target).forEach(k => { if (!(k in source)) delete target[k]; });
+  Object.keys(source).forEach(k => {
+    const a = target[k], b = source[k];
+    if (Array.isArray(b)) target[k] = b.slice();
+    else if (b && typeof b === 'object') {
+      if (!a || typeof a !== 'object' || Array.isArray(a)) target[k] = {};
+      mergeStateInPlace(target[k], b);
+    } else target[k] = b;
+  });
 }
 
 // ---------- 任务 ----------
@@ -595,12 +810,16 @@ function claimActiveChest(idx) {
   return { ok: true, reward: chest.reward };
 }
 function applyReward(r) {
+  if (!r || typeof r !== 'object') return;
   if (r.gold) state.res.gold += r.gold;
-  if (r.exp) state.res.exp += r.exp;
+  // 兼容旧任务/奖励数据，但绝不把兵书当作玩家战斗经验。
+  if (r.exp) state.res.gold += Math.floor(r.exp);
   if (r.gem) state.res.gem += r.gem;
   if (r.scroll) state.res.scroll += r.scroll;
   if (r.token) state.res.token += r.token;
   if (r.shard) state.res.shard += r.shard;
+  if (r.srPick) addChoiceVoucher('sr', r.srPick);
+  if (r.ssrPick) addChoiceVoucher('ssr', r.ssrPick);
 }
 
 // ---------- 商铺 ----------
@@ -615,18 +834,18 @@ function buyGood(goodId) {
   applyReward(good.give);
   return { ok: true };
 }
-const CURRENCY_NAME = { gold: '铜钱', exp: '兵书', gem: '元宝', scroll: '招募令', token: '演武令', shard: '英雄碎片' };
+const CURRENCY_NAME = { gold: '铜钱', gem: '元宝', scroll: '招募令', token: '演武令', shard: '英雄碎片' };
 
 module.exports = {
   load, save, getState, checkDailyReset, SAVE_KEY,
-  allRoster, getOwned, addHeroCard, grantCard, crystalInfo, effectiveLevel, levelCap, calcHero,
-  levelUp, ascend, foodPoints, dismiss, resetHero,
+  allRoster, getOwned, addHeroCard, grantCard, crystalInfo, effectiveLevel, playerLevel, playerXpNeeded, addPlayerXP, levelCap, calcHero,
+  levelUp, ascend, ascendPreview, foodPoints, dismiss, resetHero, convertCards, setCardsLocked, addChoiceVoucher, useChoiceVoucher, firstWinChoice, claimFirstWinChoice,
   getFormationCalc, setFormationSlot, formationFactionBonus, teamPower, playerUnits, enemyUnits,
   addEquip, equipInventory, equipTo, unequip, enhanceEquip, fodderPickIds, salvageEquip, salvageBatch, isEquipped,
-  migrateSaveV1, migrateSaveV2,
+  migrateSaveV1, migrateSaveV2, migrateSaveV3, normalizeState,
   idlePending, idleTick, claimIdle, fastReward,
   doSummon, rollRarity, pickHeroOfRarity,
-  winCampaign, winTower, arenaFight,
+  winCampaign, winTower, arenaFight, beginBattle, settleBattle,
   markStorySeen, isStorySeen,
   questList, claimQuest, activePoints, claimActiveChest, bumpQuest, applyReward,
   buyGood, CURRENCY_NAME,

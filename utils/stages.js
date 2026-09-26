@@ -16,7 +16,8 @@ const CHAPTERS = story.CHAPTERS.map(sc => ({
 
 // 敌方强度：全局关卡序号（从 1 开始）
 function stageScale(globalStage) {
-  return Math.pow(1.05, globalStage - 1);
+  // 敌方等级已按关卡提升，不再额外叠加指数属性，避免中后期倍率失控。
+  return 1;
 }
 function chapterOf(globalStage) {
   const idx = Math.floor((globalStage - 1) / STAGES_PER_CH); // 0-based
@@ -61,7 +62,7 @@ function makeTowerEnemies(floor) {
   const heroes = require('./heroes').HEROES;
   const rng = require('./rng').makeRng(9000 + floor * 131);
   const pool = rng.shuffle(heroes.map(h => h.id));
-  const scale = Math.pow(1.075, floor - 1);
+  const scale = 1;
   const lv = Math.max(1, Math.round(2 + (floor - 1) * 1.8));
   const units = [];
   for (let i = 0; i < 5; i++) {
@@ -73,6 +74,18 @@ function makeTowerEnemies(floor) {
     });
   }
   return { name: '群英塔 · 第' + floor + '层', units, isBoss: floor % 5 === 0 };
+}
+
+// 无次数限制的练兵队：三名低稀有度武将，敌方弱于同等级常规守军。
+function makePracticeEnemies(playerLevel, seed) {
+  const H = require('./heroes');
+  const ids = ['liaohua', 'mengda', 'masu'];
+  const lv = Math.max(1, Math.floor(playerLevel || 1) - 2);
+  const units = ids.map((id, i) => ({
+    hero: H.getHero(id), level: lv, star: 0,
+    scale: 0.6, isBoss: false, row: i < 2 ? 0 : 1
+  }));
+  return { name: '练兵场 · 熟悉阵容', units, isBoss: false, seed: seed || 1, referenceLevel: lv };
 }
 
 // 演武场对手：按玩家战力缩放
@@ -90,4 +103,4 @@ function makeArenaEnemies(playerPower, seed, diff) {
   return { name: '演武场 · 对阵', units, isBoss: false };
 }
 
-module.exports = { CHAPTERS, STAGES_PER_CH, stageScale, chapterOf, makeStageEnemies, makeTowerEnemies, makeArenaEnemies };
+module.exports = { CHAPTERS, STAGES_PER_CH, stageScale, chapterOf, makeStageEnemies, makeTowerEnemies, makeArenaEnemies, makePracticeEnemies };

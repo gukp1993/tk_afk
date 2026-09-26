@@ -6,7 +6,7 @@ const items = require('../../utils/items');
 const heroes = require('../../utils/heroes');
 const F = require('../../utils/fmt');
 
-const CUR_ICON = { gold: '🪙', gem: '💵', scroll: '📜', token: '🎫', shard: '💠', exp: '📕' };
+const CUR_ICON = { gold: '🪙', gem: '💵', scroll: '📜', token: '🎫', shard: '💠' };
 
 module.exports = {
   name: 'shop',
@@ -38,6 +38,8 @@ module.exports = {
     let y = 76;
     ui.text('今 日 商 品（每日刷新）', 12, y, { size: 13, color: T.GOLD, bold: true });
     y += 22;
+    ui.text('待用自选券：SR ' + store.getState().vouchers.sr + ' · SSR ' + store.getState().vouchers.ssr, 12, y, { size: 10, color: T.DIM });
+    y += 18;
 
     const contentH = this.goods.length * 56 + 30;
     ui.beginScroll(this, 'goods', 8, y, 359, app.H - y - 8, contentH);
@@ -54,7 +56,7 @@ module.exports = {
         cb: () => this.buy(g)
       });
     });
-    ui.wrap('遣散多余武将可获得英雄碎片；演武令通过演武场切磋获得。', 20, y + contentH, 340, 13, { size: 10 });
+    ui.wrap('满星后的同名卡可兑换碎片；演武令通过演武场切磋获得。关闭自选窗口不会消耗自选券。', 20, y + contentH, 340, 13, { size: 10 });
     ui.endScroll();
 
     if (this.pickList) this.drawPick();
@@ -86,9 +88,10 @@ module.exports = {
       const y = box.y + row * (chh + 8);
       ui.panel(x, y, cw, chh, { ornate: h.rarity === 4 });
       ui.tap(x, y, cw, chh, () => {
-        store.grantCard(h.id);
-        this.pickList = null;
-        ui.toast('已获得 ' + h.name + ' 卡一张');
+      const picked = store.useChoiceVoucher(this.pickRarity, h.id);
+      if (!picked.ok) { ui.toast(picked.msg); return; }
+      this.pickList = null;
+      ui.toast(picked.isNew ? '解锁 ' + h.name + '，共享 Lv.' + picked.level : h.name + ' 同名卡 +1');
         this.refresh();
       }, 'ssrpick-' + h.id);
       ui.heroFace(x + 5, y + 5, cw - 10, h, {});

@@ -70,7 +70,6 @@ const SHOP_GOODS = [
   { id: 's_scroll1', name: '招募令 ×1', cur: 'gem', price: 300, give: { scroll: 1 }, limit: 3 },
   { id: 's_scroll5', name: '招募令 ×5', cur: 'gem', price: 1350, give: { scroll: 5 }, limit: 1 },
   { id: 's_gold', name: '铜钱 ×20万', cur: 'gem', price: 80, give: { gold: 200000 }, limit: 3 },
-  { id: 's_exp', name: '兵书 ×15万', cur: 'gem', price: 80, give: { exp: 150000 }, limit: 3 },
   { id: 't_scroll', name: '招募令 ×1', cur: 'token', price: 40, give: { scroll: 1 }, limit: 5 },
   { id: 't_sr', name: 'SR 自选卡', cur: 'token', price: 300, give: { srPick: 1 }, limit: 1 },
   { id: 'h_ssr', name: 'SSR 自选卡', cur: 'shard', price: 500, give: { ssrPick: 1 }, limit: 1 },
@@ -81,10 +80,10 @@ const SHOP_GOODS = [
 const QUESTS = [
   { id: 'q_win3', name: '征战胜利 3 次', target: 3, reward: { gem: 20 }, act: 15 },
   { id: 'q_summon1', name: '点将 1 次', target: 1, reward: { gem: 15 }, act: 20 },
-  { id: 'q_levelup', name: '升级武将 1 次', target: 1, reward: { gold: 20000 }, act: 15 },
+  { id: 'q_battle1', name: '战斗胜利 1 次', target: 1, reward: { gold: 20000 }, act: 15 },
   { id: 'q_idle1', name: '领取挂机收益 1 次', target: 1, reward: { gold: 10000 }, act: 15 },
   { id: 'q_arena1', name: '演武切磋 1 次', target: 1, reward: { gem: 15 }, act: 20 },
-  { id: 'q_tower1', name: '群英塔挑战 1 次', target: 1, reward: { exp: 30000 }, act: 15 }
+  { id: 'q_tower1', name: '群英塔挑战 1 次', target: 1, reward: { gold: 30000 }, act: 15 }
 ];
 const ACTIVE_CHESTS = [
   { need: 40, reward: { gem: 30 } },

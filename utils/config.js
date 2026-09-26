@@ -24,18 +24,22 @@ const RARITIES = {
   4: { key: 4, name: 'SSR', color: '#f0a83e', maxStar: 5, mult: 1.15 }
 };
 
-// 每星属性倍率与等级上限
+// 每星属性倍率；英雄等级上限统一由玩家等级决定。
 const STAR_MULT = 1 + 0.12; // per star
-const LEVEL_CAPS = [60, 80, 100, 130, 160, 200]; // index = star
+const LEVEL_CAPS = [200, 200, 200, 200, 200, 200]; // 兼容旧调用，个人星级不限制等级
 const MAX_LEVEL = 200;
 
-// 升阶消耗：同名卡 + 同阵营兵魂点(R=1/SR=2/SSR=4) + 铜钱
+// 账号统一等级：英雄共用玩家等级，升级经验只由战斗结算发放。
+const PLAYER_LEVEL = { max: MAX_LEVEL, baseXP: 100, stepXP: 20 };
+const BATTLE_XP = { base: 40, perEnemyLevel: 10, campaignFirst: 3, campaignRepeat: 1, towerFirst: 2, arenaWin: 1, training: 0.6 };
+
+// 升星兼容旧配置：个人英雄系统不再消耗兵魂。
 const ASCEND_COST = [
-  { same: 1, food: 0,  gold: 2000 },
-  { same: 1, food: 6,  gold: 8000 },
-  { same: 2, food: 12, gold: 25000 },
-  { same: 2, food: 20, gold: 70000 },
-  { same: 3, food: 30, gold: 160000 }
+  { same: 1, food: 0, gold: 2000 },
+  { same: 1, food: 0, gold: 8000 },
+  { same: 2, food: 0, gold: 25000 },
+  { same: 2, food: 0, gold: 70000 },
+  { same: 3, food: 0, gold: 160000 }
 ];
 const FOOD_VALUE = { 1: 1, 2: 2, 3: 4, 4: 8 };
 
@@ -45,9 +49,10 @@ function expCost(lv) { return Math.floor(70 * Math.pow(lv, 1.35)); }
 
 // 挂机收益（按已通关最高关卡）
 function idleRates(cleared) {
+  // v3 及旧版本的挂机兵书价值并入铜钱；在线状态不再生成兵书。
   return {
-    gold: Math.floor(1800 + 260 * cleared),
-    exp: Math.floor(1200 + 170 * cleared),
+    gold: Math.floor((1800 + 260 * cleared) + (1200 + 170 * cleared)),
+    exp: 0,
     scrollPerHour: 0.25
   };
 }
@@ -108,7 +113,7 @@ const AD = {
 
 module.exports = {
   FACTIONS, BEATS, FACTION_ADV, CLASSES, RARITIES,
-  LEVEL_CAPS, MAX_LEVEL, ASCEND_COST, FOOD_VALUE,
+  LEVEL_CAPS, MAX_LEVEL, PLAYER_LEVEL, BATTLE_XP, ASCEND_COST, FOOD_VALUE,
   goldCost, expCost, idleRates, IDLE_CAP_HOURS,
   FAST_REWARD_HOURS, FAST_REWARD_COST, FAST_REWARD_DAILY,
   GACHA, factionBonus, FORMATION_ROWS, BATTLE, ARENA, AD

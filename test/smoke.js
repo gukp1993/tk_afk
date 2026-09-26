@@ -16,10 +16,12 @@ heroes.HEROES.forEach(h => {
   ok(h.passive && h.passive.name, 'hero passive: ' + h.id);
 });
 
-// 2. 存档与初始阵容
+// 2. 存档、五人新手阵容与统一玩家等级
 store.load();
 const roster = store.allRoster();
-ok(roster.length >= 4, 'starters exist');
+ok(roster.length >= 5, 'five starter heroes exist');
+ok(store.playerLevel() === 1 && roster.every(h => h.level === 1), 'all starters share player level');
+ok(store.getState().formation.length === 5 && store.getState().formation.every(Boolean), 'starter formation has five heroes');
 const units = store.playerUnits();
 ok(units.length >= 3, 'player units built, got ' + units.length);
 const enemy = stages.makeStageEnemies(1);
@@ -72,14 +74,18 @@ ok(Math.abs(cc[3] / 20000 - 0.10) < 0.006, 'sr rate ~10%: ' + (cc[3] / 20000).to
 ok(Math.abs(cc[2] / 20000 - 0.28) < 0.008, 'r rate ~28%: ' + (cc[2] / 20000).toFixed(4));
 ok(cc[1] > 0 && cc[1] / 20000 < 0.70, 'n rate ~60%: ' + (cc[1] / 20000).toFixed(4));
 
-// 7. 升级/升阶/遣散
+// 7. 统一等级只由玩家战斗经验提升
 const s0 = store.getState();
-s0.res.gold = 5e9; s0.res.exp = 5e9;
+s0.res.gold = 5e9;
 const someId = Object.keys(s0.roster)[0];
-const lv0 = s0.roster[someId].lv;
-store.levelUp(someId, 50);
-ok(s0.roster[someId].lv > lv0, 'level up works: ' + lv0 + '->' + s0.roster[someId].lv);
-ok(s0.roster[someId].lv <= 60, 'level cap respected: ' + s0.roster[someId].lv);
+ok(store.levelUp(someId, 50) === 0, 'personal hero level-up is disabled');
+const p0 = store.playerLevel(), xpNeed = store.playerXpNeeded(p0);
+const lvGain = store.addPlayerXP(xpNeed + store.playerXpNeeded(p0 + 1));
+ok(lvGain.after === p0 + 2 && lvGain.exp === 0, 'player XP can cross multiple levels');
+ok(store.allRoster().every(h => h.level === p0 + 2), 'every owned hero immediately shares gained levels');
+const xpCap = store.addPlayerXP(1e9);
+ok(xpCap.after === 200 && xpCap.exp === 0 && store.playerXpNeeded(200) === 0, 'player level stops cleanly at 200');
+s0.player = { level: 1, exp: 0 };
 
 // 8. 挂机
 s0.idle.last = Date.now() - 3 * 3600 * 1000;
@@ -173,14 +179,47 @@ const opp = stages.makeArenaEnemies(store.teamPower(), 123, 1.0);
 ok(opp.units.length === 5, 'arena enemies ok');
 const tw = stages.makeTowerEnemies(3);
 ok(tw.units.length === 5, 'tower enemies ok');
+const practice = stages.makePracticeEnemies(1, 123);
+ok(practice.units.length === 3 && practice.units.every(u => u.level === 1 && u.scale === 0.6), 'training uses fixed weak low-level team');
+ok(stages.stageScale(120) === 1, 'campaign has no runaway exponential extra multiplier');
+let trainingWins = 0;
+for (let seed = 1; seed <= 20; seed++) {
+  const cfg = stages.makePracticeEnemies(store.playerLevel(), seed);
+  const p = battle.createBattle({ team: store.playerUnits(), enemy: store.enemyUnits(cfg.units), seed });
+  let ticks = 0;
+  while (!p.ended && ticks++ < 3000) p.step(0.1);
+  if (p.ended && p.result().winner === 'A') trainingWins += 1;
+}
+ok(trainingWins === 20, 'five starter heroes reliably win practice across 20 seeded battles');
 
-// 13. 广告：每日计数、双倍领取、免费快速收获、复活血量
+// 12. 经验、首通、败北与塔奖励按 battleId 幂等结算
+s0.campaign.cleared = 0; s0.tower.best = 0; s0.player = { level: 1, exp: 0 };
+const firstBattle = store.beginBattle({ mode: 'campaign', index: 1, referenceLevel: 1 });
+const firstResult = store.settleBattle(firstBattle.id, { win: true });
+const goldOnce = s0.res.gold, xpOnce = s0.player.exp, clearOnce = s0.campaign.cleared;
+const duplicateResult = store.settleBattle(firstBattle.id, { win: true });
+ok(firstResult.ok && firstResult.gainedXP === 150 && clearOnce === 1, 'first campaign victory grants configured XP and clears stage');
+ok(duplicateResult.alreadySettled && s0.res.gold === goldOnce && s0.player.exp === xpOnce && s0.campaign.cleared === clearOnce, 'duplicate finish callback cannot grant twice');
+const towerLoss = store.beginBattle({ mode: 'tower', index: 1, referenceLevel: 1 });
+const lossResult = store.settleBattle(towerLoss.id, { win: false });
+ok(lossResult.gainedXP === 0 && s0.tower.best === 0, 'tower defeat gives no XP and cannot advance');
+const towerWin = store.beginBattle({ mode: 'tower', index: 1, referenceLevel: 1 });
+const towerResult = store.settleBattle(towerWin.id, { win: true });
+const towerGem = s0.res.gem;
+store.settleBattle(towerWin.id, { win: true });
+ok(towerResult.reward.gem === 27 && s0.tower.best === 1 && s0.res.gem === towerGem, 'tower reward is actually paid once');
+const trainingLoss = store.beginBattle({ mode: 'training', referenceLevel: 1 });
+ok(store.settleBattle(trainingLoss.id, { win: false }).gainedXP === 0, 'training defeat gives no XP');
+const trainingWin = store.beginBattle({ mode: 'training', referenceLevel: 1 });
+ok(store.settleBattle(trainingWin.id, { win: true }).gainedXP === 30, 'training win grants reduced XP');
+
+// 13. 广告：每日计数、免费快速收获、复活血量
 ok(store.adCount('fast') === 0, 'ad count init');
 store.adBump('fast'); store.adBump('fast');
 ok(store.adCount('fast') === 2, 'ad bump works');
 s0.idle.gold = 500; s0.idle.exp = 400; s0.idle.scroll = 0; s0.idle.last = Date.now();
 const c2 = store.claimIdle(true);
-ok(c2.gold === 1000 && c2.exp === 800, 'claimIdle double: ' + JSON.stringify(c2));
+ok(c2.gold === 1800 && c2.exp === 0, 'retired idle books convert into doubled gold: ' + JSON.stringify(c2));
 const gemBefore = s0.res.gem;
 const frf = store.fastReward(true);
 ok(frf.ok && s0.res.gem === gemBefore, 'free fast reward skips gem');
@@ -387,7 +426,7 @@ ok(story.CHAPTERS.reduce((s, c) => s + c.stages.length, 0) === 120, 'story total
   store.markStorySeen(20);
   ok(store.isStorySeen(20) && !store.isStorySeen(19), 'storySeen 标记与查询');
 }
-// v2 → v3 迁移：补齐 storySeen，cleared 保留
+// v2 → v3 → v4 迁移：剧情状态保留，个人等级转账号等级，旧资产只补偿一次
 {
   const v2 = { v: 2, campaign: { cleared: 5 } };
   store.migrateSaveV2(v2);
@@ -398,6 +437,24 @@ ok(story.CHAPTERS.reduce((s, c) => s + c.stages.length, 0) === 120, 'story total
   store.migrateSaveV1(v1);
   store.migrateSaveV2(v1);
   ok(v1.v === 3 && v1.campaign.cleared === 3 && v1.campaign.storySeen, 'v1→v3 链式迁移');
+  const legacy = {
+    v: 3, res: { gold: 1000, exp: 500, gem: 7, scroll: 3, token: 0, shard: 0 },
+    roster: {
+      liubei: { id: 'liubei', lv: 4, star: 0, cards: 2, equip: {} },
+      guanyu: { id: 'guanyu', lv: 6, star: 0, cards: 1, equip: {} }
+    },
+    campaign: { cleared: 5, storySeen: { 1: 1 } }, formation: ['liubei', 'guanyu', null, null, null],
+    idle: { last: Date.now(), gold: 0, exp: 100, scroll: 0 }, daily: { quests: { q_levelup: 1 }, claimed: ['q_levelup'], active: [0] }
+  };
+  store.migrateSaveV3(legacy);
+  const goldAfter = legacy.res.gold;
+  ok(legacy.v === 4 && legacy.player.level === 6 && legacy.player.exp === 0, 'v3 migration keeps highest real hero level');
+  ok(legacy.res.exp === undefined && legacy.roster.liubei.lv === undefined && legacy.roster.guanyu.lv === undefined, 'v3 migration removes legacy hero levels and books');
+  ok(legacy.res.gold > 1000 + 500 + 100, 'v3 migration compensates old books and non-anchor training');
+  ok(legacy.roster.mengda && legacy.formation[4] === 'mengda', 'v3 migration adds fifth starter without replacing existing slots');
+  ok(legacy.daily.quests.q_battle1 === 1 && !legacy.daily.quests.q_levelup, 'old level quest progress maps once to battle win quest');
+  store.migrateSaveV3(legacy);
+  ok(legacy.res.gold === goldAfter, 'v3 migration marker prevents duplicate compensation');
 }
 
 // 异步用例（广告桥接）全部 settle 后再汇总

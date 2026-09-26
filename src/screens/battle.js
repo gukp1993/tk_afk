@@ -45,21 +45,30 @@ module.exports = {
     if (this.mode === 'arena') {
       const opt = this.arenaOpt;
       const def = stages.makeArenaEnemies(store.teamPower(), opt.seed, opt.diff);
-      return { title: '演武场 · 对阵 ' + opt.name, team, enemy: store.enemyUnits(def.units), seed: opt.seed + this.retryCount };
+      const enemy = store.enemyUnits(def.units);
+      return { title: '演武场 · 对阵 ' + opt.name, team, enemy, seed: opt.seed + this.retryCount, referenceLevel: Math.max(1, Math.floor(enemy.reduce((n, u) => n + u.level, 0) / enemy.length)) };
+    }
+    if (this.mode === 'training') {
+      const def = stages.makePracticeEnemies(store.playerLevel(), 70000 + this.retryCount);
+      return { title: def.name, team, enemy: store.enemyUnits(def.units), seed: def.seed + this.retryCount, referenceLevel: def.referenceLevel };
     }
     const stage = this.stage || (store.getState().campaign.cleared + 1);
     this.stage = stage;
     const def = stages.makeStageEnemies(stage);
-    return { title: def.name + (def.isBoss ? ' ⚔' : ''), team, enemy: store.enemyUnits(def.units), seed: 1000 + stage * 13 + this.retryCount, story: def.story };
+    return { title: def.name + (def.isBoss ? ' ⚔' : ''), team, enemy: store.enemyUnits(def.units), seed: 1000 + stage * 13 + this.retryCount, story: def.story, referenceLevel: def.units[0].level };
   },
   start(keepRevive) {
     if (!keepRevive) { this.reviveUsed = false; this.revivePct = 0; }
     if (store.playerUnits().length === 0) {
-      ui.toast('请先在编队中上阵武将');
-      app.pop();
+      this.setupError = '请先在编队中上阵武将';
       return;
     }
     this.cfg = this.buildCfg();
+    const index = this.mode === 'campaign' ? this.stage : this.mode === 'tower' ? this.floor : 0;
+    const pending = store.beginBattle({ mode: this.mode, index, referenceLevel: this.cfg.referenceLevel, diff: this.arenaOpt && this.arenaOpt.diff });
+    if (!pending.ok) { this.setupError = pending.msg; return; }
+    this.setupError = '';
+    this.battleId = pending.id;
     this.engine = battleMod.createBattle({ team: this.cfg.team, enemy: this.cfg.enemy, seed: this.cfg.seed });
     // 剧情弹层：战役模式且该关剧情未看过时插播（打字机 + 点击推进，看过不再弹）
     this.storyPages = []; this.storyPage = 0; this.storyChars = 0; this.storyOpen = false;
@@ -84,6 +93,7 @@ module.exports = {
     this.banner = null; this.bannerT = 0;
     this.flashT = 0; this.shakeT = 0;
     this.over = false; this.result = null; this.speed = 1;
+    this.accumulator = 0;
     this.timeLeft = 90;
   },
 
@@ -91,9 +101,11 @@ module.exports = {
     // 剧情弹层期间战斗暂停，只推进打字机
     if (this.storyOpen) { this.storyChars += dt * 24; return; }
     if (this.over || !this.engine) return;
-    let events = [], r = null;
-    for (let i = 0; i < this.speed; i++) {
-      r = this.engine.step(0.1);
+    let events = [], r = null, guard = 0;
+    this.accumulator += dt * this.speed;
+    while (this.accumulator + 1e-9 >= C.BATTLE.TICK && !this.engine.ended && guard++ < 20) {
+      this.accumulator -= C.BATTLE.TICK;
+      r = this.engine.step(C.BATTLE.TICK);
       events = events.concat(r.events);
       if (r.done) break;
     }
@@ -109,7 +121,7 @@ module.exports = {
       if (m.actAnim > 0) m.actAnim -= dt;
       if (m.glow > 0) m.glow -= dt;
     });
-    if (r) this.timeLeft = Math.max(0, Math.ceil(90 - r.time));
+    if (r) this.timeLeft = Math.max(0, Math.ceil(C.BATTLE.TIME_LIMIT - r.time));
     if (this.bannerT > 0) { this.bannerT -= dt; if (this.bannerT <= 0) this.banner = null; }
     if (this.flashT > 0) this.flashT -= dt;
     if (this.shakeT > 0) this.shakeT -= dt;
@@ -134,7 +146,7 @@ module.exports = {
         case 'cheat': { const m = M[ev.uid]; if (m) ui.addFloat(m.x, m.y - 34, '龙胆！免死', '#7fe0a8', 14); break; }
         case 'death': { const m = M[ev.uid]; if (m) ui.addFloat(m.x, m.y - 24, '阵亡', '#a08c6a', 13); break; }
         case 'act': {
-          const m = M[ev.src];
+          const m = M[ev.uid || ev.src];
           if (m) m.actAnim = 0.32;
           break;
         }
@@ -148,15 +160,17 @@ module.exports = {
     });
   },
   finish(r) {
+    if (this.over || !this.battleId) return;
     const res = this.engine.result();
     const win = res.winner === 'A';
     const lines = [];
+    const settled = store.settleBattle(this.battleId, { win, duration: res.duration });
+    if (!settled.ok) { ui.toast(settled.msg); return; }
+    const rw = settled.reward || {};
     if (this.mode === 'campaign') {
       if (win) {
-        // 首通奖励与推关只在凯旋时结算（战败不再白拿首通）
-        const rw = store.winCampaign(this.stage);
-        lines.push('首通奖励：元宝 ' + rw.gem);
-        lines.push('铜钱 +' + F.fmtNum(rw.gold) + ' · 兵书 +' + F.fmtNum(rw.exp));
+        lines.push(rw.gem ? '首通奖励：元宝 ' + rw.gem : '重复挑战奖励');
+        lines.push('铜钱 +' + F.fmtNum(rw.gold));
         if (rw.chest) lines.push('📦 章末宝箱：元宝 +' + rw.chest.gem + ' · 招募令 +' + rw.chest.scroll);
         if (rw.scroll) lines.push('招募令 ×' + rw.scroll);
         if (rw.equip) lines.push('获得 [' + items.EQUIP_QUALITIES[rw.equip.q].name + '] ' + items.EQUIP_SLOTS[rw.equip.slot].name + (rw.equip.faction ? '（' + C.FACTIONS[rw.equip.faction].name + '属）' : ''));
@@ -165,29 +179,36 @@ module.exports = {
         lines.push('首通奖励需凯旋后方可领取');
       }
     } else if (this.mode === 'tower') {
-      const rw = store.winTower(this.floor);
-      if (rw.gem) {
+      if (win && rw.gem) {
         lines.push('首通奖励：元宝 ' + rw.gem);
         if (rw.scroll) lines.push('招募令 ×' + rw.scroll);
         if (rw.shard) lines.push('英雄碎片 ×' + rw.shard);
-      } else lines.push('已通关过此层，无首通奖励');
-    } else {
-      const rw = store.arenaFight(win, this.arenaOpt.diff);
+      } else if (win) lines.push('已通关过此层，无首通奖励');
+      else lines.push('战败，本层进度未推进');
+    } else if (this.mode === 'arena') {
       lines.push('演武积分 ' + (rw.delta >= 0 ? '+' : '') + rw.delta + '（当前 ' + rw.points + ' · ' + items.arenaRank(rw.points) + '）');
       lines.push('获得演武令 ×' + rw.tokens);
+    } else if (this.mode === 'training') {
+      lines.push(win ? '练兵胜利，经验已入账' : '练兵失败，可再次挑战');
     }
+    lines.unshift('玩家经验 +' + settled.gainedXP + (settled.levelAfter > settled.levelBefore ? ' · Lv.' + settled.levelBefore + '→' + settled.levelAfter + '，全体武将同步提升' : ''));
     lines.push('用时 ' + res.duration + ' 秒');
     let nextLabel = '';
     if (win) {
       if (this.mode === 'campaign') nextLabel = '进军下一关';
       if (this.mode === 'tower') nextLabel = '挑战下一层';
     }
-    store.save();
     this.over = true;
-    this.result = { win, lines, nextLabel };
+    this.result = { win, lines, nextLabel, level: settled.levelAfter, gainedXP: settled.gainedXP };
   },
 
   draw() {
+    if (this.setupError) {
+      ui.text('无法开始战斗', 187, 250, { size: 22, color: T.GOLD_HI, align: 'center', bold: true });
+      ui.wrap(this.setupError, 40, 292, 295, 22, { size: 14, align: 'center', color: T.TEXT });
+      ui.btn(90, 350, 195, 44, { text: '返回', style: 'gold', id: 'battle-setup-back', cb: () => app.pop() });
+      return;
+    }
     // 剧情弹层独占画面（战斗已暂停）
     if (this.storyOpen) { this.drawStory(); return; }
     const ctx = ui.ctx;
@@ -280,8 +301,8 @@ module.exports = {
       ui.text(line, 187, y, { size: 11, align: 'center' });
       y += 17;
     });
-    const canRevive = !r.win && !this.reviveUsed && ads.remaining('revive') > 0;
-    const reviveLeft = C.AD.placements.revive.limit - store.adCount('revive');
+    // 复活会重建敌军状态，先关闭入口，避免广告后比免费再战更差。
+    const canRevive = false;
     // 行1：返回 / 再战
     ui.btn(bx + 14, by + bh - 84, 128, 30, { text: '返回', style: 'ghost', size: 13, id: 'res-exit', cb: () => app.pop() });
     ui.btn(bx + 153, by + bh - 84, 128, 30, { text: '再战', style: 'ghost', size: 13, id: 'res-retry', cb: () => { this.retryCount++; this.over = false; this.result = null; this.start(); } });
@@ -301,7 +322,7 @@ module.exports = {
       });
     } else {
       ui.btn(bx + 14, by + bh - 46, 128, 30, {
-        text: r.win ? '—' : '复活已用完', style: 'plain', size: 11, disabled: true, id: 'res-revive-off'
+        text: r.win ? '—' : '复活暂不可用', style: 'plain', size: 11, disabled: true, id: 'res-revive-off'
       });
     }
     ui.btn(bx + 153, by + bh - 46, 128, 30, {
@@ -357,7 +378,7 @@ module.exports = {
     if (!this.engine || this.engine.ended) return;
     let guard = 0;
     let r = null;
-    while (!this.engine.ended && guard++ < 4000) r = this.engine.step(0.25);
+    while (!this.engine.ended && guard++ < 4000) r = this.engine.step(C.BATTLE.TICK);
     const snap = {};
     this.engine.snapshot().forEach(s => { snap[s.uid] = s; });
     this.meta.forEach(m => {
@@ -365,7 +386,7 @@ module.exports = {
       if (!s) return;
       m.hp = s.hp; m.alive = s.alive; m.shield = s.shield; m.energy = s.energy; m.cc = s.cc;
     });
-    this.timeLeft = Math.max(0, Math.ceil(90 - (r ? r.time : 0)));
+    this.timeLeft = Math.max(0, Math.ceil(C.BATTLE.TIME_LIMIT - (r ? r.time : 0)));
     this.finish(this.engine.result());
   },
 

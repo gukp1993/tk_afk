@@ -6,8 +6,7 @@ const items = require('../../utils/items');
 const F = require('../../utils/fmt');
 
 const RESOURCES = [
-  { key: 'gold', name: '铜钱', mark: '钱', color: T.GOLD, use: '英雄升级、升星与装备强化', action: '去培养英雄', tab: 'heroes' },
-  { key: 'exp', name: '兵书', mark: '书', color: T.BLUE, use: '和铜钱一起用于英雄升级', action: '去培养英雄', tab: 'heroes' },
+  { key: 'gold', name: '铜钱', mark: '钱', color: T.GOLD, use: '英雄升星与装备强化', action: '去培养英雄', tab: 'heroes' },
   { key: 'gem', name: '元宝', mark: '宝', color: T.GREEN, use: '召唤英雄、购买集市物资', action: '前往集市', page: 'shop' },
   { key: 'scroll', name: '招募令', mark: '令', color: T.GOLD_HI, use: '在召唤页面招募新英雄', action: '去召唤英雄', tab: 'summon' },
   { key: 'token', name: '演武令', mark: '武', color: T.RED_HI, use: '在集市兑换招募令、自选卡', action: '前往集市', page: 'shop' },

@@ -32,7 +32,7 @@ module.exports = {
     };
   },
   rewardText(r) {
-    return [['gem', '元宝'], ['gold', '铜钱'], ['exp', '兵书'], ['scroll', '招募令'], ['shard', '碎片']]
+    return [['gem', '元宝'], ['gold', '铜钱'], ['scroll', '招募令'], ['shard', '碎片']]
       .filter(([k]) => r[k]).map(([k, n]) => n + '×' + F.fmtNum(r[k])).join(' · ');
   },
   update() {
@@ -47,8 +47,16 @@ module.exports = {
     ui.text('总战力 ' + v.myPower, 361, 23, { size: 12, color: T.GOLD, align: 'right' });
     app.resBar(62, ['gold', 'gem', 'scroll']);
 
-    ui.beginScroll(this, 'home', 0, 94, 375, Math.max(80, app.H - 150), 604);
+    ui.beginScroll(this, 'home', 0, 94, 375, Math.max(80, app.H - 150), 690);
     let y = 94;
+    const level = store.playerLevel(), player = s.player;
+    const needXP = store.playerXpNeeded(level);
+    ui.panel(12, y, 351, 68);
+    ui.text('主公等级 Lv.' + level, 26, y + 10, { size: 16, color: T.GOLD_HI, bold: true });
+    ui.text(level >= C.MAX_LEVEL ? '已达等级上限' : '全体武将同步成长', 349, y + 12, { size: 10, color: T.DIM, align: 'right' });
+    ui.bar(26, y + 31, 323, 8, level >= C.MAX_LEVEL ? 1 : player.exp / needXP, 'gold');
+    ui.text(level >= C.MAX_LEVEL ? '已达上限' : '战斗经验 ' + F.fmtNum(player.exp) + ' / ' + F.fmtNum(needXP), 26, y + 46, { size: 10, color: T.DIM });
+    y += 78;
     // 主任务保留一个醒目的行动按钮。
     ui.panel(12, y, 351, 156, { ornate: true });
     this.cityBackdrop(y);
@@ -56,7 +64,8 @@ module.exports = {
     ui.text(v.stageName, 26, y + 36, { size: 19, color: T.GOLD_HI, bold: true });
     ui.text('第 ' + v.stageNo + ' 关' + (v.isBoss ? ' · 名将镇守' : ' · 继续你的三国征途'), 26, y + 64, { size: 11, color: T.TEXT });
     ui.text('通关越多，挂机收益越高', 26, y + 84, { size: 10, color: T.DIM });
-    ui.btn(26, y + 106, 323, 38, { text: '出征  ›', style: 'red', size: 16, id: 'go-battle', cb: () => app.push('battle', { mode: 'campaign' }) });
+    ui.btn(26, y + 106, 192, 38, { text: '出征  ›', style: 'red', size: 16, id: 'go-battle', cb: () => app.push('battle', { mode: 'campaign' }) });
+    ui.btn(226, y + 106, 123, 38, { text: '练兵', sub: '胜利得经验', style: 'gold', size: 13, id: 'go-training', cb: () => app.push('battle', { mode: 'training' }) });
     y += 170;
     const entries = [
       { key: 'summon', glyph: '召', name: '召唤', desc: '获得新武将', hint: '招募令 ' + F.fmtNum(s.res.scroll), color: T.GOLD_HI },
@@ -78,7 +87,7 @@ module.exports = {
     const mins = Math.floor(idle.hours * 60);
     const time = idle.full ? '已满 ' + C.IDLE_CAP_HOURS + ' 小时' : '已积累 ' + Math.floor(mins / 60) + '时' + mins % 60 + '分';
     ui.text(time, 349, y + 15, { size: 10, color: T.DIM, align: 'right' });
-    ui.text('铜钱 ' + F.fmtNum(idle.gold) + '   兵书 ' + F.fmtNum(idle.exp) + '   招募令 ' + idle.scroll, 26, y + 36, { size: 11, color: T.GOLD });
+    ui.text('铜钱 ' + F.fmtNum(idle.gold) + '   招募令 ' + idle.scroll, 26, y + 36, { size: 11, color: T.GOLD });
     ui.btn(26, y + 58, 196, 30, { text: '领取收益', style: 'gold', size: 12, id: 'idle-claim', disabled: !(idle.gold || idle.exp || idle.scroll), cb: () => this.claimIdle(false) });
     ui.btn(230, y + 58, 119, 30, { text: '加速 / 双倍', style: 'ghost', size: 11, id: 'idle-more', cb: () => { this.showIdle = true; } });
     y += 112;

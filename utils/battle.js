@@ -43,7 +43,7 @@ function createBattle(cfg) {
       u.auraDef = auraDef;
       u.auraSpd = auraSpd;
       u.fbHp = fb.hp;
-      u.maxHp = Math.floor(u.maxHp * (1 + fb.hp));
+      u.maxHp = Math.floor(u.maxHp * (1 + (u.passive.hp || 0)) * (1 + fb.hp));
       u.hp = u.startHpPct > 0 ? Math.max(1, Math.floor(u.maxHp * u.startHpPct)) : u.maxHp;
       u.energy = (u.passive.firstEnergy || 0);
       stats[u.uid] = { dmg: 0, heal: 0 };
