@@ -13,9 +13,11 @@ module.exports = {
   scroll: {}, scrollReg: {},
   pickList: null, pickRarity: 0,
 
-  onEnter() {
+  onEnter(params) {
     store.checkDailyReset();
     this.refresh();
+    const rarity = params && Number(params.pickRarity);
+    if ((rarity === 3 && store.getState().vouchers.sr > 0) || (rarity === 4 && store.getState().vouchers.ssr > 0)) this.openVoucher(rarity);
   },
   refresh() {
     const s = store.getState();
@@ -39,7 +41,12 @@ module.exports = {
     ui.text('今 日 商 品（每日刷新）', 12, y, { size: 13, color: T.GOLD, bold: true });
     y += 22;
     ui.text('待用自选券：SR ' + store.getState().vouchers.sr + ' · SSR ' + store.getState().vouchers.ssr, 12, y, { size: 10, color: T.DIM });
-    y += 18;
+    const vouchers = store.getState().vouchers;
+    if (vouchers.sr || vouchers.ssr) {
+      if (vouchers.sr) ui.btn(12, y + 17, 170, 28, { text: '使用 SR 自选券 ×' + vouchers.sr, style: 'gold', size: 10, id: 'use-sr-voucher', cb: () => this.openVoucher(3) });
+      if (vouchers.ssr) ui.btn(190, y + 17, 173, 28, { text: '使用 SSR 自选券 ×' + vouchers.ssr, style: 'gold', size: 10, id: 'use-ssr-voucher', cb: () => this.openVoucher(4) });
+    }
+    y += vouchers.sr || vouchers.ssr ? 51 : 18;
 
     const contentH = this.goods.length * 56 + 30;
     ui.beginScroll(this, 'goods', 8, y, 359, app.H - y - 8, contentH);
@@ -66,14 +73,23 @@ module.exports = {
     if (!r.ok) { ui.toast(r.msg || '购买失败'); return; }
     if (g.give.ssrPick || g.give.srPick) {
       this.pickRarity = g.give.ssrPick ? 4 : 3;
-      this.pickList = heroes.HEROES.filter(h => h.rarity === this.pickRarity).map(h => ({
-        id: h.id, name: h.name, surname: h.name.slice(0, 1), title: h.title,
-        faction: h.faction, cls: h.cls, rarity: h.rarity, level: 1, star: 0, power: 0
-      }));
+      this.buildPickList();
     } else {
       ui.toast('购买成功');
     }
     this.refresh();
+  },
+  openVoucher(rarity) {
+    const key = rarity === 4 ? 'ssr' : 'sr';
+    if (!(store.getState().vouchers[key] > 0)) { ui.toast('自选券不足'); return; }
+    this.pickRarity = rarity;
+    this.buildPickList();
+  },
+  buildPickList() {
+    this.pickList = heroes.HEROES.filter(h => h.rarity === this.pickRarity).map(h => ({
+      id: h.id, name: h.name, surname: h.name.slice(0, 1), title: h.title,
+      faction: h.faction, cls: h.cls, rarity: h.rarity, level: 1, star: 0, power: 0
+    }));
   },
   drawPick() {
     const box = ui.modal(this.pickRarity === 4 ? '自 选 SSR 名 将' : '自 选 SR 名 将', 30, 130, 315, 460);

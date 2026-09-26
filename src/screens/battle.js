@@ -9,6 +9,7 @@ const heroes = require('../../utils/heroes');
 const items = require('../../utils/items');
 const C = require('../../utils/config');
 const F = require('../../utils/fmt');
+const autoBattle = require('../../utils/auto-battle');
 
 // 战场坐标（逻辑 px，设计宽 375）：铺满竖屏
 const POS = {
@@ -24,6 +25,9 @@ module.exports = {
   scroll: {}, scrollReg: {},
 
   onEnter(params) {
+    // 从上层页面返回战斗栈时只展示已停止状态，不能重开旧对局。
+    if (!params && this.initialized) return;
+    this.initialized = true;
     this.mode = params.mode || 'campaign';
     this.arenaOpt = params.arenaOpt || null;
     this.stage = params.stage;
@@ -31,9 +35,58 @@ module.exports = {
     this.retryCount = 0;
     this.result = null;
     this.over = false;
-    this.start();
+    this.autoEnabled = !!params.auto;
+    this.autoSummary = { wins: 0, stages: 0, gainedXP: 0, gold: 0, gem: 0, scroll: 0, iron: 0, recent: [] };
+    this.autoStopReason = '';
+    this.speed = this.autoEnabled ? ((store.getState().settings || {}).autoBattleSpeed || C.AUTO_BATTLE.defaultSpeed) : 1;
+    this.autoState = autoBattle.createState();
+    if (this.autoEnabled) {
+      this.sendAuto({ type: 'start', mode: this.mode, index: this.stage, cleared: store.getState().campaign.cleared, level: store.playerLevel() });
+    } else this.start();
   },
-  onExit() { store.save(); },
+  onExit() {
+    if (this.autoEnabled && this.autoState && ['fighting', 'resultDelay', 'suspended'].includes(this.autoState.status)) {
+      this.sendAuto({ type: 'stop', reason: 'navigate-away' });
+    } else if (this.battleId) {
+      const pending = store.getState().battle.pending;
+      if (pending && pending.id === this.battleId) {
+        const result = store.interruptBattle(this.battleId, 'navigate-away');
+        if (result.ok) this.battleId = null;
+        else this.autoStopReason = result.msg;
+      }
+      if (!this.autoEnabled) {
+        this.over = true;
+        this.result = { win: false, lines: ['本场已中断，未结算奖励。'], nextLabel: null };
+      }
+    }
+    store.save();
+  },
+  onHide() {
+    this.wasHidden = true;
+    if (this.autoEnabled) this.sendAuto({ type: 'pause', reason: 'background' });
+  },
+  onShow() { this.wasHidden = false; },
+  sendAuto(event) {
+    const next = autoBattle.transition(this.autoState, event, C.AUTO_BATTLE);
+    this.autoState = next.state;
+    next.commands.forEach(cmd => this.handleAutoCommand(cmd));
+  },
+  handleAutoCommand(cmd) {
+    if (cmd.type === 'startBattle') {
+      this.mode = cmd.mode;
+      if (cmd.mode === 'campaign') this.stage = cmd.index;
+      this.setupError = '';
+      this.start(false, cmd);
+    } else if (cmd.type === 'interruptBattle') {
+      const result = store.interruptBattle(cmd.battleId, 'auto-stopped');
+      if (!result.ok) { this.autoStopReason = result.msg; this.cleanupFailure = cmd.battleId; }
+      else { this.battleId = null; this.cleanupFailure = null; }
+    } else if (cmd.type === 'stopped') {
+      this.autoStopReason = this.autoStopReason || cmd.reason;
+      this.over = true;
+      this.result = null;
+    }
+  },
 
   buildCfg() {
     let team = store.playerUnits();
@@ -57,22 +110,27 @@ module.exports = {
     const def = stages.makeStageEnemies(stage);
     return { title: def.name + (def.isBoss ? ' ⚔' : ''), team, enemy: store.enemyUnits(def.units), seed: 1000 + stage * 13 + this.retryCount, story: def.story, referenceLevel: def.units[0].level };
   },
-  start(keepRevive) {
+  start(keepRevive, autoCmd) {
     if (!keepRevive) { this.reviveUsed = false; this.revivePct = 0; }
     if (store.playerUnits().length === 0) {
       this.setupError = '请先在编队中上阵武将';
+      if (autoCmd) this.sendAuto({ type: 'battleStarted', ok: false, reason: this.setupError, sessionToken: autoCmd.sessionToken });
       return;
     }
     this.cfg = this.buildCfg();
     const index = this.mode === 'campaign' ? this.stage : this.mode === 'tower' ? this.floor : 0;
     const pending = store.beginBattle({ mode: this.mode, index, referenceLevel: this.cfg.referenceLevel, diff: this.arenaOpt && this.arenaOpt.diff });
-    if (!pending.ok) { this.setupError = pending.msg; return; }
+    if (!pending.ok) {
+      this.setupError = pending.msg;
+      if (autoCmd) this.sendAuto({ type: 'battleStarted', ok: false, reason: pending.msg, sessionToken: autoCmd.sessionToken });
+      return;
+    }
     this.setupError = '';
     this.battleId = pending.id;
     this.engine = battleMod.createBattle({ team: this.cfg.team, enemy: this.cfg.enemy, seed: this.cfg.seed });
     // 剧情弹层：战役模式且该关剧情未看过时插播（打字机 + 点击推进，看过不再弹）
     this.storyPages = []; this.storyPage = 0; this.storyChars = 0; this.storyOpen = false;
-    if (this.mode === 'campaign' && this.cfg.story && !store.isStorySeen(this.stage)) {
+    if (!this.autoEnabled && this.mode === 'campaign' && this.cfg.story && !store.isStorySeen(this.stage)) {
       const st = this.cfg.story;
       this.storyPages = [{ nar: st.stage.narration }]
         .concat((st.stage.dialogue || []).map(d => ({ who: heroes.getHero(d.who), text: d.text })));
@@ -92,7 +150,11 @@ module.exports = {
     });
     this.banner = null; this.bannerT = 0;
     this.flashT = 0; this.shakeT = 0;
-    this.over = false; this.result = null; this.speed = 1;
+    this.over = false; this.result = null;
+    if (!this.autoEnabled) this.speed = 1;
+    if (this.autoEnabled && autoCmd) {
+      this.sendAuto({ type: 'battleStarted', ok: true, battleId: pending.id, sessionToken: autoCmd.sessionToken });
+    }
     this.accumulator = 0;
     this.timeLeft = 90;
   },
@@ -100,6 +162,11 @@ module.exports = {
   update(dt) {
     // 剧情弹层期间战斗暂停，只推进打字机
     if (this.storyOpen) { this.storyChars += dt * 24; return; }
+    if (this.autoEnabled && this.autoState && this.autoState.status === 'suspended') return;
+    if (this.autoEnabled && this.autoState && this.autoState.status === 'resultDelay') {
+      this.sendAuto({ type: 'tick', dt });
+      return;
+    }
     if (this.over || !this.engine) return;
     let events = [], r = null, guard = 0;
     this.accumulator += dt * this.speed;
@@ -165,7 +232,15 @@ module.exports = {
     const win = res.winner === 'A';
     const lines = [];
     const settled = store.settleBattle(this.battleId, { win, duration: res.duration });
-    if (!settled.ok) { ui.toast(settled.msg); return; }
+    if (!settled.ok) {
+      this.saveFailure = { id: this.battleId, outcome: res };
+      this.over = true;
+      this.result = { win, lines: ['本场已结束，但结算暂未保存。重试保存前不会开始下一场。'] };
+      ui.toast(settled.msg);
+      return;
+    }
+    this.saveFailure = null;
+    this.battleId = null;
     const rw = settled.reward || {};
     if (this.mode === 'campaign') {
       if (win) {
@@ -199,8 +274,23 @@ module.exports = {
       if (this.mode === 'campaign') nextLabel = '进军下一关';
       if (this.mode === 'tower') nextLabel = '挑战下一层';
     }
-    this.over = true;
-    this.result = { win, lines, nextLabel, level: settled.levelAfter, gainedXP: settled.gainedXP };
+    if (this.autoEnabled) {
+      if (win) this.autoSummary.wins += 1;
+      if (this.mode === 'campaign' && win) this.autoSummary.stages += 1;
+      this.autoSummary.gainedXP += settled.gainedXP || 0;
+      if (rw && this.mode === 'campaign' && win) {
+        ['gold','gem','scroll'].forEach(k => { this.autoSummary[k] += (rw[k] || 0) + (rw.chest && rw.chest[k] || 0); });
+        if (rw.armory && rw.armory.duplicate) this.autoSummary.iron += rw.armory.iron || 0;
+      }
+      this.autoSummary.recent.unshift((this.mode === 'campaign' ? '第' + (settled.reward ? store.getState().campaign.cleared : this.stage) + '关' : this.mode === 'training' ? '练兵' : this.mode) + (win ? '胜' : '败'));
+      this.autoSummary.recent = this.autoSummary.recent.slice(0, 10);
+      this.result = { win, lines, level: settled.levelAfter, gainedXP: settled.gainedXP };
+      this.over = false;
+      this.sendAuto({ type: 'settled', ok: true, battleId: settled.id, summary: settled, sessionToken: this.autoState.sessionToken });
+    } else {
+      this.over = true;
+      this.result = { win, lines, nextLabel, level: settled.levelAfter, gainedXP: settled.gainedXP };
+    }
   },
 
   draw() {
@@ -276,6 +366,10 @@ module.exports = {
     }
 
     // 底部控制
+    if (this.autoEnabled) {
+      this.drawAutoStatus();
+      return;
+    }
     if (this.over && this.result) {
       this.drawResult();
       return;
@@ -283,6 +377,44 @@ module.exports = {
     ui.btn(12, app.H - 42, 70, 30, { text: '撤退', style: 'ghost', size: 13, id: 'retreat', cb: () => app.pop() });
     ui.btn(90, app.H - 42, 90, 30, { text: '加速 ×' + this.speed, style: 'ghost', size: 13, id: 'speed', cb: () => { this.speed = this.speed >= 4 ? 1 : this.speed * 2; } });
     ui.btn(188, app.H - 42, 100, 30, { text: '跳过战斗', style: 'gold', size: 13, id: 'skip', cb: () => this.skip() });
+  },
+  drawAutoStatus() {
+    const y = app.H - 150;
+    const status = this.autoState && this.autoState.status;
+    ui.panel(10, y, 355, 106, { fill: 'rgba(20,14,8,0.94)' });
+    let title = status === 'suspended' ? '自动出征已暂停' : status === 'resultDelay' ? '战果结算 · 即将继续' : status === 'fighting' ? (this.mode === 'training' ? '连续练兵' : '自动出征') : '自动出征已停止';
+    ui.text(title + '  ×' + this.speed, 22, y + 8, { size: 14, color: T.GOLD_HI, bold: true });
+    let detail = this.autoStopReason || (this.autoState && this.autoState.reason === 'recovery-exhausted' ? '暂时受阻，收获材料提升后再出征' : this.mode === 'training' ? '胜利获得经验 · 有限批次' : '遇阻后有限练兵恢复');
+    ui.text(detail, 22, y + 30, { size: 10, color: T.TEXT });
+    if (this.saveFailure) {
+      ui.text('结算暂未保存；保存成功前不会开始下一场。', 187, y + 56, { size: 9, color: T.RED_HI, align: 'center' });
+      ui.btn(20, y + 92, 150, 24, { text: '重试保存', style: 'gold', size: 10, id: 'auto-save-retry', cb: () => { this.over = false; this.finish(this.engine.result()); } });
+      ui.btn(205, y + 92, 150, 24, { text: '返回并中断', style: 'ghost', size: 10, id: 'auto-save-exit', cb: () => app.pop() });
+      return;
+    }
+    if (this.cleanupFailure) {
+      ui.text('本场中断暂未保存，请重试。', 187, y + 60, { size: 9, color: T.RED_HI, align: 'center' });
+      ui.btn(20, y + 78, 150, 24, { text: '重试中断', style: 'gold', size: 10, id: 'auto-interrupt-retry', cb: () => {
+        const r = store.interruptBattle(this.cleanupFailure, 'auto-stopped');
+        if (r.ok) { this.battleId = null; this.cleanupFailure = null; this.autoStopReason = '自动出征已停止'; }
+        else this.autoStopReason = r.msg;
+      } });
+      ui.btn(205, y + 78, 150, 24, { text: '返回主城', style: 'ghost', size: 10, id: 'auto-interrupt-exit', cb: () => app.pop() });
+      return;
+    }
+    ui.text('推进 ' + this.autoSummary.stages + ' 关 · 胜利 ' + this.autoSummary.wins + ' · 经验 +' + F.fmtNum(this.autoSummary.gainedXP), 22, y + 48, { size: 9, color: T.DIM });
+    ui.text('铜钱 +' + F.fmtNum(this.autoSummary.gold) + ' · 元宝 +' + F.fmtNum(this.autoSummary.gem) + ' · 令 +' + this.autoSummary.scroll + ' · 铁 +' + this.autoSummary.iron, 22, y + 61, { size: 8, color: T.DIM });
+    if (status === 'stopped') {
+      ui.btn(14, y + 78, 166, 24, { text: '返回主城', style: 'ghost', size: 10, id: 'auto-home', cb: () => app.pop() });
+      ui.btn(190, y + 78, 170, 24, { text: this.mode === 'training' ? '再练一批' : '重新出征', style: 'gold', size: 10, id: 'auto-restart', cb: () => { const m = this.mode; this.onEnter({ mode: m, auto: true }); } });
+    } else {
+      ui.btn(14, y + 78, 72, 24, { text: '×' + this.speed, style: 'ghost', size: 10, id: 'auto-speed', cb: () => { this.speed = this.speed >= 4 ? 1 : this.speed * 2; store.setAutoBattleSpeed(this.speed); } });
+      ui.btn(94, y + 78, 117, 24, { text: '本场后停止', style: 'ghost', size: 10, id: 'auto-stop-after', cb: () => this.sendAuto({ type: 'stopAfterBattle' }) });
+      ui.btn(219, y + 78, 68, 24, { text: '停止', style: 'ghost', size: 10, id: 'auto-stop', cb: () => this.sendAuto({ type: 'stop', reason: 'manual-stop' }) });
+      ui.btn(295, y + 78, 66, 24, { text: '剧情', style: 'plain', size: 10, id: 'auto-story', disabled: !this.cfg.story || this.mode !== 'campaign', cb: () => this.openStoryManually() });
+    }
+    if (status === 'suspended') ui.btn(249, y + 7, 102, 24, { text: '继续', style: 'gold', size: 10, id: 'auto-resume', cb: () => this.sendAuto({ type: 'resume', reason: 'background' }) });
+    if (this.result && this.result.lines) ui.text(this.result.lines[0], 187, y - 8, { size: 9, color: T.GOLD, align: 'center' });
   },
   drawResult() {
     const ctx = ui.ctx;
@@ -297,6 +429,12 @@ module.exports = {
       size: 30, bold: true, align: 'center',
       color: r.win ? T.GOLD_HI : '#8a7a62'
     });
+    if (this.saveFailure) {
+      ui.wrap('战斗奖励尚未确认入账。请重试保存，或返回并中断本场。', bx + 16, by + 78, bw - 32, 18, { size: 11, align: 'center', color: T.TEXT });
+      ui.btn(bx + 14, by + bh - 62, 128, 34, { text: '重试保存', style: 'gold', size: 12, id: 'battle-save-retry', cb: () => { this.over = false; this.finish(this.engine.result()); } });
+      ui.btn(bx + 153, by + bh - 62, 128, 34, { text: '返回并中断', style: 'ghost', size: 12, id: 'battle-save-exit', cb: () => app.pop() });
+      return;
+    }
     let y = by + 66;
     r.lines.forEach(line => {
       ui.text(line, 187, y, { size: 11, align: 'center' });
@@ -391,6 +529,14 @@ module.exports = {
     this.finish(this.engine.result());
   },
 
+  openStoryManually() {
+    if (!this.cfg || !this.cfg.story || this.mode !== 'campaign') return;
+    const st = this.cfg.story;
+    this.storyPages = [{ nar: st.stage.narration }].concat((st.stage.dialogue || []).map(d => ({ who: heroes.getHero(d.who), text: d.text })));
+    this.storyPage = 0; this.storyChars = 0; this.storyOpen = true;
+    this.sendAuto({ type: 'pause', reason: 'story' });
+  },
+
   // ---------- 剧情弹层 ----------
   // 点击推进：未放完的句子先放完，放完则翻页；末页关闭并记入存档（看过不再弹）
   advanceStory() {
@@ -406,6 +552,7 @@ module.exports = {
     if (!this.storyOpen) return;
     this.storyOpen = false;
     store.markStorySeen(this.stage);
+    if (this.autoEnabled) this.sendAuto({ type: 'resume', reason: 'story' });
   },
   drawStory() {
     const ctx = ui.ctx;

@@ -7,6 +7,7 @@ const stages = require('../../utils/stages');
 const items = require('../../utils/items');
 const C = require('../../utils/config');
 const F = require('../../utils/fmt');
+const progression = require('../../utils/progression');
 
 module.exports = {
   name: 'home',
@@ -30,6 +31,7 @@ module.exports = {
         claimed: s.daily.active.indexOf(i) >= 0
       }))
     };
+    this.goal = progression.getNextGoal(s, store);
   },
   rewardText(r) {
     return [['gem', '元宝'], ['gold', '铜钱'], ['scroll', '招募令'], ['shard', '碎片'], ['iron', '精铁']]
@@ -141,6 +143,22 @@ module.exports = {
     ui.toast((double ? '双倍收获：' : '已领取：') + this.rewardText(r));
     this.refresh(); this.update();
   },
+  claimFreeRewards() {
+    const r = store.claimFreeRewards();
+    if (!r.ok) { ui.toast(r.msg || '领取失败'); return; }
+    const text = this.rewardText(r.rewards);
+    const quests = r.claimedQuestIds.length, chests = r.claimedChestIds.length;
+    ui.toast(r.changed ? '一键收获：' + (text || '日常奖励已到账') + (quests || chests ? ' · 任务' + quests + '项/宝箱' + chests + '个' : '') : '暂无可领取收益');
+    this.refresh(); this.update();
+  },
+  openGoal(goal) {
+    if (!goal || !goal.action) return;
+    const a = goal.action;
+    if (a.type === 'heroes') app.switchTab('heroes', { focusFirstWin: true });
+    else if (a.type === 'heroDetail') app.push('heroDetail', { id: a.id, focus: a.focus });
+    else if (a.type === 'armory') app.push('armory', a.boxQ ? { boxQ: a.boxQ } : { recommendations: a.recommendations });
+    else if (a.type === 'shop') app.push('shop', { pickRarity: a.pickRarity });
+  },
   drawIdle() {
     const close = () => { this.showIdle = false; };
     ui.setModalClose(close);
@@ -148,10 +166,12 @@ module.exports = {
     const b = ui.modal('挂机收益 · 加速', 20, y, 335, h);
     const s = store.getState(), left = ads.remaining('idle2x'), fast = ads.remaining('fast');
     const idle = this.idle || store.idlePending();
+    const quick = C.idleRates(s.campaign.cleared);
+    const quickText = '铜钱 +' + F.fmtNum(Math.floor(C.FAST_REWARD_HOURS * quick.gold)) + ' · 招募令 +' + Math.floor(C.FAST_REWARD_HOURS * quick.scrollPerHour);
     ui.wrap('离线也会积累收益，最多储存 ' + C.IDLE_CAP_HOURS + ' 小时。', b.x, b.y + 2, b.w, 17, { size: 12 });
     ui.btn(b.x, b.y + 44, b.w, 42, { text: '看广告 · 双倍领取', sub: '铜钱、招募令双倍；精铁正常领取 · 今日 ' + left + ' 次', style: 'gold', id: 'idle-ad2x', disabled: left <= 0 || !(idle.gold || idle.exp || idle.scroll), cb: () => ads.showRewarded('idle2x', () => this.claimIdle(true), msg => ui.toast(msg)) });
-    ui.btn(b.x, b.y + 98, b.w, 42, { text: '立即收获 ' + C.FAST_REWARD_HOURS + ' 小时收益', sub: C.FAST_REWARD_COST + ' 元宝 · 今日 ' + s.fast.count + '/' + C.FAST_REWARD_DAILY, style: 'plain', id: 'idle-fast', disabled: s.fast.count >= C.FAST_REWARD_DAILY, cb: () => { const r = store.fastReward(false); ui.toast(r.ok ? '快速收获成功' : r.msg); this.refresh(); } });
-    ui.btn(b.x, b.y + 152, b.w, 42, { text: '看广告 · 免费收获 ' + C.FAST_REWARD_HOURS + ' 小时', sub: '今日剩余 ' + fast + ' 次', style: 'ghost', id: 'idle-adfast', disabled: fast <= 0, cb: () => ads.showRewarded('fast', () => { const r = store.fastReward(true); ui.toast(r.ok ? '免费快速收获成功' : r.msg); this.refresh(); }, msg => ui.toast(msg)) });
+    ui.btn(b.x, b.y + 98, b.w, 42, { text: '快速收获 · ' + C.FAST_REWARD_COST + ' 元宝', sub: quickText + ' · 今日 ' + s.fast.count + '/' + C.FAST_REWARD_DAILY, style: 'plain', id: 'idle-fast', disabled: s.fast.count >= C.FAST_REWARD_DAILY, cb: () => { const r = store.fastReward(false); ui.toast(r.ok ? '快速收获：铜钱 +' + F.fmtNum(r.gold) + ' · 招募令 +' + r.scroll : r.msg); this.refresh(); } });
+    ui.btn(b.x, b.y + 152, b.w, 42, { text: '看广告 · 免费快速收获', sub: quickText + ' · 今日剩余 ' + fast + ' 次', style: 'ghost', id: 'idle-adfast', disabled: fast <= 0, cb: () => ads.showRewarded('fast', () => { const r = store.fastReward(true); ui.toast(r.ok ? '快速收获：铜钱 +' + F.fmtNum(r.gold) + ' · 招募令 +' + r.scroll : r.msg); this.refresh(); }, msg => ui.toast(msg)) });
     ui.btn(b.x, b.y + 208, b.w, 34, { text: '返回主城', id: 'idle-close', cb: close });
   },
   drawQuests() {
@@ -169,7 +189,7 @@ module.exports = {
       ui.btn(b.x + b.w - 68, rowY + 5, 64, 34, { text: q.claimed ? '已领取' : (q.done ? '领取' : '未完成'), style: q.done && !q.claimed ? 'gold' : 'ghost', size: 11, disabled: q.claimed || !q.done, id: 'q-' + q.id, cb: () => { const r = store.claimQuest(q.id); ui.toast(r.ok ? '已领取' : r.msg || '无法领取'); this.refresh(); } });
       rowY += 60;
     });
-    ui.text('活跃度 ' + v.activePts + ' · 活跃宝箱', b.x, rowY + 2, { size: 13, color: T.GOLD });
+    ui.text('活跃度 ' + Math.min(100, v.activePts) + ' · 活跃宝箱', b.x, rowY + 2, { size: 13, color: T.GOLD });
     const w = (b.w - 16) / 3;
     v.chests.forEach((c, i) => {
       const x = b.x + i * (w + 8);
@@ -177,6 +197,12 @@ module.exports = {
       ui.wrap(this.rewardText(c.reward), x + 2, rowY + 80, w - 4, 12, { size: 9 });
     });
     ui.endScroll();
-    ui.btn(b.x, y + h - 46, b.w, 34, { text: '返回主城', id: 'quests-close', cb: close });
+    ui.btn(b.x, y + h - 46, 154, 34, { text: '领取全部日常', style: 'gold', id: 'quests-claim-all', cb: () => {
+      const r = store.claimAllDailyRewards();
+      if (!r.ok) ui.toast(r.msg || '领取失败');
+      else ui.toast(r.changed ? '日常已领取：' + (this.rewardText(r.rewards) || '奖励到账') : '暂无可领取日常');
+      this.refresh();
+    } });
+    ui.btn(b.x + 164, y + h - 46, b.w - 164, 34, { text: '返回主城', id: 'quests-close', cb: close });
   }
 };

@@ -4,6 +4,7 @@ const T = require('../theme');
 const store = require('../../utils/store');
 const items = require('../../utils/items');
 const F = require('../../utils/fmt');
+const progression = require('../../utils/progression');
 
 const SLOT_FALLBACK = [
   { key: 'weapon', name: '兵刃' }, { key: 'armor', name: '铠甲' },
@@ -87,13 +88,23 @@ module.exports = {
   mode: 'overview', selectedSlot: 'weapon', detailId: null, boxQ: null,
   confirm: null,
 
-  onEnter() { this.mode = 'overview'; this.detailId = null; this.boxQ = null; this.refresh(); },
+  onEnter(params) {
+    this.mode = 'overview'; this.detailId = null; this.boxQ = null; this.confirmRecommendations = false;
+    this.refresh();
+    if (params && params.boxQ) {
+      this.mode = 'catalog'; this.boxQ = Number(params.boxQ);
+      const item = this.catalog.find(x => x.q === this.boxQ && !this.armory.unlocked[x.id]);
+      if (item) { this.selectedSlot = item.slot; this.detailId = item.id; }
+    }
+    if (params && params.recommendations) this.recommendations = params.recommendations;
+  },
   refresh() {
     const s = store.getState();
     this.s = s;
     this.armory = (typeof store.getArmoryState === 'function' && store.getArmoryState()) || s.armory || { unlocked: {}, selected: {}, slotStars: {}, boxes: {}, seen: {}, claimedMilestones: {} };
     this.slots = slotList();
     this.catalog = catalogList();
+    this.recommendations = progression.getArmoryRecommendations(s);
     if (!this.slots.some(x => x.key === this.selectedSlot)) this.selectedSlot = this.slots[0]?.key || 'weapon';
     if (!this.detailId || !this.catalog.some(x => x.id === this.detailId)) this.detailId = this.catalog.find(x => x.slot === this.selectedSlot)?.id || null;
   },
@@ -107,6 +118,7 @@ module.exports = {
     ui.chipBtn(192, 70, 174, 28, '装备图鉴  ' + this.unlockedCount() + '/' + this.catalog.length, this.mode === 'catalog', () => { this.mode = 'catalog'; this.detailId = this.currentItem(this.selectedSlot)?.id || this.catalog.find(x => x.slot === this.selectedSlot)?.id || null; }, 'armory-catalog');
     if (this.mode === 'overview') this.drawOverview(); else this.drawCatalog();
     if (this.confirm) this.drawConfirm();
+    if (this.confirmRecommendations) this.drawRecommendationConfirm();
   },
   drawResources() {
     const res = this.s.res || {};
@@ -135,9 +147,12 @@ module.exports = {
     const contentH = 600;
     ui.beginScroll(this, 'overview', 0, top, app.W, app.H - top, contentH);
     ui.text('一套军械，全体英雄同时生效', 187.5, 114, { size: 11, color: T.DIM, align: 'center' });
+    if (this.recommendations.length) {
+      ui.btn(28, 124, 319, 28, { text: '免费启用推荐 · ' + this.recommendations.length + ' 个部位', style: 'gold', size: 10, id: 'armory-recommend-open', cb: () => { this.confirmRecommendations = true; } });
+    }
     this.slots.forEach((slot, i) => {
       const col = i % 2, row = Math.floor(i / 2);
-      const x = 8 + col * (cardW + gap), y = 139 + row * (cardH + 9);
+      const x = 8 + col * (cardW + gap), y = (this.recommendations.length ? 160 : 139) + row * (cardH + 9);
       const item = this.currentItem(slot.key), star = starAt(this.armory.slotStars, slot.key);
       ui.panel(x, y, cardW, cardH, { ornate: true });
       ui.text(slot.name, x + 11, y + 9, { size: 14, color: T.GOLD_HI, bold: true });
@@ -151,7 +166,7 @@ module.exports = {
       }
       ui.btn(x + 9, y + 86, cardW - 18, 23, { text: '查看图鉴', style: 'ghost', size: 10, id: 'armory-slot-' + slot.key, cb: () => this.openSlot(slot.key) });
     });
-    let y = 139 + Math.ceil(this.slots.length / 2) * (cardH + 9) + 2;
+    let y = (this.recommendations.length ? 160 : 139) + Math.ceil(this.slots.length / 2) * (cardH + 9) + 2;
     const pct = this.totalPct();
     ui.panel(8, y, app.W - 16, 55);
     ui.text('全军属性与战术效果', 19, y + 8, { size: 11, color: T.GOLD_HI, bold: true });
@@ -163,6 +178,28 @@ module.exports = {
   totalPct() {
     if (typeof store.getArmoryBonuses === 'function') return store.getArmoryBonuses();
     return {};
+  },
+  drawRecommendationConfirm() {
+    const list = this.recommendations || [];
+    const h = Math.min(330, 100 + list.length * 25), y = Math.max(40, (app.H - h) / 2);
+    const box = ui.modal('免费启用军械建议', 18, y, 339, h);
+    ui.setModalClose(() => { this.confirmRecommendations = false; });
+    let lineY = box.y + 5;
+    list.forEach(rec => {
+      ui.text(rec.slotName + '：' + rec.fromName + ' → ' + rec.toName, box.x + 2, lineY, { size: 10, color: T.TEXT });
+      lineY += 22;
+    });
+    const delta = {};
+    list.forEach(rec => Object.keys(rec.delta || {}).forEach(k => { delta[k] = (delta[k] || 0) + rec.delta[k] * (1 + 0.1 * (this.armory.slotStars[rec.slot] || 0)); }));
+    ui.wrap('全军属性变化：' + bonusText(delta), box.x + 2, lineY + 2, box.w - 4, 14, { size: 9, color: T.GOLD_HI });
+    ui.btn(box.x, box.y + box.h - 38, 122, 28, { text: '取消', style: 'ghost', size: 11, id: 'armory-recommend-cancel', cb: () => { this.confirmRecommendations = false; } });
+    ui.btn(box.x + 134, box.y + box.h - 38, 190, 28, { text: '启用这些推荐', style: 'gold', size: 11, id: 'armory-recommend-apply', cb: () => this.applyRecommendations() });
+  },
+  applyRecommendations() {
+    const result = store.applyArmoryRecommendations(this.recommendations);
+    if (!result.ok) { this.confirmRecommendations = false; ui.toast(result.msg || '启用失败'); this.refresh(); return; }
+    this.confirmRecommendations = false; this.refresh();
+    ui.toast('已为全军启用 ' + result.applied.length + ' 件 · ' + bonusText(result.after));
   },
   openSlot(slot) {
     this.selectedSlot = slot; this.mode = 'catalog'; this.boxQ = null;
@@ -325,6 +362,7 @@ module.exports = {
       const itemId = type === 'select' ? args[0] : args[1];
       if (this.armory.seen) this.armory.seen[itemId] = true;
     }
-    ui.toast(result.msg || ({ unlock: '图鉴已解锁', select: '已为全军启用', upgrade: '部位升星成功', claimBox: '军械箱已领取' }[type]));
+    if (result.before && result.bonuses) ui.toast('全军生效 · ' + bonusText(result.before) + ' → ' + bonusText(result.bonuses));
+    else ui.toast(result.msg || ({ unlock: '图鉴已解锁', select: '已为全军启用', upgrade: '部位升星成功', claimBox: '军械箱已领取' }[type]));
   }
 };

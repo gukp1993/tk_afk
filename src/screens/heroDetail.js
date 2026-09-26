@@ -12,7 +12,11 @@ module.exports = {
   pickEquipSlot: null,
   showConvertConfirm: false,
 
-  onEnter() { this.refresh(); },
+  onEnter() {
+    this.scroll = this.scroll || {};
+    this.scroll.page = this.params && this.params.focus === 'ascend' ? 410 : 0;
+    this.refresh();
+  },
   refresh() {
     const id = this.params.id;
     const calc = store.calcHero(id);
@@ -135,8 +139,12 @@ module.exports = {
   doAscend() {
     const preview = store.ascendPreview(this.params.id);
     if (!preview.ok || !preview.can) { ui.toast(preview.msg || '同名卡或铜钱不足'); return; }
+    const beforePower = store.calcHero(this.params.id).power;
     const r = store.ascend(this.params.id);
-    if (!r.ok) ui.toast(r.msg); else ui.toast('升星成功！当前 ★' + r.star + '，等级保持不变');
+    if (!r.ok) ui.toast(r.msg); else {
+      const afterPower = store.calcHero(this.params.id).power;
+      ui.toast('升至 ★' + r.star + ' · 战力 ' + F.fmtNum(beforePower) + '→' + F.fmtNum(afterPower));
+    }
     this.refresh();
   },
   convertOne() {

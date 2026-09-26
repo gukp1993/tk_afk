@@ -19,8 +19,9 @@ module.exports = {
   filter: 'all', sort: 'power',
   showStarterPick: false,
 
-  onEnter() {
+  onEnter(params) {
     store.checkDailyReset();
+    this.showStarterPick = !!(params && params.focusFirstWin && store.firstWinChoice().available);
     this.refresh();
   },
   refresh() {

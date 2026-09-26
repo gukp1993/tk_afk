@@ -12,6 +12,7 @@ const app = {
   scenes: {},            // name -> scene 对象
   stack: [],             // 导航栈（push/pop）
   tab: 'home',
+  hidden: false,
   TABS: [
     { key: 'home', icon: '城', text: '主城' },
     { key: 'heroes', icon: '将', text: '英雄' },
@@ -61,7 +62,18 @@ const app = {
       } else ui.onTouchEnd(ui.touch ? ui.touch.x : 0, ui.touch ? ui.touch.y : 0);
     });
     api.onTouchCancel && api.onTouchCancel(() => { ui.touch = null; ui.pressedId = null; });
-    api.onHide && api.onHide(() => store.save());
+    api.onHide && api.onHide(() => {
+      this.hidden = true;
+      const active = this.top();
+      if (active && active.onHide) active.onHide();
+      store.save();
+    });
+    api.onShow && api.onShow(() => {
+      this.hidden = false;
+      this.last = Date.now();
+      const active = this.top();
+      if (active && active.onShow) active.onShow();
+    });
     // 节流自动存档：开发者工具「编译」重启不触发 onHide，仅靠事件保存会表现为丢档；
     // 心跳把丢失窗口压到间隔内，真机上与 onHide 双保险
     const heartbeat = setInterval(() => store.save(), 10000);
@@ -73,17 +85,21 @@ const app = {
 
   register(name, scene) { this.scenes[name] = scene; },
 
-  switchTab(name) {
+  switchTab(name, params) {
     if (!this.scenes[name]) return;
+    const active = this.top();
+    if (active && active.onExit) active.onExit('tab');
     ui.hitAreas = []; ui.dragAreas = [];
     this.tab = name;
     this.stack = [];
     const s = this.scenes[name];
-    if (s && s.onEnter) s.onEnter();
+    if (s && s.onEnter) s.onEnter(params || {});
   },
   push(name, params) {
     const s = this.scenes[name];
     if (!s) return;
+    const active = this.top();
+    if (active && active.onExit) active.onExit('push');
     ui.hitAreas = []; ui.dragAreas = [];
     s.params = params || {};
     if (s.onEnter) s.onEnter(params);
@@ -92,7 +108,7 @@ const app = {
   pop() {
     ui.hitAreas = []; ui.dragAreas = [];
     const s = this.stack.pop();
-    if (s && s.onExit) s.onExit();
+    if (s && s.onExit) s.onExit('pop');
     const top = this.top();
     if (top && top.onEnter) top.onEnter();
   },
@@ -108,7 +124,7 @@ const app = {
 
     const s = this.top();
     if (s) {
-      if (s.update) s.update(dt);
+      if (!this.hidden && s.update) s.update(dt);
       ui.begin(this.ctx, this.W, this.H, dt);
       // 背景
       const ctx = this.ctx;

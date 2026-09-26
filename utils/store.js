@@ -269,6 +269,22 @@ function save() {
   if (state) idleTick();
   rawSet(SAVE_KEY, state);
 }
+function withSavedMutation(mutate) {
+  const original = state, backup = JSON.parse(JSON.stringify(state));
+  try {
+    const result = mutate();
+    if (!result || result.ok === false) {
+      state = original; mergeStateInPlace(original, backup);
+      return result;
+    }
+    if (result.changed === false) return result;
+    save();
+    return result;
+  } catch (err) {
+    state = original; mergeStateInPlace(original, backup);
+    return { ok: false, msg: '操作未保存，请重试', error: err && err.message };
+  }
+}
 function getState() { return state; }
 
 // ---------- 每日重置 ----------
@@ -356,45 +372,75 @@ function getArmoryState() {
   return { unlocked: Object.assign({}, a.unlocked), selected: Object.assign({}, a.selected), slotStars: Object.assign({}, a.slotStars), boxes: Object.assign({}, a.boxes), seen: Object.assign({}, a.seen), claimedMilestones: Object.assign({}, a.claimedMilestones), total: IT.CATALOG.length, unlockedCount: Object.keys(a.unlocked).filter(id => a.unlocked[id]).length, bonuses: getArmoryBonuses() };
 }
 function armoryUnlock(itemId) {
-  const item = IT.CATALOG.find(x => x.id === itemId);
-  if (!item) return { ok:false, msg:'图鉴条目不存在' };
-  if (state.armory.unlocked[item.id]) return { ok:false, msg:'图鉴已解锁' };
-  const grade = IT.GRADES[item.q];
-  if ((state.campaign.cleared || 0) < grade.unlockStage) return { ok:false, msg:'通关第' + grade.unlockStage + '关后开放' };
-  if (item.q === 0) return { ok:false, msg:'凡铁军械已全部赠送' };
-  if (state.res.iron < grade.cost) return { ok:false, msg:'精铁不足' };
-  state.res.iron -= grade.cost; state.armory.unlocked[item.id] = true; state.armory.seen[item.id] = true; save();
-  return { ok:true, itemId:item.id, cost:grade.cost };
+  return withSavedMutation(() => {
+    const item = IT.CATALOG.find(x => x.id === itemId);
+    if (!item) return { ok:false, msg:'图鉴条目不存在' };
+    if (state.armory.unlocked[item.id]) return { ok:false, msg:'图鉴已解锁' };
+    const grade = IT.GRADES[item.q];
+    if ((state.campaign.cleared || 0) < grade.unlockStage) return { ok:false, msg:'通关第' + grade.unlockStage + '关后开放' };
+    if (item.q === 0) return { ok:false, msg:'凡铁军械已全部赠送' };
+    if (state.res.iron < grade.cost) return { ok:false, msg:'精铁不足' };
+    state.res.iron -= grade.cost; state.armory.unlocked[item.id] = true; state.armory.seen[item.id] = true;
+    return { ok:true, itemId:item.id, cost:grade.cost };
+  });
 }
 function armorySelect(slot, itemId) {
-  const item = IT.CATALOG.find(x => x.id === itemId);
-  if (!IT.ARMORY_SLOTS.some(x => x.id === slot) || !item || item.slot !== slot) return { ok:false, msg:'部位或军械不匹配' };
-  if (!state.armory.unlocked[itemId]) return { ok:false, msg:'请先解锁图鉴' };
-  state.armory.selected[slot] = itemId; save();
-  return { ok:true, selected:itemId, bonuses:getArmoryBonuses() };
+  return withSavedMutation(() => {
+    const before = getArmoryBonuses(), item = IT.CATALOG.find(x => x.id === itemId);
+    if (!IT.ARMORY_SLOTS.some(x => x.id === slot) || !item || item.slot !== slot) return { ok:false, msg:'部位或军械不匹配' };
+    if (!state.armory.unlocked[itemId]) return { ok:false, msg:'请先解锁图鉴' };
+    state.armory.selected[slot] = itemId;
+    return { ok:true, selected:itemId, before, bonuses:getArmoryBonuses() };
+  });
+}
+function applyArmoryRecommendations(recommendations) {
+  const list = Array.isArray(recommendations) ? recommendations.slice() : [];
+  if (!list.length) return { ok: false, msg: '当前没有可免费启用的军械' };
+  return withSavedMutation(() => {
+    const before = getArmoryBonuses(), applied = [];
+    for (const rec of list) {
+      const current = IT.CATALOG.find(x => x.id === state.armory.selected[rec.slot]);
+      const next = IT.CATALOG.find(x => x.id === rec.toId);
+      if (!current || !next || current.id !== rec.fromId || next.slot !== rec.slot || next.q >= 3 || !state.armory.unlocked[next.id]) return { ok: false, msg: '军械状态已变化，请重新查看建议' };
+      const a = current.basePct || current.stats || {}, b = next.basePct || next.stats || {};
+      const keys = new Set(Object.keys(a).concat(Object.keys(b)));
+      let improved = false;
+      for (const key of keys) { const av = Number(a[key]) || 0, bv = Number(b[key]) || 0; if (bv < av) return { ok: false, msg: '建议军械属性不再符合条件' }; if (bv > av) improved = true; }
+      if (!improved || (current.effect || null) !== (next.effect || null)) return { ok: false, msg: '建议军械已不再提升属性' };
+      state.armory.selected[rec.slot] = next.id;
+      applied.push({ slot: rec.slot, fromId: current.id, toId: next.id });
+    }
+    const after = getArmoryBonuses();
+    return { ok: true, applied, before, after };
+  });
 }
 function armoryUpgrade(slot) {
-  if (!IT.ARMORY_SLOTS.some(x => x.id === slot)) return { ok:false, msg:'部位不存在' };
-  const star = state.armory.slotStars[slot] || 0;
-  if (star >= 5) return { ok:false, msg:'该部位已满星' };
-  const iron = IT.STAR_NEEDS[star], gold = IT.STAR_GOLD[star];
-  if (state.res.iron < iron) return { ok:false, msg:'精铁不足，还差' + (iron-state.res.iron) };
-  if (state.res.gold < gold) return { ok:false, msg:'铜钱不足，还差' + (gold-state.res.gold) };
-  state.res.iron -= iron; state.res.gold -= gold; state.armory.slotStars[slot] = star + 1; save();
-  return { ok:true, slot, stars:star+1, iron, gold, bonuses:getArmoryBonuses() };
+  return withSavedMutation(() => {
+    if (!IT.ARMORY_SLOTS.some(x => x.id === slot)) return { ok:false, msg:'部位不存在' };
+    const before = getArmoryBonuses(), star = state.armory.slotStars[slot] || 0;
+    if (star >= 5) return { ok:false, msg:'该部位已满星' };
+    const iron = IT.STAR_NEEDS[star], gold = IT.STAR_GOLD[star];
+    if (state.res.iron < iron) return { ok:false, msg:'精铁不足，还差' + (iron-state.res.iron) };
+    if (state.res.gold < gold) return { ok:false, msg:'铜钱不足，还差' + (gold-state.res.gold) };
+    state.res.iron -= iron; state.res.gold -= gold; state.armory.slotStars[slot] = star + 1;
+    return { ok:true, slot, stars:star+1, iron, gold, before, bonuses:getArmoryBonuses() };
+  });
 }
 function armoryClaimBox(q, itemId) {
+  return withSavedMutation(() => armoryClaimBoxInternal(q, itemId));
+}
+function armoryClaimBoxInternal(q, itemId) {
   q = Number(q);
   if (![1,2,3].includes(q) || !(state.armory.boxes[q] > 0)) return { ok:false, msg:'没有可领取的自选箱' };
   const pool = IT.CATALOG.filter(x => x.q === q);
   if (itemId === 'convert') {
     if (pool.some(x => !state.armory.unlocked[x.id])) return { ok:false, msg:'仍有未解锁条目，请先选择军械' };
-    const iron = IT.GRADES[q].duplicate; state.armory.boxes[q] -= 1; state.res.iron += iron; save();
+    const iron = IT.GRADES[q].duplicate; state.armory.boxes[q] -= 1; state.res.iron += iron;
     return { ok:true, iron, converted:true };
   }
   const item = pool.find(x => x.id === itemId);
   if (!item || state.armory.unlocked[item.id]) return { ok:false, msg:'请选择尚未解锁的对应品质军械' };
-  state.armory.boxes[q] -= 1; state.armory.unlocked[item.id] = true; state.armory.seen[item.id] = true; save();
+  state.armory.boxes[q] -= 1; state.armory.unlocked[item.id] = true; state.armory.seen[item.id] = true;
   return { ok:true, itemId:item.id };
 }
 function grantArmoryItem(itemId) {
@@ -429,17 +475,17 @@ function foodPoints(exceptId) {
   return pts;
 }
 function ascend(id) {
-  const own = state.roster[id];
-  if (!own || !H.getHero(id)) return { ok: false, msg: '未拥有该武将' };
-  const maxStar = C.RARITIES[H.getHero(id).rarity].maxStar;
-  if (own.star >= maxStar) return { ok: false, msg: '已达最高星级' };
-  const cost = [{ same: 1, gold: 2000 }, { same: 1, gold: 8000 }, { same: 2, gold: 25000 }, { same: 2, gold: 70000 }, { same: 3, gold: 160000 }][own.star];
-  if (own.cards < cost.same) return { ok: false, msg: '同名武将卡不足' };
-  if (state.res.gold < cost.gold) return { ok: false, msg: '铜钱不足' };
-  own.cards -= cost.same;
-  state.res.gold -= cost.gold;
-  own.star += 1;
-  return { ok: true, star: own.star };
+  return withSavedMutation(() => {
+    const own = state.roster[id];
+    if (!own || !H.getHero(id)) return { ok: false, msg: '未拥有该武将' };
+    const maxStar = C.RARITIES[H.getHero(id).rarity].maxStar;
+    if (own.star >= maxStar) return { ok: false, msg: '已达最高星级' };
+    const cost = [{ same: 1, gold: 2000 }, { same: 1, gold: 8000 }, { same: 2, gold: 25000 }, { same: 2, gold: 70000 }, { same: 3, gold: 160000 }][own.star];
+    if (own.cards < cost.same) return { ok: false, msg: '同名武将卡不足' };
+    if (state.res.gold < cost.gold) return { ok: false, msg: '铜钱不足' };
+    own.cards -= cost.same; state.res.gold -= cost.gold; own.star += 1;
+    return { ok: true, star: own.star };
+  });
 }
 function ascendPreview(id) {
   const own = state.roster[id];
@@ -481,23 +527,26 @@ function addChoiceVoucher(rarity, count) {
   return state.vouchers[key];
 }
 function useChoiceVoucher(rarity, id) {
-  const key = Number(rarity) === 4 || rarity === 'ssr' ? 'ssr' : 'sr';
-  const h = H.getHero(id);
-  if (!h || h.rarity !== (key === 'ssr' ? 4 : 3)) return { ok: false, msg: '请选择对应稀有度的武将' };
-  if (!(state.vouchers[key] > 0)) return { ok: false, msg: '自选券不足' };
-  state.vouchers[key] -= 1;
-  const isNew = !state.roster[id];
-  addHeroCard(id);
-  return { ok: true, id, isNew, level: state.player.level, cards: state.roster[id].cards };
+  return withSavedMutation(() => {
+    const key = Number(rarity) === 4 || rarity === 'ssr' ? 'ssr' : 'sr';
+    const h = H.getHero(id);
+    if (!h || h.rarity !== (key === 'ssr' ? 4 : 3)) return { ok: false, msg: '请选择对应稀有度的武将' };
+    if (!(state.vouchers[key] > 0)) return { ok: false, msg: '自选券不足' };
+    state.vouchers[key] -= 1;
+    const isNew = !state.roster[id]; addHeroCard(id);
+    return { ok: true, id, isNew, level: state.player.level, cards: state.roster[id].cards };
+  });
 }
 function firstWinChoice() {
   return { available: !!state.heroProgress.firstWinChoicePending, claimed: !!state.heroProgress.firstWinChoiceGranted };
 }
 function claimFirstWinChoice(id) {
-  if (!state.heroProgress.firstWinChoicePending || state.heroProgress.firstWinChoiceGranted || !['liubei', 'guanyu', 'zhangfei'].includes(id)) return { ok: false, msg: '当前不能领取该奖励' };
-  addHeroCard(id);
-  state.heroProgress.firstWinChoicePending = false; state.heroProgress.firstWinChoiceGranted = true;
-  return { ok: true, id, cards: state.roster[id].cards };
+  return withSavedMutation(() => {
+    if (!state.heroProgress.firstWinChoicePending || state.heroProgress.firstWinChoiceGranted || !['liubei', 'guanyu', 'zhangfei'].includes(id)) return { ok: false, msg: '当前不能领取该奖励' };
+    addHeroCard(id);
+    state.heroProgress.firstWinChoicePending = false; state.heroProgress.firstWinChoiceGranted = true;
+    return { ok: true, id, cards: state.roster[id].cards };
+  });
 }
 
 // ---------- 编队 ----------
@@ -510,6 +559,21 @@ function setFormationSlot(slot, heroId) {
     state.formation = state.formation.map((x, i) => (x === heroId && i !== slot ? null : x));
   }
   state.formation[slot] = heroId || null;
+}
+function applyFormation(ids) {
+  if (!Array.isArray(ids) || ids.length !== 5) return { ok: false, msg: '编队数据无效' };
+  const picked = ids.map(id => id || null), used = picked.filter(Boolean);
+  if (new Set(used).size !== used.length || used.some(id => !state.roster[id] || !H.getHero(id))) return { ok: false, msg: '只能选择不重复的已拥有武将' };
+  return withSavedMutation(() => { state.formation = picked; return { ok: true, formation: picked.slice() }; });
+}
+function setAutoBattleSpeed(speed) {
+  const n = Number(speed);
+  if (![1, 2, 4].includes(n)) return { ok: false, msg: '倍速无效' };
+  return withSavedMutation(() => {
+    state.settings = state.settings || {};
+    state.settings.autoBattleSpeed = n;
+    return { ok: true, speed: n };
+  });
 }
 function formationFactionBonus() {
   const calc = getFormationCalc();
@@ -670,14 +734,18 @@ function idleTick() {
   state.idle.ironAcc = Math.min(state.idle.ironAcc, C.IDLE_CAP_HOURS * C.ARMORY_IRON_PER_HOUR);
   state.idle.last = now;
 }
-function claimIdle(double) {
+function claimIdleInternal(double) {
   idleTick();
   let g = Math.floor(state.idle.gold), s = Math.floor(state.idle.scroll), iron = Math.floor(state.idle.ironAcc);
   if (double) { g *= 2; s *= 2; }
   state.res.gold += g; state.res.scroll += s; state.res.iron += iron;
   state.idle.gold -= Math.floor(state.idle.gold); state.idle.scroll -= Math.floor(state.idle.scroll); state.idle.ironAcc -= iron;
-  bumpQuest('q_idle1', 1);
-  return { gold: g, exp: 0, scroll: s, iron, double: !!double };
+  const changed = !!(g || s || iron);
+  if (changed) bumpQuest('q_idle1', 1);
+  return { ok: true, gold: g, exp: 0, scroll: s, iron, double: !!double, changed };
+}
+function claimIdle(double) {
+  return withSavedMutation(() => claimIdleInternal(double));
 }
 function fastReward(free) {
   if (state.fast.count >= C.FAST_REWARD_DAILY) return { ok: false, msg: '今日快速收获次数已用完' };
@@ -780,7 +848,6 @@ function winCampaign(stageIdx) {
   // 奖励入账（首通含章末宝箱；此前 gold/exp/gem/scroll 只展示未入账）
   applyReward(reward);
   if (reward.chest) applyReward(reward.chest);
-  bumpQuest('q_win3', 1);
   return reward;
 }
 
@@ -801,7 +868,6 @@ function winTower(floor) {
     if (floor % 5 === 0) reward.scroll = 1;
     if (floor % 10 === 0) reward.shard = 10;
   }
-  bumpQuest('q_tower1', 1);
   applyReward(reward);
   return reward;
 }
@@ -827,13 +893,13 @@ function arenaFight(win, diff, reserved) {
 function beginBattle(spec) {
   spec = spec || {};
   if (state.battle.pending) {
-    state.battle.lastSettled = { id: state.battle.pending.id, outcome: 'interrupted', gainedXP: 0, reward: null };
-    state.battle.pending = null;
+    return { ok: false, msg: '已有未结束战斗，请先结束或中断' };
   }
   if (spec.mode === 'arena') {
     if (state.arena.attempts <= 0) return { ok: false, msg: '今日演武次数不足' };
     state.arena.attempts -= 1;
   }
+  const original = state, backup = JSON.parse(JSON.stringify(state));
   const seq = state.battle.nextSeq++;
   const id = 'b' + seq;
   const mode = spec.mode || 'campaign', index = spec.index || 0;
@@ -845,8 +911,24 @@ function beginBattle(spec) {
     levelAtStart: state.player.level, first,
     diff: spec.diff || 1, startedAt: Date.now()
   };
-  save();
+  try { save(); } catch (err) {
+    state = original; mergeStateInPlace(original, backup);
+    return { ok: false, msg: '战斗未能保存', error: err && err.message };
+  }
   return { ok: true, ...state.battle.pending };
+}
+
+function interruptBattle(battleId, reason) {
+  const pending = state.battle.pending;
+  if (!pending || pending.id !== battleId) return { ok: false, msg: '战斗已失效' };
+  const original = state, backup = JSON.parse(JSON.stringify(state));
+  state.battle.pending = null;
+  state.battle.lastSettled = { id: battleId, outcome: 'interrupted', gainedXP: 0, reward: null, reason: reason || 'interrupted' };
+  try { save(); return { ok: true, id: battleId }; }
+  catch (err) {
+    state = original; mergeStateInPlace(original, backup);
+    return { ok: false, msg: '中断状态未保存', error: err && err.message };
+  }
 }
 
 function battleXP(pending, win) {
@@ -873,6 +955,7 @@ function settleBattle(battleId, outcome) {
   const original = state, backup = JSON.parse(JSON.stringify(state));
   state = JSON.parse(JSON.stringify(state));
   try {
+    checkDailyReset();
     const win = outcome.win === true;
     let reward = null;
     if (pending.mode === 'campaign') {
@@ -888,7 +971,8 @@ function settleBattle(battleId, outcome) {
     } else if (pending.mode === 'arena') {
       reward = arenaFight(win, pending.diff, true);
     }
-    if (win) bumpQuest('q_battle1', 1);
+    if (win) { bumpQuest('q_battle1', 1); bumpQuest('q_win3', 1); }
+    if (pending.mode === 'tower') bumpQuest('q_tower1', 1);
     const xp = battleXP(pending, win);
     const level = addPlayerXP(xp);
     state.battle.pending = null;
@@ -935,14 +1019,14 @@ function questList() {
   }));
 }
 function claimQuest(qid) {
-  const q = IT.QUESTS.find(x => x.id === qid);
-  if (!q) return { ok: false };
-  if ((state.daily.quests[qid] || 0) < q.target) return { ok: false, msg: '任务未完成' };
-  if (state.daily.claimed.indexOf(qid) >= 0) return { ok: false, msg: '已领取' };
-  state.daily.claimed.push(qid);
-  state.res.active = state.res.active || 0;
-  applyReward(q.reward);
-  return { ok: true, reward: q.reward, act: q.act };
+  return withSavedMutation(() => {
+    const q = IT.QUESTS.find(x => x.id === qid);
+    if (!q) return { ok: false };
+    if ((state.daily.quests[qid] || 0) < q.target) return { ok: false, msg: '任务未完成' };
+    if (state.daily.claimed.indexOf(qid) >= 0) return { ok: false, msg: '已领取' };
+    state.daily.claimed.push(qid); applyReward(q.reward);
+    return { ok: true, reward: q.reward, act: q.act };
+  });
 }
 function activePoints() {
   let pts = 0;
@@ -952,14 +1036,47 @@ function activePoints() {
   return pts;
 }
 function claimActiveChest(idx) {
-  const chest = IT.ACTIVE_CHESTS[idx];
-  if (!chest) return { ok: false };
-  if (state.daily.active.indexOf(idx) >= 0) return { ok: false, msg: '已领取' };
-  if (activePoints() < chest.need) return { ok: false, msg: '活跃度不足' };
-  state.daily.active.push(idx);
-  applyReward(chest.reward);
-  return { ok: true, reward: chest.reward };
+  return withSavedMutation(() => {
+    const chest = IT.ACTIVE_CHESTS[idx];
+    if (!chest) return { ok: false };
+    if (state.daily.active.indexOf(idx) >= 0) return { ok: false, msg: '已领取' };
+    if (activePoints() < chest.need) return { ok: false, msg: '活跃度不足' };
+    state.daily.active.push(idx); applyReward(chest.reward);
+    return { ok: true, reward: chest.reward };
+  });
 }
+
+function claimDailyRewards(includeIdle) {
+  const original = state, backup = JSON.parse(JSON.stringify(state));
+  state = JSON.parse(JSON.stringify(state));
+  const before = Object.assign({}, state.res);
+  const claimedQuestIds = [], claimedChestIds = [];
+  try {
+    checkDailyReset();
+    const idle = includeIdle ? claimIdleInternal(false) : { gold: 0, scroll: 0, iron: 0, changed: false };
+    IT.QUESTS.forEach(q => {
+      if ((state.daily.quests[q.id] || 0) >= q.target && state.daily.claimed.indexOf(q.id) < 0) {
+        state.daily.claimed.push(q.id); applyReward(q.reward); claimedQuestIds.push(q.id);
+      }
+    });
+    IT.ACTIVE_CHESTS.forEach((chest, idx) => {
+      if (activePoints() >= chest.need && state.daily.active.indexOf(idx) < 0) {
+        state.daily.active.push(idx); applyReward(chest.reward); claimedChestIds.push(idx);
+      }
+    });
+    const rewards = {};
+    Object.keys(state.res).forEach(k => { const delta = (state.res[k] || 0) - (before[k] || 0); if (delta) rewards[k] = delta; });
+    const changed = !!(idle.changed || claimedQuestIds.length || claimedChestIds.length);
+    if (changed) save();
+    const committed = state; state = original; mergeStateInPlace(original, committed);
+    return { ok: true, changed, rewards, idle, claimedQuestIds, claimedChestIds };
+  } catch (err) {
+    state = original; mergeStateInPlace(original, backup);
+    return { ok: false, changed: false, msg: '领取未保存，请重试', error: err && err.message };
+  }
+}
+function claimAllDailyRewards() { return claimDailyRewards(false); }
+function claimFreeRewards() { return claimDailyRewards(true); }
 function applyReward(r) {
   if (!r || typeof r !== 'object') return;
   if (r.gold) state.res.gold += r.gold;
@@ -992,15 +1109,16 @@ module.exports = {
   load, save, getState, checkDailyReset, SAVE_KEY,
   allRoster, getOwned, addHeroCard, grantCard, crystalInfo, effectiveLevel, playerLevel, playerXpNeeded, addPlayerXP, levelCap, calcHero,
   levelUp, ascend, ascendPreview, foodPoints, dismiss, resetHero, convertCards, setCardsLocked, addChoiceVoucher, useChoiceVoucher, firstWinChoice, claimFirstWinChoice,
-  getFormationCalc, setFormationSlot, formationFactionBonus, teamPower, playerUnits, enemyUnits,
-  getArmoryBonuses, getArmoryState, armoryUnlock, armorySelect, armoryUpgrade, armoryClaimBox, grantArmoryItem,
+  getFormationCalc, setFormationSlot, applyFormation, formationFactionBonus, teamPower, playerUnits, enemyUnits,
+  getArmoryBonuses, getArmoryState, armoryUnlock, armorySelect, armoryUpgrade, armoryClaimBox, grantArmoryItem, applyArmoryRecommendations,
   addEquip, equipInventory, equipTo, unequip, enhanceEquip, fodderPickIds, salvageEquip, salvageBatch, isEquipped,
   migrateSaveV1, migrateSaveV2, migrateSaveV3, migrateSaveV4, normalizeState,
   idlePending, idleTick, claimIdle, fastReward,
   doSummon, rollRarity, pickHeroOfRarity,
   winCampaign, winTower, arenaFight, beginBattle, settleBattle,
   markStorySeen, isStorySeen,
-  questList, claimQuest, activePoints, claimActiveChest, bumpQuest, applyReward,
+  questList, claimQuest, activePoints, claimActiveChest, claimAllDailyRewards, claimFreeRewards, bumpQuest, applyReward,
+  interruptBattle, setAutoBattleSpeed,
   buyGood, CURRENCY_NAME,
   adCount, adBump
 };

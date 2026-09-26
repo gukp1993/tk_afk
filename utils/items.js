@@ -110,12 +110,12 @@ const SHOP_GOODS = [
 
 // ---- 每日任务 ----
 const QUESTS = [
-  { id: 'q_win3', name: '征战胜利 3 次', target: 3, reward: { gem: 20, iron: 80 }, act: 15 },
+  { id: 'q_win3', name: '任意战斗胜利 3 次', target: 3, reward: { gem: 20, iron: 80 }, act: 40 },
   { id: 'q_summon1', name: '点将 1 次', target: 1, reward: { gem: 15 }, act: 20 },
-  { id: 'q_battle1', name: '战斗胜利 1 次', target: 1, reward: { gold: 20000 }, act: 15 },
-  { id: 'q_idle1', name: '领取挂机收益 1 次', target: 1, reward: { gold: 10000 }, act: 15 },
+  { id: 'q_battle1', name: '任意战斗胜利 1 次', target: 1, reward: { gold: 20000 }, act: 30 },
+  { id: 'q_idle1', name: '领取非零挂机收益 1 次', target: 1, reward: { gold: 10000 }, act: 30 },
   { id: 'q_arena1', name: '演武切磋 1 次', target: 1, reward: { gem: 15 }, act: 20 },
-  { id: 'q_tower1', name: '群英塔挑战 1 次', target: 1, reward: { gold: 30000 }, act: 15 }
+  { id: 'q_tower1', name: '群英塔完成战斗 1 次', target: 1, reward: { gold: 30000 }, act: 15 }
 ];
 const ACTIVE_CHESTS = [
   { need: 40, reward: { gem: 30 } },

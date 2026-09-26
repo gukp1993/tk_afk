@@ -32,6 +32,16 @@ const MAX_LEVEL = 200;
 // 账号统一等级：英雄共用玩家等级，升级经验只由战斗结算发放。
 const PLAYER_LEVEL = { max: MAX_LEVEL, baseXP: 100, stepXP: 20 };
 const BATTLE_XP = { base: 40, perEnemyLevel: 10, campaignFirst: 3, campaignRepeat: 1, towerFirst: 2, arenaWin: 1, training: 0.6 };
+// 前台自动出征会话参数；连续运行有明确上限，不影响单场手动战斗。
+const AUTO_BATTLE = {
+  defaultSpeed: 4,
+  resultDelaySeconds: 1.5,
+  recoveryLevelGain: 2,
+  recoveryMaxWins: 10,
+  recoveryMaxRounds: 2,
+  trainingBatchMaxWins: 10,
+  trainingBatchLevelGain: 2
+};
 
 // 升星兼容旧配置：个人英雄系统不再消耗兵魂。
 const ASCEND_COST = [
@@ -114,7 +124,7 @@ const AD = {
 
 module.exports = {
   FACTIONS, BEATS, FACTION_ADV, CLASSES, RARITIES,
-  LEVEL_CAPS, MAX_LEVEL, PLAYER_LEVEL, BATTLE_XP, ASCEND_COST, FOOD_VALUE,
+  LEVEL_CAPS, MAX_LEVEL, PLAYER_LEVEL, BATTLE_XP, AUTO_BATTLE, ASCEND_COST, FOOD_VALUE,
   goldCost, expCost, idleRates, IDLE_CAP_HOURS, ARMORY_IRON_PER_HOUR,
   FAST_REWARD_HOURS, FAST_REWARD_COST, FAST_REWARD_DAILY,
   GACHA, factionBonus, FORMATION_ROWS, BATTLE, ARENA, AD

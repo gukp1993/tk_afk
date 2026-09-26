@@ -70,11 +70,11 @@ module.exports = {
       const maxed = store.playerLevel() >= C.MAX_LEVEL;
       ui.text(maxed ? '等级已满' : '经验 ' + F.fmtNum(s.player.exp) + '/' + F.fmtNum(need), 361, 38, { size: 9, color: MUTED, align: 'right' });
     }
-    [['gold', '铜钱'], ['gem', '元宝'], ['scroll', '招募令']].forEach(([key, name], i) => {
-      const x = 8 + i * 122;
-      ui.panel(x, 64, 115, 25, { fill: '#ddd0b2', r: 5 });
+    [['gold', '铜钱'], ['gem', '元宝'], ['scroll', '招募令'], ['iron', '精铁']].forEach(([key, name], i) => {
+      const x = 8 + i * 91;
+      ui.panel(x, 64, 84, 25, { fill: '#ddd0b2', r: 5 });
       ui.text(name, x + 8, 71, { size: 10, color: MUTED });
-      ui.text(F.fmtNum(s.res[key]), x + 107, 70, { size: 12, bold: true, color: INK, align: 'right' });
+      ui.text(F.fmtNum(s.res[key]), x + 77, 70, { size: 11, bold: true, color: INK, align: 'right' });
     });
   },
   cityShortcut(x, y, glyph, name, id, cb, ready) {
@@ -85,19 +85,38 @@ module.exports = {
     if (ready) ui.tag('可领', x + 19, y - 4, '#9f4f3d');
   },
   drawCityDock(s, v) {
-    const y = app.H - 184;
+    const y = app.H - 220;
     const idle = this.idle || store.idlePending();
     const hasIdle = !!(idle.gold || idle.exp || idle.scroll || idle.iron);
+    const dailyReady = v.quests.some(q => q.done && !q.claimed) || v.chests.some(c => c.can && !c.claimed);
+    const canClaim = hasIdle || dailyReady;
     const mins = Math.floor(idle.hours * 60);
-    ui.panel(0, y, 375, 132, { fill: PAPER, r: 0 });
-    ui.text(v.stageName, 14, y + 9, { size: 14, color: INK, bold: true });
-    ui.text('第 ' + v.stageNo + ' 关' + (v.isBoss ? ' · 名将' : ''), 360, y + 11, { size: 10, color: MUTED, align: 'right' });
+    ui.panel(0, y, 375, 168, { fill: PAPER, r: 0 });
+    ui.text(v.stageName, 14, y + 7, { size: 13, color: INK, bold: true });
+    ui.text('第 ' + v.stageNo + ' 关' + (v.isBoss ? ' · 名将' : ''), 360, y + 9, { size: 10, color: MUTED, align: 'right' });
+    const goal = this.goal;
+    ui.panel(12, y + 27, 351, 35, { fill: '#ddd0b2', r: 5 });
+    ui.text(goal ? goal.title : '继续三国征途', 22, y + 32, { size: 11, color: INK, bold: true });
+    ui.btn(279, y + 31, 66, 26, { text: '查看目标 ›', style: 'plain', size: 9, id: 'city-goal', cb: () => this.openGoal(goal) });
+    ui.text(this.goalSummary(goal), 22, y + 49, { size: 8, color: MUTED });
     const training = typeof store.settleBattle === 'function' && typeof store.playerLevel === 'function';
-    ui.btn(12, y + 32, training ? 253 : 351, 40, { text: '出 征', style: 'red', size: 18, id: 'go-battle', cb: () => app.push('battle', { mode: 'campaign' }) });
-    if (training) ui.btn(273, y + 32, 90, 40, { text: '练兵', style: 'gold', size: 14, id: 'go-training', cb: () => app.push('battle', { mode: 'training' }) });
-    ui.text('挂机宝箱', 14, y + 83, { size: 13, color: INK, bold: true });
-    ui.text(idle.full ? '已满 · 及时领取' : '已积累 ' + Math.floor(mins / 60) + '时' + mins % 60 + '分', 14, y + 103, { size: 10, color: MUTED });
-    ui.btn(146, y + 86, 127, 34, { text: hasIdle ? '领取 · 精铁 ' + idle.iron : '收益积累中', style: 'gold', size: 10, id: 'idle-claim', disabled: !hasIdle, cb: () => this.claimIdle(false) });
-    ui.btn(281, y + 86, 82, 34, { text: '加速 / 双倍', style: 'plain', size: 10, id: 'idle-more', cb: () => { this.showIdle = true; } });
+    ui.btn(12, y + 67, training ? 253 : 351, 37, { text: '自动出征', sub: '遇阻有限练兵后停止', style: 'red', size: 16, id: 'go-battle', cb: () => app.push('battle', { mode: 'campaign', auto: true }) });
+    if (training) ui.btn(273, y + 67, 90, 37, { text: '练兵', sub: '最多10胜', style: 'gold', size: 12, id: 'go-training', cb: () => app.push('battle', { mode: 'training', auto: true }) });
+    ui.text('离线收益' + (dailyReady ? ' · 日常可领' : '') , 14, y + 113, { size: 11, color: INK, bold: true });
+    ui.text(idle.full ? '已满 · ' + C.IDLE_CAP_HOURS + '小时' : '积累 ' + Math.floor(mins / 60) + '时' + mins % 60 + '分', 14, y + 132, { size: 9, color: MUTED });
+    ui.btn(141, y + 111, 128, 34, { text: canClaim ? '一键收获' : '收益积累中', style: 'gold', size: 11, id: 'idle-claim', disabled: !canClaim, cb: () => this.claimFreeRewards() });
+    ui.btn(278, y + 111, 85, 34, { text: '加速 / 双倍', style: 'plain', size: 9, id: 'idle-more', cb: () => { this.showIdle = true; } });
+  },
+  goalSummary(goal) {
+    if (!goal) return '';
+    const a = goal.action || {}, p = goal.progress || {}, reward = goal.rewardPreview || {};
+    if (p.remaining != null) return '进度 ' + p.current + '/' + p.target + ' · 章末宝箱与阶段自选权益';
+    if (a.focusFirstWin) return '选择一张初始名将同名卡';
+    if (a.id && a.focus === 'ascend') return '确认升星后，等级继续与全体武将共享';
+    if (a.boxQ) return '待选军械箱 · 品质 ' + a.boxQ;
+    if (a.pickRarity) return '待用 ' + (a.pickRarity === 3 ? 'SR' : 'SSR') + ' 自选券';
+    if (a.recommendations) return a.recommendations.length + ' 个部位有免费提升';
+    if (reward.replacements) return reward.replacements.length + ' 个部位有免费提升';
+    return '点击查看奖励与操作入口';
   }
 };
