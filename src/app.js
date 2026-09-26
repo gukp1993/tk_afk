@@ -40,9 +40,20 @@ const app = {
     store.checkDailyReset();
 
     // 触摸（逻辑坐标）
-    const toLogic = (t) => ({ x: t.clientX / this.scale, y: t.clientY / this.scale });
-    api.onTouchStart((e) => { const p = toLogic(e.touches[0]); ui.onTouchStart(p.x, p.y); });
-    api.onTouchMove((e) => { const p = toLogic(e.touches[0]); ui.onTouchMove(p.x, p.y); });
+    const toLogic = (t) => {
+      const x = Number.isFinite(t.clientX) ? t.clientX : Number.isFinite(t.x) ? t.x : t.pageX;
+      const y = Number.isFinite(t.clientY) ? t.clientY : Number.isFinite(t.y) ? t.y : t.pageY;
+      return { x: x / this.scale, y: y / this.scale };
+    };
+    const firstTouch = e => e && ((e.touches && e.touches[0]) || (e.changedTouches && e.changedTouches[0]));
+    api.onTouchStart((e) => {
+      const t = firstTouch(e); if (!t) return;
+      const p = toLogic(t); if (Number.isFinite(p.x) && Number.isFinite(p.y)) ui.onTouchStart(p.x, p.y);
+    });
+    api.onTouchMove((e) => {
+      const t = firstTouch(e); if (!t) return;
+      const p = toLogic(t); if (Number.isFinite(p.x) && Number.isFinite(p.y)) ui.onTouchMove(p.x, p.y);
+    });
     api.onTouchEnd((e) => {
       if (e.changedTouches && e.changedTouches[0]) {
         const p = toLogic(e.changedTouches[0]);

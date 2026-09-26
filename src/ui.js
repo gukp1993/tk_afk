@@ -54,19 +54,24 @@ const ui = {
   onTouchMove(x, y) {
     if (!this.touch) return;
     this.touch.x = x; this.touch.y = y;
-    if (Math.abs(x - this.touch.sx) > 6 || Math.abs(y - this.touch.sy) > 6) this.touch.moved = true;
-    if (this.touch.dragKey && this.touch.moved) {
-      const s = this.touch.dragScene;
-      const reg = s.scrollReg[this.touch.dragKey] || {};
-      let v = this.touch.startScroll - (y - this.touch.sy);
-      const min = 0, max = Math.max(0, reg.contentH - reg.viewH);
-      s.scroll[this.touch.dragKey] = Math.max(min, Math.min(max, v));
-      this.touch.moved = true;
-    }
+    this._updateTouchScroll(this.touch, x, y);
+  },
+  _updateTouchScroll(touch, x, y) {
+    if (Math.abs(x - touch.sx) > 6 || Math.abs(y - touch.sy) > 6) touch.moved = true;
+    if (!touch.dragKey || !touch.moved) return;
+    const scene = touch.dragScene;
+    const reg = scene.scrollReg[touch.dragKey] || {};
+    const max = Math.max(0, (reg.contentH || 0) - (reg.viewH || 0));
+    const offset = touch.startScroll - (y - touch.sy);
+    scene.scroll[touch.dragKey] = Math.max(0, Math.min(max, offset));
   },
   onTouchEnd(x, y) {
     if (!this.touch) return;
-    const t = this.touch; this.touch = null;
+    const t = this.touch;
+    // Some runtimes coalesce a fast swipe into start/end events without a move event.
+    // Apply the final displacement here as well so scrolling never depends on move cadence.
+    this._updateTouchScroll(t, x, y);
+    this.touch = null;
     const wasPressed = this.pressedId; this.pressedId = null;
     if (!t.moved) {
       const hit = this.hitAt(x, y);

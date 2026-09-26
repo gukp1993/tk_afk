@@ -149,6 +149,31 @@ test('真实拖动滚动列表，不误触按钮', () => {
   assert.strictEqual(count, 0);
 });
 
+test('英雄列表和编队选将页在快速手势只触发起止事件时仍可滚动', () => {
+  const roster = require('../utils/heroes').HEROES;
+  roster.slice(5, 45).forEach(hero => store.grantCard(hero.id));
+
+  app.switchTab('heroes'); draw(852);
+  let area = ui.dragAreas.find(x => x.scene === app.scenes.heroes && x.key === 'grid');
+  assert(area && area.scene.scrollReg.grid.contentH > area.h, '英雄列表应有可滚动内容');
+  ui.onTouchStart(area.x + area.w / 2, area.y + area.h * 0.7);
+  ui.onTouchEnd(area.x + area.w / 2, area.y + area.h * 0.35);
+  assert(app.scenes.heroes.scroll.grid > 0, '英雄列表抬手时应提交最终滚动位移');
+
+  app.switchTab('formation'); draw(852);
+  const slot = ui.hitAreas.find(x => x.id === 'slot-0');
+  assert(slot, '编队页面应有可选槽位');
+  tap(slot.x + slot.w / 2, slot.y + slot.h / 2);
+  draw(852);
+  area = ui.dragAreas.find(x => x.scene === app.scenes.formation && x.key === 'picker');
+  assert(area && area.scene.scrollReg.picker.contentH > area.h, '选将列表应有可滚动内容');
+  ui.onTouchStart(area.x + area.w / 2, area.y + area.h * 0.7);
+  ui.onTouchEnd(area.x + area.w / 2, area.y + area.h * 0.35);
+  assert(app.scenes.formation.scroll.picker > 0, '编队选将页抬手时应提交最终滚动位移');
+  app.switchTab('home');
+});
+
+
 [false, true].forEach(closable => test('弹窗隔离底层点击和滚动（可关闭=' + closable + '）', () => {
   begin();
   const scene = { scroll: { list: 40 } };
