@@ -4,7 +4,7 @@
 
 ## 当前有效基线（2026-09-26 核对）
 
-- 项目：三国放置卡牌小游戏（Canvas 渲染），玩法对标 AFK Arena；**微信 + 抖音双平台**（2026-09-26 起）。微信 AppID `wx03eb4074ce45033b`；抖音 AppID 占位符待用户替换。
+- 项目：三国放置卡牌小游戏（Canvas 渲染），玩法对标 AFK Arena；**微信 + 抖音双平台**（2026-09-26 起）。微信 AppID `wx03eb4074ce45033b`；抖音 AppID `ttdd05abb8437df5b602`（2026-09-26 已填入）。
 - 仓库：远程 `github.com/gukp1993/tk_afk`（SSH 推送，分支 main）；本地 `/Users/gukepeng/Desktop/ai/miniProgram/tk_afk`。
 - 技术形态：原生 JS，无 npm 依赖。共享源码 `src/`（表现层）+ `utils/`（内核，`platform.js` 为唯一 wx/tt 适配层）；`build.js` 把共享源码同步进打包目录 `wechat/`（微信开发者工具打开）与 `douyin/`（抖音开发者工具打开），打包目录内 src/utils 是 gitignore 的生成物。
 - 验证命令：`node build.js`（打包同步，发布前必跑）、`node test/smoke.js`（127 项，含广告桥接契约）、`node test/static-check.js`（285 项，含双平台入口/打包目录一致性/平台 API 收口）；离屏渲染审查 `node preview/mini/record.js` + `python3 preview/mini/makeview.py`。
@@ -15,6 +15,16 @@
 - 2026-09-26 初始提交 `a5516f7`、双平台改造提交已推送远程；协作设施 `AGENTS.md` 与本文件已建立。
 
 ## 最近交接（新 → 旧）
+
+### 抖音 AppID 接入（测试不发布） · zcode · 已实施，待验收
+
+时间：2026-09-26；执行者：zcode
+
+用户提供真实抖音 AppID `ttdd05abb8437df5b602`，替换 douyin/project.config.json 占位符；build.js 占位符警告随之消失。已给用户交付测试路径：抖音开放平台开发者工具导入 douyin/ 目录 → 模拟器测试 →「预览」扫码真机试玩，不点提审/发布即不对外；测试阶段无需软著/自审等发布资质。另发现工作树中 wechat/project.config.json 有微信开发者工具打开后自动回填的默认配置（setting 补全/isGameTourist 等），已单独 chore 提交；utils/heroes.js 等大改动属并行会话进行中工作，未触碰未提交。
+
+- 验证：node build.js 同步各 26 文件且无占位符警告；node test/smoke.js 361/361（含并行会话新增用例）；node test/static-check.js 286/286。
+- 下一步：用户在抖音开发者工具导入 douyin/ 做模拟器+真机预览测试；白屏/报错时把 Console 日志交回排查桥接层；提审发布时再补游戏资质材料（软著/自审报告，无内购不需版号）。
+- 依据/文档：douyin/project.config.json；README.md 发布流程表。
 
 ### AI 立绘/Q版生成方案问答（纯问答） · zcode · 无变更
 
