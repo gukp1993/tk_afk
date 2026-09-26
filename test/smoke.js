@@ -139,5 +139,143 @@ const b4 = battle.createBattle({
 const snapPct = b4.snapshot().filter(s => s.side === 'A');
 ok(snapPct.every(s => s.hp <= s.maxHp * 0.3 + 1), 'revive startHpPct applied: ' + JSON.stringify(snapPct.map(s => s.hp + '/' + s.maxHp)));
 
-console.log('\n' + pass + ' passed, ' + fail + ' failed');
-process.exit(fail > 0 ? 1 : 0);
+// ---------- 14. 广告桥接层（src/ads/bridge）：统一契约与平台兼容 ----------
+// platform.js 在首次 require 时定格 api：注入桩后清缓存重取，测完还原
+const asyncChecks = [];
+function fakeRewardedAd() {
+  const ls = { close: [], error: [] };
+  const calls = [];
+  let showFn = null;
+  return {
+    calls,
+    setShow(fn) { showFn = fn; },
+    load() { calls.push('load'); return Promise.resolve(); },
+    show() { calls.push('show'); return showFn ? showFn() : undefined; },
+    onClose(f) { ls.close.push(f); },
+    offClose(f) { const i = ls.close.indexOf(f); if (i >= 0) ls.close.splice(i, 1); },
+    onError(f) { ls.error.push(f); },
+    offError(f) { const i = ls.error.indexOf(f); if (i >= 0) ls.error.splice(i, 1); },
+    fireClose(res) { ls.close.slice().forEach(f => f(res)); },
+    fireError(e) { ls.error.slice().forEach(f => f(e)); },
+    boundCount() { return ls.close.length + ls.error.length; }
+  };
+}
+function withPlatform(globalName, stub, fn) {
+  global[globalName] = stub;
+  delete require.cache[require.resolve('../utils/platform')];
+  delete require.cache[require.resolve('../src/ads/bridge')];
+  try {
+    fn(require('../src/ads/bridge'));
+  } finally {
+    delete global[globalName];
+    delete require.cache[require.resolve('../utils/platform')];
+    delete require.cache[require.resolve('../src/ads/bridge')];
+  }
+}
+function asyncOk(promise, assertFn, name) {
+  asyncChecks.push(promise.then(v => { ok(assertFn(v), name); }).catch(e => { ok(false, name + ': ' + (e && e.message)); }));
+}
+function asyncOkReject(promise, name) {
+  asyncChecks.push(promise.then(() => { ok(false, name); }).catch(() => { ok(true, name); }));
+}
+
+// 微信（现代基础库）：show 返回 Promise，看完 → ended:true，终态后事件解绑、单例复用
+{
+  const ad = fakeRewardedAd();
+  ad.setShow(() => Promise.resolve());
+  withPlatform('wx', { createRewardedVideoAd: () => ad }, (bridge) => {
+    ok(bridge.available(), 'bridge available with rewarded stub');
+    const inst = bridge.createRewarded('u_wechat');
+    ok(bridge.createRewarded('u_wechat') === inst, 'bridge singleton per adUnitId');
+    asyncOk(inst.show(), r => r.ended === true && ad.boundCount() === 0,
+      'wechat: full watch resolves ended:true and unwires listeners');
+    setTimeout(() => ad.fireClose({ isEnded: true }), 0);
+  });
+}
+// 微信：show 失败 → 自动 load 重试一次 → 看完
+{
+  const ad = fakeRewardedAd();
+  let n = 0;
+  ad.setShow(() => { n += 1; return n === 1 ? Promise.reject(new Error('not loaded')) : Promise.resolve(); });
+  withPlatform('wx', { createRewardedVideoAd: () => ad }, (bridge) => {
+    asyncOk(bridge.createRewarded('u_retry').show(),
+      r => r.ended === true && ad.calls.join(',') === 'show,load,show',
+      'wechat: show-fail auto reloads then retries once');
+    setTimeout(() => ad.fireClose({ isEnded: true }), 0);
+  });
+}
+// 微信：show 失败伴随的 onError 噪音不打断重试（失败判定只走 promise 链）
+{
+  const ad = fakeRewardedAd();
+  let n = 0;
+  ad.setShow(() => { n += 1; return n === 1 ? Promise.reject(new Error('not loaded')) : Promise.resolve(); });
+  withPlatform('wx', { createRewardedVideoAd: () => ad }, (bridge) => {
+    asyncOk(bridge.createRewarded('u_noise').show(), r => r.ended === true,
+      'wechat: onError noise does not break load retry');
+    setTimeout(() => ad.fireError(new Error('not loaded')), 0);
+    setTimeout(() => ad.fireClose({ isEnded: true }), 5);
+  });
+}
+// 微信：提前关闭 → ended:false
+{
+  const ad = fakeRewardedAd();
+  ad.setShow(() => Promise.resolve());
+  withPlatform('wx', { createRewardedVideoAd: () => ad }, (bridge) => {
+    asyncOk(bridge.createRewarded('u_early').show(), r => r.ended === false,
+      'wechat: early close resolves ended:false');
+    setTimeout(() => ad.fireClose({ isEnded: false }), 0);
+  });
+}
+// 老基础库（show 无返回值）：结果走事件；提前关闭
+{
+  const ad = fakeRewardedAd();
+  withPlatform('wx', { createRewardedVideoAd: () => ad }, (bridge) => {
+    asyncOk(bridge.createRewarded('u_legacy').show(), r => r.ended === false,
+      'legacy no-promise: event close carries ended:false');
+    setTimeout(() => ad.fireClose({ isEnded: false }), 0);
+  });
+}
+// 老基础库：show 后 onError → reject
+{
+  const ad = fakeRewardedAd();
+  withPlatform('wx', { createRewardedVideoAd: () => ad }, (bridge) => {
+    asyncOkReject(bridge.createRewarded('u_err').show(), 'legacy no-promise: onError rejects');
+    setTimeout(() => ad.fireError(new Error('no fill')), 0);
+  });
+}
+// 抖音：load 在前 show 在后，看完 → ended:true
+{
+  const ad = fakeRewardedAd();
+  ad.setShow(() => Promise.resolve());
+  withPlatform('tt', { createRewardedVideoAd: () => ad }, (bridge) => {
+    asyncOk(bridge.createRewarded('u_douyin').show(),
+      r => r.ended === true && ad.calls.join(',') === 'load,show',
+      'douyin: loads before show, resolves ended:true');
+    setTimeout(() => ad.fireClose({ isEnded: true }), 0);
+  });
+}
+// 抖音老基础库：load/show 均无返回值，事件驱动
+{
+  const ad = fakeRewardedAd();
+  ad.load = () => { ad.calls.push('load'); return undefined; };
+  withPlatform('tt', { createRewardedVideoAd: () => ad }, (bridge) => {
+    asyncOk(bridge.createRewarded('u_tt_legacy').show(), r => r.ended === true,
+      'douyin legacy no-promise: event close resolves');
+    setTimeout(() => ad.fireClose({ isEnded: true }), 0);
+  });
+}
+// 平台无广告 API：available() 为 false
+withPlatform('wx', {}, (bridge) => {
+  ok(bridge.available() === false, 'bridge unavailable without rewarded API');
+});
+
+// 异步用例（广告桥接）全部 settle 后再汇总
+Promise.all(asyncChecks).then(() => {
+  console.log('\n' + pass + ' passed, ' + fail + ' failed');
+  process.exit(fail > 0 ? 1 : 0);
+}).catch((e) => {
+  fail += 1;
+  console.log('FAIL: bridge suite: ' + (e && e.message));
+  console.log('\n' + pass + ' passed, ' + fail + ' failed');
+  process.exit(1);
+});

@@ -1,15 +1,14 @@
-// 激励视频广告管理器
-// - 配置了 AD.rewardedUnitIds[平台]：走平台激励视频（单例），看完回调发奖（微信 wx / 抖音 tt，经 utils/platform 适配）
+// 激励视频广告管理器（业务门面：场景/频次/发奖判定/模拟广告 UI，平台接入差异在 ./ads/bridge 桥接层）
+// - 配置了 AD.rewardedUnitIds[平台]：走平台激励视频（微信/抖音各自的接入姿势由桥接层处理），看完回调发奖
 // - 未配置（当前状态）：内置"模拟广告"全屏播放页（3 秒倒计时→领取奖励），用于上线前测试完整流程
 const C = require('../utils/config');
 const store = require('../utils/store');
 const platform = require('../utils/platform');
-const api = platform.api;
+const bridge = require('./ads/bridge');
 const { ui } = require('./ui');
 const T = require('./theme');
 
 const state = { mock: null };
-let rewardedAd = null; // 官方要求单例，重复创建会导致重复播放
 
 function rewardedUnitId() {
   const ids = C.AD.rewardedUnitIds || {};
@@ -17,7 +16,7 @@ function rewardedUnitId() {
 }
 
 function isConfigured() {
-  return !!(rewardedUnitId() && api && api.createRewardedVideoAd);
+  return !!(rewardedUnitId() && bridge.available());
 }
 
 // 返回 true 表示已开始流程（同步）；结果经 onReward/onFail 异步回调
@@ -29,26 +28,15 @@ function showRewarded(placement, onReward, onFail) {
   if (!isConfigured()) return showMock(placement, onReward, onFail);
 
   try {
-    if (!rewardedAd) {
-      rewardedAd = api.createRewardedVideoAd({ adUnitId: rewardedUnitId() });
-    }
-    const ad = rewardedAd;
-    const onClose = (res) => {
-      ad.offClose && ad.offClose(onClose);
-      // 部分基础库不回传 res，按已看完处理；正常情况下 isEnded 为 true 才发奖
-      if (res && res.isEnded === false) {
-        onFail && onFail('未看完广告，无奖励');
-      } else {
+    bridge.createRewarded(rewardedUnitId()).show().then(({ ended }) => {
+      if (ended) {
         store.adBump(placement);
         onReward && onReward();
+      } else {
+        onFail && onFail('未看完广告，无奖励');
       }
-    };
-    ad.onClose && ad.onClose(onClose);
-    ad.show().catch(() => {
-      ad.load().then(() => ad.show()).catch(() => {
-        ad.offClose && ad.offClose(onClose);
-        onFail && onFail('广告拉取失败，稍后再试');
-      });
+    }).catch(() => {
+      onFail && onFail('广告拉取失败，稍后再试');
     });
     return true;
   } catch (e) {

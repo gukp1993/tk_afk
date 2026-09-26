@@ -1,4 +1,4 @@
-# tk_afk 共享上下文（挂机定三国 · 微信小游戏）
+# tk_afk 共享上下文（挂机定三国 · 微信/抖音双平台小游戏）
 
 > 本文件是跨会话、跨执行者（zcode / codex / 其他 harness）的共享上下文，按 `AGENTS.md`「共享上下文交接」纪律维护：**开工先读本文件；收工在「最近交接」最上方追加本轮条目**。只新增不删改，纠错追加新记录。"已实施"不等于"已验收"，同一任务双方结论分开展示。
 
@@ -7,14 +7,25 @@
 - 项目：三国放置卡牌小游戏（Canvas 渲染），玩法对标 AFK Arena；**微信 + 抖音双平台**（2026-09-26 起）。微信 AppID `wx03eb4074ce45033b`；抖音 AppID 占位符待用户替换。
 - 仓库：远程 `github.com/gukp1993/tk_afk`（SSH 推送，分支 main）；本地 `/Users/gukepeng/Desktop/ai/miniProgram/tk_afk`。
 - 技术形态：原生 JS，无 npm 依赖。共享源码 `src/`（表现层）+ `utils/`（内核，`platform.js` 为唯一 wx/tt 适配层）；`build.js` 把共享源码同步进打包目录 `wechat/`（微信开发者工具打开）与 `douyin/`（抖音开发者工具打开），打包目录内 src/utils 是 gitignore 的生成物。
-- 验证命令：`node build.js`（打包同步，发布前必跑）、`node test/smoke.js`（116 项）、`node test/static-check.js`（279 项，含双平台入口/打包目录一致性/平台 API 收口）；离屏渲染审查 `node preview/mini/record.js` + `python3 preview/mini/makeview.py`。
-- 广告为测试模式（内置模拟广告）；正式变现按平台填 `AD.rewardedUnitIds`（{wechat, douyin}），代码零改动切换。
+- 验证命令：`node build.js`（打包同步，发布前必跑）、`node test/smoke.js`（127 项，含广告桥接契约）、`node test/static-check.js`（285 项，含双平台入口/打包目录一致性/平台 API 收口）；离屏渲染审查 `node preview/mini/record.js` + `python3 preview/mini/makeview.py`。
+- 广告分两层：`src/ads.js` 业务门面（零平台分支）+ `src/ads/bridge.js` 桥接层（统一 `show() → Promise<{ended}>` 契约，微信/抖音接入差异收口）；当前测试模式（内置模拟广告），正式变现按平台填 `AD.rewardedUnitIds`（{wechat, douyin}）即切真广告。
 - 存档 key `sanguo_afk_save_v1`（平台存储，两平台相互独立）；改存档结构必须向后兼容旧档。
 - 根目录不再是开发者工具项目目录（入口文件已迁入 `wechat/`）；`legacy-miniprogram/` 旧版微信小程序存档参考，不参与打包。
 - `.gitignore`：`.DS_Store`、`project.private.config.json`、`node_modules/`、`*.log`、`*.tmp`、`/wechat/src|utils/`、`/douyin/src|utils/`。
 - 2026-09-26 初始提交 `a5516f7`、双平台改造提交已推送远程；协作设施 `AGENTS.md` 与本文件已建立。
 
 ## 最近交接（新 → 旧）
+
+### 广告桥接层（统一广告 API） · zcode · 已实施，待验收
+
+时间：2026-09-26；执行者：zcode
+
+按用户决策实施广告分层（目标：接真实广告时业务代码零改动、零平台分支）：①新建 `src/ads/bridge.js` 桥接层，自定义统一广告契约 `createRewarded(adUnitId) → { preload(), show() → Promise<{ended}> }`；微信实现 show 优先、失败自动 load→show 重试一次，抖音实现 load 在前（官方推荐、每次 show 前重拉），实例按 adUnitId 单例缓存，未知平台走微信同形实现兜底；②老基础库兼容：show()/load() 不返回 Promise 时同步不抛错即视为已发起、结果走 onClose/onError 事件，此时 onError 才参与失败判定（有 Promise 时 onError 视为同源噪音，不干扰重试——微信 show 失败会 rejection 与 onError 同时出现）；③`src/ads.js` 门面重写 showRewarded 为纯契约消费（.then 发奖/未看完、.catch 拉取失败），场景/频次/模拟广告 UI 不变，对外接口与配置零变化；④smoke 新增 11 项桥接契约用例（现代/老基础库 × 微信/抖音、重试链、onError 噪音门控、单例、终态解绑、无 API 可用性），收尾改异步汇总。与并行调研条目（抽卡/装备/英雄）无文件交集。
+
+- 决定：契约 resolve {ended:true|false} / reject=拉取失败，"平台未回传结果按看完处理"沿袭原行为；桥接层不做超时兜底（沿袭原实现，以平台事件为准）；preload() 已入契约暂不主动调用（留给将来进主城预热）；后续接插屏/横幅或新平台（快手等）只在 bridge 层扩展。
+- 验证：node build.js 同步各 26 文件；node test/smoke.js 127/127（116+11 桥接用例）；node test/static-check.js 285/285；node preview/mini/record.js 17 画面正常。开发中契约测试抓出一次真实缺陷（wire 误传 resolve 导致 resolve 布尔而非 {ended}），已修复并用例锁定。
+- 下一步：接真实广告时——微信流量主开通后填 AD.rewardedUnitIds.wechat（adunit-xxx 格式），抖音变现开通后填 .douyin（数字 ID），代码零改动；发布上传仍按 wechat/ douyin/ 打包目录各自打开；建议真机各验证一次真实广告拉取（开发者工具无法完整模拟真广告）。
+- 依据/文档：src/ads/bridge.js；src/ads.js；test/smoke.js §14；AGENTS.md 架构边界 4；README.md 广告章节。
 
 ### 立绘/Q版包体方案问答（纯问答） · zcode · 无变更
 
