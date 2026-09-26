@@ -16,6 +16,16 @@
 
 ## 最近交接（新 → 旧）
 
+### 存档丢失修复（心跳自动保存） · zcode · 已实施，待验收
+
+时间：2026-09-26；执行者：zcode
+
+用户报告开发者工具里重开小游戏总是回到初始状态。排查结论：存档读写与 v1→v2 迁移逻辑本身无缺陷，病根是**写档时机太薄**——全项目仅 2 个落盘点（app.js 的 onHide 切后台、battle.js 的战斗结算），而开发者工具的「编译」重启是硬重启、不触发 onHide，导致升级/招募/领挂机等日常操作全部不落盘。修复：src/app.js init() 增加 10 秒节流心跳自动保存（setInterval → store.save()，unref 兜底防 Node 离屏渲染进程挂起），丢失窗口压到 10 秒内，真机上与 onHide 双保险。仅改 src/app.js（该文件无并行改动，utils/store.js 等归属并行会话的文件未触碰）。另处置 douyin/ 打包目录污染：__MACOSX 解压垃圾已删，抖音官方模板工程移出为根目录 douyin-template/（未跟踪不入库）。
+
+- 验证：node build.js 同步各 26 文件；node test/smoke.js 361/361；node test/static-check.js 286/286；node preview/mini/record.js 17 画面正常（record 进程不因心跳定时器挂起）。真机/工具复测建议：玩几分钟（不打战斗）→ 编译重启 → 进度保留；「清除全部缓存」仍为重置进度的正确方式。
+- 下一步：若并行会话后续在 store.js 落 mutator 级落盘，心跳可保留作双保险；建议长期在 AGENTS.md 明确「存档写入 = 心跳 + onHide + 关键节点」三层约定。
+- 依据/文档：src/app.js；utils/store.js（load/save/migrateSaveV1 只读核对）。
+
 ### 开发者工具导入包体限制问答（纯问答） · zcode · 无变更
 
 时间：2026-09-26；执行者：zcode

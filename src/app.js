@@ -50,6 +50,10 @@ const app = {
     });
     api.onTouchCancel && api.onTouchCancel(() => { ui.touch = null; ui.pressedId = null; });
     api.onHide && api.onHide(() => store.save());
+    // 节流自动存档：开发者工具「编译」重启不触发 onHide，仅靠事件保存会表现为丢档；
+    // 心跳把丢失窗口压到间隔内，真机上与 onHide 双保险
+    const heartbeat = setInterval(() => store.save(), 10000);
+    heartbeat && heartbeat.unref && heartbeat.unref(); // Node 离屏渲染环境不阻塞进程退出
 
     this.last = Date.now();
     requestAnimationFrame(() => this.frame());
