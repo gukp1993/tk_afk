@@ -1,6 +1,14 @@
 # AGENTS.md — 挂机定三国（tk_afk，微信/抖音双平台小游戏）
 
-三国放置卡牌小游戏（Canvas 渲染），同时支持**微信小游戏**与**抖音小游戏**，玩法骨架对标《剑与远征》(AFK Arena)，全部武将/技能/文案/视觉为原创三国题材。微信 AppID `wx03eb4074ce45033b`；抖音 AppID 为占位符待填。远程仓库 `github.com/gukp1993/tk_afk`（SSH 推送，分支 main）。原生 JS，无构建链、无第三方运行时依赖；共享源码经 `build.js` 同步进各平台打包目录。
+三国放置卡牌小游戏，同时支持**微信小游戏**与**抖音小游戏**，玩法骨架对标《剑与远征》(AFK Arena)，全部武将/技能/文案/视觉为原创三国题材。微信 AppID `wx03eb4074ce45033b`；抖音 AppID `ttdd05abb8437df5b602`。远程仓库 `github.com/gukp1993/tk_afk`（SSH 推送，分支 main）。项目正在从原生 Canvas JS 迁移到仓库根目录的 Cocos Creator 工程；旧版共享源码仍可经 `build.js` 同步进各平台旧打包目录。
+
+## Cocos 迁移中的当前工程入口（2026-09-27）
+
+- **仓库根目录现为 Cocos Creator 3.8.8 项目**：`assets/scene/Main.scene` + `assets/scripts/` + `settings/` + `package.json`。不要再创建或使用 `cocos-client/` 子工程。`CocosBootstrap.ts` 管生命周期/导航/战斗执行，`assets/scripts/screens/` 管页面，`ui/` 管原生节点控件，`services/` 管自动出征与广告；页面不复制游戏数值。
+- `./scripts/cocos-build.sh web-desktop|wechatgame|bytedance-mini-game` 调用本机 Creator CLI；从 `utils/` 同步纯逻辑到 `assets/scripts/domain/`，小游戏生成包 AppID 从 `wechat/`、`douyin/` 配置同步。Cocos 生成目录 `build/`、`library/`、`temp/` 不入库。
+- Cocos 平台调用只放在手写的 `assets/scripts/domain/platform.ts` 与生成的广告桥接中；规则镜像由脚本生成且不可手改。下文 `utils/platform.js` 唯一平台入口的约束针对旧 Canvas 共享代码。
+- 旧 `src/`、`utils/`、`wechat/`、`douyin/` 暂作功能对照与回归基线。下文关于根目录“不是开发者工具项目目录”、无构建链及旧版发布方式的说明仅适用于旧 Canvas 基线；Cocos 功能对照与设备验收完成前不要删掉唯一已运行的旧版实现。
+- 现有 Cocos 工程尚处迁移阶段；构建成功不等于玩法、视觉或双平台设备验收通过。Cocos 界面应使用节点/组件，不再新建 Canvas 兼容壳或空白演示页。
 
 ## 共享上下文交接（2026-09-26 起）
 
@@ -14,6 +22,18 @@
 
 ## 常用命令
 
+当前 Cocos 主工程：
+
+```bash
+node scripts/cocos-sync-domain.js --check
+node /Applications/Cocos/Creator/3.8.8/CocosCreator.app/Contents/Resources/app.asar.unpacked/node_modules/typescript/bin/tsc --noEmit --pretty false
+./scripts/cocos-build.sh web-mobile
+./scripts/cocos-build.sh wechatgame
+./scripts/cocos-build.sh bytedance-mini-game
+```
+
+以下命令与目录属于旧 Canvas 基线，仍用于对照回归：
+
 ```bash
 node test/smoke.js               # 内核逻辑冒烟测试（388 项断言，含抽卡概率分布、广告桥接契约、剧情表完整性）
 node test/static-check.js        # 项目静态一致性检查（291 项，含双平台入口与打包目录一致性）
@@ -23,7 +43,7 @@ node preview/mini/record.js      # 离屏渲染逐屏截图（生成 out/*.svg �
 python3 preview/mini/makeview.py # 组织成 2×2 审查页（浏览器打开 out/view0.html 人工审查）
 ```
 
-微信开发者工具「导入项目」选择 **`wechat/`**，抖音开发者工具「导入项目」选择 **`douyin/`**（先跑 `node build.js`）。
+旧 Canvas 版：微信开发者工具「导入项目」选择 **`wechat/`**，抖音开发者工具「导入项目」选择 **`douyin/`**（先跑 `node build.js`）。Cocos 版则导入 **`build/wechatgame/`** 或 **`build/bytedance-mini-game/`**（先跑相应 Cocos 构建命令）。
 
 - 改 `utils/`（内核）或 `src/`（表现层）后至少跑 smoke + static-check；改渲染/UI 后再加跑离屏截图逐屏人工审查；发布打包前必须 `node build.js`。
 - 无 npm/构建链：不要引入构建步骤或第三方运行时依赖，除非用户明确要求。
@@ -55,14 +75,14 @@ python3 preview/mini/makeview.py # 组织成 2×2 审查页（浏览器打开 ou
 
 - `build.js` — 双平台打包同步脚本：把共享源码 `src/`、`utils/` 复制进各平台打包目录（整目录重建，防残留）；`--watch` 持续监听
 - `wechat/` — **微信小游戏打包目录**（微信开发者工具打开此目录）：`game.js`/`game.json`/`project.config.json` 为手工维护的平台入口与配置（AppID `wx03eb4074ce45033b`）；`src/`、`utils/` 为生成物（gitignore，勿手改）
-- `douyin/` — **抖音小游戏打包目录**（抖音开发者工具打开此目录）：结构同上；`project.config.json` 的 appid 目前是占位符 `tt0000000000000000`，发布前替换
+- `douyin/` — **旧 Canvas 抖音小游戏打包目录**（抖音开发者工具打开此目录）：结构同上；`project.config.json` 的 AppID 已填为 `ttdd05abb8437df5b602`
 - `src/` — 共享表现层（**只改这里**）：`app.js`（画布/主循环/触摸/场景导航/底部导航）、`scenes.js`（场景注册表，平台入口与离屏渲染共用）、`ui.js`（Canvas IMGUI：面板/按钮/滚动/弹窗/飘字）、`ads.js`（广告业务门面：场景/频次/发奖判定/模拟广告 UI，零平台分支）+ `ads/bridge.js`（广告桥接层：统一广告 API，平台接入差异到此为止）、`theme.js`（主题令牌：墨黑漆器 + 鎏金 + 朱砂）、`screens/`（主城/群英/点将/王庭/详情/编队/塔/演武/铁匠/集市/战斗）
 - `utils/` — 共享游戏内核，纯 JS、无平台依赖，小游戏版与 legacy 旧版共用：`platform.js`（**平台适配层**，唯一引用 wx/tt 的文件）、`config.js`（全局数值与广告位配置）、`heroes.js`、`story.js`（演义剧情关卡表：12 章×10 关文案与敌阵，纯数据）、`stages.js`、`items.js`、`battle.js`（可播种随机数战斗引擎）、`store.js`（存档）、`rng.js`、`fmt.js`
 - `preview/mini/` — 离屏渲染自检工具（Node 里跑起整个游戏，Canvas 调用录成 SVG 逐屏截图）；`out/` 为生成产物
 - `preview/`（根）— HTML 静态预览页（旧版 UI 参考）
 - `legacy-miniprogram/` — 旧版原生微信小程序完整实现，**不参与打包**；作存档参考与内核共用方
 - `test/` — `smoke.js`（内核逻辑 388 项，含抽卡四档概率分布、剧情表完整性）+ `static-check.js`（静态一致性 291 项，含双平台入口、打包目录与共享源码一致性、平台 API 收口检查）
-- 根目录不再有 `game.js`/`game.json`/`project.config.json`（已迁移至 `wechat/`），**根目录不是开发者工具项目目录**
+- 根目录是 Cocos Creator 项目目录；根目录不放旧版 `game.js`/`game.json`/`project.config.json`，Cocos CLI 生成的小游戏包位于 `build/wechatgame/` 与 `build/bytedance-mini-game/`
 - 打包目录只含运行必需文件（生成物同步自共享源码）；若新增根目录非运行目录，不影响打包，但记得同步进 `build.js` 的 `SHARED_DIRS` 逻辑考量
 
 ## 架构边界（改动前必读）
@@ -78,7 +98,7 @@ python3 preview/mini/makeview.py # 组织成 2×2 审查页（浏览器打开 ou
 ## 已知坑
 
 - 历史渲染缺陷（已修）：弹窗面板 NaN 高度、裁剪组 save/restore 泄漏、战斗站位过密——改 `ui.js` 或战斗渲染后用离屏截图逐屏回归，重点看弹窗与战斗屏。
-- `douyin/project.config.json` 的 appid 是占位符（`tt0000000000000000`），发布抖音前必须替换；`build.js` 每次运行都会检测提醒。
+- `douyin/project.config.json` 当前 AppID 为 `ttdd05abb8437df5b602`；如用户日后更换抖音账号，需同步修改该配置并重新构建 Cocos 包。
 - 忘跑 `node build.js` 会导致打包目录代码陈旧——static-check 第 6 节会以"内容一致"断言失败提示；开着 `node build.js --watch` 可避免。
 - `preview/mini/out/` 是生成产物，重新生成即可，不要手工编辑；提交与否跟随当次改动，保持仓库里与最新一次审查一致。
 - `.DS_Store` 会在各目录不断出现，已全局 gitignore，勿提交。

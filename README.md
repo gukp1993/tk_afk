@@ -1,15 +1,34 @@
 # 挂机定三国（三国放置卡牌 · 微信/抖音双平台小游戏）
 
+## Cocos Creator 主工程（迁移进行中）
+
+仓库根目录 `tk_afk/` 即 Cocos Creator 3.8.8 项目，直接用 Creator 打开此目录；`assets/scene/Main.scene` 是启动场景。`assets/scripts/CocosBootstrap.ts` 负责生命周期、导航与战斗执行，`assets/scripts/screens/` 按玩法页面渲染 Cocos 节点，`ui/` 提供原生节点控件，`services/` 管自动战斗和广告。`scripts/cocos-sync-domain.js` 从现有 `utils/` 生成 Cocos 的规则模块，保持存档 key 和玩法计算一致；生成模块不要手改。Cocos 生成文件位于根目录 `build/`、`library/`、`temp/`，均不入库。
+
+```bash
+./scripts/cocos-build.sh web-desktop
+./scripts/cocos-build.sh web-mobile
+./scripts/cocos-build.sh wechatgame
+./scripts/cocos-build.sh bytedance-mini-game
+```
+
+微信、抖音 Cocos 包在 `build/wechatgame/`、`build/bytedance-mini-game/`。构建脚本从旧平台配置同步 AppID。目前已接入真实存档、主线战斗、自动出征与练兵、挂机、召唤、英雄、共享军械、集市、塔和演武的基础入口；画面与完整交互仍在对照迁移，尚未通过双平台开发者工具及真机验收。下面的 `src/`、`utils/`、`wechat/`、`douyin/` 是对照和回归基线，在功能验收前保留。
+
+小游戏默认执行发布构建以缩减主包，Web 默认调试构建；需要排查小游戏时可用 `COCOS_DEBUG=true ./scripts/cocos-build.sh wechatgame` 临时覆盖。打包后仍须检查实际主包大小及开发者工具提示。
+
+## 旧 Canvas 基线
+
+以下内容保留旧版技术与玩法说明；部分早期养成数值已被 V2 调整，当前行为以 `utils/` 内规则和 `docs/cocos-migration-status.md` 的迁移对照为准。
+
 一款以三国为背景的卡牌放置类**小游戏**（Canvas 渲染），同时支持**微信小游戏**与**抖音小游戏**双平台，
 玩法骨架对标《剑与远征》(AFK Arena) 的核心循环。所有武将、技能、文案、视觉均为原创三国题材内容
 （历史人物为公版素材，未使用任何第三方游戏的美术或文本资产）。
 
 - 微信 AppID：`wx03eb4074ce45033b`（**小游戏类账号**，与项目类型匹配）
-- 抖音 AppID：`douyin/project.config.json` 中目前为占位符，发布前替换为你自己的抖音小游戏 AppID
+- 抖音 AppID：`ttdd05abb8437df5b602`
 - 平台差异由 `utils/platform.js` 适配层收口（wx / tt 唯一入口），游戏代码零平台分支
 - 旧版原生微信小程序实现完整保留在 `legacy-miniprogram/`（不参与打包），游戏内核与各版共用
 
-## 发布流程（双平台）
+## 旧 Canvas 发布流程（双平台）
 
 ```bash
 node build.js          # 把共享源码（src/ utils/）同步进 wechat/ douyin/ 打包目录
@@ -23,7 +42,7 @@ node build.js --watch  # 开发时开着：改共享源码自动同步
 
 共享代码只改根目录的 `src/`、`utils/`，打包目录里的同名目录是生成物（已 gitignore），手改会被覆盖。
 
-首次进入自动建号：赠送 刘备(SR)、关羽(SSR)、张飞(SR)、廖化(R) + 1888 元宝 + 12 招募令。
+首次进入自动建号：赠送 刘备(SSR)、关羽(SSR)、张飞(SSR)、廖化(N) + 1888 元宝 + 12 招募令。
 主城点「出征」开打；挂机收益实时累计，记得「一键领取」。
 
 ## 核心系统（对标 AFK Arena 逐项复刻）

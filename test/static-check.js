@@ -30,7 +30,7 @@ function walk(dir, out) {
   for (const f of fs.readdirSync(dir)) {
     const p = path.join(dir, f);
     if (fs.statSync(p).isDirectory()) {
-      if (['node_modules', 'preview', 'test', 'legacy-miniprogram', 'wechat', 'douyin', 'cocos-client'].includes(f)) continue;
+      if (['node_modules', 'preview', 'test', 'legacy-miniprogram', 'wechat', 'douyin', 'cocos-client', 'build', 'library', 'temp', 'local', 'settings', 'assets'].includes(f)) continue;
       walk(p, out);
     } else if (f.endsWith('.js')) out.push(p);
   }

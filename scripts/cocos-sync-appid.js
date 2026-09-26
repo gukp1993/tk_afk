@@ -7,7 +7,7 @@ const sourceDir = { wechatgame: 'wechat', 'bytedance-mini-game': 'douyin' }[plat
 if (!sourceDir) throw new Error(`Unsupported Cocos mini-game platform: ${platform}`);
 const root = path.resolve(__dirname, '..');
 const sourcePath = path.join(root, sourceDir, 'project.config.json');
-const outputPath = path.join(root, 'cocos-client', 'build', platform, 'project.config.json');
+const outputPath = path.join(root, 'build', platform, 'project.config.json');
 const source = JSON.parse(fs.readFileSync(sourcePath, 'utf8'));
 const output = JSON.parse(fs.readFileSync(outputPath, 'utf8'));
 if (!source.appid) throw new Error(`Missing appid in ${sourcePath}`);
