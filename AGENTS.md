@@ -61,7 +61,7 @@ python3 preview/mini/makeview.py # 组织成 2×2 审查页（浏览器打开 ou
 - `preview/mini/` — 离屏渲染自检工具（Node 里跑起整个游戏，Canvas 调用录成 SVG 逐屏截图）；`out/` 为生成产物
 - `preview/`（根）— HTML 静态预览页（旧版 UI 参考）
 - `legacy-miniprogram/` — 旧版原生微信小程序完整实现，**不参与打包**；作存档参考与内核共用方
-- `test/` — `smoke.js`（内核逻辑 361 项，含抽卡四档概率分布）+ `static-check.js`（静态一致性 286 项，含双平台入口、打包目录与共享源码一致性、平台 API 收口检查）
+- `test/` — `smoke.js`（内核逻辑 361 项，含抽卡四档概率分布）+ `static-check.js`（静态一致性 287 项，含双平台入口、打包目录与共享源码一致性、平台 API 收口检查）
 - 根目录不再有 `game.js`/`game.json`/`project.config.json`（已迁移至 `wechat/`），**根目录不是开发者工具项目目录**
 - 打包目录只含运行必需文件（生成物同步自共享源码）；若新增根目录非运行目录，不影响打包，但记得同步进 `build.js` 的 `SHARED_DIRS` 逻辑考量
 
