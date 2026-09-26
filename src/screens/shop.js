@@ -44,7 +44,8 @@ module.exports = {
     this.goods.forEach((g, i) => {
       const gy = y + i * 56;
       ui.panel(8, gy, 359, 50, {});
-      ui.text(g.name, 20, gy + 8, { size: 13 });
+      const rarColor = g.give && g.give.ssrPick ? T.RARITY[4].color : (g.give && g.give.srPick ? T.RARITY[3].color : null);
+      ui.text(g.name, 20, gy + 8, { size: 13, color: rarColor || undefined });
       if (g.isPick) ui.tag('自选', 20 + ui.textWidth(g.name, 13) + 8, gy + 8, T.GOLD);
       ui.text('限购 ' + g.bought + '/' + g.limit, 20, gy + 28, { size: 10, color: T.DIM });
       ui.btn(258, gy + 10, 98, 30, {
@@ -62,7 +63,7 @@ module.exports = {
     const r = store.buyGood(g.id);
     if (!r.ok) { ui.toast(r.msg || '购买失败'); return; }
     if (g.give.ssrPick || g.give.srPick) {
-      this.pickRarity = g.give.ssrPick ? 3 : 2;
+      this.pickRarity = g.give.ssrPick ? 4 : 3;
       this.pickList = heroes.HEROES.filter(h => h.rarity === this.pickRarity).map(h => ({
         id: h.id, name: h.name, surname: h.name.slice(0, 1), title: h.title,
         faction: h.faction, cls: h.cls, rarity: h.rarity, level: 1, star: 0, power: 0
@@ -73,7 +74,7 @@ module.exports = {
     this.refresh();
   },
   drawPick() {
-    const box = ui.modal(this.pickRarity === 3 ? '自 选 SSR 名 将' : '自 选 SR 名 将', 30, 130, 315, 460);
+    const box = ui.modal(this.pickRarity === 4 ? '自 选 SSR 名 将' : '自 选 SR 名 将', 30, 130, 315, 460);
     ui.setModalClose(() => { this.pickList = null; });
     ui.tap(0, 0, app.W, app.H, () => { this.pickList = null; }, 'pick-mask');
     const cols = 3, cw = (box.w - 16) / 3, chh = 104;
@@ -83,7 +84,7 @@ module.exports = {
       const col = i % cols, row = Math.floor(i / cols);
       const x = box.x + col * (cw + 8);
       const y = box.y + row * (chh + 8);
-      ui.panel(x, y, cw, chh, { ornate: h.rarity === 3 });
+      ui.panel(x, y, cw, chh, { ornate: h.rarity === 4 });
       ui.tap(x, y, cw, chh, () => {
         store.grantCard(h.id);
         this.pickList = null;

@@ -22,9 +22,10 @@ module.exports = {
     qun: { name: '群', color: '#c39af0', fill: 'rgba(154,110,208,0.24)' }
   },
   RARITY: {
-    1: { name: 'R', color: '#9db8d8', frame: '#5a7fa8' },
-    2: { name: 'SR', color: '#c99af0', frame: '#9a6ed0' },
-    3: { name: 'SSR', color: '#f0b95e', frame: '#e8a33d' }
+    1: { name: 'N', color: '#c8ccd4', frame: '#8a8f99' },
+    2: { name: 'R', color: '#6f9fd8', frame: '#4d7fb5' },
+    3: { name: 'SR', color: '#c99af0', frame: '#9a6ed0' },
+    4: { name: 'SSR', color: '#f0b95e', frame: '#e8a33d' }
   },
   font(size, bold) {
     return (bold ? 'bold ' : '') + size + 'px "Kaiti SC","STKaiti","KaiTi","STSong",serif';

@@ -133,12 +133,22 @@ const ui = {
     ctx.save();
     ctx.font = T.font(size, opts.bold);
     ctx.fillStyle = opts.color || T.DIM;
+    ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
     let line = '', yy = y;
+    // ASCII 词（数字/英文/百分号）不拆行：断行点落在词中间时整词移到下一行
+    const asciiRun = s => (s.match(/[A-Za-z0-9%.+]+$/) || [''])[0];
     for (const ch of ('' + str)) {
       if (ctx.measureText(line + ch).width > maxW && line) {
-        ctx.fillText(line, x, yy);
-        line = ch; yy += lineH;
+        const run = asciiRun(line);
+        if (run.length > 1 && run.length < line.length) {
+          ctx.fillText(line.slice(0, line.length - run.length), x, yy);
+          line = run + ch;
+        } else {
+          ctx.fillText(line, x, yy);
+          line = ch;
+        }
+        yy += lineH;
       } else line += ch;
     }
     if (line) { ctx.fillText(line, x, yy); yy += lineH; }

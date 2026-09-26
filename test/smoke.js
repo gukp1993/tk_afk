@@ -56,16 +56,21 @@ let g3 = 0;
 while (!b3.ended && g3 < 2000) { b3.step(0.1); g3++; }
 ok(b3.result().winner === 'A', 'overpower wins, took ' + g3 + ' ticks');
 
-// 6. 招募与保底
+// 6. 招募（四档固定概率，无保底）
 store.getState().res.gem = 288000;
-let sawSSR = false;
 for (let i = 0; i < 30; i++) {
   const r = store.doSummon('gem10');
   ok(r.ok, 'summon ok ' + i);
-  if (r.results.some(x => x.rarity === 3)) sawSSR = true;
+  ok(r.results.every(x => x.rarity >= 1 && x.rarity <= 4), 'rarity in 1..4 ' + i);
 }
-ok(sawSSR, 'gacha yields SSR eventually');
 ok(store.getState().summon.total === 300, 'summon counted');
+// 概率分布：2 万次 roll 的占比应在理论值容差内（≥3σ）
+const cc = { 1: 0, 2: 0, 3: 0, 4: 0 };
+for (let i = 0; i < 20000; i++) cc[store.rollRarity()]++;
+ok(Math.abs(cc[4] / 20000 - 0.02) < 0.004, 'ssr rate ~2%: ' + (cc[4] / 20000).toFixed(4));
+ok(Math.abs(cc[3] / 20000 - 0.10) < 0.006, 'sr rate ~10%: ' + (cc[3] / 20000).toFixed(4));
+ok(Math.abs(cc[2] / 20000 - 0.28) < 0.008, 'r rate ~28%: ' + (cc[2] / 20000).toFixed(4));
+ok(cc[1] > 0 && cc[1] / 20000 < 0.70, 'n rate ~60%: ' + (cc[1] / 20000).toFixed(4));
 
 // 7. 升级/升阶/遣散
 const s0 = store.getState();

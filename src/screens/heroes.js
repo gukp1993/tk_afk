@@ -71,8 +71,8 @@ module.exports = {
       const col = i % cols, row = Math.floor(i / cols);
       const gx = 8 + col * (gw + 8);
       const gy = y + row * (gh + 8);
-      const maxStar = [0, 3, 4, 5][h.rarity];
-      ui.panel(gx, gy, gw, gh, { ornate: h.rarity === 3 });
+      const maxStar = [0, 2, 3, 4, 5][h.rarity];
+      ui.panel(gx, gy, gw, gh, { ornate: h.rarity === 4 });
       ui.tap(gx, gy, gw, gh, () => app.push('heroDetail', { id: h.id }), 'hero-' + h.id);
       ui.heroFace(gx + 5, gy + 5, gw - 10, h, { mark: h.isTop5 ? '共鸣' : null });
       ui.text(h.name, gx + 5, gy + 74, { size: 13, bold: true });

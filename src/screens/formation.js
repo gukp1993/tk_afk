@@ -107,8 +107,8 @@ module.exports = {
       const col = i % cols, row = Math.floor(i / cols);
       const x = box.x + col * (cw + 8);
       const y = box.y + 34 + row * (chh + 8);
-      const maxStar = [0, 3, 4, 5][h.rarity];
-      ui.panel(x, y, cw, chh, { ornate: h.rarity === 3 });
+      const maxStar = [0, 2, 3, 4, 5][h.rarity];
+      ui.panel(x, y, cw, chh, { ornate: h.rarity === 4 });
       ui.tap(x, y, cw, chh, () => {
         store.setFormationSlot(this.pickSlot, h.id);
         this.pickSlot = -1;

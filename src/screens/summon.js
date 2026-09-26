@@ -69,21 +69,26 @@ module.exports = {
     ctx.fillStyle = T.GOLD;
     ctx.fillText('☯', 0, 0);
     ctx.restore();
-    ui.text('概率：SSR 2.5% · SR 12% · ' + C.GACHA.hardPity + ' 抽内含保底', 187, y + 128, { size: 10, color: T.DIM, align: 'center' });
+    ui.text('概率 SSR 2% · SR 10% · R 28% · N 60%', 187, y + 128, { size: 10, color: T.DIM, align: 'center' });
     y += 158;
 
-    // 保底进度
+    // 概率图例（四色稀有度）
     ui.panel(8, y, 359, 56);
-    ui.text('终得保底（' + this.sm.pity + '/' + C.GACHA.hardPity + ' 抽必出 SSR）', 20, y + 8, { size: 10, color: T.DIM });
-    ui.bar(20, y + 22, 320, 7, this.sm.pity / C.GACHA.hardPity, 'gold');
-    ui.text('心愿将星（' + this.sm.wish + '/' + C.GACHA.wishMax + ' 抽必出 SSR）', 20, y + 33, { size: 10, color: T.DIM });
-    ui.bar(20, y + 45, 320, 7, this.sm.wish / C.GACHA.wishMax, 'green');
+    ui.text('武将池 · 120 将 · 固定概率，无保底', 20, y + 8, { size: 10, color: T.DIM });
+    const legend = [T.RARITY[4], T.RARITY[3], T.RARITY[2], T.RARITY[1]];
+    legend.forEach((r, i) => {
+      const lx = 20 + i * 88;
+      ctx.fillStyle = r.color;
+      ctx.fillRect(lx, y + 24, 10, 10);
+      ui.text(r.name, lx + 15, y + 24, { size: 11, color: r.color, bold: true, baseline: 'top' });
+    });
+    ui.text('SSR 16 · SR 24 · R 43 · N 37', 20, y + 42, { size: 10, color: T.DIM });
     y += 64;
 
     // 招募按钮
     ui.btn(8, y, 110, 46, { text: '招募 ×1', sub: '📜 招募令 ×1', style: 'ghost', size: 14, id: 'pull1', cb: () => this.pull('scroll1') });
     ui.btn(126, y, 113, 46, { text: '招募 ×10', sub: '📜 招募令 ×10', style: 'gold', size: 14, id: 'pull10', cb: () => this.pull('scroll10') });
-    ui.btn(247, y, 112, 46, { text: '元宝十连', sub: '💵 2880 · 首十连出SSR', style: 'gold', size: 14, id: 'pullG', cb: () => this.pull('gem10') });
+    ui.btn(247, y, 112, 46, { text: '元宝十连', sub: '💵 2880', style: 'gold', size: 14, id: 'pullG', cb: () => this.pull('gem10') });
     y += 54;
     // 看广告免费招募
     const adLeft = ads.remaining('summon');
@@ -181,7 +186,7 @@ module.exports = {
         ctx2.strokeStyle = rar.frame;
         ctx2.lineWidth = 2;
         ctx2.stroke();
-        if (r.rarity === 3) {
+        if (r.rarity === 4) {
           ctx2.shadowColor = 'rgba(240,185,94,0.9)';
           ctx2.shadowBlur = 14;
           ctx2.stroke();

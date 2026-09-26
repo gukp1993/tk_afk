@@ -18,9 +18,10 @@ const CLASSES = {
 };
 
 const RARITIES = {
-  1: { key: 1, name: 'R', color: '#9db8d8', maxStar: 3, mult: 0.85 },
-  2: { key: 2, name: 'SR', color: '#c99af0', maxStar: 4, mult: 1.0 },
-  3: { key: 3, name: 'SSR', color: '#f0b95e', maxStar: 5, mult: 1.18 }
+  1: { key: 1, name: 'N', color: '#c8ccd4', maxStar: 2, mult: 0.8 },
+  2: { key: 2, name: 'R', color: '#6f9fd8', maxStar: 3, mult: 0.9 },
+  3: { key: 3, name: 'SR', color: '#b07fe0', maxStar: 4, mult: 1.0 },
+  4: { key: 4, name: 'SSR', color: '#f0a83e', maxStar: 5, mult: 1.15 }
 };
 
 // 每星属性倍率与等级上限
@@ -36,7 +37,7 @@ const ASCEND_COST = [
   { same: 2, food: 20, gold: 70000 },
   { same: 3, food: 30, gold: 160000 }
 ];
-const FOOD_VALUE = { 1: 1, 2: 2, 3: 4 };
+const FOOD_VALUE = { 1: 1, 2: 2, 3: 4, 4: 8 };
 
 // 等级消耗
 function goldCost(lv) { return Math.floor(90 * Math.pow(lv, 1.35)); }
@@ -60,10 +61,8 @@ const GACHA = {
   costScroll: 1,
   costTenGold: 2880,
   singleGold: 300,
-  rates: { ssr: 0.025, sr: 0.12 },
-  hardPity: 60,     // 累计 60 抽必出 SSR
-  wishMax: 30,      // 心愿值满 30 必出 SSR（十连池）
-  firstTenSSR: true // 首个十连必出 SSR
+  // 白/蓝/紫/橙 四档固定概率，无保底
+  rates: { ssr: 0.02, sr: 0.10, r: 0.28, n: 0.60 }
 };
 
 // 阵型加成（同阵营人数）

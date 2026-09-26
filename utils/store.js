@@ -31,7 +31,7 @@ function defaultState() {
     idle: { last: Date.now(), gold: 0, exp: 0, scroll: 0 },
     fast: { day: '', count: 0 },
     daily: { day: '', quests: {}, claimed: [], active: [] },
-    summon: { total: 0, pity: 0, wish: 0, firstTen: false },
+    summon: { total: 0 },
     ads: { day: '', counts: {} },
     buyLog: { day: '', buys: {} },
     settings: { speed: 1 }
@@ -429,13 +429,13 @@ function adBump(placement) {
   state.ads.counts[placement] = (state.ads.counts[placement] || 0) + 1;
 }
 
-// ---------- 招募 ----------
-function rollRarity(forceSSR) {
-  const g = C.GACHA;
-  if (forceSSR) return 3;
+// ---------- 招募（白/蓝/紫/橙 四档固定概率，无保底）----------
+function rollRarity() {
+  const g = C.GACHA.rates;
   const r = Math.random();
-  if (r < g.rates.ssr) return 3;
-  if (r < g.rates.ssr + g.rates.sr) return 2;
+  if (r < g.ssr) return 4;
+  if (r < g.ssr + g.sr) return 3;
+  if (r < g.ssr + g.sr + g.r) return 2;
   return 1;
 }
 function pickHeroOfRarity(rarity) {
@@ -457,18 +457,9 @@ function doSummon(type) {
   if (!costOk) return { ok: false, msg: '招募令/元宝不足' };
 
   const results = [];
-  let guaranteed = false;
-  if (count === 10 && !state.summon.firstTen) { guaranteed = true; state.summon.firstTen = true; }
   for (let i = 0; i < count; i++) {
-    state.summon.pity += 1;
-    state.summon.wish += 1;
     state.summon.total += 1;
-    let force = false;
-    if (state.summon.pity >= g.hardPity) { force = true; state.summon.pity = 0; }
-    if (state.summon.wish >= g.wishMax) { force = true; state.summon.wish = 0; }
-    if (guaranteed && i === count - 1 && !results.some(x => x.rarity === 3)) force = true;
-    const rarity = rollRarity(force);
-    if (rarity === 3) { state.summon.pity = 0; state.summon.wish = 0; }
+    const rarity = rollRarity();
     const id = pickHeroOfRarity(rarity);
     const isNew = !state.roster[id];
     addHeroCard(id);
