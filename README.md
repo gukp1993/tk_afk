@@ -1,17 +1,30 @@
-# 挂机定三国（三国放置卡牌 · 微信小游戏）
+# 挂机定三国（三国放置卡牌 · 微信/抖音双平台小游戏）
 
-一款以三国为背景的卡牌放置类**微信小游戏**（Canvas 渲染，`game.json` + `game.js` 入口），
+一款以三国为背景的卡牌放置类**小游戏**（Canvas 渲染），同时支持**微信小游戏**与**抖音小游戏**双平台，
 玩法骨架对标《剑与远征》(AFK Arena) 的核心循环。所有武将、技能、文案、视觉均为原创三国题材内容
 （历史人物为公版素材，未使用任何第三方游戏的美术或文本资产）。
 
-- AppID：`wx03eb4074ce45033b`（**小游戏类账号**，与项目类型匹配）
-- 旧版原生小程序实现完整保留在 `legacy-miniprogram/`（不参与打包），游戏内核与数值两版共用
+- 微信 AppID：`wx03eb4074ce45033b`（**小游戏类账号**，与项目类型匹配）
+- 抖音 AppID：`douyin/project.config.json` 中目前为占位符，发布前替换为你自己的抖音小游戏 AppID
+- 平台差异由 `utils/platform.js` 适配层收口（wx / tt 唯一入口），游戏代码零平台分支
+- 旧版原生微信小程序实现完整保留在 `legacy-miniprogram/`（不参与打包），游戏内核与各版共用
 
-## 快速开始
+## 发布流程（双平台）
 
-1. 微信开发者工具 →「导入项目」→ 选择本目录（AppID 已配置，compileType=game）。
-2. 首次进入自动建号：赠送 刘备(SR)、关羽(SSR)、张飞(SR)、廖化(R) + 1888 元宝 + 12 招募令。
-3. 主城点「出征」开打；挂机收益实时累计，记得「一键领取」。
+```bash
+node build.js          # 把共享源码（src/ utils/）同步进 wechat/ douyin/ 打包目录
+node build.js --watch  # 开发时开着：改共享源码自动同步
+```
+
+| 平台 | 操作 |
+|---|---|
+| 微信小游戏 | 微信开发者工具 →「导入项目」→ 选择 **`wechat/`** 目录（AppID 已配置，compileType=game） |
+| 抖音小游戏 | 抖音开发者工具 →「导入项目」→ 选择 **`douyin/`** 目录（先把 project.config.json 里的 appid 换成你的） |
+
+共享代码只改根目录的 `src/`、`utils/`，打包目录里的同名目录是生成物（已 gitignore），手改会被覆盖。
+
+首次进入自动建号：赠送 刘备(SR)、关羽(SSR)、张飞(SR)、廖化(R) + 1888 元宝 + 12 招募令。
+主城点「出征」开打；挂机收益实时累计，记得「一键领取」。
 
 ## 核心系统（对标 AFK Arena 逐项复刻）
 
@@ -44,31 +57,37 @@
 | 战斗结算 · 复活再战 | 败北后全队以 30% 血量再战同关 | 1 |
 
 **双模式设计**：
-- `AD.rewardedUnitId` 为空（当前）：点击按钮播放**内置模拟广告**（3 秒倒计时 → 领取奖励），开发者工具/体验版/真机都能完整验证流程与每日次数；
-- 正式变现：mp 控制台开通流量主（UV≥1000）→ 创建激励视频广告位 → 把 `adunit-xxx` 填入 `AD.rewardedUnitId`，所有按钮自动切换为真广告，代码无需再改。
+- `AD.rewardedUnitIds` 对应平台为空（当前）：点击按钮播放**内置模拟广告**（3 秒倒计时 → 领取奖励），开发者工具/体验版/真机都能完整验证流程与每日次数；
+- 正式变现：微信开通流量主（UV≥1000）→ 创建激励视频广告位 → 把 `adunit-xxx` 填入 `AD.rewardedUnitIds.wechat`；抖音开通变现后同理填 `AD.rewardedUnitIds.douyin`。各平台按钮自动切换为真广告，代码无需再改。
 
 广告计数随存档每日重置；提前关闭模拟广告或 `isEnded === false` 时不发奖。
 
 ## 架构
 
 ```
-game.json / game.js            小游戏入口与配置
-src/
+build.js                       双平台打包同步（src/ utils/ → wechat/ douyin/，--watch 可监听）
+wechat/                        微信小游戏打包目录（微信开发者工具打开）
+  game.js game.json project.config.json    平台入口与配置（手工维护）
+  src/ utils/                  共享源码生成物（gitignore，勿手改）
+douyin/                        抖音小游戏打包目录（抖音开发者工具打开），结构同上
+src/                           共享游戏代码（只改这里）
   app.js                       画布/主循环/触摸/场景导航/底部导航
+  scenes.js                    场景注册表（平台入口与离屏渲染共用）
   ui.js                        Canvas IMGUI 框架（面板/按钮/滚动/弹窗/飘字/脸谱）
   ads.js                       激励视频广告管理器（真实广告/内置模拟广告双模式）
   theme.js                     主题令牌（墨黑漆器 + 鎏金 + 朱砂）
-  screens/                     12 个场景（主城/群英/点将/王庭/详情/编队/塔/演武/铁匠/集市/战斗）
-utils/                         游戏内核（与旧版共用，纯 JS）
+  screens/                     11 个场景（主城/群英/点将/王庭/详情/编队/塔/演武/铁匠/集市/战斗）
+utils/                         共享游戏内核（纯 JS，无平台依赖）
+  platform.js                  平台适配层：全项目唯一引用 wx/tt 的文件
   config.js heroes.js stages.js items.js battle.js store.js rng.js fmt.js
 preview/mini/                  离屏渲染自检工具（见下）
-legacy-miniprogram/            旧版原生小程序实现（存档参考，不打包）
+legacy-miniprogram/            旧版原生微信小程序实现（存档参考，不打包）
 test/
   smoke.js                     内核逻辑冒烟测试（116 项断言）
-  static-check.js              项目静态一致性检查（187 项）
+  static-check.js              项目静态一致性检查（279 项，含双平台入口与打包目录一致性）
 ```
 
-内核（`utils/`）为纯 JS：可播种随机数的战斗引擎、存档、挂机、保底招募等，小程序版与小游戏版共用。
+内核（`utils/`）为纯 JS：可播种随机数的战斗引擎、存档、挂机、保底招募等，通过 `platform.js` 适配层访问平台能力，小游戏版与 legacy 版共用。
 
 ## 离屏渲染自检（无需开发者工具）
 
@@ -85,5 +104,5 @@ python3 preview/mini/makeview.py # 组织成 2×2 审查页
 
 ## 数据与存档
 
-- 存档经 `wx.setStorageSync` 持久化（key：`sanguo_afk_save_v1`），切后台自动保存。
+- 存档经平台存储持久化（微信 `wx.setStorageSync` / 抖音 `tt.setStorageSync`，经 `utils/platform.js` 适配；key：`sanguo_afk_save_v1`），切后台自动保存。两平台存档相互独立。
 - 开发者工具「清除缓存」即可重置进度。

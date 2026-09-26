@@ -3,14 +3,16 @@ const C = require('./config');
 const H = require('./heroes');
 const IT = require('./items');
 const F = require('./fmt');
+const platform = require('./platform');
 const { buildUnit } = require('./battle');
 
 const SAVE_KEY = 'sanguo_afk_save_v1';
-const hasWx = typeof wx !== 'undefined' && !!wx.setStorageSync;
+const api = platform.api;
+const hasStorage = !!api && !!api.setStorageSync;
 let memStore = {};
 
-function rawGet(k) { return hasWx ? wx.getStorageSync(k) : memStore[k]; }
-function rawSet(k, v) { if (hasWx) wx.setStorageSync(k, v); else memStore[k] = v; }
+function rawGet(k) { return hasStorage ? api.getStorageSync(k) : memStore[k]; }
+function rawSet(k, v) { if (hasStorage) api.setStorageSync(k, v); else memStore[k] = v; }
 
 let state = null;
 

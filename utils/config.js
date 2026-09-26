@@ -94,10 +94,11 @@ const BATTLE = {
 // 演武场
 const ARENA = { DAILY: 5, WIN_TOKENS: 2, LOSE_TOKENS: 1 };
 
-// 激励视频广告：rewardedUnitId 为空时使用内置模拟广告（测试模式，流程完整可验证）
-// 正式变现：开通流量主后把广告位 ID 填入 rewardedUnitId 即切换为真广告
+// 激励视频广告：按平台配置广告位 ID（微信 wechat / 抖音 douyin）
+// 对应平台为空时使用内置模拟广告（测试模式，流程完整可验证）
+// 正式变现：微信开通流量主 / 抖音开通星图变现后，把各自广告位 ID 填入对应字段即切换为真广告
 const AD = {
-  rewardedUnitId: '',
+  rewardedUnitIds: { wechat: '', douyin: '' },
   placements: {
     idle2x: { limit: 3, name: '双倍领取挂机收益' },
     fast:   { limit: 3, name: '免费快速收获 +2小时' },

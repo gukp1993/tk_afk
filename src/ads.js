@@ -1,16 +1,23 @@
 // 激励视频广告管理器
-// - 配置了 AD.rewardedUnitId：走 wx 激励视频（单例），看完回调发奖
+// - 配置了 AD.rewardedUnitIds[平台]：走平台激励视频（单例），看完回调发奖（微信 wx / 抖音 tt，经 utils/platform 适配）
 // - 未配置（当前状态）：内置"模拟广告"全屏播放页（3 秒倒计时→领取奖励），用于上线前测试完整流程
 const C = require('../utils/config');
 const store = require('../utils/store');
+const platform = require('../utils/platform');
+const api = platform.api;
 const { ui } = require('./ui');
 const T = require('./theme');
 
 const state = { mock: null };
 let rewardedAd = null; // 官方要求单例，重复创建会导致重复播放
 
+function rewardedUnitId() {
+  const ids = C.AD.rewardedUnitIds || {};
+  return ids[platform.name] || '';
+}
+
 function isConfigured() {
-  return !!(C.AD.rewardedUnitId && typeof wx !== 'undefined' && wx.createRewardedVideoAd);
+  return !!(rewardedUnitId() && api && api.createRewardedVideoAd);
 }
 
 // 返回 true 表示已开始流程（同步）；结果经 onReward/onFail 异步回调
@@ -23,7 +30,7 @@ function showRewarded(placement, onReward, onFail) {
 
   try {
     if (!rewardedAd) {
-      rewardedAd = wx.createRewardedVideoAd({ adUnitId: C.AD.rewardedUnitId });
+      rewardedAd = api.createRewardedVideoAd({ adUnitId: rewardedUnitId() });
     }
     const ad = rewardedAd;
     const onClose = (res) => {

@@ -39,9 +39,11 @@ function frames(n) {
 }
 
 // ---------- 载入游戏 ----------
-require('../../game.js');
+require('../../src/scenes'); // 场景注册表（与平台入口 game.js 共用）
 const { app } = require('../../src/app');
 const store = require('../../utils/store');
+app.init(); // 平台入口 game.js 的启动序列：init + 默认 tab
+app.switchTab('home');
 
 // ---------- 丰富预览数据 ----------
 const s = store.getState();

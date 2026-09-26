@@ -1,0 +1,15 @@
+{
+  "compileType": "game",
+  "appid": "tt0000000000000000",
+  "projectname": "guaji-ding-sanguo-douyin",
+  "setting": {
+    "es6": true,
+    "minified": true,
+    "urlCheck": false
+  },
+  "condition": {},
+  "editorSetting": {
+    "tabIndent": "insertSpaces",
+    "tabSize": 2
+  }
+}

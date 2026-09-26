@@ -3,6 +3,8 @@ const { ui } = require('./ui');
 const T = require('./theme');
 const store = require('../utils/store');
 const ads = require('./ads');
+const platform = require('../utils/platform');
+const api = platform.api; // wx（微信）/ tt（抖音）平台 API，经适配层获取
 
 const app = {
   canvas: null, ctx: null,
@@ -19,9 +21,9 @@ const app = {
   last: 0,
 
   init() {
-    const canvas = wx.createCanvas();
+    const canvas = api.createCanvas();
     this.canvas = canvas;
-    const info = wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync();
+    const info = api.getWindowInfo ? api.getWindowInfo() : api.getSystemInfoSync();
     const dpr = Math.min(2, info.pixelRatio || 2);
     const sw = info.screenWidth, sh = info.screenHeight;
     canvas.width = sw * dpr;
@@ -38,16 +40,16 @@ const app = {
 
     // 触摸（逻辑坐标）
     const toLogic = (t) => ({ x: t.clientX / this.scale, y: t.clientY / this.scale });
-    wx.onTouchStart((e) => { const p = toLogic(e.touches[0]); ui.onTouchStart(p.x, p.y); });
-    wx.onTouchMove((e) => { const p = toLogic(e.touches[0]); ui.onTouchMove(p.x, p.y); });
-    wx.onTouchEnd((e) => {
+    api.onTouchStart((e) => { const p = toLogic(e.touches[0]); ui.onTouchStart(p.x, p.y); });
+    api.onTouchMove((e) => { const p = toLogic(e.touches[0]); ui.onTouchMove(p.x, p.y); });
+    api.onTouchEnd((e) => {
       if (e.changedTouches && e.changedTouches[0]) {
         const p = toLogic(e.changedTouches[0]);
         ui.onTouchEnd(p.x, p.y);
       } else ui.onTouchEnd(ui.touch ? ui.touch.x : 0, ui.touch ? ui.touch.y : 0);
     });
-    wx.onTouchCancel && wx.onTouchCancel(() => { ui.touch = null; ui.pressedId = null; });
-    wx.onHide && wx.onHide(() => store.save());
+    api.onTouchCancel && api.onTouchCancel(() => { ui.touch = null; ui.pressedId = null; });
+    api.onHide && api.onHide(() => store.save());
 
     this.last = Date.now();
     requestAnimationFrame(() => this.frame());
