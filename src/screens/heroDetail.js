@@ -91,11 +91,14 @@ module.exports = {
       ui.tap(ex, y, ew, 58, () => this.tapEquip(slot), 'eq-' + slot);
       const names = { weapon: '兵刃⚔', armor: '铠甲🛡', helm: '头盔⛑', boots: '战靴👟' };
       if (inst) {
-        const tier = items.EQUIP_TIERS[inst.tier - 1];
-        ui.text(names[slot].slice(-1), ex + ew / 2, y + 4, { size: 16, align: 'center' });
-        ui.text(tier.name + (inst.enh > 0 ? '+' + inst.enh : ''), ex + ew / 2, y + 26, { size: 10, color: tier.color, align: 'center', bold: true });
-        const stText = this.statText(items.equipStat(inst.tier, inst.slot, inst.enh));
-        ui.text(stText, ex + ew / 2, y + 40, { size: 9, color: T.DIM, align: 'center' });
+        const Q = items.EQUIP_QUALITIES[inst.q];
+        const match = !!inst.faction && inst.faction === def.faction;
+        // 大字行：星级替代图标（金）；品质左、阵营右分置，互不挤压
+        ui.text(inst.stars > 0 ? '★' + inst.stars : names[slot].slice(-1), ex + ew / 2, y + 4, { size: 16, color: inst.stars > 0 ? T.GOLD : undefined, align: 'center' });
+        ui.text(Q.name, ex + 6, y + 26, { size: 10, color: Q.color, bold: true });
+        if (inst.faction) ui.text(C.FACTIONS[inst.faction].name + (match ? '✓' : ''), ex + ew - 6, y + 26, { size: 10, color: match ? T.GOLD : C.FACTIONS[inst.faction].color, align: 'right' });
+        const stText = this.statText(items.equipStat(inst.q, inst.slot, inst.stars, match));
+        ui.text(stText, ex + ew / 2, y + 40, { size: 9, color: match ? T.GOLD : T.DIM, align: 'center' });
       } else {
         ui.text(names[slot].slice(-1), ex + ew / 2, y + 4, { size: 16, color: T.DIM, align: 'center' });
         ui.text(names[slot].slice(0, -1), ex + ew / 2, y + 26, { size: 10, color: T.DIM, align: 'center' });
@@ -195,18 +198,22 @@ module.exports = {
     const list = store.equipInventory().filter(x => x.slot === slot);
     if (!list.length) { ui.toast('背包暂无该部位装备，出征可得'); return; }
     this.pickEquipSlot = slot;
-    this.pickList = list.slice().sort((a, b) => b.tier - a.tier);
+    this.pickList = list.slice().sort((a, b) => b.q - a.q || b.stars - a.stars);
   },
   drawEquipPicker() {
+    const def = heroes.getHero(this.params.id);
     const box = ui.modal('选 择 装 备', 50, 160, 275, 380);
     ui.setModalClose(() => { this.pickEquipSlot = null; });
     ui.tap(0, 0, app.W, app.H, () => { this.pickEquipSlot = null; }, 'eq-mask');
     ui.beginScroll(this, 'eqpick', box.x, box.y, box.w, box.h, this.pickList.length * 36);
     this.pickList.forEach((e, i) => {
-      const tier = items.EQUIP_TIERS[e.tier - 1];
+      const Q = items.EQUIP_QUALITIES[e.q];
+      const match = !!e.faction && e.faction === def.faction;
+      const head = Q.name + (e.stars > 0 ? ' ' + '★'.repeat(e.stars) : '') + (e.faction ? ' ' + C.FACTIONS[e.faction].name : '');
       const y = box.y + i * 36;
-      ui.text(tier.name + (e.enh > 0 ? ' +' + e.enh : ''), box.x, y, { size: 12, color: tier.color, bold: true });
-      ui.text(this.statText(items.equipStat(e.tier, e.slot, e.enh)), box.x + box.w, y, { size: 11, color: T.DIM, align: 'right' });
+      ui.text(head, box.x, y, { size: 12, color: Q.color, bold: true });
+      if (match) ui.text('匹配+30%', box.x + ui.textWidth(head, 12, true) + 6, y + 1, { size: 9, color: T.GOLD });
+      ui.text(this.statText(items.equipStat(e.q, e.slot, e.stars, match)), box.x + box.w, y, { size: 11, color: match ? T.GOLD : T.DIM, align: 'right' });
       ui.tap(box.x, y - 4, box.w, 34, () => {
         store.equipTo(this.params.id, this.pickEquipSlot, e.id);
         this.pickEquipSlot = null;

@@ -146,7 +146,7 @@ module.exports = {
       lines.push('首通奖励：元宝 ' + rw.gem);
       lines.push('铜钱 +' + F.fmtNum(rw.gold) + ' · 兵书 +' + F.fmtNum(rw.exp));
       if (rw.scroll) lines.push('招募令 ×' + rw.scroll);
-      if (rw.equip) lines.push('获得 ' + items.EQUIP_TIERS[rw.equip.tier - 1].name + ' · ' + items.EQUIP_SLOTS[rw.equip.slot].name);
+      if (rw.equip) lines.push('获得 [' + items.EQUIP_QUALITIES[rw.equip.q].name + '] ' + items.EQUIP_SLOTS[rw.equip.slot].name + (rw.equip.faction ? '（' + C.FACTIONS[rw.equip.faction].name + '属）' : ''));
     } else if (this.mode === 'tower') {
       const rw = store.winTower(this.floor);
       if (rw.gem) {

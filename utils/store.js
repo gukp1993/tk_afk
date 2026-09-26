@@ -20,7 +20,7 @@ function defaultState() {
   const roster = {};
   C.BATTLE.STARTER.forEach(id => { roster[id] = newHero(id); });
   return {
-    v: 1, createdAt: Date.now(), name: '主公',
+    v: 2, createdAt: Date.now(), name: '主公',
     res: { gold: 60000, exp: 40000, gem: 1888, scroll: 12, token: 20, shard: 0 },
     roster,
     formation: ['guanyu', 'zhangfei', 'liaohua', 'liubei', null],
@@ -39,9 +39,28 @@ function defaultState() {
 }
 function newHero(id) { return { id, lv: 1, star: 0, cards: 0, equip: { weapon: null, armor: null, helm: null, boots: null } }; }
 
+// 旧档 v1（tier 1-6 / enh 0-12）→ v2（q 品质 1-4 / stars 星级 / faction 阵营）
+// 导出供冒烟测试直测；映射保持战力大致连续（旧 t6+12 ≈ 新 SSR 5★）
+const V1_TIER_TO_Q = { 1: 1, 2: 1, 3: 2, 4: 2, 5: 3, 6: 4 };
+function migrateSaveV1(raw) {
+  raw.v = 2;
+  Object.keys(raw.equips || {}).forEach(k => {
+    const e = raw.equips[k];
+    if (e.q) return;
+    e.q = V1_TIER_TO_Q[e.tier] || 1;
+    e.stars = Math.min(IT.EQUIP_QUALITIES[e.q].maxStar, Math.round((e.enh || 0) / 2.4));
+    e.faction = null;
+    delete e.tier; delete e.enh;
+  });
+  return raw;
+}
+
 function load() {
   const raw = rawGet(SAVE_KEY);
   if (raw && raw.v === 1) {
+    state = migrateSaveV1(raw);
+    save();
+  } else if (raw && raw.v === 2) {
     state = raw;
   } else {
     state = defaultState();
@@ -109,7 +128,7 @@ function calcHero(id) {
     if (!instId) continue;
     const inst = state.equips[instId];
     if (!inst) continue;
-    const add = IT.equipStat(inst.tier, inst.slot, inst.enh);
+    const add = IT.equipStat(inst.q, inst.slot, inst.stars, !!inst.faction && inst.faction === def.faction);
     stats = {
       hp: stats.hp + (add.hp || 0),
       atk: stats.atk + (add.atk || 0),
@@ -255,13 +274,16 @@ function enemyUnits(units) {
 }
 
 // ---------- 装备 ----------
-function addEquip(tier, slot) {
+const FACTION_KEYS = ['wei', 'shu', 'wu', 'qun'];
+function addEquip(q, slot) {
   const id = 'e' + (state.nextEquip++);
-  state.equips[id] = { id, tier, slot, enh: 0 };
+  const inst = { id, q, slot, stars: 0, faction: null };
+  // SR/SSR 掉落自带阵营（对标 AFK 对属装备）
+  if (q >= IT.FACTIONED_MIN_Q) inst.faction = FACTION_KEYS[Math.floor(Math.random() * FACTION_KEYS.length)];
+  state.equips[id] = inst;
   if (Object.keys(state.equips).length > 300) {
-    // 自动分解多余低阶装备
-    const ids = Object.keys(state.equips).filter(x => !isEquipped(x) && state.equips[x].tier <= 2);
-    ids.sort((a, b) => state.equips[a].tier - state.equips[b].tier);
+    // 自动清理多余 N 品装备（R 及以上是升星狗粮，保留）
+    const ids = Object.keys(state.equips).filter(x => !isEquipped(x) && state.equips[x].q === 1 && !state.equips[x].stars);
     for (const i of ids.slice(0, ids.length - 300 + 60)) delete state.equips[i];
   }
   return id;
@@ -290,22 +312,65 @@ function unequip(heroId, slot) {
   const own = state.roster[heroId];
   if (own) own.equip[slot] = null;
 }
-function enhanceEquip(instId) {
+// 升星：吃掉 fodderIds 里的装备攒强化点 + 铜钱（对标 AFK 强化）
+function enhanceEquip(instId, fodderIds) {
   const e = state.equips[instId];
-  if (!e || e.enh >= IT.MAX_ENH) return { ok: false, msg: '已满级' };
-  const cost = IT.enhanceCost(e.tier, e.enh);
-  if (state.res.gold < cost) return { ok: false, msg: '铜钱不足' };
-  state.res.gold -= cost;
-  e.enh += 1;
-  return { ok: true, enh: e.enh };
+  if (!e) return { ok: false, msg: '装备不存在' };
+  const maxStar = IT.EQUIP_QUALITIES[e.q].maxStar;
+  if (e.stars >= maxStar) return { ok: false, msg: '已满星' };
+  const need = IT.starNeed(e.q, e.stars);
+  const goldCost = IT.starGold(need);
+  if (state.res.gold < goldCost) return { ok: false, msg: '铜钱不足' };
+  const fodder = (fodderIds || [])
+    .map(id => state.equips[id])
+    .filter(x => x && x.id !== instId && !isEquipped(x.id));
+  if (!fodder.length) return { ok: false, msg: '请选择要消耗的装备' };
+  const pts = fodder.reduce((s, x) => s + IT.fodderPoints(x), 0);
+  if (pts < need) return { ok: false, msg: '强化点不足 ' + pts + '/' + need };
+  fodder.forEach(x => { delete state.equips[x.id]; });
+  state.res.gold -= goldCost;
+  e.stars += 1;
+  return { ok: true, stars: e.stars };
+}
+// 一键放入：从可选狗粮里由低到高凑满强化点，返回建议消耗的 id 列表
+function fodderPickIds(instId, ids) {
+  const e = state.equips[instId];
+  if (!e) return [];
+  const maxStar = IT.EQUIP_QUALITIES[e.q].maxStar;
+  if (e.stars >= maxStar) return [];
+  const need = IT.starNeed(e.q, e.stars);
+  const pool = (ids || [])
+    .map(id => state.equips[id])
+    .filter(x => x && x.id !== instId && !isEquipped(x.id))
+    .sort((a, b) => IT.fodderPoints(a) - IT.fodderPoints(b));
+  const picked = [];
+  let pts = 0;
+  for (const x of pool) {
+    if (pts >= need) break;
+    picked.push(x.id);
+    pts += IT.fodderPoints(x);
+  }
+  return picked;
 }
 function salvageEquip(instId) {
   const e = state.equips[instId];
   if (!e || isEquipped(instId)) return { ok: false, msg: '无法分解' };
-  const gold = Math.floor(IT.enhanceCost(e.tier, 0) * 0.4);
+  const gold = Math.floor(IT.fodderPoints(e) * IT.GOLD_PER_POINT * 0.4);
   delete state.equips[instId];
   state.res.gold += gold;
   return { ok: true, gold };
+}
+// 批量分解：所有未穿戴的指定品质（默认 N）0 星装备
+function salvageBatch(q) {
+  const ids = Object.keys(state.equips)
+    .filter(id => !isEquipped(id) && state.equips[id].q === (q || 1) && !state.equips[id].stars);
+  let gold = 0, n = ids.length;
+  ids.forEach(id => {
+    gold += Math.floor(IT.fodderPoints(state.equips[id]) * IT.GOLD_PER_POINT * 0.4);
+    delete state.equips[id];
+  });
+  state.res.gold += gold;
+  return { ok: n > 0, count: n, gold };
 }
 
 // ---------- 挂机 ----------
@@ -429,10 +494,10 @@ function winCampaign(stageIdx) {
     const { isBoss } = require('./stages').chapterOf(stageIdx);
     if (isBoss) reward.scroll = 1;
     if (Math.random() < 0.65) {
-      const tier = IT.dropTier(stageIdx);
+      const q = IT.dropQuality(stageIdx);
       const slot = IT.DROP_SLOTS[Math.floor(Math.random() * IT.DROP_SLOTS.length)];
-      reward.equip = { tier, slot };
-      addEquip(tier, slot);
+      const eqId = addEquip(q, slot);
+      reward.equip = { q, slot, faction: state.equips[eqId].faction };
     }
   } else {
     // 重复挑战仍给小额奖励
@@ -538,7 +603,8 @@ module.exports = {
   allRoster, getOwned, addHeroCard, grantCard, crystalInfo, effectiveLevel, levelCap, calcHero,
   levelUp, ascend, foodPoints, dismiss, resetHero,
   getFormationCalc, setFormationSlot, formationFactionBonus, teamPower, playerUnits, enemyUnits,
-  addEquip, equipInventory, equipTo, unequip, enhanceEquip, salvageEquip, isEquipped,
+  addEquip, equipInventory, equipTo, unequip, enhanceEquip, fodderPickIds, salvageEquip, salvageBatch, isEquipped,
+  migrateSaveV1,
   idlePending, idleTick, claimIdle, fastReward,
   doSummon, rollRarity, pickHeroOfRarity,
   winCampaign, winTower, arenaFight,

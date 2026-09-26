@@ -1,4 +1,7 @@
 // 装备、商店、每日任务定义
+// 装备系统对标剑与远征（AFK Arena）：
+//   四品质 白N/蓝R/紫SR/橙SSR → 强化改为"吃其他装备攒强化点 + 铜钱"逐星升星
+//   SR/SSR 掉落自带阵营，穿戴阵营匹配的武将属性 +30%
 // 装备槽：weapon 兵刃(atk) armor 铠甲(hp) helm 头盔(def) boots 战靴(hp+atk小)
 const EQUIP_SLOTS = {
   weapon: { key: 'weapon', name: '兵刃', icon: '⚔', stat: 'atk' },
@@ -6,36 +9,58 @@ const EQUIP_SLOTS = {
   helm:   { key: 'helm',   name: '头盔', icon: '⛑', stat: 'def' },
   boots:  { key: 'boots',  name: '战靴', icon: '👟', stat: 'hp2' }
 };
-const EQUIP_TIERS = [
-  { t: 1, name: '凡铁', color: '#9aa4ad', base: { atk: 18, hp: 120, def: 10 } },
-  { t: 2, name: '精铜', color: '#6cc79a', base: { atk: 42, hp: 300, def: 24 } },
-  { t: 3, name: '百炼', color: '#7fb0e8', base: { atk: 96, hp: 720, def: 56 } },
-  { t: 4, name: '陨铁', color: '#c99af0', base: { atk: 220, hp: 1700, def: 130 } },
-  { t: 5, name: '天工', color: '#f0b95e', base: { atk: 500, hp: 4000, def: 300 } },
-  { t: 6, name: '神兵', color: '#f06a5a', base: { atk: 1150, hp: 9400, def: 690 } }
-];
-const MAX_ENH = 12;
-function equipStat(tier, slot, enh) {
-  const b = EQUIP_TIERS[tier - 1].base;
-  const m = 1 + 0.08 * (enh || 0);
+
+// 品质：maxStar 为星级上限（对标 AFK 稀有度越高星上限越高）；base 为 0 星基础属性
+const EQUIP_QUALITIES = {
+  1: { key: 1, name: 'N',  label: '凡铁', color: '#aab4c0', maxStar: 1, base: { atk: 42,   hp: 300,  def: 24 } },
+  2: { key: 2, name: 'R',  label: '精钢', color: '#5f9fe8', maxStar: 3, base: { atk: 150,  hp: 1150, def: 85 } },
+  3: { key: 3, name: 'SR', label: '百炼', color: '#b57ce8', maxStar: 4, base: { atk: 500,  hp: 4000, def: 300 } },
+  4: { key: 4, name: 'SSR', label: '神兵', color: '#f0913c', maxStar: 5, base: { atk: 1150, hp: 9400, def: 690 } }
+};
+const MAX_STAR = 5;
+const STAR_PCT = 0.10;          // 每星属性 +10%，满星 1.5 倍（对标 AFK 强化满 1.5x）
+const FACTION_MATCH_MULT = 1.3; // 阵营匹配 +30%（对标 AFK 对属加成）
+const FACTIONED_MIN_Q = 3;      // SR 及以上掉落自带阵营
+
+// 升到下一星所需强化点（品质 → 下标=当前星数）
+const STAR_POINTS = {
+  1: [60],
+  2: [80, 200, 450],
+  3: [200, 500, 1050, 2000],
+  4: [500, 1150, 2300, 4200, 7500]
+};
+const GOLD_PER_POINT = 40; // 每点强化点的铜钱开销
+// 被吃装备提供的基础强化点（自带星数按半星折算，见 fodderPoints）
+const FODDER_POINTS = { 1: 10, 2: 26, 3: 70, 4: 190 };
+
+function starNeed(q, stars) {
+  const row = STAR_POINTS[q];
+  return row ? row[stars] : undefined;
+}
+function starGold(need) { return need * GOLD_PER_POINT; }
+function fodderPoints(e) {
+  return Math.floor((FODDER_POINTS[e.q] || 0) * (1 + 0.5 * (e.stars || 0)));
+}
+
+// 品质 × 槽位 × 星级（×阵营匹配）→ 属性加成
+function equipStat(q, slot, stars, matchFaction) {
+  const b = EQUIP_QUALITIES[q].base;
+  let m = 1 + STAR_PCT * (stars || 0);
+  if (matchFaction) m *= FACTION_MATCH_MULT;
   if (slot === 'weapon') return { atk: Math.floor(b.atk * m) };
   if (slot === 'armor') return { hp: Math.floor(b.hp * m) };
   if (slot === 'helm') return { def: Math.floor(b.def * m) };
   return { hp: Math.floor(b.hp * 0.6 * m), atk: Math.floor(b.atk * 0.4 * m) };
 }
-function enhanceCost(tier, enh) {
-  return Math.floor(600 * Math.pow(tier, 1.6) * Math.pow(1.35, enh));
-}
-// 关卡掉落装备品阶概率（随进度提升）
-function dropTier(globalStage) {
+
+// 关卡掉落品质（随进度向高品质偏移）
+function dropQuality(globalStage) {
   const r = Math.random();
-  const adv = Math.min(0.5, globalStage * 0.006); // 高关卡向高阶偏移
-  if (r < 0.05 + adv * 0.10) return 6;
-  if (r < 0.16 + adv * 0.18) return 5;
-  if (r < 0.34 + adv * 0.24) return 4;
-  if (r < 0.60 + adv * 0.22) return 3;
-  if (r < 0.85) return 2;
-  return 1;
+  const adv = Math.min(0.5, globalStage * 0.006);
+  if (r < 0.04 + adv * 0.06) return 4; // SSR 4%→7%
+  if (r < 0.16 + adv * 0.20) return 3; // SR 12%→19%
+  if (r < 0.46 + adv * 0.30) return 2; // R 30%→35%
+  return 1;                            // N 为其余（含强化狗粮）
 }
 const DROP_SLOTS = ['weapon', 'armor', 'helm', 'boots'];
 
@@ -80,6 +105,8 @@ function arenaRank(points) {
 }
 
 module.exports = {
-  EQUIP_SLOTS, EQUIP_TIERS, MAX_ENH, equipStat, enhanceCost, dropTier, DROP_SLOTS,
+  EQUIP_SLOTS, EQUIP_QUALITIES, MAX_STAR, STAR_PCT, FACTION_MATCH_MULT, FACTIONED_MIN_Q,
+  STAR_POINTS, GOLD_PER_POINT, FODDER_POINTS,
+  starNeed, starGold, fodderPoints, equipStat, dropQuality, DROP_SLOTS,
   SHOP_GOODS, QUESTS, ACTIVE_CHESTS, ARENA_RANKS, arenaRank
 };

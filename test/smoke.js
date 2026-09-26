@@ -85,14 +85,65 @@ ok(pend.gold > 0 && pend.hours <= 12.02, 'idle accrual: ' + JSON.stringify(pend.
 const claim = store.claimIdle();
 ok(claim.gold > 0, 'idle claim: ' + claim.gold);
 
-// 9. 装备
+// 9. 装备（四品质 / 阵营加成 / 吃装备升星 / 分解 / v1 存档迁移）
+const IT = require('../utils/items');
+// 品质数值：SSR 满星 1.5 倍，阵营匹配再 ×1.3
+ok(IT.equipStat(4, 'weapon', 5, false).atk === Math.floor(1150 * 1.5), 'SSR 5-star weapon atk');
+ok(IT.equipStat(4, 'weapon', 5, true).atk === Math.floor(1150 * 1.5 * 1.3), 'SSR 5-star faction-matched atk');
+ok(IT.starNeed(4, 0) === 500 && IT.starNeed(4, 4) === 7500 && IT.starNeed(1, 0) === 60, 'star point table');
+ok(IT.fodderPoints({ q: 2, stars: 0 }) === 26 && IT.fodderPoints({ q: 3, stars: 2 }) === 140, 'fodder points');
+{
+  const seen = new Set();
+  for (let i = 0; i < 200; i++) seen.add(IT.dropQuality(0));
+  ok(seen.size >= 2 && [...seen].every(q => q >= 1 && q <= 4), 'dropQuality in range');
+}
+// 掉落入库：SR/SSR 自带阵营，N/R 无阵营
 const eid = store.addEquip(3, 'weapon');
+ok(store.getState().equips[eid].q === 3 && !!store.getState().equips[eid].faction, 'SR drop carries faction');
+const plainId = store.addEquip(1, 'boots');
+ok(store.getState().equips[plainId].faction === null, 'N drop has no faction');
+// 穿戴加成
 const before = JSON.stringify(store.calcHero(someId).stats);
 store.equipTo(someId, 'weapon', eid);
-const after = store.calcHero(someId).stats;
-ok(after.atk > JSON.parse(before).atk, 'equip boosts atk');
-const enh = store.enhanceEquip(eid);
-ok(enh.ok, 'enhance works');
+ok(store.calcHero(someId).stats.atk > JSON.parse(before).atk, 'equip boosts atk');
+// 升星：无狗粮拒绝 → 吃狗粮成功 → 狗粮被消耗、星级+1（SR +1 需 200 点）
+s0.res.gold = 1e8;
+ok(!store.enhanceEquip(eid, []).ok, 'enhance without fodder rejected');
+const f1 = store.addEquip(1, 'weapon'), f2 = store.addEquip(3, 'helm'), f3 = store.addEquip(3, 'armor'), f4 = store.addEquip(3, 'weapon');
+const goldBefore = s0.res.gold;
+const enh = store.enhanceEquip(eid, [f1, f2, f3, f4]);
+ok(enh.ok && enh.stars === 1, 'enhance with fodder works');
+ok(!s0.equips[f1] && !s0.equips[f2] && !s0.equips[f3] && !s0.equips[f4], 'fodder consumed');
+ok(s0.res.gold === goldBefore - IT.starGold(IT.starNeed(3, 0)), 'enhance gold deducted');
+ok(!store.enhanceEquip(eid, [store.addEquip(1, 'weapon')]).ok, 'insufficient points rejected');
+// 一键放入：由低到高凑满所需强化点（SR+2 需 500 点）
+const need1 = IT.starNeed(3, 1);
+const pool = [];
+for (let i = 0; i < 2; i++) pool.push(store.addEquip(1, 'weapon'));
+for (let i = 0; i < 5; i++) pool.push(store.addEquip(3, 'armor'));
+pool.push(store.addEquip(4, 'weapon'));
+const autoIds = store.fodderPickIds(eid, pool);
+const autoPts = autoIds.reduce((s, id) => s + IT.fodderPoints(s0.equips[id]), 0);
+ok(autoPts >= need1, 'fodderPickIds fills need: ' + autoPts + '/' + need1);
+// 分解：返还铜钱、批量清白装
+const sv = store.salvageEquip(plainId);
+ok(sv.ok && sv.gold > 0, 'salvage returns gold');
+store.salvageBatch(1);
+ok(Object.keys(s0.equips).every(id => s0.equips[id].q !== 1 || s0.equips[id].stars > 0), 'batch salvage clears N');
+// v1 → v2 存档迁移
+{
+  const oldSave = { v: 1, equips: {
+    e1: { id: 'e1', tier: 6, slot: 'weapon', enh: 12 },
+    e2: { id: 'e2', tier: 1, slot: 'helm', enh: 3 },
+    e3: { id: 'e3', tier: 4, slot: 'armor', enh: 7 }
+  } };
+  store.migrateSaveV1(oldSave);
+  ok(oldSave.v === 2, 'save version bumped');
+  ok(oldSave.equips.e1.q === 4 && oldSave.equips.e1.stars === 5, 'v1 t6+12 → SSR 5-star');
+  ok(oldSave.equips.e2.q === 1 && oldSave.equips.e2.stars === 1, 'v1 t1+3 → N 1-star');
+  ok(oldSave.equips.e3.q === 2 && oldSave.equips.e3.stars === 3 && oldSave.equips.e3.faction === null, 'v1 t4+7 → R 3-star');
+  ok(oldSave.equips.e1.tier === undefined && oldSave.equips.e1.enh === undefined, 'legacy fields removed');
+}
 
 // 10. 升阶（给同名卡+兵魂）
 s0.roster[someId].cards = 5;

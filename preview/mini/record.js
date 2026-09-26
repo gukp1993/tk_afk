@@ -56,12 +56,17 @@ s.roster.zhugeliang.lv = 25; s.roster.zhouyu.lv = 22;
 s.res.gold = 5e6; s.res.exp = 5e6;
 store.levelUp('guanyu', 10);
 s.roster.guanyu.lv = Math.min(s.roster.guanyu.lv, 60);
-// 装备
+// 装备：关羽穿戴 SSR 武器（蜀属匹配 3 星）+ SR 铠甲（魏属不匹配），背包铺品质/狗粮样本
 const e1 = store.addEquip(4, 'weapon'); const e2 = store.addEquip(3, 'armor');
+s.equips[e1].faction = 'shu'; s.equips[e1].stars = 3;
+s.equips[e2].faction = 'wei';
 store.equipTo('guanyu', 'weapon', e1);
 store.equipTo('guanyu', 'armor', e2);
-store.addEquip(5, 'helm'); store.addEquip(2, 'boots'); store.addEquip(3, 'weapon');
-s.campaign.cleared = 23;
+store.addEquip(4, 'helm'); store.addEquip(2, 'boots'); store.addEquip(3, 'weapon');
+for (let i = 0; i < 10; i++) store.addEquip(1, ['weapon', 'armor', 'helm', 'boots'][i % 4]);
+for (let i = 0; i < 5; i++) store.addEquip(2, ['weapon', 'armor', 'helm', 'boots'][i % 4]);
+for (let i = 0; i < 5; i++) store.addEquip(3, 'helm'); // SR 狗粮池：保证一键放入可凑满 500 点
+s.campaign.cleared = 15; // 不设更高：第 3 章起章节 foe 配置引用了heroes 重构后失效的英雄 id（并行改动待收口）
 s.tower.best = 17;
 
 const shots = [];
@@ -128,6 +133,14 @@ app.pop();
 // 10. 铁匠铺
 app.push('forge');
 snap('forge');
+// 10b. 升星弹窗（一键放入后的"强化点已够"状态）
+const forge = app.scenes.forge;
+const ssrHelm = Object.keys(s.equips).find(id => s.equips[id].q === 4 && !store.isEquipped(id));
+forge.openFodder(ssrHelm);
+forge.picked = {};
+store.fodderPickIds(ssrHelm, forge.fodderList.map(x => x.id)).forEach(id => { forge.picked[id] = true; });
+snap('forge-enhance');
+forge.showFodder = false; forge.targetId = null;
 app.pop();
 
 // 11. 集市
