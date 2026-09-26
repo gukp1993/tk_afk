@@ -5,8 +5,8 @@ const { getHero } = require('./heroes');
 const CHAPTERS = [
   { name: '黄巾之乱', theme: 'qun', boss: 'zhangjiao', foes: ['huaxiong', 'yanliang', 'liaohua', 'zhangjiao', 'huatuo'] },
   { name: '虎牢关', theme: 'qun', boss: 'lvbu', foes: ['huaxiong', 'yanliang', 'dongzhuo', 'zhangjiao', 'zhenji'] },
-  { name: '群雄割据', theme: 'qun', boss: 'dongzhuo', foes: ['yanliang', 'huaxiong', 'xiahouddun', 'daqiao', 'zhangjiao'] },
-  { name: '官渡之战', theme: 'wei', boss: 'simayi', foes: ['xiahouddun', 'zhangliao', 'xuchu', 'guojia', 'zhenji'] },
+  { name: '群雄割据', theme: 'qun', boss: 'dongzhuo', foes: ['yanliang', 'huaxiong', 'xiahoudun', 'daqiao', 'zhangjiao'] },
+  { name: '官渡之战', theme: 'wei', boss: 'simayi', foes: ['xiahoudun', 'zhangliao', 'xuchu', 'guojia', 'zhenji'] },
   { name: '三顾茅庐', theme: 'shu', boss: 'zhugeliang', foes: ['liaohua', 'machao', 'huangzhong', 'liubei', 'zhaoyun'] },
   { name: '赤壁之战', theme: 'wu', boss: 'zhouyu', foes: ['lvmeng', 'ganning', 'taishici', 'luxun', 'daqiao'] },
   { name: '南征北战', theme: 'shu', boss: 'machao', foes: ['liaohua', 'zhangfei', 'huangzhong', 'zhaoyun', 'liubei'] },
