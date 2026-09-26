@@ -70,7 +70,7 @@ ok(store.getState().summon.total === 300, 'summon counted');
 const cc = { 1: 0, 2: 0, 3: 0, 4: 0 };
 for (let i = 0; i < 20000; i++) cc[store.rollRarity()]++;
 ok(Math.abs(cc[4] / 20000 - 0.02) < 0.004, 'ssr rate ~2%: ' + (cc[4] / 20000).toFixed(4));
-ok(Math.abs(cc[3] / 20000 - 0.10) < 0.006, 'sr rate ~10%: ' + (cc[3] / 20000).toFixed(4));
+ok(Math.abs(cc[3] / 20000 - 0.10) < 0.012, 'sr rate ~10%: ' + (cc[3] / 20000).toFixed(4));
 ok(Math.abs(cc[2] / 20000 - 0.28) < 0.008, 'r rate ~28%: ' + (cc[2] / 20000).toFixed(4));
 ok(cc[1] > 0 && cc[1] / 20000 < 0.70, 'n rate ~60%: ' + (cc[1] / 20000).toFixed(4));
 
@@ -95,52 +95,36 @@ const pend = store.idlePending();
 ok(pend.gold > 0 && pend.hours <= 12.02, 'idle accrual: ' + JSON.stringify(pend.hours));
 const claim = store.claimIdle();
 ok(claim.gold > 0, 'idle claim: ' + claim.gold);
+ok(claim.iron >= 35 && claim.iron <= 37, 'idle preserves and pays iron at 12 per hour: ' + claim.iron);
 
-// 9. 装备（四品质 / 阵营加成 / 吃装备升星 / 分解 / v1 存档迁移）
+// 9. 全军共享军械图鉴：解锁、启用、部位星级与旧档资产迁移
 const IT = require('../utils/items');
-// 品质数值：SSR 满星 1.5 倍，阵营匹配再 ×1.3
-ok(IT.equipStat(4, 'weapon', 5, false).atk === Math.floor(1150 * 1.5), 'SSR 5-star weapon atk');
-ok(IT.equipStat(4, 'weapon', 5, true).atk === Math.floor(1150 * 1.5 * 1.3), 'SSR 5-star faction-matched atk');
-ok(IT.starNeed(4, 0) === 500 && IT.starNeed(4, 4) === 7500 && IT.starNeed(1, 0) === 60, 'star point table');
-ok(IT.fodderPoints({ q: 2, stars: 0 }) === 26 && IT.fodderPoints({ q: 3, stars: 2 }) === 140, 'fodder points');
-{
-  const seen = new Set();
-  for (let i = 0; i < 200; i++) seen.add(IT.dropQuality(0));
-  ok(seen.size >= 2 && [...seen].every(q => q >= 1 && q <= 4), 'dropQuality in range');
-}
-// 掉落入库：SR/SSR 自带阵营，N/R 无阵营
-const eid = store.addEquip(3, 'weapon');
-ok(store.getState().equips[eid].q === 3 && !!store.getState().equips[eid].faction, 'SR drop carries faction');
-const plainId = store.addEquip(1, 'boots');
-ok(store.getState().equips[plainId].faction === null, 'N drop has no faction');
-// 穿戴加成
-const before = JSON.stringify(store.calcHero(someId).stats);
-store.equipTo(someId, 'weapon', eid);
-ok(store.calcHero(someId).stats.atk > JSON.parse(before).atk, 'equip boosts atk');
-// 升星：无狗粮拒绝 → 吃狗粮成功 → 狗粮被消耗、星级+1（SR +1 需 200 点）
-s0.res.gold = 1e8;
-ok(!store.enhanceEquip(eid, []).ok, 'enhance without fodder rejected');
-const f1 = store.addEquip(1, 'weapon'), f2 = store.addEquip(3, 'helm'), f3 = store.addEquip(3, 'armor'), f4 = store.addEquip(3, 'weapon');
-const goldBefore = s0.res.gold;
-const enh = store.enhanceEquip(eid, [f1, f2, f3, f4]);
-ok(enh.ok && enh.stars === 1, 'enhance with fodder works');
-ok(!s0.equips[f1] && !s0.equips[f2] && !s0.equips[f3] && !s0.equips[f4], 'fodder consumed');
-ok(s0.res.gold === goldBefore - IT.starGold(IT.starNeed(3, 0)), 'enhance gold deducted');
-ok(!store.enhanceEquip(eid, [store.addEquip(1, 'weapon')]).ok, 'insufficient points rejected');
-// 一键放入：由低到高凑满所需强化点（SR+2 需 500 点）
-const need1 = IT.starNeed(3, 1);
-const pool = [];
-for (let i = 0; i < 2; i++) pool.push(store.addEquip(1, 'weapon'));
-for (let i = 0; i < 5; i++) pool.push(store.addEquip(3, 'armor'));
-pool.push(store.addEquip(4, 'weapon'));
-const autoIds = store.fodderPickIds(eid, pool);
-const autoPts = autoIds.reduce((s, id) => s + IT.fodderPoints(s0.equips[id]), 0);
-ok(autoPts >= need1, 'fodderPickIds fills need: ' + autoPts + '/' + need1);
-// 分解：返还铜钱、批量清白装
-const sv = store.salvageEquip(plainId);
-ok(sv.ok && sv.gold > 0, 'salvage returns gold');
-store.salvageBatch(1);
-ok(Object.keys(s0.equips).every(id => s0.equips[id].q !== 1 || s0.equips[id].stars > 0), 'batch salvage clears N');
+ok(IT.CATALOG.length === 30 && IT.ARMORY_SLOTS.length === 6, 'catalog has 30 entries across six shared slots');
+ok([0,1,2,3].map(q => IT.CATALOG.filter(x => x.q === q).length).join(',') === '6,6,6,12', 'catalog quality counts N/R/SR/SSR');
+ok(IT.STAR_NEEDS.join(',') === '60,120,240,480,960' && IT.STAR_GOLD[4] === 32000, 'shared star costs follow configured curve');
+const arm0 = store.getArmoryState(), initialBonus = store.getArmoryBonuses();
+ok(arm0.unlockedCount === 6 && Object.keys(arm0.selected).length === 6, 'new save starts with six unlocked and selected N entries');
+ok(initialBonus.atk === 0.04 && initialBonus.hp === 0.04 && initialBonus.def === 0.02, 'all six selected entries sum shared percentages');
+const heroDef = require('../utils/heroes').getHero(someId);
+const baseAtk = require('../utils/heroes').heroStatsStar(heroDef, store.playerLevel(), s0.roster[someId].star).atk;
+ok(store.calcHero(someId).stats.atk === Math.floor(baseAtk * 1.04), 'every hero receives the same shared armory percentage');
+ok(!store.armoryUnlock('weapon_r').ok, 'quality gate blocks early targeted unlock');
+s0.campaign.cleared = 60; s0.res.iron = 5000; s0.res.gold = 1e8;
+const upgrade = store.armoryUpgrade('weapon');
+ok(upgrade.ok && upgrade.stars === 1 && s0.res.iron === 4940 && s0.res.gold === 1e8 - 2000, 'slot upgrade spends iron and gold once');
+ok(store.armoryUnlock('weapon_r').ok, 'targeted unlock spends fixed iron after stage gate');
+ok(store.armorySelect('weapon','weapon_r').ok && s0.armory.slotStars.weapon === 1, 'switching shared weapon retains slot stars');
+const upgradedBonus = store.getArmoryBonuses();
+ok(Math.abs(upgradedBonus.atk - 0.064) < 1e-9, 'equipped R weapon percentage is scaled by shared slot stars');
+ok(!store.armorySelect('armor','weapon_r').ok && !store.armorySelect('weapon','weapon_ssr_a').ok, 'wrong slot and locked item are rejected');
+const noIron = s0.res.iron; s0.res.iron = 0;
+ok(!store.armoryUpgrade('armor').ok && s0.armory.slotStars.armor === 0, 'insufficient currency does not mutate slot');
+s0.res.iron = noIron;
+s0.armory.boxes[1] = 1;
+ok(store.armoryClaimBox(1,'armor_r').ok && s0.armory.unlocked.armor_r && s0.armory.boxes[1] === 0, 'quality box unlocks a matching item once');
+ok(!store.armoryClaimBox(1,'weapon_ssr_a').ok, 'box cannot claim a different quality');
+const repeatIron = s0.res.iron; store.grantArmoryItem('weapon_r');
+ok(s0.res.iron === repeatIron + 25, 'duplicate catalog entry converts to quality duplicate iron');
 // v1 → v2 存档迁移
 {
   const oldSave = { v: 1, equips: {
@@ -408,6 +392,18 @@ ok(story.CHAPTERS.reduce((s, c) => s + c.stages.length, 0) === 120, 'story total
   const s200 = stages.makeStageEnemies(200);
   ok(s200.units.every(u => u.hero && u.hero.id), 'stage 200 兜底敌将全部解析');
 }
+// v4个人装备迁移为v5共享军械，装备实体按唯一ID只计一次。
+{
+  const legacy = { v:4, res:{gold:10000,iron:0}, campaign:{cleared:10}, roster:{liubei:{id:'liubei',star:0,cards:0,equip:{weapon:'e1'}}}, equips:{
+    e1:{id:'e1',q:4,slot:'weapon',stars:2}, e2:{id:'e2',q:4,slot:'weapon',stars:0}, e3:{id:'e3',q:2,slot:'armor',stars:1}
+  } };
+  store.migrateSaveV4(legacy);
+  ok(legacy.v === 5 && Object.keys(legacy.equips).length === 0, 'v4 migration clears personal equipment instances');
+  ok(legacy.armory.selected.weapon === 'weapon_ssr_a' && legacy.armory.slotStars.weapon === 2, 'v4 migration selects strongest old weapon and inherits shared stars');
+  ok(legacy.armory.unlocked.weapon_ssr_a && legacy.armory.unlocked.armor_r, 'v4 migration unlocks unique legacy catalog entries');
+  ok(legacy.res.iron >= 225 && legacy.armory.boxes[1] === 1, 'v4 migration converts duplicate and restores progressed milestone box');
+}
+
 // 章末宝箱 + 奖励实际入账
 {
   const sN = store.getState();

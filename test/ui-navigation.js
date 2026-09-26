@@ -173,7 +173,6 @@ test('英雄列表和编队选将页在快速手势只触发起止事件时仍�
   app.switchTab('home');
 });
 
-
 [false, true].forEach(closable => test('弹窗隔离底层点击和滚动（可关闭=' + closable + '）', () => {
   begin();
   const scene = { scroll: { list: 40 } };
@@ -232,15 +231,19 @@ test('五个底部入口已注册，首次打开默认主城', () => {
     });
   });
 
-  test(height + 'px 屏幕：背包装备入口进入铁匠铺，返回仍在背包', () => {
+  test(height + 'px 屏幕：背包军械入口进入共享图鉴，返回仍在背包', () => {
     app.switchTab('bag');
     draw(height);
-    clickId('bag-equips');
-    draw(height);
-    clickId('bag-forge');
-    assert.strictEqual(app.top(), app.scenes.forge);
+    clickId('bag-armory');
+    assert.strictEqual(app.top(), app.scenes.armory);
     assert.strictEqual(app.stack.length, 1);
     draw(height);
+    clickId('armory-catalog');
+    draw(height);
+    assert(ui.hitAreas.some(area => area.id === 'armory-upgrade'), '图鉴页应显示部位升星入口');
+    clickId('armory-item-weapon_r');
+    draw(height);
+    assert.strictEqual(app.scenes.armory.detailId, 'weapon_r', '触摸图鉴条目应打开该军械详情');
     clickId('back');
     assert.strictEqual(app.top(), app.scenes.bag);
     assert.strictEqual(app.tab, 'bag');

@@ -21,16 +21,17 @@ function defaultState() {
   C.BATTLE.STARTER.forEach(id => { roster[id] = newHero(id); });
   roster.mengda = newHero('mengda');
   return {
-    v: 4, createdAt: Date.now(), name: '主公',
+    v: 5, createdAt: Date.now(), name: '主公',
     player: { level: 1, exp: 0 },
-    res: { gold: 100000, gem: 1888, scroll: 12, token: 20, shard: 0 },
+    res: { gold: 100000, gem: 1888, scroll: 12, token: 20, shard: 0, iron: 60 },
     roster,
     formation: ['zhangfei', 'guanyu', 'liaohua', 'liubei', 'mengda'],
     campaign: { cleared: 0, storySeen: {} },
     tower: { best: 0 },
     arena: { points: 1000, wins: 0, losses: 0, attempts: C.ARENA.DAILY },
     equips: {}, nextEquip: 1,
-    idle: { last: Date.now(), gold: 0, scroll: 0 },
+    armory: createArmory(),
+    idle: { last: Date.now(), gold: 0, scroll: 0, ironAcc: 0 },
     fast: { day: '', count: 0 },
     daily: { day: '', quests: {}, claimed: [], active: [] },
     summon: { total: 0 },
@@ -44,6 +45,14 @@ function defaultState() {
   };
 }
 function newHero(id) { return { id, star: 0, cards: 0, lockedCards: false, equip: { weapon: null, armor: null, helm: null, boots: null } }; }
+function createArmory() {
+  const unlocked = {}, selected = {}, slotStars = {};
+  IT.ARMORY_SLOTS.forEach(s => {
+    const starter = IT.CATALOG.find(x => x.slot === s.id && x.q === 0);
+    unlocked[starter.id] = true; selected[s.id] = starter.id; slotStars[s.id] = 0;
+  });
+  return { schema: 1, unlocked, selected, slotStars, seen: {}, claimedMilestones: {}, boxes: { 1: 0, 2: 0, 3: 0 } };
+}
 
 // 旧档 v1（tier 1-6 / enh 0-12）→ v2（q 品质 1-4 / stars 星级 / faction 阵营）
 // 导出供冒烟测试直测；映射保持战力大致连续（旧 t6+12 ≈ 新 SSR 5★）
@@ -133,26 +142,78 @@ function migrateSaveV3(raw) {
   return raw;
 }
 
+// v4个人装备→v5共享图鉴。旧装备实体按唯一ID扫描一次，不按英雄引用重复计资产。
+function migrateSaveV4(raw) {
+  raw.res = raw.res || {}; raw.roster = raw.roster || {}; raw.campaign = raw.campaign || { cleared: 0 };
+  const armory = createArmory(), old = raw.equips || {}, slotOrder = ['weapon','armor','helm','boots'];
+  const selected = {}, targetStars = {}, bestQ = {}, seenIds = {};
+  let investedIron = 0, investedGold = 0;
+  Object.keys(old).forEach(id => {
+    const e = old[id]; if (!e || seenIds[id]) return; seenIds[id] = true;
+    const slot = slotOrder.includes(e.slot) ? e.slot : null;
+    if (!slot) return;
+    const q = Math.max(1, Math.min(4, Math.floor(e.q || 1)));
+    const nq = q - 1;
+    const item = IT.CATALOG.find(x => x.slot === slot && x.q === nq && (nq !== 3 || x.id.endsWith('_ssr_a')));
+    if (!item) return;
+    const stars = Math.max(0, Math.min(IT.EQUIP_QUALITIES[q].maxStar, Math.floor(e.stars || 0)));
+    for (let n=0;n<stars;n++) { investedIron += IT.starNeed(q,n) || 0; investedGold += IT.starGold(IT.starNeed(q,n) || 0); }
+    if (stars > (targetStars[slot] || 0)) targetStars[slot] = stars;
+    if (q > (bestQ[slot] || 0)) { bestQ[slot] = q; selected[slot] = item.id; }
+    if (!armory.unlocked[item.id]) armory.unlocked[item.id] = true;
+    else raw.res.iron = (raw.res.iron || 0) + IT.GRADES[nq].duplicate;
+  });
+  let spentIron = 0, spentGold = 0;
+  slotOrder.forEach(slot => {
+    const stars = targetStars[slot] || 0;
+    for (let n=0;n<stars;n++) {
+      spentIron += IT.STAR_NEEDS[n]; spentGold += IT.STAR_GOLD[n];
+      armory.slotStars[slot] = n + 1;
+    }
+  });
+  raw.res.iron = Math.max(0, Math.floor((raw.res.iron || 0) + investedIron - spentIron));
+  raw.res.gold = Math.max(0, Math.floor((raw.res.gold || 0) + investedGold - spentGold));
+  Object.keys(selected).forEach(slot => { armory.selected[slot] = selected[slot]; });
+  IT.ARMORY_SLOTS.forEach(s => { const item=IT.CATALOG.find(x=>x.slot===s.id&&x.q===0); if (!armory.unlocked[item.id]) armory.unlocked[item.id]=true; });
+  [10,30,60].forEach((stage,i) => {
+    const q=i+1;
+    if ((raw.campaign.cleared || 0) >= stage) { armory.boxes[q] = 1; armory.claimedMilestones[q] = true; }
+  });
+  raw.armory = armory; raw.equips = {}; raw.nextEquip = 1;
+  Object.keys(raw.roster).forEach(id => { if (raw.roster[id]) raw.roster[id].equip = { weapon:null,armor:null,helm:null,boots:null }; });
+  raw.idle = raw.idle || { last: Date.now(), gold: 0, scroll: 0 };
+  raw.idle.ironAcc = 0;
+  raw.migrations = raw.migrations || {};
+  raw.migrations.armoryV1 = { applied: true, investedIron, inheritedIron: spentIron, refundedIron: Math.max(0, investedIron-spentIron), investedGold, inheritedGold: spentGold, refundedGold: Math.max(0, investedGold-spentGold) };
+  raw.v = 5;
+  return raw;
+}
+
 function load() {
   const raw = rawGet(SAVE_KEY);
   if (raw && raw.v === 1) {
     rawSet(SAVE_KEY + '.backup.v3', JSON.parse(JSON.stringify(raw)));
-    state = migrateSaveV3(migrateSaveV2(migrateSaveV1(raw)));
+    state = migrateSaveV4(migrateSaveV3(migrateSaveV2(migrateSaveV1(raw))));
     save();
   } else if (raw && raw.v === 2) {
     rawSet(SAVE_KEY + '.backup.v3', JSON.parse(JSON.stringify(raw)));
-    state = migrateSaveV3(migrateSaveV2(raw));
+    state = migrateSaveV4(migrateSaveV3(migrateSaveV2(raw)));
     save();
   } else if (raw && raw.v === 3) {
     rawSet(SAVE_KEY + '.backup.v3', JSON.parse(JSON.stringify(raw)));
-    state = migrateSaveV3(raw);
+    state = migrateSaveV4(migrateSaveV3(raw));
     save();
   } else if (raw && raw.v === 4) {
-    state = raw;
+    rawSet(SAVE_KEY + '.backup.v4', JSON.parse(JSON.stringify(raw)));
+    state = migrateSaveV4(raw);
     normalizeState(state);
     // Persist normalized fields and abandon any battle interrupted before this load.
     save();
-  } else if (raw && raw.v > 4) {
+  } else if (raw && raw.v === 5) {
+    state = raw;
+    normalizeState(state);
+    save();
+  } else if (raw && raw.v > 5) {
     throw new Error('存档版本较新，停止加载以保护数据');
   } else if (raw) {
     throw new Error('存档版本无法识别，保留原数据并停止加载');
@@ -168,11 +229,28 @@ function normalizeState(s) {
   s.player = s.player || { level: 1, exp: 0 };
   s.player.level = Math.max(1, Math.min(C.MAX_LEVEL, Math.floor(s.player.level || 1)));
   s.player.exp = s.player.level >= C.MAX_LEVEL ? 0 : Math.max(0, Math.floor(s.player.exp || 0));
-  s.res = s.res || {}; ['gold', 'gem', 'scroll', 'token', 'shard'].forEach(k => { if (!Number.isFinite(s.res[k])) s.res[k] = 0; });
+  s.res = s.res || {}; ['gold', 'gem', 'scroll', 'token', 'shard', 'iron'].forEach(k => { if (!Number.isFinite(s.res[k])) s.res[k] = 0; s.res[k] = Math.max(0, Math.floor(s.res[k])); });
+  if (!s.armory) s.armory = createArmory();
+  const defaults = createArmory();
+  s.armory.unlocked = s.armory.unlocked || defaults.unlocked;
+  s.armory.selected = s.armory.selected || defaults.selected;
+  s.armory.slotStars = s.armory.slotStars || defaults.slotStars;
+  s.armory.seen = s.armory.seen || {};
+  s.armory.claimedMilestones = s.armory.claimedMilestones || {};
+  s.armory.boxes = s.armory.boxes || { 1: 0, 2: 0, 3: 0 };
+  [1,2,3].forEach(q => { s.armory.boxes[q] = Math.max(0, Math.floor(Number(s.armory.boxes[q]) || 0)); });
+  IT.ARMORY_SLOTS.forEach(slot => {
+    const starter = IT.CATALOG.find(x => x.slot === slot.id && x.q === 0);
+    if (!s.armory.unlocked[starter.id]) s.armory.unlocked[starter.id] = true;
+    if (!IT.CATALOG.some(x => x.id === s.armory.selected[slot.id] && x.slot === slot.id && s.armory.unlocked[x.id])) s.armory.selected[slot.id] = starter.id;
+    s.armory.slotStars[slot.id] = Math.max(0, Math.min(5, Math.floor(s.armory.slotStars[slot.id] || 0)));
+  });
   s.roster = s.roster || {}; s.vouchers = s.vouchers || { sr: 0, ssr: 0 };
   s.heroProgress = s.heroProgress || { starterMengdaGranted: true, firstWinChoiceGranted: false, firstWinChoicePending: false, chapterOneVoucherGranted: false };
   s.battle = s.battle || { nextSeq: 1, pending: null, lastSettled: null };
   s.idle = s.idle || { last: Date.now(), gold: 0, scroll: 0 };
+  if (!Number.isFinite(s.idle.ironAcc)) s.idle.ironAcc = 0;
+  s.idle.ironAcc = Math.max(0, Math.min(C.IDLE_CAP_HOURS * C.ARMORY_IRON_PER_HOUR, s.idle.ironAcc));
   if (!Array.isArray(s.formation)) s.formation = [null, null, null, null, null];
   s.formation.length = 5;
   Object.keys(s.roster).forEach(id => {
@@ -242,29 +320,97 @@ function calcHero(id) {
   const def = H.getHero(id);
   const lv = effectiveLevel(id);
   const star = own.star;
-  let stats = H.heroStatsStar(def, lv, star);
-  // 装备加成
-  for (const slot of Object.keys(own.equip || {})) {
-    const instId = own.equip[slot];
-    if (!instId) continue;
-    const inst = state.equips[instId];
-    if (!inst) continue;
-    const add = IT.equipStat(inst.q, inst.slot, inst.stars, !!inst.faction && inst.faction === def.faction);
-    stats = {
-      hp: stats.hp + (add.hp || 0),
-      atk: stats.atk + (add.atk || 0),
-      def: stats.def + (add.def || 0),
-      spd: stats.spd, crit: stats.crit
-    };
-  }
-  const power = H.heroPower(def, lv, star) + Math.floor((stats.hp - H.heroStatsStar(def, lv, star).hp) / 6 + (stats.atk - H.heroStatsStar(def, lv, star).atk) * 2.2 + (stats.def - H.heroStatsStar(def, lv, star).def) * 1.5);
+  const base = H.heroStatsStar(def, lv, star), bonus = getArmoryBonuses();
+  const stats = { hp: Math.floor(base.hp * (1 + bonus.hp)), atk: Math.floor(base.atk * (1 + bonus.atk)), def: Math.floor(base.def * (1 + bonus.def)), spd: base.spd, crit: base.crit };
+  const power = H.heroPower(def, lv, star) + Math.floor((stats.hp - base.hp) / 6 + (stats.atk - base.atk) * 2.2 + (stats.def - base.def) * 1.5);
+  const passive = Object.assign({}, def.passive.mods || {});
+  if (bonus.heal) passive.armoryHeal = bonus.heal;
+  if (bonus.startShield) passive.armoryStartShield = bonus.startShield;
+  if (bonus.startEnergy) passive.armoryStartEnergy = bonus.startEnergy;
+  if (bonus.directDR) passive.armoryDirectDR = bonus.directDR;
   return {
     id, name: def.name, surname: def.name.slice(0, 1), title: def.title, quote: def.quote,
     faction: def.faction, cls: def.cls,
     rarity: def.rarity, level: lv, realLevel: lv, star, cards: own.cards, ult: def.ult,
-    passive: def.passive.mods || {}, passiveDef: def.passive, stats, power, cap: levelCap(id),
-    equip: own.equip
+    passive, passiveDef: def.passive, stats, power, cap: levelCap(id),
+    armory: bonus
   };
+}
+function getArmoryBonuses() {
+  if (!state || !state.armory) return { hp: 0, atk: 0, def: 0, heal: 0, startShield: 0, startEnergy: 0, directDR: 0 };
+  const out = { hp: 0, atk: 0, def: 0, heal: 0, startShield: 0, startEnergy: 0, directDR: 0 };
+  IT.ARMORY_SLOTS.forEach(slot => {
+    const id = state.armory.selected[slot.id], item = IT.CATALOG.find(x => x.id === id);
+    if (!item || !state.armory.unlocked[id]) return;
+    const mult = 1 + 0.1 * (state.armory.slotStars[slot.id] || 0);
+    Object.keys(item.stats).forEach(k => { if (k === 'hp' || k === 'atk' || k === 'def') out[k] += item.stats[k] * mult; });
+    if (item.effect === 'heal') out.heal = 0.08;
+    if (item.effect === 'shield') out.startShield = 0.06;
+    if (item.effect === 'energy') out.startEnergy = 10;
+    if (item.effect === 'reduction') out.directDR = 0.03;
+  });
+  return out;
+}
+function getArmoryState() {
+  const a = state.armory;
+  return { unlocked: Object.assign({}, a.unlocked), selected: Object.assign({}, a.selected), slotStars: Object.assign({}, a.slotStars), boxes: Object.assign({}, a.boxes), seen: Object.assign({}, a.seen), claimedMilestones: Object.assign({}, a.claimedMilestones), total: IT.CATALOG.length, unlockedCount: Object.keys(a.unlocked).filter(id => a.unlocked[id]).length, bonuses: getArmoryBonuses() };
+}
+function armoryUnlock(itemId) {
+  const item = IT.CATALOG.find(x => x.id === itemId);
+  if (!item) return { ok:false, msg:'图鉴条目不存在' };
+  if (state.armory.unlocked[item.id]) return { ok:false, msg:'图鉴已解锁' };
+  const grade = IT.GRADES[item.q];
+  if ((state.campaign.cleared || 0) < grade.unlockStage) return { ok:false, msg:'通关第' + grade.unlockStage + '关后开放' };
+  if (item.q === 0) return { ok:false, msg:'凡铁军械已全部赠送' };
+  if (state.res.iron < grade.cost) return { ok:false, msg:'精铁不足' };
+  state.res.iron -= grade.cost; state.armory.unlocked[item.id] = true; state.armory.seen[item.id] = true; save();
+  return { ok:true, itemId:item.id, cost:grade.cost };
+}
+function armorySelect(slot, itemId) {
+  const item = IT.CATALOG.find(x => x.id === itemId);
+  if (!IT.ARMORY_SLOTS.some(x => x.id === slot) || !item || item.slot !== slot) return { ok:false, msg:'部位或军械不匹配' };
+  if (!state.armory.unlocked[itemId]) return { ok:false, msg:'请先解锁图鉴' };
+  state.armory.selected[slot] = itemId; save();
+  return { ok:true, selected:itemId, bonuses:getArmoryBonuses() };
+}
+function armoryUpgrade(slot) {
+  if (!IT.ARMORY_SLOTS.some(x => x.id === slot)) return { ok:false, msg:'部位不存在' };
+  const star = state.armory.slotStars[slot] || 0;
+  if (star >= 5) return { ok:false, msg:'该部位已满星' };
+  const iron = IT.STAR_NEEDS[star], gold = IT.STAR_GOLD[star];
+  if (state.res.iron < iron) return { ok:false, msg:'精铁不足，还差' + (iron-state.res.iron) };
+  if (state.res.gold < gold) return { ok:false, msg:'铜钱不足，还差' + (gold-state.res.gold) };
+  state.res.iron -= iron; state.res.gold -= gold; state.armory.slotStars[slot] = star + 1; save();
+  return { ok:true, slot, stars:star+1, iron, gold, bonuses:getArmoryBonuses() };
+}
+function armoryClaimBox(q, itemId) {
+  q = Number(q);
+  if (![1,2,3].includes(q) || !(state.armory.boxes[q] > 0)) return { ok:false, msg:'没有可领取的自选箱' };
+  const pool = IT.CATALOG.filter(x => x.q === q);
+  if (itemId === 'convert') {
+    if (pool.some(x => !state.armory.unlocked[x.id])) return { ok:false, msg:'仍有未解锁条目，请先选择军械' };
+    const iron = IT.GRADES[q].duplicate; state.armory.boxes[q] -= 1; state.res.iron += iron; save();
+    return { ok:true, iron, converted:true };
+  }
+  const item = pool.find(x => x.id === itemId);
+  if (!item || state.armory.unlocked[item.id]) return { ok:false, msg:'请选择尚未解锁的对应品质军械' };
+  state.armory.boxes[q] -= 1; state.armory.unlocked[item.id] = true; state.armory.seen[item.id] = true; save();
+  return { ok:true, itemId:item.id };
+}
+function grantArmoryItem(itemId) {
+  const item = IT.CATALOG.find(x => x.id === itemId);
+  if (!item) return { ok:false, msg:'军械奖励无效' };
+  if (state.armory.unlocked[item.id]) { const iron=IT.GRADES[item.q].duplicate; state.res.iron += iron; return { ok:true, duplicate:true, iron, itemId }; }
+  state.armory.unlocked[item.id] = true; state.armory.seen[item.id] = true;
+  return { ok:true, duplicate:false, itemId };
+}
+function rollArmoryDrop(cleared) {
+  const available = IT.GRADES.filter(g => g.q === 0 || cleared >= g.unlockStage);
+  const total = available.reduce((sum,g) => sum + IT.DROP_QUALITY_WEIGHTS[g.q], 0);
+  let roll = Math.random() * total, q = 0;
+  for (const g of available) { roll -= IT.DROP_QUALITY_WEIGHTS[g.q]; if (roll < 0) { q = g.q; break; } }
+  const pool = IT.CATALOG.filter(x => x.q === q);
+  return grantArmoryItem(pool[Math.floor(Math.random()*pool.length)].id);
 }
 function levelUp(id, times) {
   return 0;
@@ -507,29 +653,31 @@ function idlePending() {
   const gold = Math.floor(state.idle.gold), scroll = Math.floor(state.idle.scroll);
   const hours = rate.gold > 0 ? state.idle.gold / rate.gold : 0;
   const full = state.idle.gold >= C.IDLE_CAP_HOURS * rate.gold - 1;
-  return { gold, exp: 0, scroll, hours, full };
+  return { gold, exp: 0, scroll, iron: Math.floor(state.idle.ironAcc), hours, full };
 }
 function idleTick() {
   // 把离线时间折算进累计（入 state.idle 缓存）
   const now = Date.now();
-  const addH = Math.min(C.IDLE_CAP_HOURS, (now - state.idle.last) / 3600000);
+  const addH = Math.max(0, Math.min(C.IDLE_CAP_HOURS, (now - state.idle.last) / 3600000));
   const rate = C.idleRates(state.campaign.cleared);
   state.idle.gold += addH * rate.gold;
   if (state.idle.exp) { state.idle.gold += state.idle.exp; state.idle.exp = 0; }
   state.idle.scroll += addH * rate.scrollPerHour;
+  state.idle.ironAcc += addH * C.ARMORY_IRON_PER_HOUR;
   const capG = C.IDLE_CAP_HOURS * rate.gold;
   state.idle.gold = Math.min(state.idle.gold, capG);
   state.idle.scroll = Math.min(state.idle.scroll, C.IDLE_CAP_HOURS * rate.scrollPerHour);
+  state.idle.ironAcc = Math.min(state.idle.ironAcc, C.IDLE_CAP_HOURS * C.ARMORY_IRON_PER_HOUR);
   state.idle.last = now;
 }
 function claimIdle(double) {
   idleTick();
-  let g = Math.floor(state.idle.gold), s = Math.floor(state.idle.scroll);
+  let g = Math.floor(state.idle.gold), s = Math.floor(state.idle.scroll), iron = Math.floor(state.idle.ironAcc);
   if (double) { g *= 2; s *= 2; }
-  state.res.gold += g; state.res.scroll += s;
-  state.idle.gold -= Math.floor(state.idle.gold); state.idle.scroll -= Math.floor(state.idle.scroll);
+  state.res.gold += g; state.res.scroll += s; state.res.iron += iron;
+  state.idle.gold -= Math.floor(state.idle.gold); state.idle.scroll -= Math.floor(state.idle.scroll); state.idle.ironAcc -= iron;
   bumpQuest('q_idle1', 1);
-  return { gold: g, exp: 0, scroll: s, double: !!double };
+  return { gold: g, exp: 0, scroll: s, iron, double: !!double };
 }
 function fastReward(free) {
   if (state.fast.count >= C.FAST_REWARD_DAILY) return { ok: false, msg: '今日快速收获次数已用完' };
@@ -604,7 +752,7 @@ const CHAPTER_CHEST = { gem: 100, scroll: 1 };
 function winCampaign(stageIdx) {
   // stageIdx 从 1 开始
   const first = stageIdx === state.campaign.cleared + 1;
-  const reward = { gold: 0, gem: 0, scroll: 0, equip: null, chest: null };
+  const reward = { gold: 0, gem: 0, scroll: 0, armory: null, armoryBox: null, chest: null };
   if (first) {
     state.campaign.cleared = stageIdx;
     reward.gem = 30;
@@ -615,11 +763,14 @@ function winCampaign(stageIdx) {
       reward.scroll = 1;
       reward.chest = { gem: CHAPTER_CHEST.gem, scroll: CHAPTER_CHEST.scroll };
     }
+    const milestoneQ = stageIdx === 10 ? 1 : stageIdx === 30 ? 2 : stageIdx === 60 ? 3 : 0;
+    if (milestoneQ && !state.armory.claimedMilestones[milestoneQ]) {
+      state.armory.claimedMilestones[milestoneQ] = true;
+      state.armory.boxes[milestoneQ] = (state.armory.boxes[milestoneQ] || 0) + 1;
+      reward.armoryBox = milestoneQ;
+    }
     if (Math.random() < 0.65) {
-      const q = IT.dropQuality(stageIdx);
-      const slot = IT.DROP_SLOTS[Math.floor(Math.random() * IT.DROP_SLOTS.length)];
-      const eqId = addEquip(q, slot);
-      reward.equip = { q, slot, faction: state.equips[eqId].faction };
+      reward.armory = rollArmoryDrop(stageIdx);
     }
   } else {
     // 重复挑战仍给小额奖励
@@ -818,6 +969,7 @@ function applyReward(r) {
   if (r.scroll) state.res.scroll += r.scroll;
   if (r.token) state.res.token += r.token;
   if (r.shard) state.res.shard += r.shard;
+  if (r.iron) state.res.iron += Math.floor(r.iron);
   if (r.srPick) addChoiceVoucher('sr', r.srPick);
   if (r.ssrPick) addChoiceVoucher('ssr', r.ssrPick);
 }
@@ -834,15 +986,16 @@ function buyGood(goodId) {
   applyReward(good.give);
   return { ok: true };
 }
-const CURRENCY_NAME = { gold: '铜钱', gem: '元宝', scroll: '招募令', token: '演武令', shard: '英雄碎片' };
+const CURRENCY_NAME = { gold: '铜钱', gem: '元宝', scroll: '招募令', token: '演武令', shard: '英雄碎片', iron: '精铁' };
 
 module.exports = {
   load, save, getState, checkDailyReset, SAVE_KEY,
   allRoster, getOwned, addHeroCard, grantCard, crystalInfo, effectiveLevel, playerLevel, playerXpNeeded, addPlayerXP, levelCap, calcHero,
   levelUp, ascend, ascendPreview, foodPoints, dismiss, resetHero, convertCards, setCardsLocked, addChoiceVoucher, useChoiceVoucher, firstWinChoice, claimFirstWinChoice,
   getFormationCalc, setFormationSlot, formationFactionBonus, teamPower, playerUnits, enemyUnits,
+  getArmoryBonuses, getArmoryState, armoryUnlock, armorySelect, armoryUpgrade, armoryClaimBox, grantArmoryItem,
   addEquip, equipInventory, equipTo, unequip, enhanceEquip, fodderPickIds, salvageEquip, salvageBatch, isEquipped,
-  migrateSaveV1, migrateSaveV2, migrateSaveV3, normalizeState,
+  migrateSaveV1, migrateSaveV2, migrateSaveV3, migrateSaveV4, normalizeState,
   idlePending, idleTick, claimIdle, fastReward,
   doSummon, rollRarity, pickHeroOfRarity,
   winCampaign, winTower, arenaFight, beginBattle, settleBattle,

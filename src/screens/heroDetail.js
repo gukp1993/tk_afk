@@ -3,7 +3,6 @@ const { app, ui } = require('../app');
 const T = require('../theme');
 const store = require('../../utils/store');
 const heroes = require('../../utils/heroes');
-const items = require('../../utils/items');
 const C = require('../../utils/config');
 const F = require('../../utils/fmt');
 
@@ -80,32 +79,14 @@ module.exports = {
     ui.wrap(def.passive.desc, 20, y + 26, 330, 12, { size: 10 });
     y += 62;
 
-    // 装备
-    this.secTitle('装 备（点穿戴/卸下）', y); y += 24;
-    const ew = (359 - 3 * 8) / 4;
-    ['weapon', 'armor', 'helm', 'boots'].forEach(slot => {
-      const instId = own.equip[slot];
-      const inst = instId ? store.getState().equips[instId] : null;
-      const ex = 8 + ['weapon', 'armor', 'helm', 'boots'].indexOf(slot) * (ew + 8);
-      ui.panel(ex, y, ew, 58, inst ? {} : { fill: 'rgba(0,0,0,0.2)' });
-      ui.tap(ex, y, ew, 58, () => this.tapEquip(slot), 'eq-' + slot);
-      const names = { weapon: '兵刃⚔', armor: '铠甲🛡', helm: '头盔⛑', boots: '战靴👟' };
-      if (inst) {
-        const Q = items.EQUIP_QUALITIES[inst.q];
-        const match = !!inst.faction && inst.faction === def.faction;
-        // 大字行：星级替代图标（金）；品质左、阵营右分置，互不挤压
-        ui.text(inst.stars > 0 ? '★' + inst.stars : names[slot].slice(-1), ex + ew / 2, y + 4, { size: 16, color: inst.stars > 0 ? T.GOLD : undefined, align: 'center' });
-        ui.text(Q.name, ex + 6, y + 26, { size: 10, color: Q.color, bold: true });
-        if (inst.faction) ui.text(C.FACTIONS[inst.faction].name + (match ? '✓' : ''), ex + ew - 6, y + 26, { size: 10, color: match ? T.GOLD : C.FACTIONS[inst.faction].color, align: 'right' });
-        const stText = this.statText(items.equipStat(inst.q, inst.slot, inst.stars, match));
-        ui.text(stText, ex + ew / 2, y + 40, { size: 9, color: match ? T.GOLD : T.DIM, align: 'center' });
-      } else {
-        ui.text(names[slot].slice(-1), ex + ew / 2, y + 4, { size: 16, color: T.DIM, align: 'center' });
-        ui.text(names[slot].slice(0, -1), ex + ew / 2, y + 26, { size: 10, color: T.DIM, align: 'center' });
-        ui.text('空', ex + ew / 2, y + 40, { size: 9, color: T.DIM, align: 'center' });
-      }
-    });
-    y += 68;
+    // 装备采用账号共享配置，新英雄立即获得整队军械属性。
+    const armory = store.getArmoryBonuses();
+    this.secTitle('全军共享军械', y); y += 24;
+    ui.panel(8, y, 359, 64);
+    ui.text('攻击 +' + Math.round(armory.atk * 100) + '%   生命 +' + Math.round(armory.hp * 100) + '%   防御 +' + Math.round(armory.def * 100) + '%', 20, y + 12, { size: 11, color: T.GOLD_HI, bold: true });
+    ui.text('已享受当前军械，无需为武将单独配装', 20, y + 34, { size: 10, color: T.DIM });
+    ui.btn(262, y + 9, 91, 38, { text: '军械图鉴 ›', style: 'ghost', size: 10, id: 'hero-armory', cb: () => app.push('armory') });
+    y += 74;
 
     // 玩家等级由战斗成长；此页只管理武将个人星级。
     this.secTitle('成 长', y); y += 24;
@@ -141,8 +122,6 @@ module.exports = {
 
     ui.endScroll();
 
-    // 装备选择弹窗
-    if (this.pickEquipSlot) this.drawEquipPicker();
     if (this.showConvertConfirm) this.drawConvertConfirm();
   },
   secTitle(t, y) {
@@ -152,13 +131,6 @@ module.exports = {
     ctx.fillRect(8, y + 3, 3, 12);
     ui.text(t, 16, y + 2, { size: 13, color: T.GOLD, bold: true });
     ctx.restore();
-  },
-  statText(add) {
-    const p = [];
-    if (add.atk) p.push('攻+' + add.atk);
-    if (add.hp) p.push('血+' + add.hp);
-    if (add.def) p.push('防+' + add.def);
-    return p.join(' ') || '—';
   },
   doAscend() {
     const preview = store.ascendPreview(this.params.id);
@@ -207,41 +179,5 @@ module.exports = {
       ui.toast('已上阵');
     }
     this.refresh();
-  },
-  tapEquip(slot) {
-    const own = store.getState().roster[this.params.id];
-    if (own.equip[slot]) {
-      store.unequip(this.params.id, slot);
-      ui.toast('已卸下');
-      this.refresh();
-      return;
-    }
-    const list = store.equipInventory().filter(x => x.slot === slot);
-    if (!list.length) { ui.toast('背包暂无该部位装备，出征可得'); return; }
-    this.pickEquipSlot = slot;
-    this.pickList = list.slice().sort((a, b) => b.q - a.q || b.stars - a.stars);
-  },
-  drawEquipPicker() {
-    const def = heroes.getHero(this.params.id);
-    const box = ui.modal('选 择 装 备', 50, 160, 275, 380);
-    ui.setModalClose(() => { this.pickEquipSlot = null; });
-    ui.tap(0, 0, app.W, app.H, () => { this.pickEquipSlot = null; }, 'eq-mask');
-    ui.beginScroll(this, 'eqpick', box.x, box.y, box.w, box.h, this.pickList.length * 36);
-    this.pickList.forEach((e, i) => {
-      const Q = items.EQUIP_QUALITIES[e.q];
-      const match = !!e.faction && e.faction === def.faction;
-      const head = Q.name + (e.stars > 0 ? ' ' + '★'.repeat(e.stars) : '') + (e.faction ? ' ' + C.FACTIONS[e.faction].name : '');
-      const y = box.y + i * 36;
-      ui.text(head, box.x, y, { size: 12, color: Q.color, bold: true });
-      if (match) ui.text('匹配+30%', box.x + ui.textWidth(head, 12, true) + 6, y + 1, { size: 9, color: T.GOLD });
-      ui.text(this.statText(items.equipStat(e.q, e.slot, e.stars, match)), box.x + box.w, y, { size: 11, color: match ? T.GOLD : T.DIM, align: 'right' });
-      ui.tap(box.x, y - 4, box.w, 34, () => {
-        store.equipTo(this.params.id, this.pickEquipSlot, e.id);
-        this.pickEquipSlot = null;
-        ui.toast('已装备');
-        this.refresh();
-      }, 'eqpick-' + e.id);
-    });
-    ui.endScroll();
   },
 };

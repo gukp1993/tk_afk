@@ -57,6 +57,7 @@ function idleRates(cleared) {
   };
 }
 const IDLE_CAP_HOURS = 12;
+const ARMORY_IRON_PER_HOUR = 12;
 const FAST_REWARD_HOURS = 2;
 const FAST_REWARD_COST = 50;
 const FAST_REWARD_DAILY = 6;
@@ -114,7 +115,7 @@ const AD = {
 module.exports = {
   FACTIONS, BEATS, FACTION_ADV, CLASSES, RARITIES,
   LEVEL_CAPS, MAX_LEVEL, PLAYER_LEVEL, BATTLE_XP, ASCEND_COST, FOOD_VALUE,
-  goldCost, expCost, idleRates, IDLE_CAP_HOURS,
+  goldCost, expCost, idleRates, IDLE_CAP_HOURS, ARMORY_IRON_PER_HOUR,
   FAST_REWARD_HOURS, FAST_REWARD_COST, FAST_REWARD_DAILY,
   GACHA, factionBonus, FORMATION_ROWS, BATTLE, ARENA, AD
 };

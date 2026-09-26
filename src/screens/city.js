@@ -13,7 +13,7 @@ const BUILDINGS = [
   { key: 'summon', name: '点将台', hint: '召唤武将', kind: 'summon', x: 130, y: 40, w: 115, h: 91, id: 'home-summon', tab: 'summon' },
   { key: 'heroes', name: '群英殿', hint: '英雄养成', kind: 'hall', x: 28, y: 162, w: 108, h: 77, id: 'home-heroes', tab: 'heroes' },
   { key: 'arena', name: '演武场', hint: '对战切磋', kind: 'tower', x: 240, y: 157, w: 106, h: 82, id: 'city-arena', page: 'arena' },
-  { key: 'forge', name: '铁匠铺', hint: '装备强化', kind: 'forge', x: 30, y: 284, w: 103, h: 71, id: 'city-forge', page: 'forge' },
+  { key: 'forge', name: '军械图鉴', hint: '全军共用 · 六部位', kind: 'forge', x: 30, y: 284, w: 103, h: 71, id: 'city-forge', page: 'armory' },
   { key: 'shop', name: '集市', hint: '兑换物资', kind: 'market', x: 243, y: 282, w: 100, h: 73, id: 'city-shop', page: 'shop' },
   { key: 'formation', name: '军机营', hint: '调整编队', kind: 'camp', x: 139, y: 371, w: 98, h: 56, id: 'city-formation', page: 'formation' }
 ];
@@ -87,7 +87,7 @@ module.exports = {
   drawCityDock(s, v) {
     const y = app.H - 184;
     const idle = this.idle || store.idlePending();
-    const hasIdle = !!(idle.gold || idle.exp || idle.scroll);
+    const hasIdle = !!(idle.gold || idle.exp || idle.scroll || idle.iron);
     const mins = Math.floor(idle.hours * 60);
     ui.panel(0, y, 375, 132, { fill: PAPER, r: 0 });
     ui.text(v.stageName, 14, y + 9, { size: 14, color: INK, bold: true });
@@ -97,7 +97,7 @@ module.exports = {
     if (training) ui.btn(273, y + 32, 90, 40, { text: '练兵', style: 'gold', size: 14, id: 'go-training', cb: () => app.push('battle', { mode: 'training' }) });
     ui.text('挂机宝箱', 14, y + 83, { size: 13, color: INK, bold: true });
     ui.text(idle.full ? '已满 · 及时领取' : '已积累 ' + Math.floor(mins / 60) + '时' + mins % 60 + '分', 14, y + 103, { size: 10, color: MUTED });
-    ui.btn(146, y + 86, 127, 34, { text: hasIdle ? '领取 · ' + F.fmtNum(idle.gold) + ' 铜钱' : '收益积累中', style: 'gold', size: 11, id: 'idle-claim', disabled: !hasIdle, cb: () => this.claimIdle(false) });
+    ui.btn(146, y + 86, 127, 34, { text: hasIdle ? '领取 · 精铁 ' + idle.iron : '收益积累中', style: 'gold', size: 10, id: 'idle-claim', disabled: !hasIdle, cb: () => this.claimIdle(false) });
     ui.btn(281, y + 86, 82, 34, { text: '加速 / 双倍', style: 'plain', size: 10, id: 'idle-more', cb: () => { this.showIdle = true; } });
   }
 };

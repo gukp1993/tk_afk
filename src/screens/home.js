@@ -32,7 +32,7 @@ module.exports = {
     };
   },
   rewardText(r) {
-    return [['gem', '元宝'], ['gold', '铜钱'], ['scroll', '招募令'], ['shard', '碎片']]
+    return [['gem', '元宝'], ['gold', '铜钱'], ['scroll', '招募令'], ['shard', '碎片'], ['iron', '精铁']]
       .filter(([k]) => r[k]).map(([k, n]) => n + '×' + F.fmtNum(r[k])).join(' · ');
   },
   update() {
@@ -87,8 +87,8 @@ module.exports = {
     const mins = Math.floor(idle.hours * 60);
     const time = idle.full ? '已满 ' + C.IDLE_CAP_HOURS + ' 小时' : '已积累 ' + Math.floor(mins / 60) + '时' + mins % 60 + '分';
     ui.text(time, 349, y + 15, { size: 10, color: T.DIM, align: 'right' });
-    ui.text('铜钱 ' + F.fmtNum(idle.gold) + '   招募令 ' + idle.scroll, 26, y + 36, { size: 11, color: T.GOLD });
-    ui.btn(26, y + 58, 196, 30, { text: '领取收益', style: 'gold', size: 12, id: 'idle-claim', disabled: !(idle.gold || idle.exp || idle.scroll), cb: () => this.claimIdle(false) });
+    ui.text('铜钱 ' + F.fmtNum(idle.gold) + '   招募令 ' + idle.scroll + '   精铁 ' + idle.iron, 26, y + 36, { size: 10, color: T.GOLD });
+    ui.btn(26, y + 58, 196, 30, { text: '领取收益', style: 'gold', size: 12, id: 'idle-claim', disabled: !(idle.gold || idle.exp || idle.scroll || idle.iron), cb: () => this.claimIdle(false) });
     ui.btn(230, y + 58, 119, 30, { text: '加速 / 双倍', style: 'ghost', size: 11, id: 'idle-more', cb: () => { this.showIdle = true; } });
     y += 112;
     const rewardsReady = v.quests.some(q => q.done && !q.claimed) || v.chests.some(c => c.can && !c.claimed);
@@ -149,7 +149,7 @@ module.exports = {
     const s = store.getState(), left = ads.remaining('idle2x'), fast = ads.remaining('fast');
     const idle = this.idle || store.idlePending();
     ui.wrap('离线也会积累收益，最多储存 ' + C.IDLE_CAP_HOURS + ' 小时。', b.x, b.y + 2, b.w, 17, { size: 12 });
-    ui.btn(b.x, b.y + 44, b.w, 42, { text: '看广告 · 双倍领取', sub: '今日剩余 ' + left + ' 次', style: 'gold', id: 'idle-ad2x', disabled: left <= 0 || !(idle.gold || idle.exp || idle.scroll), cb: () => ads.showRewarded('idle2x', () => this.claimIdle(true), msg => ui.toast(msg)) });
+    ui.btn(b.x, b.y + 44, b.w, 42, { text: '看广告 · 双倍领取', sub: '铜钱、招募令双倍；精铁正常领取 · 今日 ' + left + ' 次', style: 'gold', id: 'idle-ad2x', disabled: left <= 0 || !(idle.gold || idle.exp || idle.scroll), cb: () => ads.showRewarded('idle2x', () => this.claimIdle(true), msg => ui.toast(msg)) });
     ui.btn(b.x, b.y + 98, b.w, 42, { text: '立即收获 ' + C.FAST_REWARD_HOURS + ' 小时收益', sub: C.FAST_REWARD_COST + ' 元宝 · 今日 ' + s.fast.count + '/' + C.FAST_REWARD_DAILY, style: 'plain', id: 'idle-fast', disabled: s.fast.count >= C.FAST_REWARD_DAILY, cb: () => { const r = store.fastReward(false); ui.toast(r.ok ? '快速收获成功' : r.msg); this.refresh(); } });
     ui.btn(b.x, b.y + 152, b.w, 42, { text: '看广告 · 免费收获 ' + C.FAST_REWARD_HOURS + ' 小时', sub: '今日剩余 ' + fast + ' 次', style: 'ghost', id: 'idle-adfast', disabled: fast <= 0, cb: () => ads.showRewarded('fast', () => { const r = store.fastReward(true); ui.toast(r.ok ? '免费快速收获成功' : r.msg); this.refresh(); }, msg => ui.toast(msg)) });
     ui.btn(b.x, b.y + 208, b.w, 34, { text: '返回主城', id: 'idle-close', cb: close });

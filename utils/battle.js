@@ -45,7 +45,12 @@ function createBattle(cfg) {
       u.fbHp = fb.hp;
       u.maxHp = Math.floor(u.maxHp * (1 + (u.passive.hp || 0)) * (1 + fb.hp));
       u.hp = u.startHpPct > 0 ? Math.max(1, Math.floor(u.maxHp * u.startHpPct)) : u.maxHp;
-      u.energy = (u.passive.firstEnergy || 0);
+      // 开战能量来自武将被动与共享军械，统一按战斗上限裁切。
+      u.energy = Math.min(BATTLE.ENERGY_MAX,
+        (u.passive.firstEnergy || 0) + (u.passive.armoryStartEnergy || 0));
+      // 军械护符的开场护盾按最终最大生命计算，并与其他护盾共用吸收逻辑。
+      const startShield = Math.max(0, u.passive.armoryStartShield || 0);
+      if (startShield > 0) u.shield = Math.floor(u.maxHp * startShield);
       stats[u.uid] = { dmg: 0, heal: 0 };
     });
     return units;
@@ -129,6 +134,10 @@ function createBattle(cfg) {
     const exec = opts.execute && (tgt.hp / tgt.maxHp < opts.execute) ? 1.8 : 1;
     dmg = dmg * defF * fac * critM * exec * rng.range(0.92, 1.08);
     dmg *= (1 - (src === tgt ? 0 : (tgt.passive.dmgReduce || 0)));
+    // 防御封印只削减普攻与大招的直接伤害，不作用于 dot 等持续伤害。
+    if (opts.kind === 'atk' || opts.kind === 'ult') {
+      dmg *= 1 - Math.max(0, Math.min(1, tgt.passive.armoryDirectDR || 0));
+    }
     dmg = Math.max(1, Math.floor(dmg));
     // 护盾吸收
     if (tgt.shield > 0) {
@@ -216,11 +225,13 @@ function createBattle(cfg) {
         break;
       }
       case 'heal': {
-        for (const t of tgts) healHp(t, effStat(src, 'atk') * fx.mult * (1 + (src.passive.heal || 0)));
+        const healMult = (1 + (src.passive.heal || 0)) * (1 + (src.passive.armoryHeal || 0));
+        for (const t of tgts) healHp(t, effStat(src, 'atk') * fx.mult * healMult);
         break;
       }
       case 'hot': {
-        for (const t of tgts) t.hots.push({ perTick: effStat(src, 'atk') * fx.mult * (1 + (src.passive.heal || 0)), remaining: fx.dur, acc: 0 });
+        const healMult = (1 + (src.passive.heal || 0)) * (1 + (src.passive.armoryHeal || 0));
+        for (const t of tgts) t.hots.push({ perTick: effStat(src, 'atk') * fx.mult * healMult, remaining: fx.dur, acc: 0 });
         break;
       }
       case 'shield': {

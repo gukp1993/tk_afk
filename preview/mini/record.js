@@ -5,6 +5,9 @@ const { SvgCtx } = require('./svgctx');
 
 const OUT = path.join(__dirname, 'out');
 if (!fs.existsSync(OUT)) fs.mkdirSync(OUT);
+// 逐屏输出代表当前源码；清理上一轮已删除场景的旧截图，避免审查页混入过期界面。
+fs.readdirSync(OUT).filter(name => name.endsWith('.svg') || /^view\d+\.html$/.test(name))
+  .forEach(name => fs.unlinkSync(path.join(OUT, name)));
 
 // ---------- mock wx ----------
 let clock = Date.now();
@@ -47,7 +50,7 @@ app.switchTab('home');
 
 // ---------- 丰富预览数据 ----------
 const s = store.getState();
-s.res.gem = 18888; s.res.scroll = 88; s.res.gold = 520000; s.res.exp = 480000; s.res.shard = 120;
+s.res.gem = 18888; s.res.scroll = 88; s.res.gold = 520000; s.res.iron = 5000; s.res.shard = 120;
 ['zhaoyun', 'zhugeliang', 'zhouyu', 'lvbu', 'huatuo', 'guojia', 'huangzhong', 'sunshangxiang', 'daqiao', 'zhangjiao', 'zhenji', 'taishici', 'lvmeng', 'yanliang', 'dongzhuo', 'luxun', 'ganning', 'machao', 'xuchu', 'simayi', 'caocao', 'diaochan']
   .forEach(id => store.addHeroCard(id));
 s.roster.guanyu.lv = 32; s.roster.guanyu.star = 2; s.roster.guanyu.cards = 1;
@@ -56,16 +59,13 @@ s.roster.zhugeliang.lv = 25; s.roster.zhouyu.lv = 22;
 s.res.gold = 5e6; s.res.exp = 5e6;
 store.levelUp('guanyu', 10);
 s.roster.guanyu.lv = Math.min(s.roster.guanyu.lv, 60);
-// 装备：关羽穿戴 SSR 武器（蜀属匹配 3 星）+ SR 铠甲（魏属不匹配），背包铺品质/狗粮样本
-const e1 = store.addEquip(4, 'weapon'); const e2 = store.addEquip(3, 'armor');
-s.equips[e1].faction = 'shu'; s.equips[e1].stars = 3;
-s.equips[e2].faction = 'wei';
-store.equipTo('guanyu', 'weapon', e1);
-store.equipTo('guanyu', 'armor', e2);
-store.addEquip(4, 'helm'); store.addEquip(2, 'boots'); store.addEquip(3, 'weapon');
-for (let i = 0; i < 10; i++) store.addEquip(1, ['weapon', 'armor', 'helm', 'boots'][i % 4]);
-for (let i = 0; i < 5; i++) store.addEquip(2, ['weapon', 'armor', 'helm', 'boots'][i % 4]);
-for (let i = 0; i < 5; i++) store.addEquip(3, 'helm'); // SR 狗粮池：保证一键放入可凑满 500 点
+// 军械图鉴示例：展示不同部位配置、星级、待领取自选箱与解锁状态。
+s.armory.unlocked.weapon_r = true; s.armory.unlocked.armor_sr = true;
+s.armory.unlocked.weapon_ssr_a = true; s.armory.unlocked.jade_ssr_a = true; s.armory.unlocked.seal_ssr_b = true;
+s.armory.selected.weapon = 'weapon_ssr_a'; s.armory.selected.armor = 'armor_sr';
+s.armory.selected.jade = 'jade_ssr_a'; s.armory.selected.seal = 'seal_ssr_b';
+s.armory.slotStars.weapon = 3; s.armory.slotStars.armor = 2; s.armory.slotStars.jade = 1;
+s.armory.boxes[1] = 1; s.armory.boxes[2] = 1;
 s.campaign.cleared = 19; // 战斗截图落在第 20 关（虎牢关·三英战吕布名将关，含剧情对白）；剧情表已覆盖 1-120 关，21+ 走循环乱世兜底
 s.tower.best = 17;
 
@@ -116,12 +116,9 @@ app.scenes.summon.pull('scroll10');
 frames(70); // 揭示完成
 snap('summon-result');
 
-// 背包：资源与装备两页
+// 背包资源
 app.switchTab('bag');
 snap('bag-resources');
-app.scenes.bag.section = 'equips';
-snap('bag-equips');
-app.scenes.bag.section = 'resources';
 
 // 7. 王庭
 app.switchTab('journey');
@@ -137,17 +134,14 @@ app.push('arena');
 snap('arena');
 app.pop();
 
-// 10. 铁匠铺
-app.push('forge');
-snap('forge');
-// 10b. 升星弹窗（一键放入后的"强化点已够"状态）
-const forge = app.scenes.forge;
-const ssrHelm = Object.keys(s.equips).find(id => s.equips[id].q === 4 && !store.isEquipped(id));
-forge.openFodder(ssrHelm);
-forge.picked = {};
-store.fodderPickIds(ssrHelm, forge.fodderList.map(x => x.id)).forEach(id => { forge.picked[id] = true; });
-snap('forge-enhance');
-forge.showFodder = false; forge.targetId = null;
+// 10. 军械图鉴
+app.push('armory');
+snap('armory-overview');
+app.scenes.armory.mode = 'catalog'; app.scenes.armory.selectedSlot = 'weapon';
+snap('armory-catalog');
+app.scenes.armory.confirm = { type: 'upgrade', slot: 'weapon' };
+snap('armory-upgrade');
+app.scenes.armory.confirm = null;
 app.pop();
 
 // 11. 集市

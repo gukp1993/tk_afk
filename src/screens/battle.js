@@ -173,7 +173,8 @@ module.exports = {
         lines.push('铜钱 +' + F.fmtNum(rw.gold));
         if (rw.chest) lines.push('📦 章末宝箱：元宝 +' + rw.chest.gem + ' · 招募令 +' + rw.chest.scroll);
         if (rw.scroll) lines.push('招募令 ×' + rw.scroll);
-        if (rw.equip) lines.push('获得 [' + items.EQUIP_QUALITIES[rw.equip.q].name + '] ' + items.EQUIP_SLOTS[rw.equip.slot].name + (rw.equip.faction ? '（' + C.FACTIONS[rw.equip.faction].name + '属）' : ''));
+        if (rw.armory) lines.push(rw.armory.duplicate ? '军械重复 · 精铁 +' + rw.armory.iron : '图鉴解锁：' + items.CATALOG.find(x => x.id === rw.armory.itemId).name);
+        if (rw.armoryBox) lines.push('获得 ' + items.GRADES[rw.armoryBox].short + ' 品质自选箱，可在军械图鉴领取');
         if (this.cfg.story && this.cfg.story.isBoss) lines.push('「' + this.cfg.story.ch.finale + '」');
       } else {
         lines.push('首通奖励需凯旋后方可领取');

@@ -17,7 +17,7 @@ module.exports = {
       arena: s.arena,
       rank: items.arenaRank(s.arena.points),
       attempts: s.arena.attempts,
-      equips: store.equipInventory().length
+      armory: store.getArmoryState()
     };
   },
 
@@ -30,7 +30,7 @@ module.exports = {
     const hubs = [
       { icon: '🗼', name: '群英塔', desc: '无限挑战，节节高升', stat: '已登 ' + this.view.towerBest + ' 层', cb: () => app.push('tower') },
       { icon: '🏟', name: '演武场', desc: '切磋武艺，争锋排名', stat: this.view.rank + ' · 今日剩 ' + this.view.attempts + ' 次', cb: () => app.push('arena') },
-      { icon: '⚒', name: '铁匠铺', desc: '穿戴强化，分解换钱', stat: '背包 ' + this.view.equips + ' 件', cb: () => app.push('forge') },
+      { icon: '⚔', name: '军械图鉴', desc: '全军共用，培养六部位', stat: '已解锁 ' + this.view.armory.unlockedCount + '/' + this.view.armory.total, cb: () => app.push('armory') },
       { icon: '🏪', name: '集市', desc: '每日刷新，奇货可居', stat: '每日刷新', cb: () => app.push('shop') }
     ];
     const w = (359 - 10) / 2, h = 92;
