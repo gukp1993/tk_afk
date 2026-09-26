@@ -16,6 +16,12 @@
 
 ## 最近交接（新 → 旧）
 
+### 英雄数据存放位置问答（纯问答） · zcode · 无变更
+
+时间：2026-09-26；执行者：zcode
+
+纯问答：定位英雄信息的三层存放——定义层 `utils/heroes.js`（HEROES 数组，当前 120 将四档：N37/R43/SR24/SSR16，含属性/大招/被动）、数值层 `utils/config.js`（RARITIES/ASCEND_COST/GACHA 等）、玩家状态层 `utils/store.js` 的 state.roster（经 platform.js 持久化，key `sanguo_afk_save_v1`，存档 v3 带迁移链）。会话内交付，未改代码。核对时确认：store.js 已含共鸣水晶（crystalInfo/effectiveLevel）与英雄重置（resetHero），抽卡为四档固定概率无保底——今日并行会话已实施抽卡改版与剧情关卡，与交接记录相符。
+
 ### 剧情关卡 P1 实施（演义剧情战役） · zcode · 已实施，待验收
 
 时间：2026-09-26；执行者：zcode
