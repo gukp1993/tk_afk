@@ -16,6 +16,17 @@
 
 ## 最近交接（新 → 旧）
 
+### 装备系统 v1（对标剑与远征：四品质+吃装备升星+阵营加成） · zcode · 已实施，待验收
+
+时间：2026-09-26；执行者：zcode
+
+按用户指令"照抄剑与远征的装备系统，品质分白蓝紫橙（N R SR SSR），先给第一个版本"实施：①`utils/items.js` 重写为四品质 `EQUIP_QUALITIES`（N白/R蓝/SR紫/SSR橙，星上限 1/3/4/5，每星 +10%）；②强化改 AFK 式升星——吃其他装备攒强化点 + 铜钱（`STAR_POINTS`/`FODDER_POINTS`/`GOLD_PER_POINT=40`，一键放入 `fodderPickIds` 由低到高凑点）；③SR/SSR 掉落自带阵营、穿戴同阵营武将属性 +30%（`FACTION_MATCH_MULT`，对标 AFK 对属）；④掉落 `dropQuality` 随进度上移（SSR 4%→7%、SR 12%→19%、R 30%→35%，N 为狗粮）；⑤新增 `salvageBatch` 批量分解白装；⑥存档 v1→v2 迁移（`migrateSaveV1`：旧 tier/enh → q/stars，旧 t6+12 ≈ 新 SSR5★，战力大致连续）；⑦UI：forge 品质筛选行+分道排版卡片（阵营字固定右对齐防挤压）+升星狗粮弹窗、heroDetail 槽位星级大字+阵营匹配金显、battle 掉落文案带品质/阵营；⑧record.js 增 forge-enhance 截图。提交 `eaceb7c` 已推送远程。
+
+- 验证：**提交树自洽验证**——store.js/smoke.js 与并行抽卡会话在同文件纠缠，采用分块暂存（只提交装备 hunk），stash 对方在途改动后跑 `node build.js` + `node test/smoke.js` 146/146 + `node test/static-check.js` 286/286，提交后 stash pop 恢复对方工作区、组合树复跑 smoke 361/361；离屏渲染 18 屏，forge/forge-enhance/hero-detail/battle-result 经两轮视觉验收通过（第一轮发现名称行内联星级+阵营在长组合下会撞按钮区，改分道排版后复审通过）。
+- 决定：装备品质体系与英雄稀有度（并行会话已改四档 N/R/SR/SSR）数值解耦，仅共用命名语义；qlmanage 转 PNG 的叠印/emoji/?/金底字虚属转换伪影，验收时已排除。
+- 风险/待办：①**发现疑似存量 bug**——battle.js `finish()` 战败也调 `winCampaign()` 发首通奖励并推进 cleared，疑似需加胜利判定（属战斗流程，本轮未动）；②stages.js 第 3 章起 foe 配置引用 heroes 重构后失效的英雄 id（第 21+ 关敌人解析为 undefined，record.js 暂以 cleared=15 绕开，需抽卡会话收口章节配置或 stages 兜底）；③预览管线 SvgCtx 忽略 ctx.scale，截图内容只占左半（存量问题）；④legacy-miniprogram 页面引用旧装备 API 且缺 utils 目录（存量不可运行，按纪律不维护）。
+- 下一步：用户验收真机/模拟器体验升星流程与数值手感；数值调优点在 `items.js` 顶部常量（STAR_POINTS/FODDER_POINTS/GOLD_PER_POINT）；后续可按调研报告做套装/词条（第二三步）。
+
 ### 小游戏平台变现渠道问答（纯问答） · zcode · 无变更
 
 时间：2026-09-26；执行者：zcode
