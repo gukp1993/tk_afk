@@ -1,0 +1,42 @@
+<view class="page">
+  <view class="res-bar">
+    <view class="res-chip">🪙 {{resView.gold}}</view>
+    <view class="res-chip">💵 {{resView.gem}}</view>
+    <view class="res-chip">📜 {{resView.scroll}}</view>
+    <view class="res-chip">🎫 {{resView.token}}</view>
+    <view class="res-chip">💠 {{resView.shard}}</view>
+  </view>
+
+  <view class="section-title">王 庭 诸 玩 法</view>
+  <view class="hubs">
+    <view class="hub panel panel-ornate" data-url="/pages/tower/tower" bindtap="go">
+      <view class="hub-icon">🗼</view>
+      <view class="hub-name">群英塔</view>
+      <view class="hub-desc t-dim">无限挑战，节节高升</view>
+      <view class="hub-stat t-gold">已登 {{towerBest}} 层</view>
+    </view>
+    <view class="hub panel panel-ornate" data-url="/pages/arena/arena" bindtap="go">
+      <view class="hub-icon">🏟</view>
+      <view class="hub-name">演武场</view>
+      <view class="hub-desc t-dim">切磋武艺，争锋排名</view>
+      <view class="hub-stat t-gold">{{arenaRank}} · 今日剩 {{attempts}} 次</view>
+    </view>
+    <view class="hub panel panel-ornate" data-url="/pages/forge/forge" bindtap="go">
+      <view class="hub-icon">⚒</view>
+      <view class="hub-name">铁匠铺</view>
+      <view class="hub-desc t-dim">穿戴强化，分解换钱</view>
+      <view class="hub-stat t-gold">背包 {{equipCount}} 件</view>
+    </view>
+    <view class="hub panel panel-ornate" data-url="/pages/shop/shop" bindtap="go">
+      <view class="hub-icon">🏪</view>
+      <view class="hub-name">集市</view>
+      <view class="hub-desc t-dim">每日刷新，奇货可居</view>
+      <view class="hub-stat t-gold">每日 6 时刷新</view>
+    </view>
+  </view>
+
+  <view class="about t-dim">
+    <view>「三国远征」· 放置卡牌 · v1.0.0</view>
+    <view>玩法闭环：挂机收益 → 养成武将 → 推进战役 → 解锁更强玩法</view>
+  </view>
+</view>

@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "征战",
+  "usingComponents": {
+    "battle-view": "/components/battle-view/index"
+  }
+}

@@ -1,0 +1,23 @@
+<view wx:if="{{hero}}" class="hcard {{mode}} rarity-frame-{{hero.rarity}}" bindtap="onTap">
+  <view class="hcard-top">
+    <view class="hcard-face bg-{{hero.faction}}">
+      <text class="hcard-surname">{{surname}}</text>
+    </view>
+    <view class="hcard-tags">
+      <view class="tag f-{{hero.faction}}">{{factionName}}</view>
+      <view class="tag">{{classIcon}} {{className}}</view>
+    </view>
+    <view class="hcard-mark" wx:if="{{marked}}">{{marked}}</view>
+  </view>
+  <view class="hcard-body">
+    <view class="hcard-name">{{hero.name}} <text class="r{{hero.rarity}}">{{rarityName}}</text></view>
+    <view class="hcard-title t-dim">{{hero.title}}</view>
+    <view class="hcard-stars">
+      <text wx:for="{{starArr}}" wx:key="index" class="star s{{item}}">★</text>
+    </view>
+    <view class="hcard-info" wx:if="{{mode !== 'mini'}}">
+      <text class="t-gold">Lv.{{hero.level}}</text>
+      <text class="t-dim">战力 {{hero.power}}</text>
+    </view>
+  </view>
+</view>

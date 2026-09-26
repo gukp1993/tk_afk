@@ -1,0 +1,39 @@
+<view class="page">
+  <view class="res-bar">
+    <view class="res-chip">🪙 {{resView.gold}}</view>
+    <view class="res-chip">💵 {{resView.gem}}</view>
+    <view class="res-chip">📜 {{resView.scroll}}</view>
+    <view class="res-chip">🎫 {{resView.token}}</view>
+    <view class="res-chip">💠 {{resView.shard}}</view>
+  </view>
+
+  <view class="section-title">今 日 商 品（每日刷新）</view>
+  <view class="goods">
+    <view class="good panel {{item.soldOut ? 'soldout' : ''}}" wx:for="{{goods}}" wx:key="id">
+      <view class="good-info">
+        <view class="good-name">{{item.name}} <text wx:if="{{item.isPick}}" class="tag t-gold">自选</text></view>
+        <view class="t-dim good-limit">限购 {{item.bought}}/{{item.limit}}</view>
+      </view>
+      <view class="btn btn-sm {{item.soldOut || !item.afford ? 'btn-disabled' : 'btn-gold'}}"
+        data-id="{{item.id}}" bindtap="buy">
+        {{item.soldOut ? '售罄' : (curNames[item.cur] === '元宝' ? '💵 ' : curNames[item.cur] === '铜钱' ? '🪙 ' : curNames[item.cur] === '演武令' ? '🎫 ' : '💠 ') + item.priceText}}
+      </view>
+    </view>
+  </view>
+
+  <view class="t-dim hint">· 遣散多余武将可获得英雄碎片，碎片可兑换自选名将卡。</view>
+  <view class="t-dim hint">· 演武令通过演武场切磋获得。</view>
+
+  <!-- 自选卡 -->
+  <popup show="{{showPick}}" title="{{pickTitle}}" bind:close="closePick">
+    <scroll-view scroll-y class="pick-scroll">
+      <view class="pick-grid">
+        <view class="pick-cell" wx:for="{{pickList}}" wx:key="id">
+          <hero-card hero="{{item}}" mode="mini" bind:cardtap="choosePick" />
+        </view>
+      </view>
+    </scroll-view>
+  </popup>
+
+  <view class="toast" wx:if="{{toast}}">{{toast}}</view>
+</view>

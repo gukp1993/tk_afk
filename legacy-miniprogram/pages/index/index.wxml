@@ -1,0 +1,94 @@
+<view class="page">
+  <!-- 资源栏 -->
+  <view class="res-bar">
+    <view class="res-chip">🪙 {{resView.gold}}</view>
+    <view class="res-chip">💵 {{resView.gem}}</view>
+    <view class="res-chip">📜 {{resView.scroll}}</view>
+    <view class="res-chip">📕 {{resView.exp}}</view>
+  </view>
+
+  <!-- 战役横幅 -->
+  <view class="campaign panel panel-ornate">
+    <view class="camp-head">
+      <view>
+        <view class="camp-chapter">{{stageName}}</view>
+        <view class="camp-stage t-dim">第 {{stageNo}} 关 <text wx:if="{{isBoss}}" class="t-red">· 名将镇守</text></view>
+      </view>
+      <view class="camp-power">
+        <view class="pw-row"><text class="t-dim">我军 </text><text class="t-gold">{{myPower}}</text></view>
+        <view class="pw-row"><text class="t-dim">敌军 </text><text class="t-red">{{enemyPower}}</text></view>
+      </view>
+    </view>
+    <view class="camp-foes">
+      <text class="t-dim">守军：</text>
+      <text wx:for="{{enemyNames}}" wx:key="*this" class="camp-foe">{{item}}</text>
+    </view>
+    <view class="btn btn-red camp-btn" bindtap="goBattle">⚔ 出 征</view>
+  </view>
+
+  <!-- 挂机收益 -->
+  <view class="idle panel">
+    <view class="idle-head">
+      <view class="h-title">挂机收益</view>
+      <view class="t-dim idle-time">{{idleView.timeText}}</view>
+    </view>
+    <view class="idle-loot">
+      <view class="loot">🪙 <text class="t-gold">{{idleView.gold}}</text></view>
+      <view class="loot">📕 <text class="t-gold">{{idleView.exp}}</text></view>
+      <view class="loot">📜 <text class="t-gold">{{idleView.scroll}}</text></view>
+    </view>
+    <view class="idle-btns">
+      <view class="btn btn-gold {{idleView.has ? '' : 'btn-disabled'}}" bindtap="claimIdle">一键领取</view>
+      <view class="btn btn-ghost {{fast.count >= fast.max ? 'btn-disabled' : ''}}" bindtap="fastReward">快速收获 +2h ({{fast.cost}}元宝) {{fast.count}}/{{fast.max}}</view>
+    </view>
+  </view>
+
+  <!-- 功能入口 -->
+  <view class="entries">
+    <view class="entry panel" bindtap="goFormation"><text class="entry-icon">🎖</text><text>编队</text></view>
+    <view class="entry panel" bindtap="openQuests"><text class="entry-icon">📋</text><text>任务</text></view>
+    <view class="entry panel" bindtap="goTower"><text class="entry-icon">🗼</text><text>群英塔</text></view>
+    <view class="entry panel" bindtap="goArena"><text class="entry-icon">🏟</text><text>演武场</text></view>
+  </view>
+
+  <!-- 编队快览 -->
+  <view class="section-title">出战阵容</view>
+  <view class="quick-team">
+    <view class="qt-slot" wx:for="{{formation}}" wx:key="index" bindtap="goFormation">
+      <block wx:if="{{item}}">
+        <view class="qt-face bg-{{item.faction}} rarity-frame-{{item.rarity}}"><text>{{item.surname}}</text></view>
+        <view class="qt-name t-dim">{{item.name}}</view>
+      </block>
+      <block wx:else>
+        <view class="qt-face qt-empty"><text>+</text></view>
+        <view class="qt-name t-dim">空</view>
+      </block>
+    </view>
+  </view>
+
+  <!-- 任务弹窗 -->
+  <popup show="{{showQuests}}" title="每 日 军 令" bind:close="closeQuests">
+    <scroll-view scroll-y class="quest-scroll">
+      <view class="quest" wx:for="{{quests}}" wx:key="id">
+        <view class="q-info">
+          <view>{{item.name}}</view>
+          <view class="t-dim q-prog">{{item.count}}/{{item.target}} · 奖励：{{item.rewardText}}</view>
+        </view>
+        <view class="btn btn-sm {{item.claimed ? 'btn-disabled' : (item.done ? 'btn-gold' : 'btn-ghost')}}" data-id="{{item.id}}" bindtap="claimQuest">
+          {{item.claimed ? '已领' : (item.done ? '领取' : '未成')}}
+        </view>
+      </view>
+      <view class="divider"></view>
+      <view class="t-gold chest-title">活跃度 {{activePts}}</view>
+      <view class="chest-row">
+        <view class="chest {{item.claimed ? 'opened' : (item.can ? 'ready' : '')}}" wx:for="{{chests}}" wx:key="idx" data-idx="{{item.idx}}" bindtap="claimChest">
+          <view class="chest-icon">{{item.claimed ? '📭' : (item.can ? '🎁' : '🔒')}}</view>
+          <view class="t-dim">{{item.need}}活跃</view>
+          <view class="t-dim chest-reward">{{item.rewardText}}</view>
+        </view>
+      </view>
+    </scroll-view>
+  </popup>
+
+  <view class="toast" wx:if="{{toast}}">{{toast}}</view>
+</view>

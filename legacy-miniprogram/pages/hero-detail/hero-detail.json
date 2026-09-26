@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "武将",
+  "usingComponents": {
+    "popup": "/components/popup/index"
+  }
+}

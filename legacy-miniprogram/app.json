@@ -1,0 +1,38 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/heroes/heroes",
+    "pages/summon/summon",
+    "pages/journey/journey",
+    "pages/battle/battle",
+    "pages/hero-detail/hero-detail",
+    "pages/formation/formation",
+    "pages/tower/tower",
+    "pages/arena/arena",
+    "pages/forge/forge",
+    "pages/shop/shop"
+  ],
+  "window": {
+    "navigationBarBackgroundColor": "#171009",
+    "navigationBarTitleText": "三国远征",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#171009",
+    "backgroundTextStyle": "dark"
+  },
+  "tabBar": {
+    "custom": true,
+    "color": "#a6906c",
+    "selectedColor": "#e9c47a",
+    "backgroundColor": "#171009",
+    "borderStyle": "black",
+    "list": [
+      { "pagePath": "pages/index/index", "text": "主城" },
+      { "pagePath": "pages/heroes/heroes", "text": "群英" },
+      { "pagePath": "pages/summon/summon", "text": "点将" },
+      { "pagePath": "pages/journey/journey", "text": "王庭" }
+    ]
+  },
+  "lazyCodeLoading": "requiredComponents",
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
+}

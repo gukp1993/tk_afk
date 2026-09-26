@@ -1,0 +1,16 @@
+.page { padding: 0 24rpx 40rpx; }
+.hubs { display: flex; flex-wrap: wrap; gap: 18rpx; }
+.hub {
+  width: calc(50% - 9rpx);
+  box-sizing: border-box;
+  padding: 30rpx 26rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+.hub:active { transform: scale(0.97); }
+.hub-icon { font-size: 56rpx; }
+.hub-name { font-size: 32rpx; color: var(--gold-hi); letter-spacing: 6rpx; font-weight: bold; }
+.hub-desc { font-size: 22rpx; }
+.hub-stat { font-size: 24rpx; }
+.about { margin-top: 40rpx; text-align: center; font-size: 22rpx; line-height: 2; }

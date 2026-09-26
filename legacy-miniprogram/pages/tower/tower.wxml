@@ -1,0 +1,26 @@
+<view class="page">
+  <view class="head panel panel-ornate">
+    <view class="head-left">
+      <view class="h-title">群 英 塔</view>
+      <view class="t-gold head-best">已登第 {{best}} 层</view>
+      <view class="t-dim">我军战力 {{myPower}} · 每 5 层一名将坐镇</view>
+    </view>
+    <view class="btn btn-red head-btn" bindtap="goFight">挑战第 {{next}} 层</view>
+  </view>
+
+  <view class="section-title">塔 层</view>
+  <view class="floors">
+    <view
+      wx:for="{{list}}" wx:key="floor"
+      class="floor panel {{item.cleared ? 'cleared' : ''}} {{item.isNext ? 'next' : ''}}"
+      data-floor="{{item.floor}}" bindtap="goFloor"
+    >
+      <view class="floor-no">{{item.floor}}</view>
+      <view class="floor-info">
+        <view>{{item.boss ? '👑 名将层' : '寻常守军'}}</view>
+        <view class="t-dim floor-sub">{{item.cleared ? '已通关（可重复挑战）' : (item.isNext ? '当前可挑战' : '尚未解锁首通奖励')}}</view>
+      </view>
+      <view class="floor-go">{{item.cleared ? '复盘' : '挑战'}}</view>
+    </view>
+  </view>
+</view>

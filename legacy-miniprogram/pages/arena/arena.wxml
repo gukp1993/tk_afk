@@ -1,0 +1,32 @@
+<view class="page">
+  <!-- 我的战绩 -->
+  <view class="me panel panel-ornate">
+    <view class="me-left">
+      <view class="h-title">演 武 场</view>
+      <view class="t-gold me-rank">{{rankName}} · {{points}} 分</view>
+      <view class="t-dim">战绩 {{wins}} 胜 {{losses}} 负 · 今日剩余 {{attempts}} 次</view>
+    </view>
+    <view class="me-right" bindtap="goFormation">
+      <view class="t-dim">我军战力</view>
+      <view class="t-gold me-power">{{myPowerText}}</view>
+      <view class="t-dim me-edit">调整编队 ›</view>
+    </view>
+  </view>
+
+  <view class="section-title">今 日 对 手</view>
+  <view class="opps">
+    <view class="opp panel {{item.hard ? 'opp-hard' : ''}}" wx:for="{{opponents}}" wx:key="seed">
+      <view class="opp-head">
+        <text class="opp-name">{{item.name}}</text>
+        <text class="tag {{item.hard ? 't-red' : ''}}">{{item.hard ? '凶险' : '寻常'}}</text>
+      </view>
+      <view class="opp-info t-dim">守军约 Lv.{{item.level}} · 战力 {{item.power}}</view>
+      <view class="btn {{attempts > 0 ? 'btn-red' : 'btn-disabled'}} btn-sm opp-btn"
+        data-seed="{{item.seed}}" data-diff="{{item.diff}}" data-name="{{item.name}}" data-power="{{item.powerRaw}}"
+        bindtap="fight">切 磋</view>
+    </view>
+  </view>
+
+  <view class="t-dim hint">· 胜得积分与演武令×2，败亦得演武令×1；积分决定段位。</view>
+  <view class="t-dim hint">· 演武令可在集市兑换招募令与自选武将卡。</view>
+</view>

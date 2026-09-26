@@ -1,0 +1,64 @@
+<view class="page">
+  <!-- 总览 -->
+  <view class="top panel panel-ornate">
+    <view class="top-left">
+      <view class="h-title">出 征 编 队</view>
+      <view class="t-gold top-power">总战力 {{powerText}}</view>
+      <view class="t-dim top-bonus">{{bonusText}}</view>
+    </view>
+    <view class="btn btn-gold btn-sm" bindtap="autoBest">一键布阵</view>
+  </view>
+
+  <!-- 阵型 -->
+  <view class="field">
+    <view class="row-label t-dim">后 排（远程输出 / 辅助）</view>
+    <view class="frow frow-back">
+      <view class="fslot slot-{{item.slot}}" wx:for="{{slots}}" wx:key="slot" wx:if="{{item.row === 1}}"
+        data-slot="{{item.slot}}" bindtap="tapSlot">
+        <block wx:if="{{item.calc}}">
+          <view class="fface bg-{{item.calc.faction}} rarity-frame-{{item.calc.rarity}}"><text>{{item.calc.surname}}</text></view>
+          <view class="fname">{{item.calc.name}}</view>
+          <view class="t-dim flv">Lv.{{item.calc.level}}</view>
+        </block>
+        <block wx:else>
+          <view class="fface fempty"><text>+</text></view>
+          <view class="t-dim fname">点击上阵</view>
+        </block>
+      </view>
+    </view>
+    <view class="frow-line"></view>
+    <view class="row-label t-dim">前 排（承伤 / 近战）</view>
+    <view class="frow frow-front">
+      <view class="fslot" wx:for="{{slots}}" wx:key="slot" wx:if="{{item.row === 0}}"
+        data-slot="{{item.slot}}" bindtap="tapSlot">
+        <block wx:if="{{item.calc}}">
+          <view class="fface bg-{{item.calc.faction}} rarity-frame-{{item.calc.rarity}}"><text>{{item.calc.surname}}</text></view>
+          <view class="fname">{{item.calc.name}}</view>
+          <view class="t-dim flv">Lv.{{item.calc.level}}</view>
+        </block>
+        <block wx:else>
+          <view class="fface fempty"><text>+</text></view>
+          <view class="t-dim fname">点击上阵</view>
+        </block>
+      </view>
+    </view>
+  </view>
+
+  <view class="t-dim hint">· 点击已上阵武将可更换或卸下；前排承伤，后排输出。</view>
+  <view class="t-dim hint">· 阵营克制：魏→蜀→吴→群→魏，克制方伤害 +25%。</view>
+
+  <!-- 选择武将 -->
+  <popup show="{{showPicker}}" title="选 择 武 将" bind:close="closePicker">
+    <view class="btn btn-ghost btn-sm empty-btn" bindtap="emptySlot">卸下该位置</view>
+    <scroll-view scroll-y class="pick-scroll">
+      <view class="pick-grid">
+        <view class="pick-cell" wx:for="{{candidates}}" wx:key="id">
+          <hero-card hero="{{item}}" mode="mini" bind:cardtap="pickHero" />
+        </view>
+      </view>
+      <view class="empty-tip" wx:if="{{!candidates.length}}">没有可上阵的武将了</view>
+    </scroll-view>
+  </popup>
+
+  <view class="toast" wx:if="{{toast}}">{{toast}}</view>
+</view>

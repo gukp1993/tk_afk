@@ -1,0 +1,25 @@
+{
+  "compileType": "game",
+  "libVersion": "3.4.10",
+  "appid": "wx03eb4074ce45033b",
+  "projectname": "guaji-ding-sanguo",
+  "setting": {
+    "es6": true,
+    "minified": true,
+    "urlCheck": false,
+    "ignoreUploadUnusedFiles": true
+  },
+  "condition": {},
+  "packOptions": {
+    "ignore": [
+      { "type": "folder", "value": "preview" },
+      { "type": "folder", "value": "test" },
+      { "type": "folder", "value": "legacy-miniprogram" },
+      { "type": "file", "value": "README.md" }
+    ]
+  },
+  "editorSetting": {
+    "tabIndent": "insertSpaces",
+    "tabSize": 2
+  }
+}

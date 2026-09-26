@@ -1,0 +1,105 @@
+<view class="page" wx:if="{{v}}">
+  <!-- 头部名片 -->
+  <view class="head panel panel-ornate">
+    <view class="head-face bg-{{v.faction}} rarity-frame-{{v.rarity}}">
+      <text class="head-surname">{{v.surname}}</text>
+      <view class="head-crown" wx:if="{{v.isTop5}}">共鸣</view>
+    </view>
+    <view class="head-info">
+      <view class="head-name">{{v.name}} <text class="r{{v.rarity}}">{{v.rarityName}}</text></view>
+      <view class="t-dim head-sub">{{v.title}} · <text class="f-{{v.faction}}">{{v.campName}}</text> · {{v.clsName}}</view>
+      <view class="head-stars">
+        <text wx:for="{{starArr}}" wx:key="index" class="star s{{item}}">★</text>
+      </view>
+      <view class="head-lv">Lv.{{v.level}} <text class="t-dim" wx:if="{{v.effNote}}">（{{v.effNote}}）</text></view>
+      <view class="t-gold">战力 {{v.power}}</view>
+    </view>
+  </view>
+
+  <view class="t-dim quote">“{{v.quote}}”</view>
+
+  <!-- 属性 -->
+  <view class="section-title">属 性</view>
+  <view class="stats panel">
+    <view class="stat"><text class="t-dim">生命</text><text>{{v.stats.hp}}</text></view>
+    <view class="stat"><text class="t-dim">攻击</text><text>{{v.stats.atk}}</text></view>
+    <view class="stat"><text class="t-dim">防御</text><text>{{v.stats.def}}</text></view>
+    <view class="stat"><text class="t-dim">攻速</text><text>{{v.stats.spd}}</text></view>
+    <view class="stat"><text class="t-dim">暴击</text><text>{{v.critText}}</text></view>
+    <view class="stat"><text class="t-dim">同名卡</text><text>{{v.cards}} 张</text></view>
+  </view>
+
+  <!-- 技能 -->
+  <view class="section-title">技 能</view>
+  <view class="skill panel">
+    <view class="skill-head"><text class="skill-tag ult">必杀</text><text class="skill-name">{{v.ult.name}}</text></view>
+    <view class="skill-desc t-dim">{{v.ult.desc}}</view>
+  </view>
+  <view class="skill panel">
+    <view class="skill-head"><text class="skill-tag">被动</text><text class="skill-name">{{v.passiveDef.name}}</text></view>
+    <view class="skill-desc t-dim">{{v.passiveDef.desc}}</view>
+  </view>
+
+  <!-- 装备 -->
+  <view class="section-title">装 备（点击穿戴 / 卸下）</view>
+  <view class="equips">
+    <view class="equip panel {{ev.inst ? '' : 'equip-empty'}}" wx:for="{{equipViews}}" wx:key="slot" wx:for-item="ev" data-slot="{{ev.slot}}" bindtap="tapEquip">
+      <block wx:if="{{ev.inst}}">
+        <view class="eq-icon" style="color: {{ev.inst.color}};">{{ev.icon}}</view>
+        <view class="eq-name" style="color: {{ev.inst.color}};">{{ev.inst.tierName}}{{ev.inst.enh > 0 ? ' +' + ev.inst.enh : ''}}</view>
+        <view class="eq-stat t-dim">{{ev.inst.statText}}</view>
+      </block>
+      <block wx:else>
+        <view class="eq-icon t-dim">{{ev.icon}}</view>
+        <view class="eq-name t-dim">{{ev.name}}</view>
+        <view class="eq-stat t-dim">空</view>
+      </block>
+    </view>
+  </view>
+
+  <!-- 养成 -->
+  <view class="section-title">养 成</view>
+  <view class="ops panel">
+    <view class="op-row">
+      <view class="btn btn-gold" bindtap="levelUp1">升 级</view>
+      <view class="btn btn-gold" bindtap="levelUp10">升级 ×10</view>
+      <view class="btn {{v.realLevel >= 2 ? 'btn-ghost' : 'btn-disabled'}}" bindtap="resetHero">重 置</view>
+    </view>
+    <view class="divider"></view>
+    <view class="asc-box" wx:if="{{asc}}">
+      <view class="asc-cost t-dim">升阶至 ★{{v.star + 1}}：同名卡 {{asc.same}} 张 · 兵魂点 {{foodPts}}/{{asc.food}} · 铜钱 {{asc.gold}}</view>
+      <view class="btn btn-gold {{(asc.hasSame && asc.hasFood && asc.hasGold) ? '' : 'btn-disabled'}}" bindtap="ascend">升 阶</view>
+    </view>
+    <view class="asc-box t-dim" wx:else>已达最高品阶 ★{{v.maxStar}}</view>
+    <view class="divider"></view>
+    <view class="op-row">
+      <view class="btn {{v.inFormation ? 'btn-ghost' : 'btn-gold'}}" bindtap="formationToggle">{{v.inFormation ? '下 阵' : '上 阵'}}</view>
+      <view class="btn btn-red" bindtap="openDismiss">遣 散</view>
+    </view>
+  </view>
+
+  <!-- 装备选择 -->
+  <popup show="{{showPick}}" title="选 择 装 备" bind:close="closePick">
+    <scroll-view scroll-y class="pick-scroll">
+      <view class="pick-item" wx:for="{{pickList}}" wx:key="id" data-id="{{item.id}}" bindtap="pickEquip">
+        <text style="color: {{item.color}};">{{item.tierName}}{{item.enh > 0 ? ' +' + item.enh : ''}}</text>
+        <text class="t-dim">{{item.statText}}</text>
+      </view>
+    </scroll-view>
+  </popup>
+
+  <!-- 遣散确认 -->
+  <popup show="{{showDismiss}}" title="遣 散 武 将" bind:close="closeDismiss">
+    <view class="t-dim dismiss-tip">
+      <view>遣散后该武将离队（编队中的武将不可遣散），</view>
+      <view>按品质返还英雄碎片与铜钱。是否确定？</view>
+    </view>
+    <view class="op-row" style="margin-top: 24rpx;">
+      <view class="btn btn-ghost" bindtap="closeDismiss">取消</view>
+      <view class="btn btn-red" bindtap="confirmDismiss">确定遣散</view>
+    </view>
+  </popup>
+
+  <view class="toast" wx:if="{{toast}}">{{toast}}</view>
+  <view class="bottom-space"></view>
+</view>

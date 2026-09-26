@@ -1,0 +1,88 @@
+.page { padding: 0 24rpx 40rpx; }
+
+/* 战役横幅 */
+.campaign { margin-top: 16rpx; padding: 26rpx; }
+.camp-head { display: flex; justify-content: space-between; align-items: flex-start; }
+.camp-chapter { font-size: 36rpx; color: var(--gold-hi); letter-spacing: 4rpx; font-weight: bold; }
+.camp-stage { font-size: 24rpx; margin-top: 6rpx; }
+.camp-power { text-align: right; font-size: 24rpx; }
+.pw-row { margin-bottom: 4rpx; }
+.camp-foes { margin: 16rpx 0 20rpx; font-size: 24rpx; line-height: 1.8; }
+.camp-foe { margin-right: 12rpx; color: var(--text); }
+.camp-btn { font-size: 34rpx; padding: 20rpx; letter-spacing: 16rpx; }
+
+/* 挂机 */
+.idle { margin-top: 22rpx; padding: 24rpx; }
+.idle-head { display: flex; justify-content: space-between; align-items: baseline; }
+.idle-time { font-size: 22rpx; }
+.idle-loot { display: flex; gap: 40rpx; margin: 18rpx 0; font-size: 30rpx; }
+.idle-btns { display: flex; gap: 16rpx; }
+.idle-btns .btn { flex: 1; font-size: 24rpx; padding: 14rpx 10rpx; }
+
+/* 入口 */
+.entries { display: flex; gap: 16rpx; margin-top: 22rpx; }
+.entry {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8rpx;
+  padding: 22rpx 0;
+  font-size: 24rpx;
+  color: var(--text);
+}
+.entry-icon { font-size: 44rpx; }
+.entry:active { transform: scale(0.95); }
+
+/* 编队快览 */
+.quick-team { display: flex; gap: 14rpx; }
+.qt-slot { flex: 1; text-align: center; }
+.qt-face {
+  height: 110rpx;
+  border-radius: 12rpx;
+  border: 2rpx solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 52rpx;
+  font-weight: bold;
+  color: rgba(255, 246, 224, 0.95);
+}
+.qt-empty { border-style: dashed; color: var(--text-dim); font-size: 44rpx; }
+.qt-name { font-size: 22rpx; margin-top: 6rpx; }
+
+/* 任务弹窗 */
+.quest-scroll { max-height: 56vh; }
+.quest { display: flex; align-items: center; justify-content: space-between; padding: 14rpx 0; border-bottom: 1rpx dashed rgba(90,69,42,0.4); }
+.q-info { flex: 1; font-size: 26rpx; }
+.q-prog { font-size: 22rpx; margin-top: 4rpx; }
+.chest-title { text-align: center; margin-bottom: 12rpx; }
+.chest-row { display: flex; gap: 14rpx; }
+.chest {
+  flex: 1;
+  text-align: center;
+  padding: 16rpx 8rpx;
+  border: 1rpx solid var(--line);
+  border-radius: 12rpx;
+  font-size: 20rpx;
+  background: rgba(0,0,0,0.25);
+}
+.chest.ready { border-color: var(--gold); box-shadow: 0 0 16rpx rgba(240,207,138,0.4); }
+.chest.opened { opacity: 0.4; }
+.chest-icon { font-size: 44rpx; }
+.chest-reward { margin-top: 4rpx; }
+
+/* toast */
+.toast {
+  position: fixed;
+  left: 50%; bottom: 220rpx;
+  transform: translateX(-50%);
+  background: rgba(0,0,0,0.85);
+  border: 1rpx solid var(--line-hi);
+  color: var(--gold-hi);
+  padding: 14rpx 34rpx;
+  border-radius: 12rpx;
+  font-size: 24rpx;
+  z-index: 200;
+  white-space: nowrap;
+}

@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<title>预览 · 武将详情</title>
+<link rel="stylesheet" href="assets.css">
+<link rel="stylesheet" href="pages.css">
+<style>
+  body { margin: 0; background: #0d0906; display: flex; justify-content: center; }
+  .phone { width: 375px; min-height: 812px; background: var(--bg); position: relative; overflow: hidden; }
+</style>
+</head>
+<body>
+<div class="phone"><div class="page" id="root"></div></div>
+<script src="engine.js"></script>
+<script>
+const store = _req('store');
+const heroes = _req('heroes');
+const items = _req('items');
+const C = _req('config');
+const F = _req('fmt');
+store.load();
+store.levelUp('guanyu', 20);
+store.getState().roster.guanyu.star = 2;
+const calc = store.calcHero('guanyu');
+const def = heroes.getHero('guanyu');
+const own = store.getState().roster.guanyu;
+const maxStar = C.RARITIES[def.rarity].maxStar;
+let stars = '';
+for (let i = 1; i <= 5; i++) stars += '<span class="star ' + (i <= own.star ? 's2' : (i <= maxStar ? 's1' : '')) + '">★</span>';
+const cost = C.ASCEND_COST[own.star];
+const facName = C.FACTIONS[def.faction].name;
+const clsName = C.CLASSES[def.cls].name;
+document.getElementById('root').innerHTML =
+  '<div class="head panel panel-ornate">' +
+    '<div class="head-face bg-' + def.faction + ' rarity-frame-' + def.rarity + '"><span class="head-surname">' + def.name[0] + '</span><div class="head-crown">共鸣</div></div>' +
+    '<div class="head-info">' +
+      '<div class="head-name">' + def.name + ' <span class="r' + def.rarity + '">' + C.RARITIES[def.rarity].name + '</span></div>' +
+      '<div class="t-dim head-sub">' + def.title + ' · <span class="f-' + def.faction + '">' + facName + '</span> · ' + clsName + '</div>' +
+      '<div class="head-stars">' + stars + '</div>' +
+      '<div class="head-lv">Lv.' + calc.level + '</div>' +
+      '<div class="t-gold">战力 ' + calc.power + '</div>' +
+    '</div>' +
+  '</div>' +
+  '<div class="t-dim quote">“' + def.quote + '”</div>' +
+  '<div class="section-title">属 性</div>' +
+  '<div class="stats panel">' +
+    '<div class="stat"><span class="t-dim">生命</span><span>' + calc.stats.hp + '</span></div>' +
+    '<div class="stat"><span class="t-dim">攻击</span><span>' + calc.stats.atk + '</span></div>' +
+    '<div class="stat"><span class="t-dim">防御</span><span>' + calc.stats.def + '</span></div>' +
+    '<div class="stat"><span class="t-dim">攻速</span><span>' + calc.stats.spd + '</span></div>' +
+    '<div class="stat"><span class="t-dim">暴击</span><span>' + Math.round(calc.stats.crit * 100) + '%</span></div>' +
+    '<div class="stat"><span class="t-dim">同名卡</span><span>' + own.cards + ' 张</span></div>' +
+  '</div>' +
+  '<div class="section-title">技 能</div>' +
+  '<div class="skill panel"><div class="skill-head"><span class="skill-tag ult">必杀</span><span class="skill-name">' + def.ult.name + '</span></div><div class="skill-desc t-dim">' + def.ult.desc + '</div></div>' +
+  '<div class="skill panel"><div class="skill-head"><span class="skill-tag">被动</span><span class="skill-name">' + def.passive.name + '</span></div><div class="skill-desc t-dim">' + def.passive.desc + '</div></div>' +
+  '<div class="section-title">装 备（点击穿戴 / 卸下）</div>' +
+  '<div class="equips">' +
+    ['weapon', 'armor', 'helm', 'boots'].map(slot => {
+      const instId = own.equip[slot];
+      const inst = instId ? store.getState().equips[instId] : null;
+      if (inst) {
+        const t = items.EQUIP_TIERS[inst.tier - 1];
+        return '<div class="equip panel"><div class="eq-icon" style="color:' + t.color + '">' + items.EQUIP_SLOTS[slot].icon + '</div><div class="eq-name" style="color:' + t.color + '">' + t.name + ' +' + inst.enh + '</div><div class="eq-stat t-dim">攻+' + items.equipStat(inst.tier, inst.slot, inst.enh).atk + '</div></div>';
+      }
+      return '<div class="equip panel equip-empty"><div class="eq-icon t-dim">' + items.EQUIP_SLOTS[slot].icon + '</div><div class="eq-name t-dim">' + items.EQUIP_SLOTS[slot].name + '</div><div class="eq-stat t-dim">空</div></div>';
+    }).join('') +
+  '</div>' +
+  '<div class="section-title">养 成</div>' +
+  '<div class="ops panel">' +
+    '<div class="op-row"><div class="btn btn-gold">升 级</div><div class="btn btn-gold">升级 ×10</div><div class="btn btn-ghost">重 置</div></div>' +
+    '<div class="divider"></div>' +
+    '<div class="asc-box"><div class="asc-cost t-dim">升阶至 ★' + (own.star + 1) + '：同名卡 ' + cost.same + ' 张 · 兵魂点 0/' + cost.food + ' · 铜钱 ' + F.fmtNum(cost.gold) + '</div><div class="btn btn-gold">升 阶</div></div>' +
+    '<div class="divider"></div>' +
+    '<div class="op-row"><div class="btn btn-gold">上 阵</div><div class="btn btn-red">遣 散</div></div>' +
+  '</div>' +
+  '<div class="bottom-space"></div>';
+</script>
+</body>
+</html>

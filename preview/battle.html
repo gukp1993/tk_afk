@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<title>预览 · 战斗</title>
+<link rel="stylesheet" href="assets.css">
+<link rel="stylesheet" href="pages.css">
+<style>
+  body { margin: 0; background: #0d0906; display: flex; justify-content: center; }
+  .phone { width: 375px; height: 812px; background: var(--bg); position: relative; overflow: hidden; display: flex; flex-direction: column; }
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="bv-root">
+    <div class="bv-top">
+      <div class="bv-title">第一章 · 黄巾之乱 · 第1关</div>
+      <div class="bv-timer" id="timer">⏳ 90s</div>
+    </div>
+    <div class="bv-field" id="field">
+      <div class="bv-flash" id="flash" style="display:none;"></div>
+      <div class="bv-midline"><span class="bv-vs">对 阵</span></div>
+    </div>
+    <div class="bv-banner" id="banner" style="display:none;">
+      <div class="bv-banner-in" id="banner-in">
+        <span class="bv-banner-who" id="banner-who"></span>
+        <span class="bv-banner-skill" id="banner-skill"></span>
+      </div>
+    </div>
+    <div class="bv-ctrl">
+      <div class="btn btn-ghost btn-sm" onclick="resetBattle()">重开</div>
+      <div class="btn btn-ghost btn-sm" onclick="cycleSpeed()">加速 ×<span id="spd">1</span></div>
+      <div class="btn btn-gold btn-sm" onclick="skipBattle()">跳过战斗</div>
+    </div>
+  </div>
+</div>
+
+<script src="engine.js"></script>
+<script>
+const store = _req('store');
+const battleMod = _req('battle');
+const stages = _req('stages');
+const heroes = _req('heroes');
+
+const POS = {
+  B3: [127.5, 60], B4: [247.5, 60],
+  B0: [75, 165], B1: [187.5, 165], B2: [300, 165],
+  A0: [75, 300], A1: [187.5, 300], A2: [300, 300],
+  A3: [127.5, 405], A4: [247.5, 405]
+};
+const field = document.getElementById('field');
+let engine = null, meta = [], speed = 1, timers = [];
+
+store.load();
+function resetBattle() {
+  timers.forEach(t => clearTimeout(t)); timers = [];
+  field.querySelectorAll('.bunit,.float-num').forEach(e => e.remove());
+  const team = store.playerUnits();
+  const enemy = stages.makeStageEnemies(1);
+  engine = battleMod.createBattle({ team, enemy: store.enemyUnits(enemy.units), seed: 42 });
+  meta = team.concat(store.enemyUnits(enemy.units)).map(u => {
+    const h = heroes.getHero(u.heroId);
+    const [x, y] = POS[u.uid] || [187, 150];
+    const el = document.createElement('div');
+    el.className = 'bunit side-' + u.uid[0] + (u.isBoss ? ' boss' : '');
+    el.style.left = (x - 92 * 0.5) + 'px';
+    el.style.top = (y - 78 * 0.5) + 'px';
+    el.innerHTML =
+      (u.isBoss ? '<div class="bunit-crown">👑</div>' : '') +
+      '<div class="bunit-face bg-' + u.faction + ' rarity-frame-' + (h ? h.rarity : 1) + '"><span class="bunit-surname">' + u.name[0] + '</span></div>' +
+      '<div class="bunit-hpbar"><div class="bunit-hpbar-in" style="width:100%"></div><div class="bunit-shieldbar" style="width:0%"></div></div>' +
+      '<div class="bunit-mpbar"><div class="bunit-mpbar-in" style="width:0%"></div></div>' +
+      '<div class="bunit-name">' + u.name + '</div>';
+    field.appendChild(el);
+    return { uid: u.uid, el, side: u.uid[0], name: u.name };
+  });
+  document.getElementById('timer').textContent = '⏳ 90s';
+}
+function cycleSpeed() { speed = speed >= 4 ? 1 : speed * 2; document.getElementById('spd').textContent = speed; }
+function floater(uid, text, cls) {
+  const m = meta.find(x => x.uid === uid);
+  if (!m) return;
+  const rect = m.el.getBoundingClientRect();
+  const frect = field.getBoundingClientRect();
+  const f = document.createElement('div');
+  f.className = 'float-num ' + cls;
+  f.style.left = (rect.left - frect.left + 32) + 'px';
+  f.style.top = (rect.top - frect.top - 8) + 'px';
+  f.style.width = '80px';
+  f.style.textAlign = 'center';
+  f.textContent = text;
+  field.appendChild(f);
+  timers.push(setTimeout(() => f.remove(), 950));
+}
+function banner(who, skill, side) {
+  const b = document.getElementById('banner');
+  document.getElementById('banner-who').textContent = who;
+  document.getElementById('banner-skill').textContent = skill;
+  const bi = document.getElementById('banner-in');
+  bi.className = 'bv-banner-in side-' + side;
+  b.style.display = 'flex';
+  bi.style.animation = 'none'; void bi.offsetWidth; bi.style.animation = '';
+  timers.push(setTimeout(() => { b.style.display = 'none'; }, 1100));
+}
+function skipBattle() {
+  let guard = 0;
+  while (!engine.ended && guard++ < 4000) engine.step(0.25);
+  finish();
+}
+function finish() {
+  clearInterval(timerId);
+  const res = engine.result();
+  const t = document.getElementById('timer');
+  t.textContent = res.winner === 'A' ? '🏆 胜利!' : '💀 败北';
+  t.className = 'bv-timer danger';
+}
+let timerId = null;
+resetBattle();
+timerId = setInterval(() => {
+  if (!engine || engine.ended) { clearInterval(timerId); return; }
+  let events = [], r = null;
+  for (let i = 0; i < speed; i++) {
+    r = engine.step(0.1);
+    events = events.concat(r.events);
+    if (r.done) break;
+  }
+  events.forEach(ev => {
+    const m = meta.find(x => x.uid === ev.uid);
+    switch (ev.e) {
+      case 'hit':
+        floater(ev.uid, (ev.crit ? '暴击 ' : '') + '-' + ev.amount, ev.crit ? 'float-crit' : ((ev.kind || '').indexOf('dot') === 0 ? 'float-dot' : 'float-dmg'));
+        break;
+      case 'heal': floater(ev.uid, '+' + ev.amount, 'float-heal'); break;
+      case 'shield': floater(ev.uid, '盾+' + ev.amount, 'float-shield'); break;
+      case 'cheat': floater(ev.uid, '龙胆！免死', 'float-heal'); break;
+      case 'death': floater(ev.uid, '阵亡', 'float-dmg'); break;
+      case 'ult': {
+        const src = meta.find(x => x.uid === ev.uid);
+        banner(ev.uid && src ? src.name : '', ev.skill, ev.uid ? ev.uid[0] : 'A');
+        if (ev.scope === 'all') {
+          const fl = document.getElementById('flash');
+          fl.style.display = 'block'; fl.style.animation = 'none'; void fl.offsetWidth; fl.style.animation = '';
+          timers.push(setTimeout(() => { fl.style.display = 'none'; }, 500));
+          field.classList.add('shake');
+          timers.push(setTimeout(() => field.classList.remove('shake'), 320));
+        }
+        break;
+      }
+      case 'act': {
+        const sm = meta.find(x => x.uid === ev.src);
+        if (sm) {
+          sm.el.classList.add(sm.side === 'A' ? 'lunge-up' : 'lunge-down');
+          timers.push(setTimeout(() => sm.el.classList.remove('lunge-up', 'lunge-down'), 340));
+        }
+        break;
+      }
+    }
+  });
+  // 同步状态条
+  engine.snapshot().forEach(s => {
+    const m = meta.find(x => x.uid === s.uid);
+    if (!m) return;
+    const hp = m.el.querySelector('.bunit-hpbar-in');
+    const sh = m.el.querySelector('.bunit-shieldbar');
+    const mp = m.el.querySelector('.bunit-mpbar-in');
+    hp.style.width = Math.max(0, s.hp * 100 / s.maxHp) + '%';
+    sh.style.width = Math.min(100, s.shield * 100 / s.maxHp) + '%';
+    mp.style.width = s.energy + '%';
+    m.el.classList.toggle('dead', !s.alive);
+    let st = m.el.querySelector('.bunit-status');
+    const want = (s.shield > 0 ? 1 : 0) + (s.cc ? 1 : 0);
+    if (want > 0) {
+      if (!st) { st = document.createElement('div'); st.className = 'bunit-status'; m.el.appendChild(st); }
+      st.innerHTML = (s.shield > 0 ? '<span class="st st-shield">盾</span>' : '') + (s.cc ? '<span class="st st-cc">' + (s.cc === 'freeze' ? '❄' : s.cc === 'stun' ? '✦' : '🔇') + '</span>' : '');
+    } else if (st) st.remove();
+  });
+  if (r) document.getElementById('timer').textContent = '⏳ ' + Math.max(0, Math.ceil(90 - r.time)) + 's';
+  if (r && r.done) { finish(); }
+}, 100);
+</script>
+</body>
+</html>

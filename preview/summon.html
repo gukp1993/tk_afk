@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<title>预览 · 点将台</title>
+<link rel="stylesheet" href="assets.css">
+<link rel="stylesheet" href="pages.css">
+<style>
+  body { margin: 0; background: #0d0906; display: flex; justify-content: center; }
+  .phone { width: 375px; min-height: 812px; background: var(--bg); position: relative; overflow: hidden; }
+  .fakebar { display: flex; background: linear-gradient(180deg, #241a10, #171009); border-top: 1px solid #5a452a; position: absolute; bottom: 0; left: 0; right: 0; }
+  .fakebar .tab-item { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 7px 0 5px; color: #a6906c; }
+  .fakebar .tab-item.active { color: #e9c47a; }
+  .fakebar .tab-icon { font-size: 20px; }
+  .fakebar .tab-text { font-size: 11px; margin-top: 2px; letter-spacing: 2px; }
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="page">
+    <div class="res-bar">
+      <div class="res-chip">💵 1888</div>
+      <div class="res-chip">📜 12</div>
+    </div>
+
+    <div class="stage panel panel-ornate">
+      <div class="stage-art">
+        <div class="stage-glow"></div>
+        <div class="stage-title">点 将 台</div>
+        <div class="stage-sub t-dim">聚天下英杰，成千秋霸业</div>
+        <div class="stage-coin">☯</div>
+      </div>
+      <div class="stage-rates t-dim">概率：SSR 2.5% · SR 12% · 60 抽内含保底</div>
+    </div>
+
+    <div class="pity panel">
+      <div class="pity-row">
+        <div class="t-dim">终得保底（12/60 抽必出 SSR）</div>
+        <div class="bar" style="flex:1; margin: 0 8px;"><div class="bar-fill gold" style="width: 20%;"></div></div>
+      </div>
+      <div class="pity-row" style="margin-top: 6px;">
+        <div class="t-dim">心愿将星（12/30 抽必出 SSR）</div>
+        <div class="bar" style="flex:1; margin: 0 8px;"><div class="bar-fill" style="width: 40%;"></div></div>
+      </div>
+    </div>
+
+    <div class="pulls">
+      <div class="btn btn-ghost pull-btn"><div class="pull-t">招募 ×1</div><div class="pull-c t-dim">📜 招募令 ×1</div></div>
+      <div class="btn btn-gold pull-btn"><div class="pull-t">招募 ×10</div><div class="pull-c">📜 招募令 ×10</div></div>
+      <div class="btn btn-gold pull-btn"><div class="pull-t">元宝十连</div><div class="pull-c">💵 2880（首个十连必出 SSR）</div></div>
+    </div>
+  </div>
+
+  <!-- 结果弹层（预览态） -->
+  <div class="result-mask" style="position:absolute; top:0;">
+    <div class="result-inner">
+      <div class="result-title">点 将 · 5 连</div>
+      <div class="cards">
+        <div class="pcard rar3 revealed"><div class="pcard-back">?</div><div class="pcard-face bg-shu"><div class="pcard-name">赵云</div><div class="pcard-rar r3">SSR</div><div class="pcard-new">NEW</div></div></div>
+        <div class="pcard rar2 revealed"><div class="pcard-back">?</div><div class="pcard-face bg-wei"><div class="pcard-name">郭嘉</div><div class="pcard-rar r2">SR</div><div class="pcard-dup">+1卡</div></div></div>
+        <div class="pcard rar1 revealed"><div class="pcard-back">?</div><div class="pcard-face bg-qun"><div class="pcard-name">张角</div><div class="pcard-rar r1">R</div><div class="pcard-dup">+1卡</div></div></div>
+        <div class="pcard rar2 revealed"><div class="pcard-back">?</div><div class="pcard-face bg-wu"><div class="pcard-name">大乔</div><div class="pcard-rar r2">SR</div><div class="pcard-new">NEW</div></div></div>
+        <div class="pcard rar1 revealed"><div class="pcard-back">?</div><div class="pcard-face bg-shu"><div class="pcard-name">廖化</div><div class="pcard-rar r1">R</div><div class="pcard-dup">+1卡</div></div></div>
+      </div>
+      <div class="btn btn-gold close-btn">确 定</div>
+    </div>
+  </div>
+
+  <div class="fakebar">
+    <div class="tab-item"><div class="tab-icon">🏯</div><div class="tab-text">主城</div></div>
+    <div class="tab-item"><div class="tab-icon">⚔</div><div class="tab-text">群英</div></div>
+    <div class="tab-item active"><div class="tab-icon">📜</div><div class="tab-text">点将</div></div>
+    <div class="tab-item"><div class="tab-icon">🏛</div><div class="tab-text">王庭</div></div>
+  </div>
+</div>
+</body>
+</html>

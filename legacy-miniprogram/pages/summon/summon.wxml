@@ -1,0 +1,73 @@
+<view class="page">
+  <view class="res-bar">
+    <view class="res-chip">💵 {{resView.gem}}</view>
+    <view class="res-chip">📜 {{resView.scroll}}</view>
+  </view>
+
+  <!-- 点将台主视觉 -->
+  <view class="stage panel panel-ornate">
+    <view class="stage-art">
+      <view class="stage-glow"></view>
+      <view class="stage-title">点 将 台</view>
+      <view class="stage-sub t-dim">聚天下英杰，成千秋霸业</view>
+      <view class="stage-coin">☯</view>
+    </view>
+    <view class="stage-rates t-dim">概率：{{rateText}} · {{total}} 抽内含保底</view>
+  </view>
+
+  <!-- 保底进度 -->
+  <view class="pity panel">
+    <view class="pity-row">
+      <view class="t-dim">终得保底（{{pity}}/{{60}} 抽必出 SSR）</view>
+      <view class="bar" style="flex:1; margin: 0 16rpx;">
+        <view class="bar-fill gold" style="width: {{pityPct}}%;"></view>
+      </view>
+    </view>
+    <view class="pity-row" style="margin-top: 12rpx;">
+      <view class="t-dim">心愿将星（{{wish}}/{{30}} 抽必出 SSR）</view>
+      <view class="bar" style="flex:1; margin: 0 16rpx;">
+        <view class="bar-fill" style="width: {{wishPct}}%;"></view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 招募按钮 -->
+  <view class="pulls">
+    <view class="btn btn-ghost pull-btn" data-type="scroll1" bindtap="pull">
+      <view class="pull-t">招募 ×1</view>
+      <view class="pull-c t-dim">📜 招募令 ×1</view>
+    </view>
+    <view class="btn btn-gold pull-btn" data-type="scroll10" bindtap="pull">
+      <view class="pull-t">招募 ×10</view>
+      <view class="pull-c">📜 招募令 ×10</view>
+    </view>
+    <view class="btn btn-gold pull-btn" data-type="gem10" bindtap="pull">
+      <view class="pull-t">元宝十连</view>
+      <view class="pull-c">💵 2880（首个十连必出 SSR）</view>
+    </view>
+  </view>
+
+  <!-- 结果弹层 -->
+  <view class="result-mask" wx:if="{{showResult}}" bindtap="closeResult">
+    <view class="result-inner" catchtap="">
+      <view class="result-title">点 将 · {{results.length}} 连</view>
+      <view class="cards">
+        <view
+          wx:for="{{results}}" wx:key="index"
+          class="pcard {{item.revealed ? 'revealed' : ''}} rar{{item.rarity}}"
+        >
+          <view class="pcard-back">?</view>
+          <view class="pcard-face bg-{{item.faction}}">
+            <view class="pcard-name">{{item.name}}</view>
+            <view class="pcard-rar r{{item.rarity}}">{{item.rarityName}}</view>
+            <view class="pcard-new" wx:if="{{item.isNew}}">NEW</view>
+            <view class="pcard-dup" wx:if="{{!item.isNew}}">+1卡</view>
+          </view>
+        </view>
+      </view>
+      <view class="btn btn-gold close-btn {{pulling ? 'btn-disabled' : ''}}" bindtap="closeResult">确 定</view>
+    </view>
+  </view>
+
+  <view class="toast" wx:if="{{toast}}">{{toast}}</view>
+</view>

@@ -1,0 +1,61 @@
+<view class="bv-root">
+  <view class="bv-top">
+    <view class="bv-title">{{title}}</view>
+    <view class="bv-timer {{timeLeft < 15 ? 'danger' : ''}}">⏳ {{timeLeft}}s</view>
+  </view>
+
+  <view class="bv-field {{shake ? 'shake' : ''}}">
+    <view class="bv-flash" wx:if="{{flash}}"></view>
+
+    <!-- 敌我分界 -->
+    <view class="bv-midline"><text class="bv-vs">对 阵</text></view>
+
+    <!-- 武将单元 -->
+    <view
+      wx:for="{{units}}"
+      wx:key="uid"
+      class="bunit side-{{item.side}} {{item.acting}} {{item.glowing ? 'ult-glow' : ''}} {{item.alive ? '' : 'dead'}} {{item.isBoss ? 'boss' : ''}}"
+      style="left: {{item.x - 92}}rpx; top: {{item.y - 78}}rpx;"
+    >
+      <view class="bunit-status" wx:if="{{item.cc || item.shield > 0}}">
+        <text wx:if="{{item.shield > 0}}" class="st st-shield">盾</text>
+        <text wx:if="{{item.cc}}" class="st st-cc">{{item.cc === 'freeze' ? '❄' : item.cc === 'stun' ? '✦' : '🔇'}}</text>
+      </view>
+      <view class="bunit-crown" wx:if="{{item.isBoss}}">👑</view>
+      <view class="bunit-face bg-{{item.faction}} rarity-frame-{{item.rarity}}">
+        <text class="bunit-surname">{{item.surname}}</text>
+      </view>
+      <view class="bunit-hpbar">
+        <view class="bunit-hpbar-in" style="width: {{item.maxHp > 0 ? (item.hp * 100 / item.maxHp) : 0}}%"></view>
+        <view class="bunit-shieldbar" wx:if="{{item.shield > 0}}" style="width: {{item.maxHp > 0 ? (item.shield > item.maxHp ? 100 : item.shield * 100 / item.maxHp) : 0}}%"></view>
+      </view>
+      <view class="bunit-mpbar">
+        <view class="bunit-mpbar-in" style="width: {{item.energy}}%"></view>
+      </view>
+      <view class="bunit-name">{{item.name}}</view>
+    </view>
+
+    <!-- 飘字层 -->
+    <view
+      wx:for="{{fx}}"
+      wx:key="id"
+      class="float-num {{item.cls}}"
+      style="left: {{item.x - 80}}rpx; top: {{item.y - 90}}rpx; width: 160rpx; text-align: center;"
+    >{{item.text}}</view>
+  </view>
+
+  <!-- 大招横幅 -->
+  <view class="bv-banner" wx:if="{{banner}}">
+    <view class="bv-banner-in side-{{banner.side}}">
+      <text class="bv-banner-who">{{banner.who}}</text>
+      <text class="bv-banner-skill">{{banner.skill}}</text>
+    </view>
+  </view>
+
+  <!-- 底部控制 -->
+  <view class="bv-ctrl">
+    <view class="btn btn-ghost btn-sm" bindtap="retreat">撤退</view>
+    <view class="btn btn-ghost btn-sm" bindtap="setSpeed">加速 ×{{speed}}</view>
+    <view class="btn btn-gold btn-sm" bindtap="skip">跳过战斗</view>
+  </view>
+</view>
