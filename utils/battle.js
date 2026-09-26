@@ -105,7 +105,7 @@ function createBattle(cfg) {
       case 'rand3': return rng.shuffle(foes).slice(0, 3);
       case 'randEach': return foes.length ? [foes[Math.floor(rng.next() * foes.length)]] : [];
       case 'lowestEnemy': return lowest(foes, 'hp') ? [lowest(foes, 'hp')] : [];
-      case 'strongestEnemy': return lowest(foes, 'maxHp') ? [lowest(foes, 'maxHp')] : [];
+      case 'strongestEnemy': { const t = foes.slice().sort((a, b) => b.maxHp - a.maxHp)[0]; return t ? [t] : []; }
       case 'lowestAlly': return lowest(allies, 'hp') ? [lowest(allies, 'hp')] : [];
       case 'single': default: { const t = defaultTarget(src); return t ? [t] : []; }
     }
@@ -271,6 +271,7 @@ function createBattle(cfg) {
     if (!t) return;
     emit({ e: 'act', uid: u.uid, type: 'atk', tgt: t.uid });
     applyDamage(u, t, effStat(u, 'atk'), { kind: 'atk' });
+    gainEnergy(u, BATTLE.ENERGY_ATK);
   }
 
   function checkEnd() {
@@ -292,12 +293,7 @@ function createBattle(cfg) {
         // buff/cc/dot 计时
         for (const b of u.buffs) b.remaining -= dt;
         u.buffs = u.buffs.filter(b => b.remaining > 0);
-        if (u.cc) {
-          u.cc.remaining -= dt;
-          if (u.cc.remaining <= 0) { u.cc = null; emit({ e: 'ccEnd', uid: u.uid }); }
-          continue; // 被控不能行动
-        }
-        // hot/dot 每秒结算
+        // hot/dot 结算不受控制状态影响
         for (const h of u.hots) { h.acc += dt; while (h.acc >= 1) { h.acc -= 1; healHp(u, h.perTick); } }
         u.hots = u.hots.filter(h => h.remaining - dt > -1);
         for (const h of u.hots) h.remaining -= dt;
@@ -313,6 +309,12 @@ function createBattle(cfg) {
         for (const d of u.dots) d.remaining -= dt;
         u.dots = u.dots.filter(d => d.remaining > 0);
         if (!u.alive) continue;
+        // 控制状态：硬控（眩晕/冰冻）跳过行动；沉默只禁大招（下方满怒分支处理）
+        if (u.cc) {
+          u.cc.remaining -= dt;
+          if (u.cc.remaining <= 0) { u.cc = null; emit({ e: 'ccEnd', uid: u.uid }); }
+          else if (u.cc.kind !== 'silence') continue;
+        }
         // 行动
         u.actTimer -= dt;
         if (u.actTimer <= 0) {
