@@ -66,7 +66,7 @@ store.addEquip(4, 'helm'); store.addEquip(2, 'boots'); store.addEquip(3, 'weapon
 for (let i = 0; i < 10; i++) store.addEquip(1, ['weapon', 'armor', 'helm', 'boots'][i % 4]);
 for (let i = 0; i < 5; i++) store.addEquip(2, ['weapon', 'armor', 'helm', 'boots'][i % 4]);
 for (let i = 0; i < 5; i++) store.addEquip(3, 'helm'); // SR 狗粮池：保证一键放入可凑满 500 点
-s.campaign.cleared = 15; // 不设更高：第 3 章起章节 foe 配置引用了heroes 重构后失效的英雄 id（并行改动待收口）
+s.campaign.cleared = 19; // 战斗截图落在第 20 关（虎牢关·三英战吕布名将关，含剧情对白）；剧情表已覆盖 1-120 关，21+ 走循环乱世兜底
 s.tower.best = 17;
 
 const shots = [];
@@ -148,10 +148,14 @@ app.push('shop');
 snap('shop');
 app.pop();
 
-// 12. 战斗（进行中）
+// 12. 战斗：剧情弹层 → 推进剧情 → 战斗进行中 → 结算
 app.switchTab('home');
 app.push('battle', { mode: 'campaign' });
-frames(140);
+frames(40); // 剧情打字机推进中
+snap('story-dialog');
+const bt = app.scenes.battle;
+while (bt.storyOpen) { bt.advanceStory(); frames(2); }
+frames(30); // 每帧引擎固定步进 0.1s：140 帧时战斗必然已结束，30 帧（3s）才能截到进行中画面
 snap('battle-live');
 frames(1200);
 snap('battle-result');

@@ -15,3 +15,4 @@ project.private.config.json
 *.tmp
 png/
 png2/
+png_story/

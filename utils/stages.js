@@ -1,22 +1,18 @@
 // 战役章节与群英塔（敌方阵容生成）
+// 前 12 章 × 10 关走 utils/story.js 演义剧情表（名称/敌阵/对白/名将关）；
+// 超出剧情表的关卡进入循环乱世，用由 story 派生的兜底章节轮转生成（单一数据源，不维护第二份敌将表）。
 const { getHero } = require('./heroes');
+const story = require('./story');
+const F = require('./fmt');
 
-// 12 章战役，每章 10 关（第 10 关为名将首领关），之后进入循环乱世
-const CHAPTERS = [
-  { name: '黄巾之乱', theme: 'qun', boss: 'zhangjiao', foes: ['huaxiong', 'yanliang', 'liaohua', 'zhangjiao', 'huatuo'] },
-  { name: '虎牢关', theme: 'qun', boss: 'lvbu', foes: ['huaxiong', 'yanliang', 'dongzhuo', 'zhangjiao', 'zhenji'] },
-  { name: '群雄割据', theme: 'qun', boss: 'dongzhuo', foes: ['yanliang', 'huaxiong', 'xiahoudun', 'daqiao', 'zhangjiao'] },
-  { name: '官渡之战', theme: 'wei', boss: 'simayi', foes: ['xiahoudun', 'zhangliao', 'xuchu', 'guojia', 'zhenji'] },
-  { name: '三顾茅庐', theme: 'shu', boss: 'zhugeliang', foes: ['liaohua', 'machao', 'huangzhong', 'liubei', 'zhaoyun'] },
-  { name: '赤壁之战', theme: 'wu', boss: 'zhouyu', foes: ['lvmeng', 'ganning', 'taishici', 'luxun', 'daqiao'] },
-  { name: '南征北战', theme: 'shu', boss: 'machao', foes: ['liaohua', 'zhangfei', 'huangzhong', 'zhaoyun', 'liubei'] },
-  { name: '汉中之战', theme: 'shu', boss: 'huangzhong', foes: ['machao', 'zhaoyun', 'zhangfei', 'zhugeliang', 'liaohua'] },
-  { name: '荆州风云', theme: 'wu', boss: 'sunshangxiang', foes: ['lvmeng', 'ganning', 'luxun', 'daqiao', 'taishici'] },
-  { name: '五丈原', theme: 'shu', boss: 'simayi', foes: ['zhangliao', 'xuchu', 'guojia', 'caocao', 'zhenji'] },
-  { name: '北伐中原', theme: 'wei', boss: 'caocao', foes: ['simayi', 'zhangliao', 'xuchu', 'guojia', 'zhenji'] },
-  { name: '天下归一', theme: 'wei', boss: 'lvbu', foes: ['lvbu', 'simayi', 'caocao', 'zhouyu', 'zhugeliang'] }
-];
 const STAGES_PER_CH = 10;
+
+// 循环乱世兜底章节：名字/主将/敌阵取自剧情表（首关敌阵作轮转池）
+const CHAPTERS = story.CHAPTERS.map(sc => ({
+  name: sc.name,
+  boss: sc.stages[STAGES_PER_CH - 1].foes[0],
+  foes: sc.stages[0].foes
+}));
 
 // 敌方强度：全局关卡序号（从 1 开始）
 function stageScale(globalStage) {
@@ -28,21 +24,21 @@ function chapterOf(globalStage) {
   const ch = idx < CHAPTERS.length ? CHAPTERS[idx] : CHAPTERS[CHAPTERS.length - 1];
   const loop = idx >= CHAPTERS.length ? idx - CHAPTERS.length + 1 : 0;
   const name = idx < CHAPTERS.length
-    ? '第' + require('./fmt').cnNum(idx + 1) + '章 · ' + ch.name
-    : '乱世纷争 · ' + require('./fmt').cnNum(loop + 1);
+    ? '第' + F.cnNum(idx + 1) + '章 · ' + ch.name
+    : '乱世纷争 · ' + F.cnNum(loop + 1);
   return { ch, idx, inCh, name, isBoss: inCh === STAGES_PER_CH - 1 };
 }
 
-// 生成敌方阵容（5 人，slot 0-2 前排，3-4 后排）
+// 生成敌方阵容（5 人，slot 0-2 前排，3-4 后排）；剧情表内关卡附带 story 配置
 function makeStageEnemies(globalStage) {
   const { ch, inCh, name, isBoss } = chapterOf(globalStage);
+  const st = story.getStoryStage(globalStage);
   const scale = stageScale(globalStage) * (isBoss ? 1.25 : 1);
   const lv = Math.max(1, Math.round(1 + (globalStage - 1) * 1.6));
   const pick = (i) => {
-    let hid;
-    if (isBoss && i === 0) hid = ch.boss;
-    else hid = ch.foes[(inCh + i) % ch.foes.length];
-    return hid;
+    if (st) return st.stage.foes[i];
+    if (isBoss && i === 0) return ch.boss;
+    return ch.foes[(inCh + i) % ch.foes.length];
   };
   const units = [];
   for (let i = 0; i < 5; i++) {
@@ -56,7 +52,8 @@ function makeStageEnemies(globalStage) {
       row: i <= 2 ? 0 : 1
     });
   }
-  return { name: name + (isBoss ? ' · 名将' : ' · 第' + (inCh + 1) + '关'), units, isBoss };
+  const label = st ? ' · ' + st.stage.name : (isBoss ? ' · 名将' : ' · 第' + (inCh + 1) + '关');
+  return { name: name + label, units, isBoss, story: st };
 }
 
 // 群英塔：无限层，随机阵营混合，每 5 层一名将

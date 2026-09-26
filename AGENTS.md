@@ -15,8 +15,8 @@
 ## 常用命令
 
 ```bash
-node test/smoke.js               # 内核逻辑冒烟测试（361 项断言，含抽卡概率分布、广告桥接契约）
-node test/static-check.js        # 项目静态一致性检查（285 项，含双平台入口与打包目录一致性）
+node test/smoke.js               # 内核逻辑冒烟测试（388 项断言，含抽卡概率分布、广告桥接契约、剧情表完整性）
+node test/static-check.js        # 项目静态一致性检查（291 项，含双平台入口与打包目录一致性）
 node build.js                    # 双平台打包同步：src/ utils/ → wechat/ douyin/（打开开发者工具前必跑）
 node build.js --watch            # 监听共享源码变化持续同步（开发时开着）
 node preview/mini/record.js      # 离屏渲染逐屏截图（生成 out/*.svg 与 view*.html）
@@ -57,11 +57,11 @@ python3 preview/mini/makeview.py # 组织成 2×2 审查页（浏览器打开 ou
 - `wechat/` — **微信小游戏打包目录**（微信开发者工具打开此目录）：`game.js`/`game.json`/`project.config.json` 为手工维护的平台入口与配置（AppID `wx03eb4074ce45033b`）；`src/`、`utils/` 为生成物（gitignore，勿手改）
 - `douyin/` — **抖音小游戏打包目录**（抖音开发者工具打开此目录）：结构同上；`project.config.json` 的 appid 目前是占位符 `tt0000000000000000`，发布前替换
 - `src/` — 共享表现层（**只改这里**）：`app.js`（画布/主循环/触摸/场景导航/底部导航）、`scenes.js`（场景注册表，平台入口与离屏渲染共用）、`ui.js`（Canvas IMGUI：面板/按钮/滚动/弹窗/飘字）、`ads.js`（广告业务门面：场景/频次/发奖判定/模拟广告 UI，零平台分支）+ `ads/bridge.js`（广告桥接层：统一广告 API，平台接入差异到此为止）、`theme.js`（主题令牌：墨黑漆器 + 鎏金 + 朱砂）、`screens/`（主城/群英/点将/王庭/详情/编队/塔/演武/铁匠/集市/战斗）
-- `utils/` — 共享游戏内核，纯 JS、无平台依赖，小游戏版与 legacy 旧版共用：`platform.js`（**平台适配层**，唯一引用 wx/tt 的文件）、`config.js`（全局数值与广告位配置）、`heroes.js`、`stages.js`、`items.js`、`battle.js`（可播种随机数战斗引擎）、`store.js`（存档）、`rng.js`、`fmt.js`
+- `utils/` — 共享游戏内核，纯 JS、无平台依赖，小游戏版与 legacy 旧版共用：`platform.js`（**平台适配层**，唯一引用 wx/tt 的文件）、`config.js`（全局数值与广告位配置）、`heroes.js`、`story.js`（演义剧情关卡表：12 章×10 关文案与敌阵，纯数据）、`stages.js`、`items.js`、`battle.js`（可播种随机数战斗引擎）、`store.js`（存档）、`rng.js`、`fmt.js`
 - `preview/mini/` — 离屏渲染自检工具（Node 里跑起整个游戏，Canvas 调用录成 SVG 逐屏截图）；`out/` 为生成产物
 - `preview/`（根）— HTML 静态预览页（旧版 UI 参考）
 - `legacy-miniprogram/` — 旧版原生微信小程序完整实现，**不参与打包**；作存档参考与内核共用方
-- `test/` — `smoke.js`（内核逻辑 361 项，含抽卡四档概率分布）+ `static-check.js`（静态一致性 287 项，含双平台入口、打包目录与共享源码一致性、平台 API 收口检查）
+- `test/` — `smoke.js`（内核逻辑 388 项，含抽卡四档概率分布、剧情表完整性）+ `static-check.js`（静态一致性 291 项，含双平台入口、打包目录与共享源码一致性、平台 API 收口检查）
 - 根目录不再有 `game.js`/`game.json`/`project.config.json`（已迁移至 `wechat/`），**根目录不是开发者工具项目目录**
 - 打包目录只含运行必需文件（生成物同步自共享源码）；若新增根目录非运行目录，不影响打包，但记得同步进 `build.js` 的 `SHARED_DIRS` 逻辑考量
 

@@ -325,6 +325,81 @@ withPlatform('wx', {}, (bridge) => {
   ok(bridge.available() === false, 'bridge unavailable without rewarded API');
 });
 
+// ---------- 15. 剧情关卡（story 表 + makeStageEnemies 优先读表 + 章末宝箱 + 存档 v3） ----------
+const story = require('../utils/story');
+ok(story.CHAPTERS.length === 12, 'story chapters = 12');
+ok(story.CHAPTERS.reduce((s, c) => s + c.stages.length, 0) === 120, 'story total stages = 120');
+{
+  const foeErrs = [], textErrs = [];
+  story.CHAPTERS.forEach((ch, ci) => {
+    if (!ch.name || !ch.intro || !ch.finale) textErrs.push('ch' + (ci + 1) + ' 章级文案缺失');
+    ch.stages.forEach((st, si) => {
+      if (!st.name || !st.narration) textErrs.push('ch' + (ci + 1) + '-' + (si + 1) + ' 名称/旁白缺失');
+      if (!st.foes || st.foes.length !== 5) textErrs.push('ch' + (ci + 1) + '-' + (si + 1) + ' 敌阵≠5');
+      (st.foes || []).forEach(f => { if (!heroes.getHero(f)) foeErrs.push('ch' + (ci + 1) + '-' + (si + 1) + ':' + f); });
+      if (si === 9) {
+        if (!st.dialogue || st.dialogue.length < 1) textErrs.push('ch' + (ci + 1) + ' 名将关无对白');
+        (st.dialogue || []).forEach(d => {
+          if (!heroes.getHero(d.who)) foeErrs.push('ch' + (ci + 1) + ' boss who:' + d.who);
+          if (!d.text) textErrs.push('ch' + (ci + 1) + ' boss 台词空');
+        });
+      }
+    });
+  });
+  ok(foeErrs.length === 0, 'story 敌将 id 全部可解析: ' + foeErrs.slice(0, 3).join(','));
+  ok(textErrs.length === 0, 'story 文案完整性: ' + textErrs.slice(0, 3).join(','));
+}
+// makeStageEnemies 优先读剧情表
+{
+  const s1 = stages.makeStageEnemies(1);
+  ok(s1.name.indexOf('桃园结义') >= 0, 'stage 1 剧情关名: ' + s1.name);
+  ok(s1.units[0].hero.id === story.CHAPTERS[0].stages[0].foes[0], 'stage 1 slot0 取自剧情表');
+  ok(s1.units.every(u => u.hero && u.hero.id), 'stage 1 敌人全部解析');
+  const s20 = stages.makeStageEnemies(20);
+  ok(s20.isBoss && s20.name.indexOf('三英战吕布') >= 0, 'stage 20 名将关名: ' + s20.name);
+  ok(s20.units[0].hero.id === 'lvbu', 'stage 20 主将为吕布');
+  ok(s20.units[0].isBoss && !s20.units[1].isBoss, 'stage 20 boss 标记仅在 slot0');
+  ok(!!s20.story && s20.story.isBoss, 'stage 20 携带 story 配置');
+  const s120 = stages.makeStageEnemies(120);
+  ok(s120.isBoss && s120.units[0].hero.id === 'lvbu', 'stage 120 终关群英梦影主将吕布');
+  // 超表兜底：循环乱世，敌将全部可解析（回归 21+ 关 undefined 的历史缺陷）
+  const s121 = stages.makeStageEnemies(121);
+  ok(s121.units.length === 5 && s121.units.every(u => u.hero && u.hero.id), 'stage 121 兜底敌将全部解析');
+  ok(s121.name.indexOf('乱世') >= 0, 'stage 121 循环乱世命名: ' + s121.name);
+  const s200 = stages.makeStageEnemies(200);
+  ok(s200.units.every(u => u.hero && u.hero.id), 'stage 200 兜底敌将全部解析');
+}
+// 章末宝箱 + 奖励实际入账
+{
+  const sN = store.getState();
+  sN.campaign.cleared = 9;
+  const gem0 = sN.res.gem, gold0 = sN.res.gold, scroll0 = sN.res.scroll;
+  const rw10 = store.winCampaign(10);
+  ok(rw10.chest && rw10.chest.gem === 100 && rw10.chest.scroll === 1, '章末宝箱发放: ' + JSON.stringify(rw10.chest));
+  ok(sN.res.gem === gem0 + 30 + 100, '首通+宝箱元宝入账: +' + (sN.res.gem - gem0));
+  ok(sN.res.gold > gold0, '首通铜钱入账');
+  ok(sN.res.scroll === scroll0 + 1 + 1, '名将关招募令+宝箱入账');
+  ok(sN.campaign.cleared === 10, 'cleared 推进');
+  const rwRepeat = store.winCampaign(10);
+  ok(rwRepeat.gold > 0 && rwRepeat.gold < rw10.gold, '重复挑战小额奖励且小于首通');
+  ok(rwRepeat.chest === null, '重复挑战不发宝箱');
+  // storySeen 标记
+  store.markStorySeen(20);
+  ok(store.isStorySeen(20) && !store.isStorySeen(19), 'storySeen 标记与查询');
+}
+// v2 → v3 迁移：补齐 storySeen，cleared 保留
+{
+  const v2 = { v: 2, campaign: { cleared: 5 } };
+  store.migrateSaveV2(v2);
+  ok(v2.v === 3, 'v2→v3 版本号');
+  ok(v2.campaign.cleared === 5, 'v2→v3 cleared 保留');
+  ok(v2.campaign.storySeen && typeof v2.campaign.storySeen === 'object', 'v2→v3 storySeen 补齐');
+  const v1 = { v: 1, campaign: { cleared: 3 }, equips: {} };
+  store.migrateSaveV1(v1);
+  store.migrateSaveV2(v1);
+  ok(v1.v === 3 && v1.campaign.cleared === 3 && v1.campaign.storySeen, 'v1→v3 链式迁移');
+}
+
 // 异步用例（广告桥接）全部 settle 后再汇总
 Promise.all(asyncChecks).then(() => {
   console.log('\n' + pass + ' passed, ' + fail + ' failed');

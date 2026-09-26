@@ -20,11 +20,11 @@ function defaultState() {
   const roster = {};
   C.BATTLE.STARTER.forEach(id => { roster[id] = newHero(id); });
   return {
-    v: 2, createdAt: Date.now(), name: '主公',
+    v: 3, createdAt: Date.now(), name: '主公',
     res: { gold: 60000, exp: 40000, gem: 1888, scroll: 12, token: 20, shard: 0 },
     roster,
     formation: ['guanyu', 'zhangfei', 'liaohua', 'liubei', null],
-    campaign: { cleared: 0 },
+    campaign: { cleared: 0, storySeen: {} },
     tower: { best: 0 },
     arena: { points: 1000, wins: 0, losses: 0, attempts: C.ARENA.DAILY },
     equips: {}, nextEquip: 1,
@@ -55,12 +55,23 @@ function migrateSaveV1(raw) {
   return raw;
 }
 
+// 旧档 v2 → v3：补齐剧情关卡字段（storySeen 缺省安全，旧档 cleared 不动）
+function migrateSaveV2(raw) {
+  raw.v = 3;
+  if (!raw.campaign) raw.campaign = { cleared: 0 };
+  if (!raw.campaign.storySeen) raw.campaign.storySeen = {};
+  return raw;
+}
+
 function load() {
   const raw = rawGet(SAVE_KEY);
   if (raw && raw.v === 1) {
-    state = migrateSaveV1(raw);
+    state = migrateSaveV2(migrateSaveV1(raw));
     save();
   } else if (raw && raw.v === 2) {
+    state = migrateSaveV2(raw);
+    save();
+  } else if (raw && raw.v === 3) {
     state = raw;
   } else {
     state = defaultState();
@@ -473,17 +484,22 @@ function grantCard(id) {
 }
 
 // ---------- 战役 / 塔 / 演武 ----------
+// 章末宝箱：每章第 10 关（名将关）首通额外发放
+const CHAPTER_CHEST = { gem: 100, scroll: 1 };
 function winCampaign(stageIdx) {
   // stageIdx 从 1 开始
   const first = stageIdx === state.campaign.cleared + 1;
-  const reward = { gold: 0, exp: 0, gem: 0, scroll: 0, equip: null };
+  const reward = { gold: 0, exp: 0, gem: 0, scroll: 0, equip: null, chest: null };
   if (first) {
     state.campaign.cleared = stageIdx;
     reward.gem = 30;
     reward.gold = Math.floor(2000 * Math.pow(1.05, stageIdx));
     reward.exp = Math.floor(1400 * Math.pow(1.05, stageIdx));
     const { isBoss } = require('./stages').chapterOf(stageIdx);
-    if (isBoss) reward.scroll = 1;
+    if (isBoss) {
+      reward.scroll = 1;
+      reward.chest = { gem: CHAPTER_CHEST.gem, scroll: CHAPTER_CHEST.scroll };
+    }
     if (Math.random() < 0.65) {
       const q = IT.dropQuality(stageIdx);
       const slot = IT.DROP_SLOTS[Math.floor(Math.random() * IT.DROP_SLOTS.length)];
@@ -495,8 +511,20 @@ function winCampaign(stageIdx) {
     reward.gold = Math.floor(600 * Math.pow(1.05, stageIdx) * 0.3);
     reward.exp = Math.floor(400 * Math.pow(1.05, stageIdx) * 0.3);
   }
+  // 奖励入账（首通含章末宝箱；此前 gold/exp/gem/scroll 只展示未入账）
+  applyReward(reward);
+  if (reward.chest) applyReward(reward.chest);
   bumpQuest('q_win3', 1);
   return reward;
+}
+
+// ---------- 剧情关卡 ----------
+function markStorySeen(stageIdx) {
+  if (!state.campaign.storySeen) state.campaign.storySeen = {};
+  state.campaign.storySeen[stageIdx] = 1;
+}
+function isStorySeen(stageIdx) {
+  return !!(state.campaign.storySeen && state.campaign.storySeen[stageIdx]);
 }
 function winTower(floor) {
   const first = floor === state.tower.best + 1;
@@ -595,10 +623,11 @@ module.exports = {
   levelUp, ascend, foodPoints, dismiss, resetHero,
   getFormationCalc, setFormationSlot, formationFactionBonus, teamPower, playerUnits, enemyUnits,
   addEquip, equipInventory, equipTo, unequip, enhanceEquip, fodderPickIds, salvageEquip, salvageBatch, isEquipped,
-  migrateSaveV1,
+  migrateSaveV1, migrateSaveV2,
   idlePending, idleTick, claimIdle, fastReward,
   doSummon, rollRarity, pickHeroOfRarity,
   winCampaign, winTower, arenaFight,
+  markStorySeen, isStorySeen,
   questList, claimQuest, activePoints, claimActiveChest, bumpQuest, applyReward,
   buyGood, CURRENCY_NAME,
   adCount, adBump

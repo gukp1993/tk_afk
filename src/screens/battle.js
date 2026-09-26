@@ -50,7 +50,7 @@ module.exports = {
     const stage = this.stage || (store.getState().campaign.cleared + 1);
     this.stage = stage;
     const def = stages.makeStageEnemies(stage);
-    return { title: def.name + (def.isBoss ? ' ⚔' : ''), team, enemy: store.enemyUnits(def.units), seed: 1000 + stage * 13 + this.retryCount };
+    return { title: def.name + (def.isBoss ? ' ⚔' : ''), team, enemy: store.enemyUnits(def.units), seed: 1000 + stage * 13 + this.retryCount, story: def.story };
   },
   start(keepRevive) {
     if (!keepRevive) { this.reviveUsed = false; this.revivePct = 0; }
@@ -61,6 +61,14 @@ module.exports = {
     }
     this.cfg = this.buildCfg();
     this.engine = battleMod.createBattle({ team: this.cfg.team, enemy: this.cfg.enemy, seed: this.cfg.seed });
+    // 剧情弹层：战役模式且该关剧情未看过时插播（打字机 + 点击推进，看过不再弹）
+    this.storyPages = []; this.storyPage = 0; this.storyChars = 0; this.storyOpen = false;
+    if (this.mode === 'campaign' && this.cfg.story && !store.isStorySeen(this.stage)) {
+      const st = this.cfg.story;
+      this.storyPages = [{ nar: st.stage.narration }]
+        .concat((st.stage.dialogue || []).map(d => ({ who: heroes.getHero(d.who), text: d.text })));
+      this.storyOpen = true;
+    }
     this.meta = this.cfg.team.concat(this.cfg.enemy).map(u => {
       const h = heroes.getHero(u.heroId);
       const pos = POS[u.uid] || [187, 260];
@@ -80,6 +88,8 @@ module.exports = {
   },
 
   update(dt) {
+    // 剧情弹层期间战斗暂停，只推进打字机
+    if (this.storyOpen) { this.storyChars += dt * 24; return; }
     if (this.over || !this.engine) return;
     let events = [], r = null;
     for (let i = 0; i < this.speed; i++) {
@@ -142,11 +152,18 @@ module.exports = {
     const win = res.winner === 'A';
     const lines = [];
     if (this.mode === 'campaign') {
-      const rw = store.winCampaign(this.stage);
-      lines.push('首通奖励：元宝 ' + rw.gem);
-      lines.push('铜钱 +' + F.fmtNum(rw.gold) + ' · 兵书 +' + F.fmtNum(rw.exp));
-      if (rw.scroll) lines.push('招募令 ×' + rw.scroll);
-      if (rw.equip) lines.push('获得 [' + items.EQUIP_QUALITIES[rw.equip.q].name + '] ' + items.EQUIP_SLOTS[rw.equip.slot].name + (rw.equip.faction ? '（' + C.FACTIONS[rw.equip.faction].name + '属）' : ''));
+      if (win) {
+        // 首通奖励与推关只在凯旋时结算（战败不再白拿首通）
+        const rw = store.winCampaign(this.stage);
+        lines.push('首通奖励：元宝 ' + rw.gem);
+        lines.push('铜钱 +' + F.fmtNum(rw.gold) + ' · 兵书 +' + F.fmtNum(rw.exp));
+        if (rw.chest) lines.push('📦 章末宝箱：元宝 +' + rw.chest.gem + ' · 招募令 +' + rw.chest.scroll);
+        if (rw.scroll) lines.push('招募令 ×' + rw.scroll);
+        if (rw.equip) lines.push('获得 [' + items.EQUIP_QUALITIES[rw.equip.q].name + '] ' + items.EQUIP_SLOTS[rw.equip.slot].name + (rw.equip.faction ? '（' + C.FACTIONS[rw.equip.faction].name + '属）' : ''));
+        if (this.cfg.story && this.cfg.story.isBoss) lines.push('「' + this.cfg.story.ch.finale + '」');
+      } else {
+        lines.push('首通奖励需凯旋后方可领取');
+      }
     } else if (this.mode === 'tower') {
       const rw = store.winTower(this.floor);
       if (rw.gem) {
@@ -171,6 +188,8 @@ module.exports = {
   },
 
   draw() {
+    // 剧情弹层独占画面（战斗已暂停）
+    if (this.storyOpen) { this.drawStory(); return; }
     const ctx = ui.ctx;
     let shakeX = 0, shakeY = 0;
     if (this.shakeT > 0) {
@@ -348,6 +367,58 @@ module.exports = {
     });
     this.timeLeft = Math.max(0, Math.ceil(90 - (r ? r.time : 0)));
     this.finish(this.engine.result());
+  },
+
+  // ---------- 剧情弹层 ----------
+  // 点击推进：未放完的句子先放完，放完则翻页；末页关闭并记入存档（看过不再弹）
+  advanceStory() {
+    const p = this.storyPages[this.storyPage];
+    if (!p) { this.closeStory(); return; }
+    const total = ('' + (p.who ? p.text : p.nar)).length;
+    if (this.storyChars < total) { this.storyChars = total; return; }
+    this.storyPage += 1;
+    this.storyChars = 0;
+    if (this.storyPage >= this.storyPages.length) this.closeStory();
+  },
+  closeStory() {
+    if (!this.storyOpen) return;
+    this.storyOpen = false;
+    store.markStorySeen(this.stage);
+  },
+  drawStory() {
+    const ctx = ui.ctx;
+    const st = this.cfg.story;
+    ctx.save();
+    ctx.fillStyle = 'rgba(10,6,2,0.92)';
+    ctx.fillRect(0, 0, app.W, app.H);
+    ctx.strokeStyle = 'rgba(217,169,78,0.5)';
+    ctx.beginPath();
+    ctx.moveTo(24, 92); ctx.lineTo(351, 92);
+    ctx.stroke();
+    ctx.restore();
+    ui.text('第' + F.cnNum(st.chIdx + 1) + '章 · ' + st.ch.name, 187, 46, { size: 12, color: T.GOLD, align: 'center' });
+    ui.text(st.stage.name, 187, 62, { size: 20, color: T.GOLD_HI, bold: true, align: 'center' });
+    ui.text(st.isBoss ? '名 将 关' : '第' + (st.inCh + 1) + '关', 187, 98, { size: 10, color: T.DIM, align: 'center' });
+
+    const p = this.storyPages[this.storyPage];
+    const full = ('' + (p.who ? p.text : p.nar));
+    const shown = full.slice(0, Math.floor(this.storyChars));
+    const isDialog = !!p.who;
+    const by = isDialog ? 468 : 560;
+    ui.panel(24, by, 327, isDialog ? 220 : 160, { ornate: true });
+    if (isDialog) {
+      ui.heroFace(40, by - 30, 62, p.who, p.who.rarity === 4 ? { mark: '👑' } : {});
+      ui.text(p.who.name, 118, by + 12, { size: 15, color: T.GOLD_HI, bold: true });
+      ui.text('·' + C.FACTIONS[p.who.faction].name + '·', 170, by + 15, { size: 10, color: C.FACTIONS[p.who.faction].color });
+      ui.wrap(shown, 40, by + 44, 295, 21, { size: 13, color: T.TEXT });
+      if (this.storyChars >= full.length) ui.text('▼ 点击继续', 187, by + 192, { size: 10, color: T.DIM, align: 'center' });
+    } else {
+      ui.wrap(shown, 42, by + 26, 291, 22, { size: 13, color: T.TEXT });
+      if (this.storyChars >= full.length) ui.text('▼ 点击继续', 187, by + 130, { size: 10, color: T.DIM, align: 'center' });
+    }
+    // 全屏点击推进；跳过按钮后注册优先生效
+    ui.tap(0, 0, app.W, app.H, () => this.advanceStory(), 'story-page');
+    ui.btn(275, 40, 76, 26, { text: '跳过剧情', style: 'ghost', size: 11, id: 'story-skip', cb: () => this.closeStory() });
   }
 };
 function roundedStroke(ctx, x, y, w, h, r) {
