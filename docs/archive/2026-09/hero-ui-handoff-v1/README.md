@@ -7,7 +7,7 @@
 打开 [index.html](index.html)，可直接在浏览器以本地文件打开，不依赖安装包。也可以从仓库根运行：
 
 ```bash
-python3 -m http.server 8771 --bind 127.0.0.1 --directory docs
+python3 -m http.server 8771 --bind 127.0.0.1 --directory docs/archive/2026-09
 ```
 
 然后访问 `http://127.0.0.1:8771/hero-ui-handoff-v1/`。不要只服务本目录，否则上一轮参考样稿的相对链接不可访问。
@@ -23,7 +23,7 @@ python3 -m http.server 8771 --bind 127.0.0.1 --directory docs
 | [01 产品需求与视觉设计](01-product-design.md) | 页面目标、现有规则、750×1334布局、字色/字号、卡片与详情、各类状态、交互需求与15项验收 |
 | [02 Cocos开发文档](02-cocos-development.md) | 根目录Creator工程接入、实际数据API、节点/Prefab、素材坐标契约、状态刷新、滚动恢复、资源生命周期、性能与测试 |
 | [03 素材与切片规范](03-assets.md) | 5张PNG、33个图标组件、完整关羽和城关底图、命名与透明处理、九宫格待验收范围 |
-| [04 人物统一提示词](04-character-prompts.md) | 固定画风段、人物变量模板、关羽完整人物段、赵云/张飞/诸葛亮/貂蝉方向、头像派生、技能图标及返修模板 |
+| [04 人物统一提示词](04-character-prompts_统一立绘提示词.md) | 固定画风段、人物变量模板、关羽完整人物段、赵云/张飞/诸葛亮/貂蝉方向、头像派生、技能图标及返修模板 |
 | [assets-manifest.json](assets-manifest.json) | 35项Sprite的真实左上角像素矩形、5张源图尺寸/alpha/哈希 |
 | [assets/](assets/) | 透明图集、立绘、空景和本轮ImageGen提示词原文 |
 
@@ -45,6 +45,6 @@ python3 -m http.server 8771 --bind 127.0.0.1 --directory docs
 可复验命令（Pillow只用于读取检查，不编辑PNG）：
 
 ```bash
-python3 docs/hero-ui-handoff-v1/verify_assets.py
-node --check docs/hero-ui-handoff-v1/preview-data.js
+python3 docs/archive/2026-09/hero-ui-handoff-v1/verify_assets.py
+node --check docs/archive/2026-09/hero-ui-handoff-v1/preview-data.js
 ```

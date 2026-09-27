@@ -1,4 +1,4 @@
-# 挂机定三国（三国放置卡牌 · 微信/抖音双平台小游戏）
+# 挂机定三国（三国放置卡牌 · 微信小游戏）
 
 ## Cocos Creator 主工程（迁移进行中）
 
@@ -8,16 +8,15 @@
 ./scripts/cocos-build.sh web-desktop
 ./scripts/cocos-build.sh web-mobile
 ./scripts/cocos-build.sh wechatgame
-./scripts/cocos-build.sh bytedance-mini-game
 ```
 
-微信、抖音 Cocos 包在 `build/wechatgame/`、`build/bytedance-mini-game/`。构建脚本从 `scripts/cocos-appids.json` 读取 AppID。目前已接入真实存档、主线战斗、自动出征与练兵、挂机、召唤、英雄、共享军械、集市、塔和演武的基础入口；抖音开发者工具模拟器已验证主线首战与结算，微信开发者工具和两平台真机仍需验收。画面与完整交互仍在对照迁移。旧版 `build.js`、`assets_gen/`、`legacy-miniprogram/`、`preview/`、`test/`、`src/`、`wechat/`、`douyin/` 已删除。
+当前只开发与构建微信小游戏，生成包在 `build/wechatgame/`。构建脚本从 `scripts/cocos-appids.json` 读取 AppID。已接入真实存档、主线战斗、自动出征与练兵、挂机、召唤、英雄、共享军械、集市、塔和演武的基础入口；具体页面与设备验收边界见 [历史迁移记录](docs/archive/2026-09/cocos-migration-status.md) 和最新交接，不能把构建成功视为完整验收。旧版 `build.js`、`assets_gen/`、`legacy-miniprogram/`、`preview/`、`test/`、`src/`、`wechat/`、`douyin/` 已删除。
 
 小游戏默认执行发布构建以缩减主包，Web 默认调试构建；需要排查小游戏时可用 `COCOS_DEBUG=true ./scripts/cocos-build.sh wechatgame` 临时覆盖。打包后仍须检查实际主包大小及开发者工具提示。
 
 ## 旧 Canvas 基线
 
-以下内容保留旧版技术与玩法说明；部分早期养成数值已被 V2 调整，当前行为以 `utils/` 内规则和 `docs/cocos-migration-status.md` 的迁移对照为准。
+以下内容保留旧版技术与玩法说明；部分早期养成数值已被 V2 调整，当前行为以 `utils/` 内规则、[文档入口](docs/README.md)及[归档的迁移记录](docs/archive/2026-09/cocos-migration-status.md)为参考，并须核对现行代码。
 
 一款以三国为背景的卡牌放置类**小游戏**（Canvas 渲染），同时支持**微信小游戏**与**抖音小游戏**双平台，
 玩法骨架对标《剑与远征》(AFK Arena) 的核心循环。所有武将、技能、文案、视觉均为原创三国题材内容

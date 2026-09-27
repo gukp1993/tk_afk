@@ -81,4 +81,4 @@
 4. 字体/中文Label、滚动、安全区、点击事件、实时数据由开发实现。细分接入方案见[开发文档](02-cocos-development.md)。
 5. 接入后按15项产品验收及双平台设备验收执行。当前只能说明源文件/预览检查结果，不能宣称Cocos运行画面或微信、抖音真机已经通过。
 
-生成原文：`assets/prompt-common-icons.txt`、`prompt-badges-skills.txt`、`prompt-components.txt`、`prompt-guanyu-cutout.txt`、`prompt-background.txt`。后续统一人物模板见[立绘提示词](04-character-prompts.md)。
+生成原文：`assets/prompt-common-icons.txt`、`prompt-badges-skills.txt`、`prompt-components.txt`、`prompt-guanyu-cutout.txt`、`prompt-background.txt`。后续统一人物模板见[立绘提示词](04-character-prompts_统一立绘提示词.md)。

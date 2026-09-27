@@ -10,7 +10,7 @@ export const palette = {
   red: new Color(140, 65, 43), text: new Color(249, 236, 200), muted: new Color(170, 176, 151)
 };
 
-/** Placeholder-art tokens shared by every page (design originals stay in docs/hero-ui-handoff-v1). */
+/** Placeholder-art tokens shared by every page (design originals stay in docs/archive/2026-09/hero-ui-handoff-v1). */
 export const factionColors: Record<string, string> = {
   all: '#3f5a4c', wei: '#44618f', shu: '#8a4a38', wu: '#9a7b35', qun: '#636055'
 };

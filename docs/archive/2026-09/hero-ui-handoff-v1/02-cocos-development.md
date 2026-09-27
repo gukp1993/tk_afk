@@ -266,10 +266,10 @@ node test/cross-page-auto.js
 
 ## 11. 可追溯依据
 
-- [根工程与构建配置](../../package.json)、[构建脚本](../../scripts/cocos-build.sh)、[规则同步脚本](../../scripts/cocos-sync-domain.js)。
-- [Bootstrap 导航和生命周期](../../assets/scripts/CocosBootstrap.ts)、[ScreenContext 协议](../../assets/scripts/screens/ScreenContext.ts)、[英雄页面现状](../../assets/scripts/screens/HeroScreens.ts)。
-- [UI 节点和滚动实现](../../assets/scripts/ui/CocosUi.ts)、[自动战斗服务](../../assets/scripts/services/AutoBattleSession.ts)。
-- [角色定义](../../utils/heroes.js)、[存档与派生属性 API](../../utils/store.js)、[阵营/职业/品质配置](../../utils/config.js)。
+- [根工程与构建配置](../../../../package.json)、[构建脚本](../../../../scripts/cocos-build.sh)、[规则同步脚本](../../../../scripts/cocos-sync-domain.js)。
+- [Bootstrap 导航和生命周期](../../../../assets/scripts/CocosBootstrap.ts)、[ScreenContext 协议](../../../../assets/scripts/screens/ScreenContext.ts)、[英雄页面现状](../../../../assets/scripts/screens/HeroScreens.ts)。
+- [UI 节点和滚动实现](../../../../assets/scripts/ui/CocosUi.ts)、[自动战斗服务](../../../../assets/scripts/services/AutoBattleSession.ts)。
+- [角色定义](../../../../utils/heroes.js)、[存档与派生属性 API](../../../../utils/store.js)、[阵营/职业/品质配置](../../../../utils/config.js)。
 - [上轮视觉原型及边界](../prototypes/heroes-v1/README.md)。
 
 SpriteFrame 参数与资源生命周期建议同时对照本机 Creator 3.8.8 随附引擎源码核对；素材清单的实际 rect、inset、打包 UUID 与设备表现仍需在阶段 A/E 逐项验证，本文不伪造已导入结果。
