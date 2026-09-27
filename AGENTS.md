@@ -12,6 +12,7 @@
 
 - **仓库根目录现为 Cocos Creator 3.8.8 项目**：`assets/scene/Main.scene` + `assets/scripts/` + `settings/` + `package.json`。不要再创建或使用 `cocos-client/` 子工程。`CocosBootstrap.ts` 管生命周期/导航/战斗执行，`assets/scripts/screens/` 管页面，`ui/` 管原生节点控件，`services/` 管自动出征与广告；页面不复制游戏数值。
 - `./scripts/cocos-build.sh web-desktop|wechatgame|bytedance-mini-game` 调用本机 Creator CLI；从 `utils/` 同步纯逻辑到 `assets/scripts/domain/`，小游戏生成包 AppID 从 `scripts/cocos-appids.json` 同步。Cocos 生成目录 `build/`、`library/`、`temp/` 不入库。
+- **Cocos CLI 开发方式（2026-09-27 用户指令）**：后续游戏代码工作通过 Cocos CLI 管理的仓库根目录 Creator 工程进行。源码写入 `assets/scripts/`（规则源仍在 `utils/`），资源放入 `assets/resources/`，用 `./scripts/cocos-build.sh` 调用 Creator CLI 完成资源导入和目标平台构建验证；不要在 `build/` 生成包或微信开发者工具中手改代码。Creator CLI 负责导入与构建，源码编辑仍需落在工程源文件中。
 - Cocos 平台调用只放在手写的 `assets/scripts/domain/platform.ts` 与生成的广告桥接中；规则镜像由脚本生成且不可手改。`utils/platform.js` 是生成 Cocos 平台适配层的规则源。
 - `utils/` 仍保留为规则源；旧 Canvas 展示层、微信/抖音旧打包目录及其余旧版目录均已删除。
 - 现有 Cocos 工程尚处迁移阶段；构建成功不等于玩法、视觉或双平台设备验收通过。Cocos 界面应使用节点/组件，不再新建 Canvas 兼容壳或空白演示页。
