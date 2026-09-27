@@ -1,6 +1,12 @@
-# AGENTS.md — 挂机定三国（tk_afk，微信/抖音双平台小游戏）
+# AGENTS.md — 挂机定三国（tk_afk，微信小游戏）
 
-三国放置卡牌小游戏，同时支持**微信小游戏**与**抖音小游戏**，玩法骨架对标《剑与远征》(AFK Arena)，全部武将/技能/文案/视觉为原创三国题材。微信 AppID `wx03eb4074ce45033b`；抖音 AppID `ttdd05abb8437df5b602`。远程仓库 `github.com/gukp1993/tk_afk`（SSH 推送，分支 main）。主工程为仓库根目录的 Cocos Creator 工程。
+三国放置卡牌小游戏，当前开发、构建与验收**只以微信小游戏为目标**，玩法骨架对标《剑与远征》(AFK Arena)，全部武将/技能/文案/视觉为原创三国题材。微信 AppID `wx03eb4074ce45033b`。远程仓库 `github.com/gukp1993/tk_afk`（SSH 推送，分支 main）。主工程为仓库根目录的 Cocos Creator 工程。
+
+## 当前平台范围（2026-09-27 用户决定）
+
+- 后续功能开发、UI、资源优化、性能、测试和发布准备均只考虑**微信小游戏包**。需要平台包时只运行 `./scripts/cocos-build.sh wechatgame`，导入微信开发者工具的目录是 `build/wechatgame/`；Web 构建仅可用于本地快速预览。
+- 不再为抖音小游戏新增适配、构建、回归或验收任务，也不要因微信改动而例行重建抖音包。现存抖音配置或生成脚本仅作为历史兼容保留；除非用户日后明确恢复抖音目标，否则不把它列为当前交付范围。
+- 历史交接与旧版说明中提及的“双平台”是当时状态，不覆盖本节最新决定。
 
 ## 旧版目录清理（2026-09-27）
 
@@ -11,11 +17,11 @@
 ## Cocos 迁移中的当前工程入口（2026-09-27）
 
 - **仓库根目录现为 Cocos Creator 3.8.8 项目**：`assets/scene/Main.scene` + `assets/scripts/` + `settings/` + `package.json`。不要再创建或使用 `cocos-client/` 子工程。`CocosBootstrap.ts` 管生命周期/导航/战斗执行，`assets/scripts/screens/` 管页面，`ui/` 管原生节点控件，`services/` 管自动出征与广告；页面不复制游戏数值。
-- `./scripts/cocos-build.sh web-desktop|wechatgame|bytedance-mini-game` 调用本机 Creator CLI；从 `utils/` 同步纯逻辑到 `assets/scripts/domain/`，小游戏生成包 AppID 从 `scripts/cocos-appids.json` 同步。Cocos 生成目录 `build/`、`library/`、`temp/` 不入库。
+- `./scripts/cocos-build.sh wechatgame` 调用本机 Creator CLI；从 `utils/` 同步纯逻辑到 `assets/scripts/domain/`，微信包 AppID 从 `scripts/cocos-appids.json` 同步。Cocos 生成目录 `build/`、`library/`、`temp/` 不入库。
 - **Cocos CLI 开发方式（2026-09-27 用户指令）**：后续游戏代码工作通过 Cocos CLI 管理的仓库根目录 Creator 工程进行。源码写入 `assets/scripts/`（规则源仍在 `utils/`），资源放入 `assets/resources/`，用 `./scripts/cocos-build.sh` 调用 Creator CLI 完成资源导入和目标平台构建验证；不要在 `build/` 生成包或微信开发者工具中手改代码。Creator CLI 负责导入与构建，源码编辑仍需落在工程源文件中。
 - Cocos 平台调用只放在手写的 `assets/scripts/domain/platform.ts` 与生成的广告桥接中；规则镜像由脚本生成且不可手改。`utils/platform.js` 是生成 Cocos 平台适配层的规则源。
 - `utils/` 仍保留为规则源；旧 Canvas 展示层、微信/抖音旧打包目录及其余旧版目录均已删除。
-- 现有 Cocos 工程尚处迁移阶段；构建成功不等于玩法、视觉或双平台设备验收通过。Cocos 界面应使用节点/组件，不再新建 Canvas 兼容壳或空白演示页。
+- 现有 Cocos 工程尚处迁移阶段；构建成功不等于玩法、视觉或微信设备验收通过。Cocos 界面应使用节点/组件，不再新建 Canvas 兼容壳或空白演示页。
 
 ## 共享上下文交接（2026-09-26 起）
 
@@ -36,7 +42,6 @@ node scripts/cocos-sync-domain.js --check
 node /Applications/Cocos/Creator/3.8.8/CocosCreator.app/Contents/Resources/app.asar.unpacked/node_modules/typescript/bin/tsc --noEmit --pretty false
 ./scripts/cocos-build.sh web-mobile
 ./scripts/cocos-build.sh wechatgame
-./scripts/cocos-build.sh bytedance-mini-game
 ```
 
 - 旧版 `test/`、`preview/` 与 `build.js` 已删除，不要再把旧 Canvas 检查命令列为可用流程。修改 Cocos/规则镜像后运行规则镜像检查与 TypeScript 检查；需要小游戏包时运行对应 Creator 构建命令。
@@ -68,33 +73,33 @@ node /Applications/Cocos/Creator/3.8.8/CocosCreator.app/Contents/Resources/app.a
 ## 目录
 
 - `scripts/rewarded-bridge.js` — Cocos 广告桥接的生成源。
-- `scripts/cocos-appids.json` — 微信与抖音 Cocos 构建使用的 AppID 配置。
+- `scripts/cocos-appids.json` — 当前微信构建使用的 AppID 配置；其中抖音字段为历史配置。
 - `utils/` — 共享游戏内核和 Cocos 规则镜像源：`platform.js`、`config.js`、`heroes.js`、`story.js`、`stages.js`、`items.js`、`battle.js`、`store.js`、`rng.js`、`fmt.js` 等纯 JS 模块。
 - `preview/`、`legacy-miniprogram/`、`test/`、根目录 `build.js`、`assets_gen/`、旧 `src/`、`wechat/`、`douyin/` — 已按 2026-09-27 用户指令删除；旧预览、旧小程序快照和旧 Canvas 包不再随仓库提供。
-- 根目录是 Cocos Creator 项目目录；根目录不放旧版 `game.js`/`game.json`/`project.config.json`，Cocos CLI 生成的小游戏包位于 `build/wechatgame/` 与 `build/bytedance-mini-game/`
+- 根目录是 Cocos Creator 项目目录；根目录不放旧版 `game.js`/`game.json`/`project.config.json`，当前交付的微信小游戏包位于 `build/wechatgame/`。
 
 ## 架构边界（改动前必读）
 
 1. **规则镜像**：`utils/` 是纯逻辑源，Cocos 规则镜像由 `scripts/cocos-sync-domain.js` 生成到 `assets/scripts/domain/`，不要手改生成文件。修改后运行 `node scripts/cocos-sync-domain.js --check` 和 TypeScript 检查。旧 static-check 已删除。
-2. **存档**：经平台存储持久化（`utils/store.js` 经适配层调用，key `sanguo_afk_save_v1`），切后台自动保存。改存档结构必须向后兼容旧档（缺字段给默认值、版本号迁移），不得让老玩家丢档；两平台存档相互独立。
+2. **存档**：经平台存储持久化（`utils/store.js` 经适配层调用，key `sanguo_afk_save_v1`），切后台自动保存。改存档结构必须向后兼容旧档（缺字段给默认值、版本号迁移），不得让老玩家丢档。
 3. **数值集中**：玩法数值、掉落、广告每日上限等一律在 `utils/config.js`（及 heroes/stages/items）配置，场景代码不硬编码数值。
 4. **广告分层**：Cocos 广告使用 `assets/scripts/services/RewardedService.ts` 与生成的 `RewardedBridge.ts`。桥接生成源为 `scripts/rewarded-bridge.js`；改动后重新同步规则镜像并运行 TypeScript 检查。旧 smoke 契约测试已随 `test/` 删除。
 5. **Cocos UI**：新界面使用 `assets/scripts/ui/` 的 Cocos 节点/组件和 `assets/scripts/screens/` 页面，不要新增旧 Canvas 演示页。
 6. **新增页面**：在 `assets/scripts/screens/` 实现并由 `CocosBootstrap.ts` 接入；数据与玩法计算继续放在规则源和服务层。
-7. **平台构建**：微信/抖音由 Cocos CLI 构建；`scripts/cocos-sync-appid.js` 从 `scripts/cocos-appids.json` 读取 AppID。
+7. **平台构建**：当前只构建微信小游戏；`scripts/cocos-sync-appid.js` 从 `scripts/cocos-appids.json` 读取微信 AppID。
 
 ## 已知坑
 
 - 历史渲染缺陷（已修）：弹窗面板 NaN 高度、裁剪组 save/restore 泄漏、战斗站位过密。旧离屏截图工具已删除；Cocos UI 改动用 Web 构建或目标平台预览检查。
-- 抖音 AppID 保存在 `scripts/cocos-appids.json`；如账号更换，修改该文件并重新构建 Cocos 包。
+- 抖音 AppID 仍作为历史配置保存在 `scripts/cocos-appids.json`，当前无需维护或构建抖音包。
 - 旧 Canvas 的同步、冒烟测试和离屏截图工具已删除；不要调用旧版命令。
 - `.DS_Store` 会在各目录不断出现，已全局 gitignore，勿提交。
 - 旧版原生小程序快照已删除；Cocos 实现是唯一页面运行工程。
 - 真实玩家进度在设备/开发者工具缓存里，「清除缓存」才重置；任何测试不得读写用户真机数据。
 
-## 当前产品决定（2026-09-26）
+## 当前产品决定（截至 2026-09-27）
 
-- **双平台**（2026-09-26 用户指令，旧实现）：微信小游戏 + 抖音小游戏曾共享 `src/`、`utils/` 并由 `build.js` 同步旧打包目录；旧 Canvas 工程已于 2026-09-27 清理。当前由 Cocos CLI 生成双平台包，AppID 保存在 `scripts/cocos-appids.json`。
+- **微信单平台优先**（2026-09-27 用户指令，当前有效）：所有后续开发只考虑微信小游戏打包与验收。2026-09-26 曾决定双平台开发，旧 Canvas 工程已清理；抖音支持现在仅作历史兼容保留，不再作为当前交付目标。
 - 全部内容原创三国题材；不使用任何第三方游戏的美术或文本资产（历史人物属公版素材）。
-- 激励视频广告当前为**测试模式**（内置模拟广告，流程完整可玩）；正式变现待微信流量主开通（UV≥1000）/抖音变现开通后创建广告位、填入 `AD.rewardedUnitIds` 对应平台字段即切换。
+- 激励视频广告当前为**测试模式**（内置模拟广告，流程完整可玩）；微信正式变现待流量主开通并配置微信广告位后再验收。
 - 首次进入自动建号：赠送 刘备(SSR)、关羽(SSR)、张飞(SSR)、廖化(N) + 1888 元宝 + 12 招募令（2026-09-26 抽卡改版：120 将四档白N/蓝R/紫SR/橙SSR，固定概率 SSR 2%/SR 10%/R 28%/N 60%，无保底）。
