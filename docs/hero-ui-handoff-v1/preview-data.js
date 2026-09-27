@@ -1,0 +1,556 @@
+// Generated preview-only manifest snapshot. Runtime source: assets-manifest.json
+const HERO_UI_MANIFEST = {
+  "version": 1,
+  "coordinateSystem": "top-left pixels",
+  "rotated": false,
+  "trimmed": false,
+  "status": "design-source-not-imported-to-cocos",
+  "textures": {
+    "background-fortress-v1": {
+      "file": "assets/background-fortress-v1.png",
+      "width": 941,
+      "height": 1672,
+      "hasAlpha": false,
+      "bytes": 2275813,
+      "sha256": "62a2b2cab5c0fa4cc175d634c4334d938adc9c600fcb626fbd6eb1ce528d4e68"
+    },
+    "badges-skills-v1": {
+      "file": "assets/badges-skills-v1.png",
+      "width": 1774,
+      "height": 887,
+      "hasAlpha": true,
+      "bytes": 1954159,
+      "sha256": "f396aa65468c02434a3c546b32864cbcb5c36309163920980c02dd70437e2118",
+      "transparentPixelRatio": 0.4757
+    },
+    "components-v1": {
+      "file": "assets/components-v1.png",
+      "width": 1182,
+      "height": 1330,
+      "hasAlpha": true,
+      "bytes": 1030625,
+      "sha256": "48dd5f0888663f2c7645cfa092cc821d3502d2caadb69ef6ab1f25979eb1ae2b",
+      "transparentPixelRatio": 0.7197
+    },
+    "guanyu-full-v1": {
+      "file": "assets/guanyu-full-v1.png",
+      "width": 1024,
+      "height": 1536,
+      "hasAlpha": true,
+      "bytes": 2840605,
+      "sha256": "db59d1a0ecca997ebd5ad30ca291058ae8787096105a7c4301e01fc9da346deb",
+      "transparentPixelRatio": 0.426
+    },
+    "icons-common-v1": {
+      "file": "assets/icons-common-v1.png",
+      "width": 1254,
+      "height": 1254,
+      "hasAlpha": true,
+      "bytes": 1097026,
+      "sha256": "fee082e9ece384bd580a50c4ced094f8cecb0d2f09ba572a8b3453b39e40e4ba",
+      "transparentPixelRatio": 0.7274
+    }
+  },
+  "sprites": {
+    "nav_home": {
+      "texture": "icons-common-v1",
+      "rect": {
+        "x": 59,
+        "y": 87,
+        "w": 244,
+        "h": 230
+      },
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "slicing": "simple"
+    },
+    "nav_journey": {
+      "texture": "icons-common-v1",
+      "rect": {
+        "x": 360,
+        "y": 117,
+        "w": 257,
+        "h": 201
+      },
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "slicing": "simple"
+    },
+    "nav_campaign": {
+      "texture": "icons-common-v1",
+      "rect": {
+        "x": 665,
+        "y": 100,
+        "w": 235,
+        "h": 223
+      },
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "slicing": "simple"
+    },
+    "nav_heroes": {
+      "texture": "icons-common-v1",
+      "rect": {
+        "x": 985,
+        "y": 87,
+        "w": 191,
+        "h": 241
+      },
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "slicing": "simple"
+    },
+    "nav_bag": {
+      "texture": "icons-common-v1",
+      "rect": {
+        "x": 69,
+        "y": 386,
+        "w": 211,
+        "h": 229
+      },
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "slicing": "simple"
+    },
+    "currency_gold": {
+      "texture": "icons-common-v1",
+      "rect": {
+        "x": 367,
+        "y": 391,
+        "w": 222,
+        "h": 224
+      },
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "slicing": "simple"
+    },
+    "currency_gem": {
+      "texture": "icons-common-v1",
+      "rect": {
+        "x": 658,
+        "y": 437,
+        "w": 256,
+        "h": 163
+      },
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "slicing": "simple"
+    },
+    "stat_hp": {
+      "texture": "icons-common-v1",
+      "rect": {
+        "x": 975,
+        "y": 417,
+        "w": 215,
+        "h": 191
+      },
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "slicing": "simple"
+    },
+    "stat_atk": {
+      "texture": "icons-common-v1",
+      "rect": {
+        "x": 85,
+        "y": 698,
+        "w": 188,
+        "h": 181
+      },
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "slicing": "simple"
+    },
+    "stat_def": {
+      "texture": "icons-common-v1",
+      "rect": {
+        "x": 398,
+        "y": 674,
+        "w": 181,
+        "h": 221
+      },
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "slicing": "simple"
+    },
+    "chevron_left": {
+      "texture": "icons-common-v1",
+      "rect": {
+        "x": 705,
+        "y": 687,
+        "w": 134,
+        "h": 207
+      },
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "slicing": "simple"
+    },
+    "chevron_right": {
+      "texture": "icons-common-v1",
+      "rect": {
+        "x": 1024,
+        "y": 686,
+        "w": 135,
+        "h": 208
+      },
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "slicing": "simple"
+    },
+    "star_on": {
+      "texture": "icons-common-v1",
+      "rect": {
+        "x": 74,
+        "y": 962,
+        "w": 215,
+        "h": 209
+      },
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "slicing": "simple"
+    },
+    "star_off": {
+      "texture": "icons-common-v1",
+      "rect": {
+        "x": 367,
+        "y": 955,
+        "w": 221,
+        "h": 216
+      },
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "slicing": "simple"
+    },
+    "plus": {
+      "texture": "icons-common-v1",
+      "rect": {
+        "x": 695,
+        "y": 974,
+        "w": 185,
+        "h": 183
+      },
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "slicing": "simple"
+    },
+    "close": {
+      "texture": "icons-common-v1",
+      "rect": {
+        "x": 995,
+        "y": 974,
+        "w": 191,
+        "h": 186
+      },
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "slicing": "simple"
+    },
+    "faction_all": {
+      "texture": "badges-skills-v1",
+      "rect": {
+        "x": 42,
+        "y": 45,
+        "w": 368,
+        "h": 372
+      },
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "slicing": "simple"
+    },
+    "faction_wei": {
+      "texture": "badges-skills-v1",
+      "rect": {
+        "x": 480,
+        "y": 45,
+        "w": 369,
+        "h": 372
+      },
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "slicing": "simple"
+    },
+    "faction_shu": {
+      "texture": "badges-skills-v1",
+      "rect": {
+        "x": 924,
+        "y": 45,
+        "w": 369,
+        "h": 372
+      },
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "slicing": "simple"
+    },
+    "faction_wu": {
+      "texture": "badges-skills-v1",
+      "rect": {
+        "x": 1365,
+        "y": 45,
+        "w": 369,
+        "h": 372
+      },
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "slicing": "simple"
+    },
+    "faction_qun": {
+      "texture": "badges-skills-v1",
+      "rect": {
+        "x": 42,
+        "y": 464,
+        "w": 369,
+        "h": 374
+      },
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "slicing": "simple"
+    },
+    "skill_guanyu_ult": {
+      "texture": "badges-skills-v1",
+      "rect": {
+        "x": 479,
+        "y": 468,
+        "w": 372,
+        "h": 368
+      },
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "slicing": "simple"
+    },
+    "skill_guanyu_passive": {
+      "texture": "badges-skills-v1",
+      "rect": {
+        "x": 923,
+        "y": 468,
+        "w": 372,
+        "h": 368
+      },
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "slicing": "simple"
+    },
+    "formation": {
+      "texture": "badges-skills-v1",
+      "rect": {
+        "x": 1369,
+        "y": 464,
+        "w": 363,
+        "h": 373
+      },
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "slicing": "simple"
+    },
+    "frame_n": {
+      "texture": "components-v1",
+      "rect": {
+        "x": 46,
+        "y": 60,
+        "w": 315,
+        "h": 406
+      },
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "slicing": "simple"
+    },
+    "frame_r": {
+      "texture": "components-v1",
+      "rect": {
+        "x": 434,
+        "y": 60,
+        "w": 315,
+        "h": 403
+      },
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "slicing": "simple"
+    },
+    "frame_sr": {
+      "texture": "components-v1",
+      "rect": {
+        "x": 821,
+        "y": 60,
+        "w": 315,
+        "h": 403
+      },
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "slicing": "simple"
+    },
+    "frame_ssr": {
+      "texture": "components-v1",
+      "rect": {
+        "x": 46,
+        "y": 508,
+        "w": 310,
+        "h": 362
+      },
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "slicing": "simple"
+    },
+    "button_primary": {
+      "texture": "components-v1",
+      "rect": {
+        "x": 371,
+        "y": 629,
+        "w": 395,
+        "h": 129
+      },
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "slicing": "simple"
+    },
+    "panel_dark": {
+      "texture": "components-v1",
+      "rect": {
+        "x": 779,
+        "y": 631,
+        "w": 376,
+        "h": 127
+      },
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "slicing": "simple"
+    },
+    "armory_weapon": {
+      "texture": "components-v1",
+      "rect": {
+        "x": 46,
+        "y": 909,
+        "w": 314,
+        "h": 372
+      },
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "slicing": "simple"
+    },
+    "armory_armor": {
+      "texture": "components-v1",
+      "rect": {
+        "x": 398,
+        "y": 929,
+        "w": 388,
+        "h": 357
+      },
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "slicing": "simple"
+    },
+    "armory_jade": {
+      "texture": "components-v1",
+      "rect": {
+        "x": 820,
+        "y": 943,
+        "w": 307,
+        "h": 330
+      },
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "slicing": "simple"
+    },
+    "hero_guanyu_full": {
+      "texture": "guanyu-full-v1",
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "w": 1024,
+        "h": 1536
+      },
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "slicing": "simple"
+    },
+    "background_fortress": {
+      "texture": "background-fortress-v1",
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "w": 941,
+        "h": 1672
+      },
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "slicing": "simple"
+    }
+  },
+  "heroPortraits": {
+    "guanyu": {
+      "detailSprite": "hero_guanyu_full",
+      "faceAnchorNormalized": [
+        0.5,
+        0.14
+      ],
+      "listViewport": "portraitMask; prototype uses scale/crop of same illustration; production needs small derivative"
+    }
+  }
+};

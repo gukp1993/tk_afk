@@ -1,0 +1,8 @@
+Use case: background-extraction. Input image is the approved ORIGINAL Three Kingdoms UI art reference, not a layout to copy wholesale.
+Extract and faithfully clean up the small illustrated UI icons into ONE reusable TRANSPARENT RGBA SPRITE SHEET. Preserve the exact restrained antique pale-bronze/gold pictogram look in the reference. No redesign into cartoon emoji or glossy 3D. Genuine alpha transparency outside every icon, not an opaque checkerboard. No text, names, captions, cell numbers, frames, tiles, background texture or UI panels.
+Square sheet, EXACT 4 columns x 4 rows uniform grid, sixteen isolated icons, centered in equal cells, each with at least 20% clear transparent margin within its cell. No overlap across cells. All icons same optical weight, front-facing, sharp readable edges.
+Row 1: Han Chinese city gate (from 主城 navigation); unfurled parchment map (玩法); crossed swords (战役); stylized warrior helmet (英雄).
+Row 2: drawstring cloth satchel (背包); round ancient Chinese copper coin with square hole; Chinese gold sycee ingot; simple warm ivory heart (生命).
+Row 3: small crossed-swords stat icon (攻击); simple ivory heraldic shield (防御); thick left chevron arrow; thick right chevron arrow.
+Row 4: one solid GOLD five-point star; one EMPTY hollow bronze five-point star with fully transparent center; simple plus sign; simple X close icon.
+Consistent antique-gold material, gentle highlights upper left, tiny controlled shading inside the forms, no cast shadows or glow in empty space. This is a production sprite atlas containing extracted icons only, not a mockup. Fill cell centers precisely at normalized x=.125,.375,.625,.875 and y=.125,.375,.625,.875.
