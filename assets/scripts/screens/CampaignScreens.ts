@@ -336,8 +336,7 @@ export function shop(ctx: ScreenContext) {
         list.forEach((hero:any,i:number)=>{
           const x=-206+i%3*206,y=gridH/2-94-Math.floor(i/3)*ch;
           V.panel('ShopPickCard'+i,x,y,185,177,tone('#322319'),8,rarity===4?GOLD:tone('#795b34'));
-          V.panel('ShopPickPortrait'+i,x,y+32,149,89,tone('#37463a'),7);
-          V.text('ShopPickGlyph'+i,hero.name[0],x,y+33,91,54,LIGHT);
+          V.heroIcon('ShopPickPortrait'+i,x,y+32,149,89,{surname:hero.surname||hero.name[0],faction:hero.faction,rarity:hero.rarity});
           V.text('ShopPickName'+i,hero.name,x,y-25,166,22,LIGHT);
           V.text('ShopPickTitle'+i,hero.title||'',x,y-51,164,16,tone('#ad9977'));
           V.tap('ShopPickTap'+i,x,y,185,177,()=>{
@@ -370,8 +369,7 @@ export function formation(ctx: ScreenContext) {
     const x=i<3?-216+i*216:-108+(i-3)*216,y=i<3?162:362;
     const hero=id?heroes.getHero(id):null;
     U.panel('Slot'+i,x,y,188,172,tone('#322319'),9,id?GOLD:tone('#827563'));
-    U.portrait('SlotAvatar'+i,x,y+25,145,105,tone('#37463a'),id?GOLD:tone('#827563'));
-    U.text('SlotGlyph'+i,hero?.name?.[0]||'+',x,y+27,105,63,LIGHT);
+    U.heroIcon('SlotAvatar'+i,x,y+25,145,105,hero?{surname:hero.surname||hero.name[0],faction:hero.faction,rarity:hero.rarity}:{surname:'+'});
     U.text('SlotName'+i,hero?.name||'点击上阵',x,y-49,165,21,GOLD);
     U.text('SlotLevel'+i,hero?`Lv.${store.playerLevel()}`:'',x,y-71,150,16,tone('#ad9977'));
     U.tap('SlotTap'+i,x,y,188,172,()=>{ctx.selectedFormationSlot=i;ctx.go('formationPick');});
@@ -415,8 +413,7 @@ export function formationPick(ctx: ScreenContext) {
     list.forEach((hero:any,i:number)=>{
       const col=i%3,row=Math.floor(i/3),x=-201+col*201,y=contentH/2-103-row*200;
       V.panel('PickCard'+i,x,y,184,184,tone('#322319'),8,hero.rarity>=4?GOLD:tone('#795b34'));
-      V.panel('PickFace'+i,x,y+39,155,97,tone('#37463a'),8);
-      V.text('PickGlyph'+i,hero.name[0],x,y+42,105,55,LIGHT);
+      V.heroIcon('PickFace'+i,x,y+39,155,97,{surname:hero.surname||hero.name[0],faction:hero.faction,rarity:hero.rarity});
       V.text('PickName'+i,hero.name,x,y-23,166,22,LIGHT);
       V.text('PickGrade'+i,['','N','R','SR','SSR'][hero.rarity]||'',x+58,y-47,60,17,GOLD);
       V.text('PickLevel'+i,`Lv.${hero.level}`,x-48,y-48,80,17,GOLD);

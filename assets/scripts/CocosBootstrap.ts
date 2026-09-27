@@ -115,11 +115,11 @@ export class CocosBootstrap extends Component implements ScreenContext {
     if(['home','journey','campaign','heroes','bag','summon'].includes(page)) {
       U.rect('NavBackground', 0, -594, 720, 92, new Color(9, 31, 27, 248));
       U.line('NavGoldTop',[[-360,-548],[360,-548]],2,palette.gold);
-      const nav: [Page,string,string][] = [['home','主城','nav_home'],['journey','玩法','nav_journey'],['campaign','战役','nav_campaign'],['heroes','英雄','nav_heroes'],['bag','背包','nav_bag']];
-      nav.forEach(([p,label,icon], i) => {
+      const nav: [Page,string,string][] = [['home','主城','城'],['journey','玩法','玩'],['campaign','战役','战'],['heroes','英雄','将'],['bag','背包','囊']];
+      nav.forEach(([p,label,glyph], i) => {
         const x=-288+144*i, active=p===page || (p==='campaign'&&page==='stagePreview');
         if(active) U.panel('NavActive'+p,x,-594,140,89,new Color(91,69,35,240),5,palette.gold);
-        U.sprite('NavIcon'+p,icon,x,-575,59,54);
+        U.seal('NavIcon'+p,x,-575,54,glyph,active?palette.gold:palette.ink,palette.gold,active?palette.ink:palette.gold,26);
         U.text('NavLabel'+p,label,x,-620,123,23,active?palette.gold:palette.paper);
         U.tap('Nav'+p,x,-594,138,90,()=>this.go(p));
       });

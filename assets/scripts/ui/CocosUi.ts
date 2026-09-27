@@ -1,5 +1,4 @@
-import { Color, EventTouch, Graphics, isValid, Label, Mask, Node, ScrollView, Size, Sprite, SpriteFrame, UITransform, Vec2, Vec3 } from 'cc';
-import { loadHeroSpriteFrame } from '../services/HeroUiAssets';
+import { Color, EventTouch, Graphics, Label, Mask, Node, ScrollView, UITransform, Vec2, Vec3 } from 'cc';
 
 export const hexColor = (hex: string) => new Color(
   parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16), 255
@@ -11,6 +10,12 @@ export const palette = {
   red: new Color(140, 65, 43), text: new Color(249, 236, 200), muted: new Color(170, 176, 151)
 };
 
+/** Placeholder-art tokens shared by every page (design originals stay in docs/hero-ui-handoff-v1). */
+export const factionColors: Record<string, string> = {
+  all: '#3f5a4c', wei: '#44618f', shu: '#8a4a38', wu: '#9a7b35', qun: '#636055'
+};
+export const rarityColors = ['', '#c8ccd4', '#6f9fd8', '#c99af0', '#f0b95e'];
+
 /** Native Cocos nodes: each visible element is a UITransform, Graphics or Label. */
 export class CocosUi {
   private static scrollOffsets = new Map<string, number>();
@@ -20,32 +25,96 @@ export class CocosUi {
   private y(value: number) { return value * this.verticalScale; }
   private height(value: number) { return value >= 1000 ? value * this.verticalScale : value; }
 
-  /** Adds a native Cocos Sprite immediately; lazy image callbacks cannot reorder UI labels or touch nodes. */
-  sprite(name: string, assetId: string, x: number, y: number, w: number, h: number) {
-    const node = new Node(name);
-    node.setPosition(new Vec3(x, this.y(y), 0));
-    node.addComponent(UITransform).setContentSize(new Size(w, h * this.verticalScale));
-    const sprite = node.addComponent(Sprite);
-    sprite.sizeMode = Sprite.SizeMode.CUSTOM;
-    this.parent.addChild(node);
-    this.nodes.set(name, node);
-    loadHeroSpriteFrame(assetId, (frame: SpriteFrame | null) => {
-      if (frame && isValid(node) && sprite.isValid) sprite.spriteFrame = frame;
-    });
-    return node;
+  /** Round seal mark with one glyph — the lightweight stand-in for removed icon sprites. */
+  seal(name: string, x: number, y: number, size: number, glyph: string,
+    fill = palette.ink, border = palette.gold, color = palette.gold, fontSize = Math.round(size * 0.5)) {
+    this.panel(name, x, y, size, size, fill, size / 2, border);
+    this.text(name + 'Glyph', glyph, x, y, size - 4, fontSize, color);
+    return this.nodes.get(name);
   }
 
-  /** Keep character and scenery proportions while cropping them to a card or stage window. */
-  clippedSprite(name: string, assetId: string, x: number, y: number,
-    viewW: number, viewH: number, imageW: number, imageH: number, offsetX = 0, offsetY = 0) {
-    const viewport = new Node(name);
-    viewport.setPosition(new Vec3(x, this.y(y), 0));
-    viewport.addComponent(UITransform).setContentSize(viewW, viewH);
-    viewport.addComponent(Mask).type = Mask.Type.GRAPHICS_RECT;
-    this.parent.addChild(viewport);
-    new CocosUi(viewport).sprite(name + 'Image', assetId, offsetX, offsetY, imageW, imageH);
-    this.nodes.set(name, viewport);
-    return viewport;
+  /**
+   * Unified placeholder hero token: faction fill, rarity rim and surname glyph.
+   * Every page draws hero faces through this method; restoring real portraits later only rewrites its body.
+   */
+  heroIcon(name: string, x: number, y: number, w: number, h: number,
+    info: { surname: string; faction?: string; rarity?: number; locked?: boolean; formed?: boolean }) {
+    const rarity = Math.min(4, Math.max(1, Math.round(info.rarity || 1)));
+    const radius = Math.min(14, w * 0.12, h * 0.12);
+    const node = this.panel(name, x, y, w, h, hexColor(factionColors[info.faction || 'all'] || factionColors.all), radius);
+    const g = node.getComponent(Graphics)!;
+    g.strokeColor = hexColor(rarityColors[rarity]);
+    g.lineWidth = 3;
+    g.roundRect(-w / 2 + 1.5, -h / 2 + 1.5, w - 3, h - 3, radius);
+    g.stroke();
+    g.strokeColor = new Color(238, 218, 170, 30);
+    g.lineWidth = 2;
+    g.roundRect(-w / 2 + 7, -h / 2 + 7, w - 14, h - 14, Math.max(3, radius - 5));
+    g.stroke();
+    const glyph = new Node(name + 'Glyph');
+    glyph.addComponent(UITransform).setContentSize(w * 0.72, h * 0.42);
+    const label = glyph.addComponent(Label);
+    label.string = (info.surname || '?').slice(0, 1);
+    label.fontFamily = 'Kaiti SC';
+    label.fontSize = Math.round(Math.min(w, h) * 0.36);
+    label.lineHeight = label.fontSize * 1.25;
+    label.color = info.locked ? palette.muted : palette.text;
+    label.horizontalAlign = Label.HorizontalAlign.CENTER;
+    label.verticalAlign = Label.VerticalAlign.CENTER;
+    label.overflow = Label.Overflow.SHRINK;
+    glyph.setPosition(0, info.locked ? h * 0.1 : 0, 0);
+    node.addChild(glyph);
+    if (info.locked) {
+      const shade = new Node(name + 'Shade');
+      shade.addComponent(UITransform).setContentSize(w, h);
+      const s = shade.addComponent(Graphics);
+      s.fillColor = new Color(6, 13, 12, 150);
+      s.roundRect(-w / 2 + 3, -h / 2 + 3, w - 6, h - 6, Math.max(3, radius - 2));
+      s.fill();
+      node.addChild(shade);
+      const tag = new Node(name + 'LockedTag');
+      const tagH = Math.max(20, h * 0.09);
+      tag.addComponent(UITransform).setContentSize(Math.min(w - 14, 130), tagH);
+      const tl = tag.addComponent(Label);
+      tl.string = '未获得';
+      tl.fontFamily = 'Kaiti SC';
+      tl.fontSize = Math.round(tagH * 0.62);
+      tl.lineHeight = tl.fontSize * 1.2;
+      tl.color = palette.muted;
+      tl.horizontalAlign = Label.HorizontalAlign.CENTER;
+      tl.verticalAlign = Label.VerticalAlign.CENTER;
+      tl.overflow = Label.Overflow.SHRINK;
+      tag.setPosition(0, -h * 0.2, 0);
+      node.addChild(tag);
+    }
+    if (info.formed) {
+      const r = Math.max(13, Math.min(21, h * 0.09));
+      const badge = new Node(name + 'Formed');
+      badge.setPosition(w / 2 - r - 5, h / 2 - r - 5, 0);
+      badge.addComponent(UITransform).setContentSize(r * 2, r * 2);
+      const bg = badge.addComponent(Graphics);
+      bg.fillColor = palette.red;
+      bg.circle(0, 0, r);
+      bg.fill();
+      bg.strokeColor = palette.gold;
+      bg.lineWidth = 2;
+      bg.circle(0, 0, r - 1);
+      bg.stroke();
+      const text = new Node(name + 'FormedText');
+      text.addComponent(UITransform).setContentSize(r * 2, r * 2);
+      const bl = text.addComponent(Label);
+      bl.string = '战';
+      bl.fontFamily = 'Kaiti SC';
+      bl.fontSize = Math.round(r * 1.05);
+      bl.lineHeight = bl.fontSize * 1.2;
+      bl.color = palette.text;
+      bl.horizontalAlign = Label.HorizontalAlign.CENTER;
+      bl.verticalAlign = Label.VerticalAlign.CENTER;
+      bl.overflow = Label.Overflow.SHRINK;
+      badge.addChild(text);
+      node.addChild(badge);
+    }
+    return node;
   }
 
   static resetScroll(name: string) { this.scrollOffsets.delete(name); }
@@ -80,35 +149,6 @@ export class CocosUi {
     }
     this.parent.addChild(node);
     this.nodes.set(name, node);
-    return node;
-  }
-
-  /** Framed calligraphy portrait used by the original Canvas hero cards. */
-  portrait(name: string, x: number, y: number, w: number, h: number, fill: Color, accent: Color) {
-    const node = new Node(name);
-    node.setPosition(new Vec3(x, this.y(y), 0));
-    node.addComponent(UITransform).setContentSize(w, h);
-    const g = node.addComponent(Graphics);
-    g.fillColor = fill;
-    g.roundRect(-w / 2, -h / 2, w, h, 18);
-    g.fill();
-    const left=-w/2+9, right=w/2-9, bottom=-h/2+9, top=h/2-9;
-    g.strokeColor = new Color(238, 218, 170, 18);
-    g.lineWidth = 6;
-    for (let start=left-(top-bottom); start<right; start+=22) {
-      const y1=Math.max(bottom,bottom+left-start);
-      const y2=Math.min(top,bottom+right-start);
-      if(y2<=y1)continue;
-      g.moveTo(start+y1-bottom,y1);
-      g.lineTo(start+y2-bottom,y2);
-    }
-    g.stroke();
-    g.strokeColor = accent;
-    g.lineWidth = 4;
-    g.roundRect(-w/2+2,-h/2+2,w-4,h-4,18);
-    g.stroke();
-    this.parent.addChild(node);
-    this.nodes.set(name,node);
     return node;
   }
 

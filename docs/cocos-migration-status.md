@@ -50,4 +50,15 @@ node /Applications/Cocos/Creator/3.8.8/CocosCreator.app/Contents/Resources/app.a
 
 Creator CLI 使用本机安装路径；若 Creator 装在别处，可通过 `COCOS_CREATOR_BIN` 指定可执行文件。更换 Creator 版本后，应先重新生成 `temp/tsconfig.cocos.json` 再执行类型检查。
 
-小游戏命令默认使用 `debug=false` 的发布构建；微信包当前目录约 3.1 MB、抖音包约 3.5 MB（微信调试构建约 6.3 MB），AppID 与旧平台配置一致。Cocos [微信小游戏发布文档](https://docs.cocos.com/creator/3.8/manual/zh/editor/publish/publish-wechatgame.html)列出的主包上限为 4 MB。实际上传结果仍以平台开发者工具/后台校验为准。
+小游戏命令默认使用 `debug=false` 的发布构建；AppID 与旧平台配置一致。Cocos [微信小游戏发布文档](https://docs.cocos.com/creator/3.8/manual/zh/editor/publish/publish-wechatgame.html)列出的主包上限为 4 MB。实际上传结果仍以平台开发者工具/后台校验为准。
+
+## 轻量占位美术轮（2026-09-27 实施）
+
+按 `docs/wechat-placeholder-art-plan-v1.md` 实施完毕，抖音未构建、未改动。
+
+- **占位组件**：`CocosUi.ts` 新增 `heroIcon()`（阵营底色 + 品质描边 + 姓氏 + 未获得压暗/上阵“战”徽标）与 `seal()`（几何图章，替代钱/宝/阵/属性/技能/军械/导航图标），删除了 `sprite()`、`clippedSprite()` 与 Graphics 版 `portrait()`。阵营色与品质色集中在 `factionColors`/`rarityColors` 导出。所有页面（群英录、详情、招募结果、编队/选将、集市自选、首胜弹窗、底部导航）共用这一套样式；未来恢复立绘只需重写 `heroIcon` 内部实现。
+- **详情页收紧**：原 700 高立绘展示区收缩为 260 高横排头部（左 170×220 图标 + 右称号/名字/阵营职业/品质/星级），属性、技能进入首屏；滚动内容基础高度 1740 → 1160。
+- **资源清理**：全局检索确认无残留引用后，删除 `assets/resources/hero-ui/` 全部 14 张 PNG（10 立绘 + 关羽全身 + 城关背景 + 3 图集）与 `.meta`，删除 `assets/scripts/services/HeroUiAssets.ts`；设计原件保留在 `docs/hero-ui-handoff-v1/`。
+- **包体**（`du -sk` 同口径）：构建前 `build/wechatgame` 35984 KB（其中 assets/resources 32768 KB，最大文件全是立绘）；构建后 3224 KB（assets 448 KB），减少约 32 MiB / 91%，包内仅剩引擎 logo/slogan 两张小图，主包低于 4 MB 上限。构建后最大文件为 2.3 MB 的引擎 bundle，非美术资源。
+- **验证**：`cocos-sync-domain.js --check`、`tsc --noEmit` 通过；单次 `wechatgame` 构建（`nice -n 15`）成功。用 Web 预览 + 无头 Chrome 实点回归：新档走 战役→群英录→详情→返回→召唤→招募×1→结果→查看群英→编队换将，旧档（删 armory/vouchers/heroProgress/battle 四字段重载）走 战役→群英录→详情→编队→选将，两条链路页面渲染正常、无缺图/空白大框/触摸热区错位，浏览器控制台除无害的 favicon 404 外零错误、零 pageerror（实施中曾出现 Graphics 与 Label 同节点冲突导致“战”徽标文字丢失，已改为子节点修复）。
+- **待验收**：微信开发者工具（新档/已有档实点、控制台）与真机尚未复验本轮 UI；首建号实际赠送 5 将（含孟达），与 AGENTS.md 记载的 4 将不符，待与产品决定核对。

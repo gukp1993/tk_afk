@@ -16,6 +16,15 @@
 
 ## 最近交接（新 → 旧）
 
+### 轻量占位美术实施与单次微信构建 · zcode · 已实施待验收
+
+时间：2026-09-27 18:45（Asia/Shanghai）；执行者：zcode；状态：已实施待验收。
+
+- 概要：按 `docs/wechat-placeholder-art-plan-v1.md` 完成：`CocosUi.ts` 新增 `heroIcon()`/`seal()` 统一占位组件并删除 `sprite()`/`clippedSprite()`/`portrait()`；HeroScreens（群英录/详情/招募/首胜弹窗）、CampaignScreens（编队/选将/集市自选）、CocosBootstrap（底部导航）全部改用占位图标；详情页 700 高立绘区收缩为 260 高横排头部（内容基础高度 1740→1160）。删除 `assets/resources/hero-ui/` 14 张 PNG 与 `HeroUiAssets.ts`，全局检索确认无残留引用；`docs/hero-ui-handoff-v1/` 设计原件未动；未改 `utils/` 数值、存档结构与战斗规则。
+- 决定：阵营色/品质色集中在 `CocosUi.ts` 导出（`factionColors`/`rarityColors`）；恢复立绘时只需重写 `heroIcon` 内部实现。
+- 验证：规则镜像检查与 TypeScript 检查通过；按方案只做一次 `nice -n 15 ./scripts/cocos-build.sh wechatgame`（成功，抖音未构建）。包体同口径 `du -sk`：构建前 35984 KB → 构建后 3224 KB（assets 448 KB），减约 91%，包内无任何武将/背景大图。Web 预览 + 无头 Chrome 实点回归：新档（建号→群英录→详情→返回→召唤→招募×1→结果→编队换将）与旧档（删 armory/vouchers/heroProgress/battle 重载→群英录→详情→编队→选将）两链路渲染正常、无缺图与热区错位，控制台除 favicon 404 外零错误；实施中修复一处 Graphics/Label 同节点渲染冲突（上阵“战”徽标文字丢失）。
+- 下一步/待验收：微信开发者工具新档+已有档实点与控制台检查、真机抽查（原方案验收项，本轮用 Web 预览代替执行者无法操作的模拟器环节）；发现首建号实际赠送 5 将（含孟达），与 AGENTS.md「4 将」记载不符，待用户/产品核对是否更新文档或回收孟达。
+
 ### 微信轻量占位美术开发方案 · Codex · 需求已交付
 
 时间：2026-09-27 17:43（Asia/Shanghai）；执行者：Codex；状态：需求已交付。
