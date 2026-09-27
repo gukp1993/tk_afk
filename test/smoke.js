@@ -308,5 +308,82 @@ check('中断战场保护', store8.beginBattle({ mode: 'campaign', index: 2 }).o
 unpinRandom();
 restoreTime();
 
+// ---------- S9 军械升星节点（A01–A06） ----------
+head('S9 军械节点');
+storage._map.clear();
+const store9 = freshStore(); store9.load();
+s = store9.getState();
+// A01 新档六槽 0★：节点全部未生效
+const b0 = store9.getArmoryBonuses();
+check('A01 0★ 六项节点未生效', IT.ARMORY_SLOTS.every(sl => b0.nodes[sl.id].tier === 0)
+  && b0.spdPct === 0 && b0.startShield === 0 && b0.startEnergy === 0 && b0.directDR === 0);
+// A02 档位映射与六槽独立
+check('A02 2★ 无节点', IT.slotNodeInfo('weapon', 2).tier === 0 && IT.slotNodeInfo('weapon', 2).current === 0);
+check('A02 3★ 第一档 +1%', IT.slotNodeInfo('weapon', 3).tier === 1 && IT.slotNodeInfo('weapon', 3).current === 0.01);
+check('A02 4★ 仍第一档', IT.slotNodeInfo('weapon', 4).tier === 1 && IT.slotNodeInfo('weapon', 4).current === 0.01);
+check('A02 5★ 仅第二档 +2%', IT.slotNodeInfo('weapon', 5).tier === 2 && IT.slotNodeInfo('weapon', 5).current === 0.02);
+check('A02 异常星级回落 0★ 不产生 NaN', IT.slotNodeInfo('weapon', -1).star === 0 && IT.slotNodeInfo('weapon', 99).star === 5 && IT.slotNodeInfo('weapon', 'abc').star === 0 && Number.isFinite(IT.slotNodeInfo('weapon', 'abc').current));
+// A03 速度节点只乘一次（calcHero）
+s.armory.slotStars.boots = 5;
+const lv1Spd = H.heroStatsStar(H.getHero('liubei'), 1, 0).spd;
+check('A03 速度 = 基础 ×(1+2%) 一次', Math.abs(store9.calcHero('liubei').stats.spd - lv1Spd * 1.02) < 1e-9);
+// A04 名器固定效果与节点按百分点相加（名器需先解锁图鉴；锐进/磐石兵符同槽互斥，分两步验证）
+s.armory.selected.jade = 'jade_ssr_b'; s.armory.selected.seal = 'seal_ssr_a';
+s.armory.unlocked['jade_ssr_b'] = true; s.armory.unlocked['seal_ssr_a'] = true;
+s.armory.slotStars.jade = 5; s.armory.slotStars.seal = 5; s.armory.slotStars.helm = 5;
+const bStack = store9.getArmoryBonuses();
+check('A04 玉佩 6%+2%=8%', Math.abs(bStack.startShield - 0.08) < 1e-9);
+check('A04 兵符 10+4=14', bStack.startEnergy === 14);
+// A03 战斗实测（锐进兵符生效中）：开场护盾按最终生命取整、怒气不超上限、敌方无节点
+const battleRules = require('../utils/battle');
+const stages9 = require('../utils/stages');
+const fighting = battleRules.createBattle({
+  team: store9.playerUnits(), enemy: store9.enemyUnits(stages9.makeStageEnemies(1).units), seed: 42
+});
+const snapA = fighting.snapshot().filter(u => u.side === 'A');
+check('A03 开场护盾 = 最终最大生命 ×8% 取整', snapA.every(u => u.shield === Math.floor(u.maxHp * 0.08)));
+check('A03 开场怒气 14 且不超上限', snapA.every(u => u.energy === 14));
+const snapB = fighting.snapshot().filter(u => u.side === 'B');
+check('A03 敌方无我方节点护盾/怒气', snapB.every(u => u.shield === 0 && u.energy === 0));
+// A04 名器减伤 3%（磐石兵符）+ 5★头盔节点 1% = 4%（跨槽叠加）
+check('A04 名器减伤 3% + 5★头盔 1% = 4%（换磐石兵符）', (() => {
+  s.armory.selected.seal = 'seal_ssr_b'; s.armory.unlocked['seal_ssr_b'] = true;
+  return Math.abs(store9.getArmoryBonuses().directDR - 0.04) < 1e-9;
+})());
+// A05 一键到节点：全额扣款、不足零扣款、单星跨节点反馈、换装保留
+s.res.iron = 5000; s.res.gold = 100000;
+const atkBeforeUp = store9.getArmoryBonuses().atk;
+const up0 = store9.armoryUpgradeToNode('weapon');
+check('A05 0→3★ 一次扣 420 精铁/14000 铜钱', up0.ok && up0.toStar === 3 && up0.iron === 420 && up0.gold === 14000);
+check('A05 返回节点解锁 +1%', up0.node && up0.node.unlocked === true && up0.node.to === 0.01);
+// 武器槽军械贡献 0.02×(1.3-1.0)=0.006 + 节点 0.01 → 全军攻击 +0.016
+check('A05 解锁后全军加成含节点', Math.abs(up0.bonuses.atk - atkBeforeUp - 0.016) < 1e-9);
+const up5 = store9.armoryUpgradeToNode('weapon');
+check('A05 3→5★ 一次扣 1440/48000 并增强为 +2%', up5.ok && up5.toStar === 5 && up5.iron === 1440 && up5.gold === 48000
+  && up5.node.enhanced === true && up5.node.to === 0.02 && up5.node.from === 0.01);
+check('A05 5★ 无下一节点', store9.armoryUpgradeToNode('weapon').ok === false);
+s.armory.slotStars.armor = 0; s.res.iron = 100; s.res.gold = 0;
+const failUp = store9.armoryUpgradeToNode('armor');
+check('A05 材料不足零扣款零升星', failUp.ok === false && s.res.iron === 100 && s.armory.slotStars.armor === 0
+  && /精铁/.test(failUp.msg) && /铜钱/.test(failUp.msg));
+s.res.iron = 480; s.res.gold = 16000; s.armory.slotStars.helm = 2;
+const singleUp = store9.armoryUpgrade('helm');
+check('A05 单星 2→3★ 返回节点反馈', singleUp.ok && singleUp.node && singleUp.node.unlocked && singleUp.node.to === 0.005);
+s.armory.slotStars.weapon = 5;
+const nodeBeforeSwap = store9.getArmoryBonuses().nodes.weapon.current;
+s.armory.unlocked['weapon_r'] = true;
+store9.armorySelect('weapon', 'weapon_r');
+check('A05 换同槽军械后星级与节点保留', s.armory.slotStars.weapon === 5
+  && s.armory.selected.weapon === 'weapon_r'
+  && store9.getArmoryBonuses().nodes.weapon.current === nodeBeforeSwap);
+// A06 旧档已有 3/4/5★ 直接生效（无迁移、重复读取幂等）
+s.armory.slotStars = { weapon: 5, armor: 4, helm: 3, boots: 2, jade: 0, seal: 0 };
+s.armory.selected.jade = 'jade_n'; s.armory.selected.seal = 'seal_n';
+const b6a = store9.getArmoryBonuses();
+const b6b = store9.getArmoryBonuses();
+check('A06 旧档星级直接生效且幂等', JSON.stringify(b6a.nodes) === JSON.stringify(b6b.nodes)
+  && b6a.nodes.weapon.tier === 2 && b6a.nodes.armor.tier === 1 && b6a.nodes.helm.tier === 1
+  && b6a.nodes.boots.tier === 0);
+
 console.log('\nsmoke: ' + passed + ' passed, ' + failed + ' failed');
 process.exit(failed ? 1 : 0);

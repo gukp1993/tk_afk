@@ -2,6 +2,7 @@
 // 前 12 章 × 10 关走 utils/story.js 演义剧情表（名称/敌阵/对白/名将关）；
 // 超出剧情表的关卡进入循环乱世，用由 story 派生的兜底章节轮转生成（单一数据源，不维护第二份敌将表）。
 const { getHero } = require('./heroes');
+const { FIRST_STAGE_END, CAMPAIGN_DIFFICULTY } = require('./config');
 const story = require('./story');
 const F = require('./fmt');
 
@@ -16,8 +17,8 @@ const CHAPTERS = story.CHAPTERS.map(sc => ({
 
 // 敌方强度：全局关卡序号（从 1 开始）
 function stageScale(globalStage) {
-  // 敌方等级已按关卡提升，不再额外叠加指数属性，避免中后期倍率失控。
-  return 1;
+  const progress = Math.min(1, Math.max(0, (globalStage - 1) / (FIRST_STAGE_END - 1)));
+  return 1 + (CAMPAIGN_DIFFICULTY.normalEndScale - 1) * progress;
 }
 function chapterOf(globalStage) {
   const idx = Math.floor((globalStage - 1) / STAGES_PER_CH); // 0-based
@@ -34,8 +35,9 @@ function chapterOf(globalStage) {
 function makeStageEnemies(globalStage) {
   const { ch, inCh, name, isBoss } = chapterOf(globalStage);
   const st = story.getStoryStage(globalStage);
-  const scale = stageScale(globalStage) * (isBoss ? 1.25 : 1);
-  const lv = Math.max(1, Math.round(1 + (globalStage - 1) * 1.6));
+  const bossScale = CAMPAIGN_DIFFICULTY.bossOverrides[globalStage];
+  const normalScale = stageScale(globalStage) * (CAMPAIGN_DIFFICULTY.normalOverrides[globalStage] || 1);
+  const lv = Math.max(1, Math.round(1 + (globalStage - 1) * CAMPAIGN_DIFFICULTY.levelSlope));
   const pick = (i) => {
     if (st) return st.stage.foes[i];
     if (isBoss && i === 0) return ch.boss;
@@ -46,10 +48,12 @@ function makeStageEnemies(globalStage) {
     const h = getHero(pick(i));
     units.push({
       hero: h,
-      // 敌方等级斜率 1.5：120 关约 179 级，配合玩家经验曲线让等级差落在可通关区间（200 种子仿真校准）。
-      level: Math.max(1, Math.round(1 + (globalStage - 1) * 1.5)),
+      level: lv,
       star: Math.min(2, Math.floor((globalStage - 1) / 40)),
-      scale: i === 0 && isBoss ? scale : scale * 0.92,
+      scale: isBoss
+        ? (i === 0 ? (bossScale ? bossScale.main : CAMPAIGN_DIFFICULTY.bossMainScale)
+          : (bossScale ? bossScale.other : CAMPAIGN_DIFFICULTY.bossOtherScale))
+        : normalScale * (i === 0 ? 1 : 0.92),
       isBoss: i === 0 && isBoss,
       row: i <= 2 ? 0 : 1
     });

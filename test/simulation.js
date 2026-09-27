@@ -60,6 +60,7 @@ function fightBattle(stage, battleSeed) {
     if (step.done) done = step;
   }
   const win = done ? done.winner === 'A' : false;
+  const timeout = !!(done && done.events.some(e => e.e === 'end' && e.timeout));
   store.settleBattle(begin.id, { win });
   if (debugRun && !win) {
     const r = fighting.result();
@@ -71,7 +72,7 @@ function fightBattle(stage, battleSeed) {
     const hpPct = fighting.snapshot().map(u => `${u.name}:${Math.round(u.hp / u.maxHp * 100)}%`).join(' ');
     console.log(`    终局血量 ${hpPct}`);
   }
-  return { win, stage };
+  return { win, stage, timeout };
 }
 
 function fightPractice(battleSeed) {
@@ -172,9 +173,15 @@ function runSeed(seed) {
   store = freshStore();
   simNow = Date.parse('2026-01-05T08:00:00+08:00');
   store.load();
-  store.getState().res.scroll = 0; // 参考玩家从零开始；开局 12 令计入首日召唤
   const checkpoints = {};
-  const stuckBossDays = {};
+  const bossFailedDays = {};
+  const bossLosses = {};
+  const bossTimeouts = {};
+  const stageFailedDays = {};
+  let firstClearDay = null;
+  let firstMaxStarDay = null;
+  let timeouts = 0;
+  let losses = 0;
   for (let day = 1; day <= DAYS; day++) {
     if (day > 1) simNow += 24 * 3600000;
     store.checkDailyReset();
@@ -191,18 +198,34 @@ function runSeed(seed) {
     ops += autoSummon();
     ops += autoVouchersAndBoxes();
     ops += autoArmory();
+    if (firstMaxStarDay === null && IT.ARMORY_SLOTS.every(sl => (store.getState().armory.slotStars[sl.id] || 0) >= 5)) firstMaxStarDay = day;
     let wins = 0, battles = 0, lossStreak = 0;
+    const failedBossesToday = new Set();
+    const failedStagesToday = new Set();
     while (battles < BATTLES_PER_DAY) {
       const stage = store.getState().campaign.cleared + 1;
+      if (stage > C.FIRST_STAGE_END) break;
       const r = fightBattle(stage, (seed * 7919 + day * 104729 + battles * 13) >>> 0);
       battles++; ops++;
-      if (r.win) { wins++; lossStreak = 0; }
+      if (r.win) {
+        wins++; lossStreak = 0;
+        if (stage === C.FIRST_STAGE_END && firstClearDay === null) firstClearDay = day;
+      }
       else {
         lossStreak++;
-        if (stage % 10 === 0) stuckBossDays[stage] = (stuckBossDays[stage] || 0) + 1;
+        losses++;
+        failedStagesToday.add(stage);
+        if (r.timeout) timeouts++;
+        if (stage % 10 === 0) {
+          failedBossesToday.add(stage);
+          bossLosses[stage] = (bossLosses[stage] || 0) + 1;
+          if (r.timeout) bossTimeouts[stage] = (bossTimeouts[stage] || 0) + 1;
+        }
         if (lossStreak >= CONSECUTIVE_LOSS_STOP) break;
       }
     }
+    failedBossesToday.forEach(stage => { bossFailedDays[stage] = (bossFailedDays[stage] || 0) + 1; });
+    failedStagesToday.forEach(stage => { stageFailedDays[stage] = (stageFailedDays[stage] || 0) + 1; });
     while (wins < 3 && battles < BATTLES_PER_DAY + 3) {
       const r = fightPractice((seed * 104729 + day * 7919 + battles * 17) >>> 0);
       battles++; ops++;
@@ -211,7 +234,7 @@ function runSeed(seed) {
     store.claimAllDailyRewards(); // 三件套任务 + 活跃宝箱
     ops++;
     autoSummon(); // 日常奖励的元宝当日再转化
-    if ([7, 14, 21, 30, DAYS].includes(day)) {
+    if ([1, 3, 7, 14, 21, 30, DAYS].includes(day)) {
       const s2 = store.getState();
       checkpoints[day] = {
         cleared: s2.campaign.cleared, gem: s2.res.gem, iron: s2.res.iron, scroll: s2.res.scroll,
@@ -222,7 +245,8 @@ function runSeed(seed) {
   }
   const final = store.getState();
   return {
-    seed, cleared: final.campaign.cleared, checkpoints, stuckBossDays,
+    seed, cleared: final.campaign.cleared, checkpoints, bossFailedDays, bossLosses, bossTimeouts, stageFailedDays,
+    firstClearDay, firstMaxStarDay, timeouts, losses,
     gem: final.res.gem, iron: final.res.iron, scroll: final.res.scroll,
     roster: Object.keys(final.roster).length,
     armoryStars: IT.ARMORY_SLOTS.reduce((sum, sl) => sum + (final.armory.slotStars[sl.id] || 0), 0)
@@ -236,11 +260,11 @@ function main() {
   const t0 = REAL_DATE.now();
   for (let i = 1; i <= SEEDS; i++) runs.push(runSeed(i));
   const elapsed = ((REAL_DATE.now() - t0) / 1000).toFixed(1);
-  const dayRows = [7, 14, 21, DAYS].filter(d => d <= DAYS);
+  const dayRows = [...new Set([1, 3, 7, 14, 21, 30, DAYS])].filter(d => d <= DAYS);
   console.log(`\n== 三十天主线仿真：${SEEDS} 种子 × ${DAYS} 天（耗时 ${elapsed}s，每日≤${BATTLES_PER_DAY}战） ==`);
   console.log('day | 通关120占比 | 中位关卡 | P10 | P90 | min/max');
   for (const d of dayRows) {
-    const cleared = runs.map(r => r.checkpoints[d]?.cleared ?? 0);
+    const cleared = runs.map(r => Math.min(C.FIRST_STAGE_END, r.checkpoints[d]?.cleared ?? 0));
     const done = cleared.filter(x => x >= C.FIRST_STAGE_END).length;
     console.log(
       String(d).padStart(3) + ' | ' +
@@ -251,26 +275,46 @@ function main() {
       Math.min(...cleared) + '/' + Math.max(...cleared)
     );
   }
-  const finalCleared = runs.map(r => r.cleared);
+  const finalCleared = runs.map(r => Math.min(C.FIRST_STAGE_END, r.cleared));
   const done30 = finalCleared.filter(x => x >= C.FIRST_STAGE_END).length;
   console.log(`\n第 ${DAYS} 天通关第 120 关：${done30}/${SEEDS}（${Math.round(done30 / SEEDS * 100)}%）· 目标 ≥80%`);
   const finalDist = {};
   finalCleared.forEach(x => { const bucket = Math.floor(x / 10) * 10; finalDist[bucket] = (finalDist[bucket] || 0) + 1; });
   console.log('最终关卡分布（按 10 关分桶）:', JSON.stringify(finalDist));
-  const bossDays = {};
-  runs.forEach(r => Object.entries(r.stuckBossDays || {}).forEach(([k, v]) => { bossDays[k] = (bossDays[k] || 0) + v; }));
+  const bossDays = {}, bossLosses = {}, bossTimeouts = {}, stageDays = {};
+  runs.forEach(r => {
+    Object.entries(r.bossFailedDays).forEach(([k, v]) => { bossDays[k] = (bossDays[k] || 0) + v; });
+    Object.entries(r.bossLosses).forEach(([k, v]) => { bossLosses[k] = (bossLosses[k] || 0) + v; });
+    Object.entries(r.bossTimeouts).forEach(([k, v]) => { bossTimeouts[k] = (bossTimeouts[k] || 0) + v; });
+    Object.entries(r.stageFailedDays).forEach(([k, v]) => { stageDays[k] = (stageDays[k] || 0) + v; });
+  });
   const topStuck = Object.entries(bossDays).sort((a, b) => b[1] - a[1]).slice(0, 8);
-  console.log('卡关最多名将关（种子×败北日）:', topStuck.map(([k, v]) => `第${k}关×${v}`).join(' · ') || '无');
+  console.log('卡关最多名将关（种子×失败日）:', topStuck.map(([k, v]) => `第${k}关×${v}`).join(' · ') || '无');
+  const topStageStuck = Object.entries(stageDays).sort((a, b) => b[1] - a[1]).slice(0, 10);
+  console.log('失败日最多关卡:', topStageStuck.map(([k, v]) => `第${k}关×${v}`).join(' · ') || '无');
+  const clearDays = runs.map(r => r.firstClearDay).filter(Boolean);
+  const maxStarDays = runs.map(r => r.firstMaxStarDay).filter(Boolean);
+  console.log('通关日（已通关样本）P10/P50/P90:', clearDays.length ? [0.1, 0.5, 0.9].map(p => stat(clearDays, p)).join('/') : '无');
+  console.log('主线败北/其中超时:', runs.reduce((s, r) => s + r.losses, 0), '/', runs.reduce((s, r) => s + r.timeouts, 0));
+  console.log('六槽首个 5★ 满星日（样本内达成）P10/P50/P90:', maxStarDays.length ? [0.1, 0.5, 0.9].map(p => stat(maxStarDays, p)).join('/') : '无');
   const avg = (f) => (runs.reduce((s, r) => s + f(r), 0) / SEEDS).toFixed(0);
   console.log(`第 ${DAYS} 天均值：元宝 ${avg(r => r.gem)} · 精铁 ${avg(r => r.iron)} · 招募令 ${avg(r => r.scroll)} · 武将 ${avg(r => r.roster)} · 军械总星 ${avg(r => r.armoryStars)}`);
   const json = { seeds: SEEDS, days: DAYS, battlesPerDay: BATTLES_PER_DAY, doneRate: done30 / SEEDS,
-    dayRows: dayRows.map(d => ({ day: d, doneRate: runs.filter(r => (r.checkpoints[d]?.cleared ?? 0) >= C.FIRST_STAGE_END).length / SEEDS,
-      median: stat(runs.map(r => r.checkpoints[d]?.cleared ?? 0), 0.5) })),
-    topStuck };
+    dayRows: dayRows.map(d => {
+      const stages = runs.map(r => Math.min(C.FIRST_STAGE_END, r.checkpoints[d]?.cleared ?? 0));
+      return { day: d, doneRate: stages.filter(x => x >= C.FIRST_STAGE_END).length / SEEDS,
+        p10: stat(stages, 0.1), median: stat(stages, 0.5), p90: stat(stages, 0.9) };
+    }),
+    clearDay: clearDays.length ? { p10: stat(clearDays, 0.1), median: stat(clearDays, 0.5), p90: stat(clearDays, 0.9) } : null,
+    firstMaxStarDay: maxStarDays.length ? { p10: stat(maxStarDays, 0.1), median: stat(maxStarDays, 0.5), p90: stat(maxStarDays, 0.9) } : null,
+    bossFailedDays: bossDays, bossLosses, bossTimeouts, stageFailedDays: stageDays,
+    losses: runs.reduce((s, r) => s + r.losses, 0),
+    timeouts: runs.reduce((s, r) => s + r.timeouts, 0), topStuck };
   const outDir = path.join(__dirname, '..', 'docs', 'reviews');
   fs.mkdirSync(outDir, { recursive: true });
-  fs.writeFileSync(path.join(outDir, '30d-sim-latest.json'), JSON.stringify(json, null, 2));
-  console.log('结果已写入 docs/reviews/30d-sim-latest.json');
+  const outPath = process.env.SIM_OUT || path.join(outDir, '30d-sim-latest.json');
+  fs.writeFileSync(outPath, JSON.stringify(json, null, 2));
+  console.log('结果已写入 ' + outPath);
 }
 
 main();

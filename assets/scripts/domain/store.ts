@@ -477,7 +477,8 @@ function calcHero(id) {
   const lv = effectiveLevel(id);
   const star = own.star;
   const base = H.heroStatsStar(def, lv, star), bonus = getArmoryBonuses();
-  const stats = { hp: Math.floor(base.hp * (1 + bonus.hp)), atk: Math.floor(base.atk * (1 + bonus.atk)), def: Math.floor(base.def * (1 + bonus.def)), spd: base.spd, crit: base.crit };
+  // 战靴速度节点对基础速度只乘一次（1+spdPct）；行动时的速度光环在战斗内另行叠加，不在此重复。
+  const stats = { hp: Math.floor(base.hp * (1 + bonus.hp)), atk: Math.floor(base.atk * (1 + bonus.atk)), def: Math.floor(base.def * (1 + bonus.def)), spd: Math.round(base.spd * (1 + (bonus.spdPct || 0)) * 1000) / 1000, crit: base.crit };
   const power = H.heroPower(def, lv, star) + Math.floor((stats.hp - base.hp) / 6 + (stats.atk - base.atk) * 2.2 + (stats.def - base.def) * 1.5);
   const passive = Object.assign({}, def.passive.mods || {});
   if (bonus.heal) passive.armoryHeal = bonus.heal;
@@ -493,8 +494,9 @@ function calcHero(id) {
   };
 }
 function getArmoryBonuses() {
-  if (!state || !state.armory) return { hp: 0, atk: 0, def: 0, heal: 0, startShield: 0, startEnergy: 0, directDR: 0 };
-  const out = { hp: 0, atk: 0, def: 0, heal: 0, startShield: 0, startEnergy: 0, directDR: 0 };
+  const empty = { hp: 0, atk: 0, def: 0, heal: 0, startShield: 0, startEnergy: 0, directDR: 0, spdPct: 0, nodes: {} };
+  if (!state || !state.armory) return empty;
+  const out = { hp: 0, atk: 0, def: 0, heal: 0, startShield: 0, startEnergy: 0, directDR: 0, spdPct: 0, nodes: {} };
   IT.ARMORY_SLOTS.forEach(slot => {
     const id = state.armory.selected[slot.id], item = IT.CATALOG.find(x => x.id === id);
     if (!item || !state.armory.unlocked[id]) return;
@@ -504,6 +506,18 @@ function getArmoryBonuses() {
     if (item.effect === 'shield') out.startShield = 0.06;
     if (item.effect === 'energy') out.startEnergy = 10;
     if (item.effect === 'reduction') out.directDR = 0.03;
+  });
+  // 部位升星节点：只由部位星级决定，与所选军械无关；逐槽按百分点与名器固定效果相加。
+  IT.ARMORY_SLOTS.forEach(slotDef => {
+    const node = IT.slotNodeInfo(slotDef.id, state.armory.slotStars[slotDef.id]);
+    out.nodes[slotDef.id] = node;
+    if (!node || !node.current) return;
+    if (node.stat === 'atk') out.atk += node.current;
+    else if (node.stat === 'hp') out.hp += node.current;
+    else if (node.stat === 'directDR') out.directDR += node.current;
+    else if (node.stat === 'spd') out.spdPct += node.current;
+    else if (node.stat === 'startShield') out.startShield += node.current;
+    else if (node.stat === 'startEnergy') out.startEnergy += node.current;
   });
   return out;
 }
@@ -562,8 +576,37 @@ function armoryUpgrade(slot) {
     const iron = IT.STAR_NEEDS[star], gold = IT.STAR_GOLD[star];
     if (state.res.iron < iron) return { ok:false, msg:'精铁不足，还差' + (iron-state.res.iron) };
     if (state.res.gold < gold) return { ok:false, msg:'铜钱不足，还差' + (gold-state.res.gold) };
+    const nodeBefore = IT.slotNodeInfo(slot, star);
     state.res.iron -= iron; state.res.gold -= gold; state.armory.slotStars[slot] = star + 1;
-    return { ok:true, slot, stars:star+1, iron, gold, before, bonuses:getArmoryBonuses() };
+    const nodeAfter = IT.slotNodeInfo(slot, star + 1);
+    const node = nodeAfter.tier > nodeBefore.tier
+      ? { label: nodeAfter.label, from: nodeBefore.current, to: nodeAfter.current,
+          unlocked: nodeBefore.tier === 0, enhanced: nodeBefore.tier === 1 }
+      : null;
+    return { ok:true, slot, stars:star+1, iron, gold, before, bonuses:getArmoryBonuses(), node };
+  });
+}
+// 一键升到下个节点（0-2★→3★、3-4★→5★）：同一存档事务内检查全部费用，
+// 不足时提示缺口且零扣款零升星；足够时一次扣款一次写档，返回节点解锁/增强与前后全军加成。
+function armoryUpgradeToNode(slot) {
+  return withSavedMutation(() => {
+    if (!IT.ARMORY_SLOTS.some(x => x.id === slot)) return { ok:false, msg:'部位不存在' };
+    const star = state.armory.slotStars[slot] || 0;
+    const cost = IT.slotNodeCost(slot, star);
+    if (!cost) return { ok:false, msg:'该部位已满星 · 节点已增强' };
+    const lacks = [];
+    if (state.res.iron < cost.iron) lacks.push('精铁还差 ' + (cost.iron - state.res.iron));
+    if (state.res.gold < cost.gold) lacks.push('铜钱还差 ' + (cost.gold - state.res.gold));
+    if (lacks.length) return { ok:false, msg:'材料不足：' + lacks.join('、'), need: cost };
+    const before = getArmoryBonuses();
+    const nodeBefore = IT.slotNodeInfo(slot, star);
+    state.res.iron -= cost.iron; state.res.gold -= cost.gold;
+    state.armory.slotStars[slot] = cost.to;
+    const nodeAfter = IT.slotNodeInfo(slot, cost.to);
+    return { ok:true, slot, fromStar: cost.from, toStar: cost.to, iron: cost.iron, gold: cost.gold,
+      node: { label: nodeAfter.label, from: nodeBefore.current, to: nodeAfter.current,
+        unlocked: nodeBefore.tier === 0, enhanced: nodeBefore.tier === 1 },
+      before, bonuses: getArmoryBonuses() };
   });
 }
 function armoryClaimBox(q, itemId) {
@@ -1386,7 +1429,7 @@ export {
   levelUp, ascend, ascendPreview, foodPoints, dismiss, resetHero, convertCards, setCardsLocked, addChoiceVoucher, useChoiceVoucher, firstWinChoice, claimFirstWinChoice,
   exchangeQualityShard, qualityShardInfo,
   getFormationCalc, setFormationSlot, applyFormation, formationFactionBonus, teamPower, playerUnits, enemyUnits,
-  getArmoryBonuses, getArmoryState, armoryUnlock, armorySelect, armoryUpgrade, armoryClaimBox, grantArmoryItem, applyArmoryRecommendations,
+  getArmoryBonuses, getArmoryState, armoryUnlock, armorySelect, armoryUpgrade, armoryUpgradeToNode, armoryClaimBox, grantArmoryItem, applyArmoryRecommendations,
   addEquip, equipInventory, equipTo, unequip, enhanceEquip, fodderPickIds, salvageEquip, salvageBatch, isEquipped,
   migrateSaveV1, migrateSaveV2, migrateSaveV3, migrateSaveV4, migrateSaveV5, migrateSaveV6, normalizeState,
   idlePending, idleTick, gemQuotaInfo, claimIdle, claimIdleInternal, fastReward, fastRewardMutation, fastRewardAdMutation, adReward,

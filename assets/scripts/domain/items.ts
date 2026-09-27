@@ -43,6 +43,44 @@ const CATALOG = [
 });
 const STAR_NEEDS = [60,120,240,480,960];
 const STAR_GOLD = [2000,4000,8000,16000,32000];
+
+// 部位升星节点：3★解锁第一档，5★增强为第二档（替换而非叠加第一档）。
+// 百分数为全军加成的绝对小数比例（怒气为点数）；只由 state.armory.slotStars 决定，
+// 与当前启用军械的品质/ID 无关；与名器固定效果按百分点相加（见 store.getArmoryBonuses）。
+const SLOT_NODES = {
+  weapon: { stat: 'atk',          label: '攻击',       tiers: { 3: 0.01,  5: 0.02 } },
+  armor:  { stat: 'hp',           label: '生命',       tiers: { 3: 0.01,  5: 0.02 } },
+  helm:   { stat: 'directDR',     label: '直接伤害减免', tiers: { 3: 0.005, 5: 0.01 } },
+  boots:  { stat: 'spd',          label: '速度',       tiers: { 3: 0.01,  5: 0.02 } },
+  jade:   { stat: 'startShield',  label: '开场护盾',   tiers: { 3: 0.01,  5: 0.02 } },
+  seal:   { stat: 'startEnergy',  label: '开场怒气',   tiers: { 3: 2,     5: 4 } }
+};
+const SLOT_NODE_TIERS = [0, 0, 0, 1, 1, 2]; // 星级→档位：0-2★无，3-4★第一档，5★第二档
+
+// 按部位与星级返回节点档信息（纯函数；异常输入回落为 0★，不产生 NaN）。
+// tier 0=未解锁（current 为 0），1=第一档，2=第二档；next 为下一目标（满档为 null）。
+function slotNodeInfo(slot, star) {
+  const def = SLOT_NODES[slot];
+  if (!def) return null;
+  const s = Math.max(0, Math.min(5, Math.floor(Number(star) || 0)));
+  const tier = SLOT_NODE_TIERS[s];
+  const current = tier === 0 ? 0 : def.tiers[tier === 1 ? 3 : 5];
+  const next = tier === 0 ? { star: 3, value: def.tiers[3] }
+    : tier === 1 ? { star: 5, value: def.tiers[5] } : null;
+  return { slot, stat: def.stat, label: def.label, star: s, tier, current, next, maxed: tier === 2 };
+}
+
+// 「升至下个节点」费用：0-2★→3★、3-4★→5★（逐星费用求和），5★不可用（null）。
+function slotNodeCost(slot, star) {
+  const def = SLOT_NODES[slot];
+  if (!def) return null;
+  const s = Math.max(0, Math.min(5, Math.floor(Number(star) || 0)));
+  if (s >= 5) return null;
+  const to = s >= 3 ? 5 : 3;
+  let iron = 0, gold = 0;
+  for (let n = s; n < to; n++) { iron += STAR_NEEDS[n]; gold += STAR_GOLD[n]; }
+  return { from: s, to, iron, gold };
+}
 const DROP_QUALITY_WEIGHTS = [50,30,15,5];
 
 // 品质：maxStar 为星级上限（对标 AFK 稀有度越高星上限越高）；base 为 0 星基础属性
@@ -140,6 +178,7 @@ function arenaRank(points) {
 
 export {
   ARMORY_SLOTS, GRADES, CATALOG, STAR_NEEDS, STAR_GOLD, DROP_QUALITY_WEIGHTS,
+  SLOT_NODES, slotNodeInfo, slotNodeCost,
   EQUIP_SLOTS, EQUIP_QUALITIES, MAX_STAR, STAR_PCT, FACTION_MATCH_MULT, FACTIONED_MIN_Q,
   STAR_POINTS, GOLD_PER_POINT, FODDER_POINTS,
   starNeed, starGold, fodderPoints, equipStat, dropQuality, DROP_SLOTS,

@@ -23,14 +23,22 @@ function chip(U: ScreenContext['ui'], name:string, label:string, x:number,y:numb
     U.tap(name+'Tap',x,y,w,48,action);
 }
 
-function armoryStats(stats: Record<string,number>|undefined) {
-    const names:{[key:string]:string}={atk:'攻击',hp:'生命',def:'防御',spd:'攻速'};
-    return Object.entries(stats||{}).filter(([key,value])=>names[key]&&Number(value)).map(([key,value])=>`${names[key]} +${Math.round(Number(value)*100)}%`).join(' · ')||'暂无属性加成';
+function armoryStats(stats: Record<string,any>|undefined) {
+  const names:{[key:string]:string}={atk:'攻击',hp:'生命',def:'防御',spdPct:'速度'};
+  return Object.entries(stats||{}).filter(([key,value])=>names[key]&&Number(value)).map(([key,value])=>`${names[key]} +${fmt.fmtPct(Number(value))}`).join(' · ')||'暂无属性加成';
 }
 function armoryEffect(effect: string|null|undefined) {
   return ({heal:'主动治疗与持续治疗效果提升',shield:'战斗开始时为全体英雄提供护盾',energy:'战斗开始时增加全体英雄怒气',reduction:'降低全体英雄受到的直接伤害'} as {[key:string]:string})[effect||'']||'';
 }
 function rarityMax(r:number){return (config.RARITIES as any)[r]?.maxStar||5;}
+function nodeValText(stat:string,value:number){return stat==='startEnergy'?`+${value}`:`+${fmt.fmtPct(value)}`;}
+function nodeLineText(slotId:string,star:number){
+  const n=items.slotNodeInfo(slotId,star);
+  if(!n)return '';
+  if(n.maxed)return '已满星 · 节点已增强';
+  if(n.tier===0)return `${n.next!.star}★解锁：${n.label} ${nodeValText(n.stat,n.next!.value)}`;
+  return `已解锁 ${n.label} ${nodeValText(n.stat,n.current)} · ${n.next!.star}★增强为 ${nodeValText(n.stat,n.next!.value)}`;
+}
 
 export function heroes(ctx: ScreenContext) {
     const U=ctx.ui,s=store.getState();
@@ -179,7 +187,7 @@ export function heroDetail(ctx: ScreenContext) {
   const cls=(config.CLASSES as any)[h.cls]?.name||'武将', formed=s.formation.includes(h.id);
   const hasVoucher=(s.vouchers[h.rarity===4?'ssr':'sr']||0)>0&&h.rarity>=3;
   const contentH=1160+(own.cards>0?110:0)+(hasVoucher?115:0)+(ctx.heroDetailOrigin==='heroes'?90:0);
-  const top=contentH/2, pct=(v:number)=>Math.round((Number(v)||0)*100)+'%';
+  const top=contentH/2, pct=(v:number)=>fmt.fmtPct(v);
   U.rect('DetailBackdrop',0,0,720,1280,tone('#122a22'));
   U.panel('DetailHeader',0,587,720,96,new Color(9,28,25,245),0,gold);
   U.text('DetailBackIcon','‹',-306,587,40,38,gold);U.text('DetailHeading','武将详情',-154,587,270,39,gold);
@@ -375,7 +383,7 @@ export function armory(ctx: ScreenContext) {
         ctx.confirm('免费启用军械建议',recs.map(r=>`${r.slotName}：${r.fromName} → ${r.toName}`).join('；'),()=>ctx.tell(store.applyArmoryRecommendations(recs),`已为全军启用 ${recs.length} 件`));
       });
     }
-    const top=recs.length?156:203,cardH=205,pitch=219;
+    const top=recs.length?156:203,cardH=232,pitch=246;
     const viewTop=top+cardH/2,viewBottom=-499,viewH=viewTop-viewBottom;
     const contentH=Math.max(viewH,3*pitch+190);
     U.scroll('ArmoryOverviewScroll',0,(viewTop+viewBottom)/2,700,viewH,contentH,V=>{
@@ -383,15 +391,16 @@ export function armory(ctx: ScreenContext) {
         const selected:any=items.CATALOG.find((item:any)=>item.id===s.armory.selected[slot.id]);
         const x=i%2?170:-170,y=contentH/2-cardH/2-Math.floor(i/2)*pitch;
         V.panel('ArmorySlotCard'+i,x,y,324,cardH,panel,9,gold);
-        V.text('ArmorySlotName'+i,slot.name,x-71,y+72,155,25,gold);
-        V.text('ArmorySlotStar'+i,`★${s.armory.slotStars[slot.id]||0}`,x+115,y+72,62,21,gold);
-        V.text('ArmorySlotItem'+i,selected?.name||'尚未选择军械',x,y+27,295,22,selected?tone(items.GRADES[selected.q].color):dim);
+        V.text('ArmorySlotName'+i,slot.name,x-71,y+85,155,25,gold);
+        V.text('ArmorySlotStar'+i,`★${s.armory.slotStars[slot.id]||0}`,x+115,y+85,62,21,gold);
+        V.text('ArmorySlotItem'+i,selected?.name||'尚未选择军械',x,y+40,295,22,selected?tone(items.GRADES[selected.q].color):dim);
         if(selected){
-          V.text('ArmorySlotStats'+i,`${items.GRADES[selected.q].name} · ${armoryStats(selected.basePct||selected.stats)}`,x,y-10,296,17,dim);
-          if(selected.effect)V.text('ArmorySlotEffect'+i,armoryEffect(selected.effect),x,y-41,296,16,dim);
+          V.text('ArmorySlotStats'+i,`${items.GRADES[selected.q].name} · ${armoryStats(selected.basePct||selected.stats)}`,x,y+10,296,17,dim);
+          if(selected.effect)V.text('ArmorySlotEffect'+i,armoryEffect(selected.effect),x,y-16,296,16,dim);
         }
-        V.panel('ArmorySlotOpen'+i,x,y-73,295,43,tone('#39291a'),5,border);
-        V.text('ArmorySlotOpenText'+i,'查看图鉴',x,y-73,270,18,gold);
+        V.text('ArmorySlotNode'+i,nodeLineText(slot.id,s.armory.slotStars[slot.id]||0),x,y-44,296,16,tone('#e2c088'));
+        V.panel('ArmorySlotOpen'+i,x,y-88,295,43,tone('#39291a'),5,border);
+        V.text('ArmorySlotOpenText'+i,'查看图鉴',x,y-88,270,18,gold);
         V.tap('ArmorySlotTap'+i,x,y,324,cardH,()=>{ctx.selectedArmorySlot=slot.id;CocosUi.resetScroll('CatalogScroll');ctx.go('armoryCatalog');});
       });
       const bonus:any=store.getArmoryBonuses(),summaryY=contentH/2-3*pitch-42;
@@ -416,7 +425,7 @@ export function armoryCatalog(ctx: ScreenContext) {
     U.text('CatalogCoinsText',`铜钱 ${fmt.fmtNum(s.res.gold)}`,175,409,310,19,gold);
     chip(U,'CatalogOverviewTab','部位养成',-171,345,334,false,()=>ctx.go('armory'));
     chip(U,'CatalogSelectedTab',`装备图鉴  ${unlocked}/${items.CATALOG.length}`,171,345,334,true,()=>ctx.show('armoryCatalog'));
-    const contentH=1450,viewH=840;
+    const contentH=1610,viewH=840;
     U.scroll('CatalogScroll',0,-126,704,viewH,contentH,V=>{
       const top=contentH/2;
       items.ARMORY_SLOTS.forEach((entry:any,i:number)=>{
@@ -444,22 +453,45 @@ export function armoryCatalog(ctx: ScreenContext) {
         V.text('CatalogBoxesTitle','待选择的军械箱',-219,afterList-52,238,20,gold);
         [1,2,3].forEach((q,i)=>chip(V,'CatalogBox'+q,`${items.GRADES[q].name}箱 ×${boxes[i]}`,-224+i*224,afterList-102,207,false,()=>{ctx.selectedBoxQ=q;ctx.go('armoryBox');}));
       }
-      const detailY=boxes.some(Boolean)?afterList-300:afterList-169;
+      const detailY=boxes.some(Boolean)?afterList-445:afterList-284;
       if(item){
-        V.panel('CatalogDetail',0,detailY,680,275,panel,10,gold);
-        V.text('CatalogDetailName',item.name,-199,detailY+104,275,27,tone(items.GRADES[item.q].color));
-        V.text('CatalogDetailType',`${slot?.name} · ${items.GRADES[item.q].name} · 部位 ★${star}`,-173,detailY+66,345,19,dim);
-        V.text('CatalogDetailStats',`基础加成：${armoryStats(item.basePct||item.stats)}`,0,detailY+29,636,19,gold);
-        if(item.effect)V.text('CatalogDetailEffect',`效果：${armoryEffect(item.effect)}`,0,detailY-6,636,17,paper);
-        V.text('CatalogDetailSource',item.q===0?'获得：新手赠送与战役奖励':`获得：战役奖励；通关第 ${items.GRADES[item.q].unlockStage} 关后可用精铁定向解锁`,0,detailY-40,636,17,dim);
+        const bonusNow=store.getArmoryBonuses();
+        const nodeNow=items.slotNodeInfo(slot.id,star);
+        const nodeCost=items.slotNodeCost(slot.id,star);
+        const lacks=nodeCost?[]:['已满星'];
+        if(nodeCost){
+          if(s.res.iron<nodeCost.iron)lacks.push(`精铁还差 ${nodeCost.iron-s.res.iron}`);
+          if(s.res.gold<nodeCost.gold)lacks.push(`铜钱还差 ${fmt.fmtNum(nodeCost.gold-s.res.gold)}`);
+        }
+        V.panel('CatalogDetail',0,detailY,680,430,panel,10,gold);
+        V.text('CatalogDetailName',item.name,-199,detailY+185,275,27,tone(items.GRADES[item.q].color));
+        V.text('CatalogDetailType',`${slot?.name} · ${items.GRADES[item.q].name} · 部位 ★${star}`,-173,detailY+145,345,19,dim);
+        V.text('CatalogDetailStats',`启用军械基础加成：${armoryStats(item.basePct||item.stats)}`,0,detailY+105,636,19,gold);
+        V.text('CatalogDetailEffect',`名器固定效果：${item.effect?armoryEffect(item.effect)+'（0★ 即生效，不随星级放大）':'无'}`,0,detailY+68,636,17,paper);
+        V.text('CatalogDetailNode',`部位升星节点（与启用军械无关）：${nodeLineText(slot.id,star)}`,0,detailY+28,636,17,tone('#e2c088'));
+        V.text('CatalogDetailBonus',`全军加成：${armoryStats(bonusNow)}`,0,detailY-12,636,17,gold);
+        V.text('CatalogDetailSource',item.q===0?'获得：新手赠送与战役奖励':`获得：战役奖励；通关第 ${items.GRADES[item.q].unlockStage} 关后可用精铁定向解锁`,0,detailY-50,636,17,dim);
         const owned=!!s.armory.unlocked[item.id],active=s.armory.selected[item.slot]===item.id;
         const ready=s.campaign.cleared>=items.GRADES[item.q].unlockStage;
-        V.button('CatalogDetailAction',active?'全军正在使用':owned?'全军启用':ready?`精铁 ×${items.GRADES[item.q].cost} 解锁`:`通关第 ${items.GRADES[item.q].unlockStage} 关后开放`,0,detailY-96,629,52,()=>{
+        V.button('CatalogDetailAction',active?'全军正在使用':owned?'全军启用':ready?`精铁 ×${items.GRADES[item.q].cost} 解锁`:`通关第 ${items.GRADES[item.q].unlockStage} 关后开放`,0,detailY-186,629,52,()=>{
           if(active)return;
           if(owned)return ctx.tell(store.armorySelect(item.slot,item.id),`已为全军启用 ${item.name}`);
           if(!ready)return ctx.tell({ok:false,msg:'尚未满足关卡条件'},'');
           ctx.confirm('解锁军械确认',`${item.name} · 消耗精铁 ×${items.GRADES[item.q].cost}`,()=>ctx.tell(store.armoryUnlock(item.id),`已解锁 ${item.name}`));
         },active?palette.paperDark:palette.gold);
+        V.button('CatalogStarOne','升一星',-165,detailY-124,200,52,()=>{
+          if(star>=items.STAR_NEEDS.length)return ctx.tell({ok:false,msg:'部位已满星'},'');
+          ctx.confirm('部位升星确认',`当前 ★${star} → ★${star+1}；消耗精铁 ${items.STAR_NEEDS[star]}、铜钱 ${fmt.fmtNum(items.STAR_GOLD[star])}`,()=>ctx.tell(store.armoryUpgrade(ctx.selectedArmorySlot),'部位升星成功'));
+        },palette.paperDark);
+        V.button('CatalogStarNode',nodeCost?`升至 ★${nodeCost.to}`:'节点已增强',150,detailY-124,290,52,()=>{
+          if(!nodeCost)return ctx.tell({ok:false,msg:'该部位已满星 · 节点已增强'},'');
+          if(lacks.length)return ctx.tell({ok:false,msg:'材料不足：'+lacks.join('、')},'');
+          const nodeTo=items.slotNodeInfo(slot.id,nodeCost.to);
+          ctx.confirm('升至 ★'+nodeCost.to,`部位 ★${nodeCost.from} → ★${nodeCost.to}；消耗精铁 ${nodeCost.iron}、铜钱 ${fmt.fmtNum(nodeCost.gold)}\n${nodeNow.tier===0?'解锁':'增强'}${nodeNow.label} ${nodeValText(nodeNow.stat,nodeTo!.current)}`,()=>{
+            const r=store.armoryUpgradeToNode(ctx.selectedArmorySlot);
+            ctx.tell(r,r.ok?`★${r.fromStar}→★${r.toStar} · ${r.node.unlocked?'解锁':r.node.enhanced?'增强为':'强化'}${r.node.label} ${nodeValText(nodeNow.stat,r.node.to)}`:'');
+          });
+        },lacks.length||!nodeCost?palette.paperDark:palette.gold);
       }
     });
   }

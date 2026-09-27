@@ -5,6 +5,12 @@ function fmtNum(n) {
   if (n >= 1e4) return (n / 1e4).toFixed(1) + '万';
   return '' + n;
 }
+// 百分比展示：保留 0.5 个百分点精度（0.005→'0.5%'，0.01→'1%'），不把 0.5% 四舍五入成 1%。
+function fmtPct(v) {
+  const n = (Number(v) || 0) * 100;
+  const r = Math.round(n * 10) / 10;
+  return (Number.isInteger(r) ? r.toFixed(0) : r.toFixed(1)) + '%';
+}
 function pad2(n) { return (n < 10 ? '0' : '') + n; }
 function fmtDur(sec) {
   sec = Math.max(0, Math.floor(sec));
@@ -22,4 +28,4 @@ function cnNum(n) {
   if (n <= 20) return NUM_CN[n - 1] || '' + n;
   return '' + n;
 }
-module.exports = { fmtNum, fmtDur, todayStr, cnNum, pad2 };
+module.exports = { fmtNum, fmtPct, fmtDur, todayStr, cnNum, pad2 };

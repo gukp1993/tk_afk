@@ -124,6 +124,21 @@ const AD = {
 
 // 第一期主线：12 章 × 10 关；第 121 关起为循环乱世，不套用一期里程碑。
 const FIRST_STAGE_END = 120;
+// 主线难度曲线：普通关随第一期进度平滑增长；名将关按阵容整体倍率突出。
+// 个别敌阵技能组合会形成异常超时墙，单独削峰，避免用全局降难度加速全程。
+const CAMPAIGN_DIFFICULTY = {
+  levelSlope: 1.8,
+  normalEndScale: 1.08,
+  // 这些普通关的敌阵技能组合明显强于相邻关，轻微校准后仍保留阵容特点。
+  normalOverrides: { 72: 0.95, 89: 0.95, 99: 0.95, 117: 0.95 },
+  bossMainScale: 1.18,
+  bossOtherScale: 1.08,
+  bossOverrides: {
+    50: { main: 1.08, other: 0.99 },
+    80: { main: 1.08, other: 0.99 },
+    110: { main: 1.08, other: 0.99 }
+  }
+};
 // 一期固定里程碑（在普通首通与章末奖励之外，只发一次；旧档通关后补发一次）。
 const CAMPAIGN_MILESTONES = {
   40:  { ssrPick: 1, label: 'SSR 武将自选券 ×1' },
@@ -139,5 +154,5 @@ export {
   goldCost, expCost, idleRates, IDLE_CAP_HOURS, GEM_IDLE, ARMORY_IRON_PER_HOUR,
   FAST_AD, FAST_PAID,
   GACHA, factionBonus, FORMATION_ROWS, BATTLE, ARENA, AD,
-  FIRST_STAGE_END, CAMPAIGN_MILESTONES
+  FIRST_STAGE_END, CAMPAIGN_DIFFICULTY, CAMPAIGN_MILESTONES
 };
