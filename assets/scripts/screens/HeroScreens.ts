@@ -18,8 +18,8 @@ let heroFaction='all',heroSort='power',showStarterPick=false;
 let armoryItemId='';
 
 function chip(U: ScreenContext['ui'], name:string, label:string, x:number,y:number,w:number,active:boolean,action:()=>void) {
-    U.panel(name,x,y,w,48,active?tone('#d9a94e'):tone('#332518'),8,active?gold:border);
-    U.text(name+'Text',label,x,y,w-8,20,active?ink:paper);
+    U.panel(name,x,y,w,48,active?tone('#3a2a1b'):ink,24,active?gold:border);
+    U.text(name+'Text',label,x,y,w-8,20,active?gold:dim);
     U.tap(name+'Tap',x,y,w,48,action);
 }
 
@@ -38,7 +38,12 @@ export function heroes(ctx: ScreenContext) {
     const order=(h:any)=>heroSort==='rarity'?h.rarity*100000+h.power:heroSort==='star'?h.star*100000+h.power:Number(h[heroSort])||0;
     list.sort((a,b)=>order(b)-order(a));
     U.rect('HeroBackdrop',0,0,720,1280,ink);
-    U.text('HeroesResources',`铜钱 ${fmt.fmtNum(s.res.gold)}     元宝 ${fmt.fmtNum(s.res.gem)}     招募令 ${s.res.scroll}`,0,606,685,20,gold);
+    const resourcePills:[string,number][]=[['铜钱',s.res.gold],['元宝',s.res.gem],['招募令',s.res.scroll]];
+    resourcePills.forEach(([label,value],i)=>{
+      const x=-232+i*232;
+      U.panel('HeroResource'+i,x,606,224,40,ink,20,border);
+      U.text('HeroResourceText'+i,`${label} ${fmt.fmtNum(value)}`,x,606,207,18,gold);
+    });
     U.text('HeroesTitle','英雄 · 群英录',-157,548,390,40,gold);
     U.text('HeroesIntro','点击英雄，查看技能、升级与装备',-145,504,415,20,dim);
     U.panel('HeroesFormation',260,533,170,60,tone('#d9a94e'),8,gold);
@@ -66,7 +71,7 @@ export function heroes(ctx: ScreenContext) {
         const data=heroData.getHero(h.id),rarity=data?.rarity||h.rarity||1;
         const accent=tone(rarityColors[rarity]);
         grid.panel('HeroCard'+i,x,y,213,300,panel,10,accent);
-        grid.panel('HeroAvatar'+i,x,y+50,145,142,tone(h.faction==='wei'?'#28374a':h.faction==='shu'?'#263d32':h.faction==='wu'?'#493024':'#383047'),8,accent);
+        grid.portrait('HeroAvatar'+i,x,y+50,145,142,tone(h.faction==='wei'?'#28374a':h.faction==='shu'?'#263d32':h.faction==='wu'?'#493024':'#383047'),accent);
         grid.text('HeroAvatarText'+i,data?.surname||h.name[0],x,y+50,118,74,paper);
         grid.text('HeroCardName'+i,h.name,x-36,y-41,130,25,paper);
         grid.text('HeroCardRarity'+i,rarityNames[rarity],x+75,y-41,55,19,accent);
@@ -109,11 +114,11 @@ export function heroDetail(ctx: ScreenContext) {
     U.text('DetailHeading','武 将',0,585,370,36,gold);
     U.text('DetailBack','‹ 返回',-288,585,130,23,gold);
     U.tap('DetailBackTap',-288,585,140,63,()=>ctx.back('heroes'));
-    const contentH=1660,viewH=1130;
-    U.scroll('DetailScroll',0,-75,708,viewH,contentH,V=>{
+    const contentH=1660,viewH=1210;
+    U.scroll('DetailScroll',0,-35,708,viewH,contentH,V=>{
       const top=contentH/2;
       V.panel('DetailHeroPanel',0,top-113,680,184,panel,12,gold);
-      V.panel('DetailPortrait',-242,top-113,142,146,tone('#314236'),9,tone(rarityColors[h.rarity]));
+      V.portrait('DetailPortrait',-242,top-113,142,146,tone('#314236'),tone(rarityColors[h.rarity]));
       V.text('HeroSurname',h.surname||h.name[0],-242,top-113,118,87,paper);
       V.text('DetailName',`${h.name}   ${rarityNames[h.rarity]}`,35,top-52,360,35,gold);
       V.text('DetailIdentity',`${h.title} · ${factionName[h.faction]||h.faction} · ${clsName[h.cls]||h.cls||'武将'}`,59,top-91,405,21,dim);
@@ -180,36 +185,34 @@ export function heroDetail(ctx: ScreenContext) {
 export function summon(ctx: ScreenContext) {
     const s=store.getState(),U=ctx.ui;
     U.rect('SummonBackdrop',0,0,720,1280,ink);
-    U.text('SummonBack','‹ 返回',-291,616,130,22,gold);
-    U.tap('SummonBackTap',-291,616,136,45,()=>ctx.back('home'));
-    U.panel('GemBalance',-175,566,334,42,ink,12,border);
-    U.text('GemBalanceText',`元宝 ${fmt.fmtNum(s.res.gem)}`,-175,566,304,20,gold);
-    U.panel('ScrollBalance',175,566,334,42,ink,12,border);
-    U.text('ScrollBalanceText',`招募令 ${s.res.scroll}`,175,566,304,20,gold);
-    U.panel('SummonHall',0,378,686,288,panel,13,gold);
-    U.text('SummonHallTitle','召唤 · 点将台',0,478,600,42,gold);
-    U.text('SummonHallSubtitle','聚天下英杰 · 成千秋霸业',0,431,590,20,dim);
+    U.panel('GemBalance',-175,611,334,42,ink,21,border);
+    U.text('GemBalanceText',`元宝 ${fmt.fmtNum(s.res.gem)}`,-175,611,304,20,gold);
+    U.panel('ScrollBalance',175,611,334,42,ink,21,border);
+    U.text('ScrollBalanceText',`招募令 ${s.res.scroll}`,175,611,304,20,gold);
+    U.panel('SummonHall',0,458,686,288,panel,13,gold);
+    U.text('SummonHallTitle','召唤 · 点将台',0,558,600,42,gold);
+    U.text('SummonHallSubtitle','聚天下英杰 · 成千秋霸业',0,511,590,20,dim);
     U.scene('SummonSealArt',g=>{
-      g.strokeColor=tone('#765a30');g.lineWidth=3;g.circle(0,356,74);g.stroke();
+      g.strokeColor=tone('#765a30');g.lineWidth=3;g.circle(0,436,74);g.stroke();
       for(let i=0;i<12;i++){
         const a=i*Math.PI/6;
-        g.moveTo(Math.cos(a)*84,356+Math.sin(a)*84);
-        g.lineTo(Math.cos(a)*111,356+Math.sin(a)*111);
+        g.moveTo(Math.cos(a)*84,436+Math.sin(a)*84);
+        g.lineTo(Math.cos(a)*111,436+Math.sin(a)*111);
       }
       g.stroke();
     });
-    U.panel('SummonSeal',0,356,72,72,tone('#57402d'),10,gold);
-    U.text('SummonSealText','将',0,356,68,42,gold);
-    U.text('SummonRates','概率 SSR 2% · SR 10% · R 28% · N 60%',0,268,630,19,dim);
-    U.panel('SummonPool',0,199,686,110,panel,9,border);
-    U.text('PoolTitle',`武将池 · ${heroData.HEROES.length} 将 · 固定概率，无保底`,-73,231,590,19,dim);
+    U.panel('SummonSeal',0,436,72,72,tone('#57402d'),10,gold);
+    U.text('SummonSealText','将',0,436,68,42,gold);
+    U.text('SummonRates','概率 SSR 2% · SR 10% · R 28% · N 60%',0,348,630,19,dim);
+    U.panel('SummonPool',0,294,686,110,panel,9,border);
+    U.text('PoolTitle',`武将池 · ${heroData.HEROES.length} 将 · 固定概率，无保底`,-73,326,590,19,dim);
     const rarity:[string,string,number][]=[['SSR','#e2b95f',4],['SR','#b37ac9',3],['R','#5f90c8',2],['N','#b9bec3',1]];
     rarity.forEach(([name,hex],i)=>{
       const x=-264+i*175;
-      U.panel('RarityMark'+i,x-47,190,19,19,tone(hex),2);
-      U.text('RarityName'+i,name,x+4,190,83,20,tone(hex));
+      U.panel('RarityMark'+i,x-47,285,19,19,tone(hex),2);
+      U.text('RarityName'+i,name,x+4,285,83,20,tone(hex));
     });
-    U.text('PoolCounts',rarity.map(([name,,level])=>`${name} ${heroData.HEROES.filter((h:any)=>h.rarity===level).length}`).join(' · '),0,163,610,17,dim);
+    U.text('PoolCounts',rarity.map(([name,,level])=>`${name} ${heroData.HEROES.filter((h:any)=>h.rarity===level).length}`).join(' · '),0,258,610,17,dim);
     const draws:[string,string,string,string,()=>void][]=[
       ['Single','招募 ×1','招募令 ×1','#392719',()=>ctx.confirm('确认招募','消耗招募令 ×1',()=>ctx.summonDraw('scroll1'))],
       ['TenScroll','招募 ×10','招募令 ×10','#d9ac5f',()=>ctx.confirm('确认招募','消耗招募令 ×10',()=>ctx.summonDraw('scroll10'))],
@@ -217,14 +220,14 @@ export function summon(ctx: ScreenContext) {
     ];
     draws.forEach(([id,title,cost,hex,action],i)=>{
       const x=-232+i*232,bg=tone(hex),dark=i===0;
-      U.panel(id,x,74,214,88,bg,9,gold);
-      U.text(id+'Title',title,x,93,194,27,dark?gold:ink);
-      U.text(id+'Cost',cost,x,54,194,17,dark?dim:tone('#573d1e'));
-      U.tap(id+'Tap',x,74,214,88,action);
+      U.panel(id,x,199,214,88,bg,9,gold);
+      U.text(id+'Title',title,x,218,194,27,dark?gold:ink);
+      U.text(id+'Cost',cost,x,179,194,17,dark?dim:tone('#573d1e'));
+      U.tap(id+'Tap',x,199,214,88,action);
     });
-    U.panel('SummonAd',0,-7,678,51,tone('#2b1e12'),8,border);
-    U.text('SummonAdText','看广告得招募令 ×1',0,-7,618,20,gold);
-    U.tap('SummonAdTap',0,-7,678,51,()=>ctx.playAd('summon',()=>{
+    U.panel('SummonAd',0,133,678,51,tone('#2b1e12'),8,border);
+    U.text('SummonAdText','看广告得招募令 ×1',0,133,618,20,gold);
+    U.tap('SummonAdTap',0,133,678,51,()=>ctx.playAd('summon',()=>{
       store.applyReward({scroll:1});store.save();ctx.tell({ok:true},'获得招募令 ×1');
     }));
   }
@@ -255,7 +258,7 @@ export function summonResults(ctx: ScreenContext) {
       const single=ctx.lastSummon.length===1;
       const accent=tone(rarityColors[hero.rarity]);
       U.panel('DrawCard'+i,x,y,single?350:205,single?420:193,panel,9,accent);
-      U.panel('DrawAvatar'+i,x,single?y+54:y+38,single?214:135,single?220:98,tone('#364539'),8,accent);
+      U.portrait('DrawAvatar'+i,x,single?y+54:y+38,single?214:135,single?220:98,tone('#364539'),accent);
       U.text('DrawGlyph'+i,hero.surname||hero.name[0],x,single?y+54:y+38,single?150:93,single?89:63,paper);
       U.text('DrawName'+i,hero.name,x,single?y-78:y-35,single?290:180,single?30:23,paper);
       U.text('DrawRarity'+i,rarity,x,single?y-120:y-63,single?210:154,20,accent);

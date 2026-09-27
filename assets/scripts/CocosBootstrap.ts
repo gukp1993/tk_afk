@@ -1,5 +1,5 @@
 import { _decorator, Component, game, Game, Node, profiler, ResolutionPolicy, view } from 'cc';
-import { CocosUi, palette } from './ui/CocosUi';
+import { CocosUi, hexColor, palette } from './ui/CocosUi';
 import * as store from './domain/store';
 import * as stages from './domain/stages';
 import * as config from './domain/config';
@@ -92,7 +92,7 @@ export class CocosBootstrap extends Component implements ScreenContext {
     for (const child of this.content.children.slice()) child.destroy();
     const verticalScale=Math.max(1,view.getVisibleSize().height/1280);
     const U = this.ui = new CocosUi(this.content,verticalScale), s = store.getState();
-    U.rect('Backdrop', 0, 0, 720, 1280, palette.ink);
+    U.rect('Backdrop', 0, 0, 720, 1280, hexColor('#171009'));
     if (page === 'journey' || page === 'shop') {
       const resources: [string, number][] = [['铜钱',s.res.gold],['元宝',s.res.gem],['招募令',s.res.scroll],['演武令',s.res.token],['碎片',s.res.shard]];
       const y=page==='journey'?590:513;
@@ -111,7 +111,7 @@ export class CocosBootstrap extends Component implements ScreenContext {
     };
     render[page]();
     if (this.notice) U.text('Notice', this.notice, 0, -510, 670, 20, palette.gold);
-    if(['home','journey','campaign','heroes','bag'].includes(page)) {
+    if(['home','journey','campaign','heroes','bag','summon'].includes(page)) {
       U.rect('NavBackground', 0, -594, 720, 92, palette.ink);
       const nav: [Page,string,string][] = [['home','城','主城'],['journey','图','玩法'],['campaign','战','战役'],['heroes','将','英雄'],['bag','囊','背包']];
       nav.forEach(([p,glyph,label], i) => {
@@ -194,8 +194,8 @@ export class CocosBootstrap extends Component implements ScreenContext {
     },palette.gold);
   }
   public title(text: string, sub = '') {
-    this.ui.text('Title', text, 0, 569, 650, 35, palette.gold);
-    if (sub) this.ui.text('Subtitle', sub, 0, 523, 650, 19, palette.muted);
+    this.ui.text('Title', text, 0, 609, 650, 35, palette.gold);
+    if (sub) this.ui.text('Subtitle', sub, 0, 563, 650, 19, palette.muted);
   }
   public row(name: string, text: string, y: number, action?: () => void, actionText = '查看') {
     this.ui.panel(name, 0, y, 652, 91, palette.green, 9, palette.gold);

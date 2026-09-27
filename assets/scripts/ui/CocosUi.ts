@@ -54,6 +54,35 @@ export class CocosUi {
     return node;
   }
 
+  /** Framed calligraphy portrait used by the original Canvas hero cards. */
+  portrait(name: string, x: number, y: number, w: number, h: number, fill: Color, accent: Color) {
+    const node = new Node(name);
+    node.setPosition(new Vec3(x, this.y(y), 0));
+    node.addComponent(UITransform).setContentSize(w, h);
+    const g = node.addComponent(Graphics);
+    g.fillColor = fill;
+    g.roundRect(-w / 2, -h / 2, w, h, 18);
+    g.fill();
+    const left=-w/2+9, right=w/2-9, bottom=-h/2+9, top=h/2-9;
+    g.strokeColor = new Color(238, 218, 170, 18);
+    g.lineWidth = 6;
+    for (let start=left-(top-bottom); start<right; start+=22) {
+      const y1=Math.max(bottom,bottom+left-start);
+      const y2=Math.min(top,bottom+right-start);
+      if(y2<=y1)continue;
+      g.moveTo(start+y1-bottom,y1);
+      g.lineTo(start+y2-bottom,y2);
+    }
+    g.stroke();
+    g.strokeColor = accent;
+    g.lineWidth = 4;
+    g.roundRect(-w/2+2,-h/2+2,w-4,h-4,18);
+    g.stroke();
+    this.parent.addChild(node);
+    this.nodes.set(name,node);
+    return node;
+  }
+
   tap(name: string, x: number, y: number, w: number, h: number, action: () => void) {
     const node = new Node(name);
     node.setPosition(new Vec3(x, this.y(y), 0));
@@ -120,6 +149,8 @@ export class CocosUi {
     node.addComponent(UITransform).setContentSize(w, Math.max(size * 2.4, 46));
     const label = node.addComponent(Label);
     label.string = value;
+    // Match the Canvas edition's Kaiti-first typography on every native page.
+    label.fontFamily = 'Kaiti SC';
     label.fontSize = size;
     label.lineHeight = size * 1.3;
     label.color = color;

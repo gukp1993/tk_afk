@@ -354,29 +354,30 @@ export function shop(ctx: ScreenContext) {
 export function formation(ctx: ScreenContext) {
   const s=store.getState(), U=ctx.ui,bonus=store.formationFactionBonus().bonus;
   ctx.title('编 队');
-  U.panel('FormationSummary',0,331,682,120,tone('#342518'),11,GOLD);
-  U.text('FormationSummaryTitle','出征编队',-204,366,260,28,GOLD);
-  U.text('FormationPower',`总战力 ${fmt.fmtNum(store.teamPower())}`,-202,331,270,25,GOLD);
-  U.text('FormationFaction',bonus.atk>0?`同阵营 ×${bonus.atk>=.18?5:bonus.atk>=.12?4:3}：攻击/生命 +${Math.round(bonus.atk*100)}%`:'同阵营 3/4/5 人激活全队加成',-181,295,355,18,tone('#ad9977'));
-  U.button('FormationRecommend','推荐布阵',244,331,170,55,()=>{
+  U.text('FormationBackTop','‹ 返回',-287,609,132,22,GOLD);
+  U.tap('FormationBackTopTap',-287,609,138,49,()=>ctx.back('campaign'));
+  U.panel('FormationSummary',0,514,682,120,tone('#342518'),11,GOLD);
+  U.text('FormationSummaryTitle','出征编队',-204,549,260,28,GOLD);
+  U.text('FormationPower',`总战力 ${fmt.fmtNum(store.teamPower())}`,-202,514,270,25,GOLD);
+  U.text('FormationFaction',bonus.atk>0?`同阵营 ×${bonus.atk>=.18?5:bonus.atk>=.12?4:3}：攻击/生命 +${Math.round(bonus.atk*100)}%`:'同阵营 3/4/5 人激活全队加成',-181,478,355,18,tone('#ad9977'));
+  U.button('FormationRecommend','推荐布阵',244,514,170,55,()=>{
     formationRecommended=recommendFormation(store.allRoster());ctx.show('formation');
   },palette.gold);
-  U.text('FormationBackLabel','后 排（远程输出 / 辅助）',0,238,540,19,tone('#ad9977'));
-  U.text('FormationFrontLabel','前 排（承伤 / 近战）',0,-8,540,19,tone('#ad9977'));
-  U.line('FormationDivider',[[-250,25],[250,25]],2,tone('#766349'));
+  U.text('FormationBackLabel','后 排（远程输出 / 辅助）',0,440,540,19,tone('#ad9977'));
+  U.text('FormationFrontLabel','前 排（承伤 / 近战）',0,245,540,19,tone('#ad9977'));
+  U.line('FormationDivider',[[-250,267],[250,267]],2,tone('#766349'));
   s.formation.forEach((id: string|null,i: number)=>{
-    const x=i<3?-216+i*216:-108+(i-3)*216,y=i<3?-117:136;
+    const x=i<3?-216+i*216:-108+(i-3)*216,y=i<3?162:362;
     const hero=id?heroes.getHero(id):null;
     U.panel('Slot'+i,x,y,188,172,tone('#322319'),9,id?GOLD:tone('#827563'));
-    U.panel('SlotAvatar'+i,x,y+25,145,105,tone('#37463a'),8,id?GOLD:tone('#827563'));
+    U.portrait('SlotAvatar'+i,x,y+25,145,105,tone('#37463a'),id?GOLD:tone('#827563'));
     U.text('SlotGlyph'+i,hero?.name?.[0]||'+',x,y+27,105,63,LIGHT);
     U.text('SlotName'+i,hero?.name||'点击上阵',x,y-49,165,21,GOLD);
     U.text('SlotLevel'+i,hero?`Lv.${store.playerLevel()}`:'',x,y-71,150,16,tone('#ad9977'));
     U.tap('SlotTap'+i,x,y,188,172,()=>{ctx.selectedFormationSlot=i;ctx.go('formationPick');});
   });
-  U.text('FormationHelp1','点击已上阵武将可更换；阵营克制：魏→蜀→吴→群→魏',0,-260,650,18,tone('#ad9977'));
-  U.text('FormationHelp2','克制方伤害 +25%',0,-285,600,18,tone('#ad9977'));
-  U.button('FormationBack','返 回',0,-473,297,58,()=>ctx.back('campaign'),palette.paperDark);
+  U.text('FormationHelp1','点击已上阵武将可更换；阵营克制：魏→蜀→吴→群→魏',0,60,650,18,tone('#ad9977'));
+  U.text('FormationHelp2','克制方伤害 +25%',0,35,600,18,tone('#ad9977'));
   if(formationRecommended){
     const recommended=formationRecommended;
     U.rect('FormationRecShade',0,0,720,1280,new Color(12,10,8,190));
