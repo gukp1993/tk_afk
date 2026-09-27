@@ -1,5 +1,9 @@
 import { Color, Graphics, Label, Node, UITransform, Vec3 } from 'cc';
 
+export const hexColor = (hex: string) => new Color(
+  parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16), 255
+);
+
 export const palette = {
   ink: new Color(25, 35, 31), green: new Color(53, 93, 78), greenLight: new Color(133, 160, 129),
   paper: new Color(226, 213, 172), paperDark: new Color(191, 172, 127), gold: new Color(211, 163, 73),
@@ -19,6 +23,44 @@ export class CocosUi {
     graphics.fillColor = fill;
     graphics.rect(-w / 2, -h / 2, w, h);
     graphics.fill();
+    this.parent.addChild(node);
+    this.nodes.set(name, node);
+    return node;
+  }
+
+  panel(name: string, x: number, y: number, w: number, h: number, fill: Color, radius = 8, border?: Color) {
+    const node = new Node(name);
+    node.setPosition(new Vec3(x, y, 0));
+    node.addComponent(UITransform).setContentSize(w, h);
+    const g = node.addComponent(Graphics);
+    g.fillColor = fill;
+    g.roundRect(-w / 2, -h / 2, w, h, radius);
+    g.fill();
+    if (border) {
+      g.strokeColor = border;
+      g.lineWidth = 2;
+      g.roundRect(-w / 2 + 1, -h / 2 + 1, w - 2, h - 2, radius);
+      g.stroke();
+    }
+    this.parent.addChild(node);
+    this.nodes.set(name, node);
+    return node;
+  }
+
+  tap(name: string, x: number, y: number, w: number, h: number, action: () => void) {
+    const node = new Node(name);
+    node.setPosition(new Vec3(x, y, 0));
+    node.addComponent(UITransform).setContentSize(w, h);
+    node.on(Node.EventType.TOUCH_END, action);
+    this.parent.addChild(node);
+    this.nodes.set(name, node);
+    return node;
+  }
+
+  scene(name: string, draw: (graphics: Graphics) => void) {
+    const node = new Node(name);
+    const graphics = node.addComponent(Graphics);
+    draw(graphics);
     this.parent.addChild(node);
     this.nodes.set(name, node);
     return node;
@@ -47,7 +89,7 @@ export class CocosUi {
   }
 
   button(name: string, value: string, x: number, y: number, w: number, h: number, action: () => void, fill = palette.red, immediate = false) {
-    const background = this.rect(name, x, y, w, h, fill);
+    const background = this.panel(name, x, y, w, h, fill, 8, palette.gold);
     const caption = this.text(name + 'Text', value, x, y, w - 12, 22);
     const touchEvent = immediate ? Node.EventType.TOUCH_START : Node.EventType.TOUCH_END;
     background.on(touchEvent, action);

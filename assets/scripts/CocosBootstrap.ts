@@ -89,9 +89,11 @@ export class CocosBootstrap extends Component implements ScreenContext {
     for (const child of this.content.children.slice()) child.destroy();
     const U = this.ui = new CocosUi(this.content), s = store.getState();
     U.rect('Backdrop', 0, 0, 720, 1280, palette.ink);
-    U.rect('Header', 0, 570, 720, 140, palette.green);
-    U.text('Player', `${s.name} · Lv.${s.player.level} · 战力 ${fmt.fmtNum(store.teamPower())}`, 0, 602, 680, 26);
-    U.text('Resources', `铜 ${fmt.fmtNum(s.res.gold)}    元宝 ${s.res.gem}    令 ${s.res.scroll}    铁 ${s.res.iron}`, 0, 548, 680, 21, palette.paper);
+    if (!['campaign','home','summon','summonResults','heroes','heroDetail','battle','result','stagePreview','story'].includes(page)) {
+      U.rect('Header', 0, 570, 720, 140, palette.ink);
+      U.text('Player', `${s.name} · Lv.${s.player.level} · 战力 ${fmt.fmtNum(store.teamPower())}`, 0, 602, 680, 26, palette.gold);
+      U.text('Resources', `铜 ${fmt.fmtNum(s.res.gold)}    元宝 ${s.res.gem}    令 ${s.res.scroll}    铁 ${s.res.iron}`, 0, 548, 680, 21, palette.paper);
+    }
     const render: Record<Page, () => void> = {
       campaign: () => campaignScreens.campaign(this), stagePreview: () => campaignScreens.stagePreview(this), home: () => campaignScreens.home(this), journey: () => campaignScreens.journey(this),
       heroes: () => heroScreens.heroes(this), heroDetail: () => heroScreens.heroDetail(this), summon: () => heroScreens.summon(this), summonResults: () => heroScreens.summonResults(this), bag: () => campaignScreens.bag(this),
@@ -101,10 +103,16 @@ export class CocosBootstrap extends Component implements ScreenContext {
     };
     render[page]();
     if (this.notice) U.text('Notice', this.notice, 0, -510, 670, 20, palette.gold);
-    if(page!=='ad') {
+    if(!['ad','battle','result','stagePreview','story','heroDetail'].includes(page)) {
       U.rect('NavBackground', 0, -594, 720, 92, palette.ink);
-      const nav: [Page,string][] = [['home','主城'],['journey','玩法'],['campaign','战役'],['heroes','英雄'],['bag','背包']];
-      nav.forEach(([p,label], i) => U.button('Nav'+p, label, -288 + 144*i, -594, 138, 75, () => this.go(p), p === page ? palette.green : palette.ink));
+      const nav: [Page,string,string][] = [['home','城','主城'],['heroes','将','英雄'],['summon','召','召唤'],['bag','囊','背包'],['campaign','战','战役']];
+      nav.forEach(([p,glyph,label], i) => {
+        const x=-288+144*i, active=p===page || (p==='campaign'&&page==='stagePreview');
+        if(active) U.panel('NavActive'+p,x,-591,135,84,palette.paperDark,8,palette.gold);
+        U.text('NavGlyph'+p,glyph,x,-577,120,34,active?palette.ink:palette.gold);
+        U.text('NavLabel'+p,label,x,-613,120,16,active?palette.ink:palette.muted);
+        U.tap('Nav'+p,x,-594,138,90,()=>this.go(p));
+      });
     }
   }
   public go(page: Page) {
@@ -172,11 +180,11 @@ export class CocosBootstrap extends Component implements ScreenContext {
     },palette.gold);
   }
   public title(text: string, sub = '') {
-    this.ui.text('Title', text, 0, 481, 650, 35, palette.paper);
+    this.ui.text('Title', text, 0, 481, 650, 35, palette.gold);
     if (sub) this.ui.text('Subtitle', sub, 0, 438, 650, 19, palette.muted);
   }
   public row(name: string, text: string, y: number, action?: () => void, actionText = '查看') {
-    this.ui.rect(name, 0, y, 652, 91, palette.green);
+    this.ui.panel(name, 0, y, 652, 91, palette.green, 9, palette.gold);
     this.ui.text(name+'Text', text, action ? -78 : 0, y, action ? 440 : 620, 21);
     if (action) this.ui.button(name+'Action', actionText, 255, y, 108, 65, action, palette.paperDark);
   }
