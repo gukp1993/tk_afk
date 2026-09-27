@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>挂机定三国 · 主城 / 玩法 / 战役原型</title>
+  <style>
+    :root{--ink:#0b201c;--panel:#102b25;--panel2:#17342d;--gold:#d3ac64;--lightgold:#efd69b;--paper:#f4e9c9;--muted:#c1b89f;--red:#983e31;--line:rgba(216,177,102,.76)}
+    *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#101a18;color:var(--paper)}
+    body{font-family:"PingFang SC","Microsoft YaHei",sans-serif}
+    button{font:inherit;color:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
+    .toolbar{display:flex;align-items:center;justify-content:space-between;gap:22px;padding:20px max(24px,calc((100vw - 1220px)/2));background:linear-gradient(180deg,#172b26,#0c1c18);border-bottom:1px solid #76552c}
+    .toolbar h1{margin:0;color:var(--lightgold);font:600 25px "STKaiti","KaiTi",serif;letter-spacing:4px}.toolbar p{margin:5px 0 0;color:#b6ae98;font-size:12px;letter-spacing:1px}
+    .toolbar nav{display:flex;gap:8px}.toolbar button{border:1px solid #8f6a37;border-radius:5px;background:#1a352d;padding:8px 16px;color:var(--paper)}.toolbar button.active{background:linear-gradient(#95703a,#644a28);color:#fff3d0}
+    .gallery{display:grid;grid-template-columns:repeat(3,390px);gap:22px;justify-content:center;padding:25px 0 40px}
+    .phone{width:390px;height:844px;position:relative;overflow:hidden;border:2px solid #816338;border-radius:28px;background:#102620;box-shadow:0 15px 45px #000a,0 0 0 5px #06130f}
+    .phone:after{content:"";pointer-events:none;position:absolute;inset:0;z-index:3;box-shadow:inset 0 0 0 1px rgba(237,195,105,.35),inset 0 0 55px #00150c70}
+    .world,.shade{position:absolute;inset:0;pointer-events:none}.world{background-size:cover;background-position:center center}.world.city{background-image:url("assets/city-bg-v1.png")}.world.journey{background-image:url("assets/journey-bg-v1.png")}.world.campaign{background-image:url("assets/campaign-bg-v1.png")}
+    .shade{background:linear-gradient(180deg,rgba(5,22,19,.73),rgba(7,24,20,.05) 19%,rgba(6,22,17,.06) 52%,rgba(4,19,17,.85) 91%)}
+    .calligraphy{font-family:"STKaiti","KaiTi","Songti SC",serif}.screen-head{position:absolute;z-index:5;left:0;right:0;top:0;height:119px;background:linear-gradient(180deg,#091d19ec,#112923c0 72%,transparent)}
+    .topline{height:39px;display:flex;justify-content:space-between;align-items:center;padding:4px 15px 0 17px;border-bottom:1px solid rgba(224,184,103,.2)}
+    .lord{font-size:11px;color:#e8d5a4;white-space:nowrap}.lord b{font-size:15px;margin-right:7px;color:#f5dfaa}.resources{display:flex;gap:5px;align-items:center}
+    .res{height:25px;display:flex;align-items:center;gap:2px;padding:0 8px 0 4px;border:1px solid #806335;border-radius:17px;background:rgba(6,21,18,.8);font:14px "STKaiti","KaiTi",serif;color:#f9e6b7;white-space:nowrap}
+    .sprite{display:inline-block;background-repeat:no-repeat;flex:none;vertical-align:middle}.screen-head h2{font:600 34px/1 "STKaiti","KaiTi",serif;letter-spacing:5px;color:#f1d895;text-shadow:0 2px 4px #000;position:absolute;left:22px;top:47px;margin:0}
+    .screen-head .subtitle{position:absolute;left:25px;top:90px;font:13px "STKaiti","KaiTi",serif;letter-spacing:2px;color:#ddca9c}
+    .head-action{position:absolute;right:14px;top:54px;padding:7px 10px;background:linear-gradient(90deg,#172b25d9,#564425dc);border:1px solid var(--gold);border-radius:4px;color:#efd7a6;font:15px "STKaiti","KaiTi",serif}
+    .head-action:before,.gold-corner:before{content:"◆";font-size:10px;margin-right:6px;color:#f1d58a}
+    .bottom-nav{z-index:20;position:absolute;bottom:0;left:0;right:0;height:68px;display:grid;grid-template-columns:repeat(5,1fr);background:linear-gradient(#122a24f2,#0b201bed);border-top:2px solid #b18c4d;box-shadow:0 -7px 20px #00130f80}
+    .bottom-nav button{border:0;border-right:1px solid rgba(211,172,100,.22);background:none;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:1px;color:#d7c49a;font:15px "STKaiti","KaiTi",serif;letter-spacing:1px}
+    .bottom-nav button:last-child{border-right:0}.bottom-nav button.active{background:linear-gradient(#66512bce,#47371fe0);color:#ffe2a3;box-shadow:inset 0 2px #f3d992}
+    .bottom-nav .sprite{filter:drop-shadow(0 1px 1px #000)}
+    .glass{background:linear-gradient(145deg,rgba(17,46,38,.94),rgba(9,28,25,.9));border:1px solid var(--line);box-shadow:inset 0 0 0 2px rgba(255,216,138,.06),0 4px 15px #0006}
+    .plaque{border:1px solid #cca45d;border-radius:5px;background:linear-gradient(120deg,#09251edc,#304734d8);box-shadow:inset 0 0 0 1px #f6e3aa4a,0 3px 9px #0009;text-shadow:0 1px 2px #000}
+    .plaque strong{font:21px/1.1 "STKaiti","KaiTi",serif;letter-spacing:2px;color:#ffe1a4}.plaque small{font-size:10px;color:#d2c6a5;white-space:nowrap}
+    .city-badge{position:absolute;z-index:6;width:125px;height:51px;display:flex;align-items:center;gap:5px;padding:4px 6px;text-align:left}
+    .city-badge .seal{flex:none;width:31px;height:31px;display:grid;place-items:center;border:1px solid #cda760;border-radius:50%;background:radial-gradient(#684a25,#193b2d);color:#f6dd9d;font:23px "STKaiti","KaiTi",serif}
+    .city-badge .copy{display:flex;flex-direction:column;gap:2px}.city-badge .arrow{font-size:18px;color:#ffd991;margin-left:auto}
+    .city-badge.recruit{left:129px;top:170px}.city-badge.herohall{left:13px;top:291px}.city-badge.arena{right:14px;top:339px}.city-badge.forge{left:15px;top:460px}.city-badge.market{right:14px;top:491px}.city-badge.camp{left:130px;top:525px}
+    .city-dock{z-index:9;position:absolute;left:8px;right:8px;bottom:77px;height:177px;padding:9px 10px;background:linear-gradient(180deg,#0d2a23ee,#102820f8);border:1px solid #b4914f;box-shadow:0 -7px 25px #071a13bf}
+    .city-dock:before,.mode-card:after,.chapter-strip:after{content:"◇ ─────── ◇";position:absolute;left:50%;transform:translateX(-50%);top:-10px;color:#dcbf79;font:12px "STKaiti","KaiTi",serif;white-space:nowrap}
+    .dock-stage{display:flex;justify-content:space-between;align-items:center;padding-bottom:6px;border-bottom:1px solid #9572478a}.dock-stage b{font:19px "STKaiti","KaiTi",serif;color:#f0d494}.dock-stage small{color:#d8c69b;font-size:11px}
+    .idle-row{display:flex;justify-content:space-between;align-items:center;height:56px;gap:7px}.idle-copy{display:flex;flex-direction:column;gap:3px}.idle-copy b{font:17px "STKaiti","KaiTi",serif;color:#eddda9}.idle-copy small{font-size:10px;color:#c5bda8}
+    .gold-btn{border:1px solid #f2d397;background:linear-gradient(#e5bb67,#a8762e);box-shadow:inset 0 2px #fff4bf75,0 3px #402a12;color:#281d11;border-radius:5px;font:17px "STKaiti","KaiTi",serif;letter-spacing:2px}
+    .claim{height:33px;min-width:96px}.dock-actions{display:grid;grid-template-columns:1fr 84px;gap:7px;margin-top:4px}.dock-actions button{height:47px}
+    .main-cta{border:1px solid #dfbe76;background:linear-gradient(#286751,#144432);border-radius:5px;color:#f4dfab;font:22px "STKaiti","KaiTi",serif;letter-spacing:3px;box-shadow:inset 0 1px #b5dfb28c}
+    .secondary-cta{border:1px solid #b89754;background:#3f3020;border-radius:5px;color:#ead1a0;font:18px "STKaiti","KaiTi",serif}
+    .city-tasks{z-index:6;position:absolute;top:121px;right:12px;padding:5px 10px;font:13px "STKaiti","KaiTi",serif}
+    .journey-lede{position:absolute;z-index:5;top:130px;left:18px;right:18px;padding:11px 13px;font:13px "STKaiti","KaiTi",serif;letter-spacing:1px;color:#e7dbbd;text-align:center;background:#0b241fbe;border-top:1px solid #b89152;border-bottom:1px solid #b89152}
+    .mode-grid{z-index:6;position:absolute;top:185px;left:16px;right:16px;display:grid;grid-template-columns:repeat(2,1fr);gap:11px}
+    .mode-card{height:196px;border-radius:6px;padding:16px 11px 10px;text-align:left;position:relative;overflow:hidden;display:flex;flex-direction:column;align-items:flex-start}
+    .mode-card:after{content:"❖";left:auto;right:10px;transform:none;top:8px;color:#c9a360}
+    .mode-card .mode-seal{width:54px;height:54px;display:grid;place-items:center;border:2px solid #dbbd74;border-radius:50%;background:radial-gradient(#725431,#183e31 68%);color:#f7dda1;font:35px "STKaiti","KaiTi",serif;box-shadow:0 0 17px #d7a65550}
+    .mode-card b{margin-top:10px;color:#f3d99b;font:25px "STKaiti","KaiTi",serif;letter-spacing:2px}.mode-card .desc{font-size:11px;color:#d3c8aa;margin-top:5px;white-space:nowrap}.mode-card .mode-stat{margin-top:auto;width:100%;padding-top:8px;border-top:1px solid #bd955670;color:#f1d79b;font:13px "STKaiti","KaiTi",serif}
+    .mode-card.tower{background:linear-gradient(155deg,#17362dcc,#0a1c18f5),url("assets/journey-bg-v1.png") center 30%/cover}.mode-card.arena-mode{background:linear-gradient(155deg,#493129b0,#0a1c18f5),url("assets/journey-bg-v1.png") center/cover}
+    .mode-card.armory{background:linear-gradient(155deg,#283d35dc,#0a1c18f5)}.mode-card.shop{background:linear-gradient(155deg,#574126b9,#0a1c18f5)}
+    .journey-note{position:absolute;z-index:5;left:16px;right:16px;top:601px;padding:11px 15px;border-radius:5px;text-align:center}
+    .journey-note b{display:block;color:#f0d390;font:18px "STKaiti","KaiTi",serif}.journey-note small{font-size:11px;color:#c7bea7}
+    .journey-quick{position:absolute;z-index:5;left:24px;right:24px;top:683px;display:flex;justify-content:space-around;color:#dac79d;font:15px "STKaiti","KaiTi",serif}
+    .journey-quick button{background:none;border:0;color:inherit;padding:9px 5px;border-bottom:1px solid #b99053}
+    .chapter-strip{position:absolute;z-index:6;left:11px;right:11px;top:122px;height:49px;display:flex;align-items:center;justify-content:space-between;padding:0 13px;background:linear-gradient(90deg,#0b251fef,#33432cef);border:1px solid #c4a064}
+    .chapter-strip:after{top:auto;bottom:-10px}.chapter-strip b{font:20px "STKaiti","KaiTi",serif;color:#f3daa4}.chapter-strip small{font:13px "STKaiti","KaiTi",serif;color:#ddc593}
+    .map-flag{position:absolute;z-index:7;border:0;background:none;padding:0;width:68px;display:flex;flex-direction:column;align-items:center;gap:1px;filter:drop-shadow(0 3px 4px #000c)}
+    .map-flag .node{width:42px;height:42px;display:grid;place-items:center;border:2px solid #d3af69;border-radius:50%;background:radial-gradient(#425c43,#152821);box-shadow:inset 0 0 0 2px #15241f;color:#eed7a5;font:24px "STKaiti","KaiTi",serif}
+    .map-flag .flag-label{background:#10271ff0;border:1px solid #a88d52;padding:2px 7px;border-radius:12px;color:#f1d8a5;font:11px "STKaiti","KaiTi",serif;white-space:nowrap}
+    .map-flag.current .node{width:55px;height:55px;border-color:#ffde8f;background:radial-gradient(#b68842,#2c452b);box-shadow:0 0 16px #ffc66c, inset 0 0 0 3px #433415;color:#fff3c5;font-size:31px}
+    .map-flag.current .flag-label{background:#ab7432;color:#fff3cd;font-size:13px}.map-flag.locked{opacity:.65;filter:grayscale(.6) drop-shadow(0 3px 3px #000)}
+    .map-flag.stage1{left:31px;top:445px}.map-flag.stage2{left:113px;top:392px}.map-flag.stage3{left:196px;top:343px}.map-flag.stage4{left:176px;top:259px}.map-flag.stage5{left:256px;top:204px}
+    .map-quick{z-index:7;position:absolute;right:12px;top:179px;display:flex;flex-direction:column;gap:8px}.map-quick button{width:46px;height:45px;border-radius:4px;border:1px solid #d3ac64;background:#0f2b22e8;color:#f6d99e;font:18px "STKaiti","KaiTi",serif}
+    .map-quick button small{display:block;font:9px "STKaiti","KaiTi",serif;color:#c5b894}
+    .camp-panel{z-index:8;position:absolute;left:10px;right:10px;top:526px;height:73px;padding:5px 8px;background:#0e2a22e9;border:1px solid #ae8d4d;display:flex;align-items:center;justify-content:space-between}
+    .camp-panel .camp-copy{align-self:flex-start;white-space:nowrap;color:#f0d79b;font:13px "STKaiti","KaiTi",serif}.camp-panel .camp-copy small{display:block;font-size:10px;color:#beae89}
+    .squad{display:flex;gap:3px;margin-top:12px}.squad i{width:38px;height:40px;display:grid;place-items:center;border:1px solid #bd9a54;background:linear-gradient(#274735,#10281e);color:#f6e2b0;font:23px "STKaiti","KaiTi",serif;font-style:normal}.camp-panel .chev{color:#f1d595;font-size:23px}
+    .battle-idle{z-index:8;position:absolute;left:10px;right:10px;top:606px;height:70px;padding:7px 9px;display:flex;align-items:center;justify-content:space-between;gap:4px}
+    .battle-idle .idle-copy b{font-size:17px}.battle-idle .idle-copy small{font-size:10px;line-height:1.3}.battle-idle .claim{height:42px}
+    .battle-cta{z-index:9;position:absolute;left:10px;right:10px;top:689px;height:75px;display:grid;grid-template-columns:63px 1fr 63px;gap:7px}
+    .battle-cta button{border-radius:5px}.battle-cta .main-cta{font-size:23px}.battle-cta .side{background:#392c1f;border:1px solid #bc9956;color:#eed5a0;font:16px "STKaiti","KaiTi",serif}.battle-cta small{display:block;font-size:10px;color:#ccb98e}
+    #modal{position:fixed;z-index:100;inset:0;background:#020c0abf;display:none;align-items:center;justify-content:center;padding:18px}#modal.open{display:flex}
+    .modal-card{width:min(340px,90vw);border:2px solid #c7a469;border-radius:8px;background:linear-gradient(#18362d,#0b211c);box-shadow:0 12px 60px #000;padding:23px;color:#f0dfb5;text-align:center}
+    .modal-card h3{margin:0 0 13px;color:#f0d58c;font:29px "STKaiti","KaiTi",serif}.modal-card p{font-size:14px;line-height:1.7;color:#d9ccb0}.modal-card button{padding:9px 35px;margin-top:9px}
+    .prototype-note{color:#9d977f;font-size:12px;text-align:center;padding-bottom:24px}
+    @media(max-width:1210px){.toolbar{padding:13px 18px;flex-wrap:wrap}.gallery{display:block;width:390px;max-width:100vw;padding:0;margin:0 auto}.phone{display:none;border-radius:0;border:0;box-shadow:none}.phone.focus{display:block}.prototype-note{padding:15px}}
+    body.capture .toolbar,body.capture .prototype-note{display:none}body.capture .gallery{display:block;width:390px;padding:0;margin:0}body.capture .phone{display:none;border:0;border-radius:0;box-shadow:none}body.capture .phone.focus{display:block}
+  </style>
+</head>
+<body>
+  <header class="toolbar"><div><h1>挂机定三国 · 核心页面原型</h1><p>微信竖屏 · 主城 / 玩法 / 战役 · 与群英录共用墨绿漆木、鎏金、水墨城关</p></div><nav><button data-show="home">主城</button><button data-show="journey">玩法</button><button data-show="campaign">战役</button></nav></header>
+  <main class="gallery">
+    <section class="phone" data-screen="home" aria-label="主城原型">
+      <div class="world city"></div><div class="shade"></div>
+      <header class="screen-head"><div class="topline"><span class="lord"><b>主公</b>Lv.40 · 战力 12.8万</span><span class="resources"><span class="res"><i class="sprite" data-sprite="currency_gold" data-size="18"></i>12.8万</span><span class="res"><i class="sprite" data-sprite="currency_gem" data-size="18"></i>1888</span></span></div><h2>桃园主城</h2><span class="subtitle">聚天下英杰 · 定汉家山河</span></header>
+      <button class="city-tasks glass" data-action="每日任务">令 · 每日任务</button>
+      <button class="city-badge recruit plaque" data-action="点将台"><span class="seal">召</span><span class="copy"><strong>点将台</strong><small>召募武将</small></span></button>
+      <button class="city-badge herohall plaque" data-action="群英殿"><span class="seal">将</span><span class="copy"><strong>群英殿</strong><small>武将图鉴</small></span></button>
+      <button class="city-badge arena plaque" data-action="演武场"><span class="seal">演</span><span class="copy"><strong>演武场</strong><small>切磋排名</small></span></button>
+      <button class="city-badge forge plaque" data-action="铁匠铺"><span class="seal">械</span><span class="copy"><strong>铁匠铺</strong><small>全军军械</small></span></button>
+      <button class="city-badge market plaque" data-action="集市"><span class="seal">市</span><span class="copy"><strong>集市</strong><small>兑换物资</small></span></button>
+      <button class="city-badge camp plaque" data-action="军机营"><span class="seal">阵</span><span class="copy"><strong>军机营</strong><small>调整编队</small></span></button>
+      <div class="city-dock"><div class="dock-stage"><b>第一章 · 黄巾之乱</b><small>当前第 4 关　›</small></div><div class="idle-row"><span class="idle-copy"><b>挂机宝箱　已积累 01:42</b><small>铜钱 12.8万 · 精铁 ×38 · 招募令 ×1</small></span><button class="claim gold-btn" data-action="一键收获">一键收获</button></div><div class="dock-actions"><button class="main-cta" data-action="自动出征">⚔　自动出征</button><button class="secondary-cta" data-action="练兵">练兵</button></div></div>
+      <nav class="bottom-nav"></nav>
+    </section>
+    <section class="phone" data-screen="journey" aria-label="玩法原型">
+      <div class="world journey"></div><div class="shade"></div>
+      <header class="screen-head"><div class="topline"><span class="lord"><b>主公</b>Lv.40 · 战力 12.8万</span><span class="resources"><span class="res"><i class="sprite" data-sprite="currency_gold" data-size="18"></i>12.8万</span><span class="res"><i class="sprite" data-sprite="currency_gem" data-size="18"></i>1888</span></span></div><h2>王庭诸事</h2><span class="subtitle">修军备 · 试锋芒 · 聚物资</span></header>
+      <div class="journey-lede">四方征途之外，仍有诸多修行与机遇</div>
+      <div class="mode-grid">
+        <button class="mode-card glass tower" data-action="群英塔"><span class="mode-seal">塔</span><b>群英塔</b><span class="desc">层层登高 · 逐层得赏</span><span class="mode-stat">已登 18 层　前往挑战 ›</span></button>
+        <button class="mode-card glass arena-mode" data-action="演武场"><span class="mode-seal">演</span><b>演武场</b><span class="desc">天下英豪 · 阵容对决</span><span class="mode-stat">青铜 III　今日剩 3 次 ›</span></button>
+        <button class="mode-card glass armory" data-action="军械图鉴"><span class="mode-seal">械</span><b>军械图鉴</b><span class="desc">六部军械 · 全军共享</span><span class="mode-stat">已解锁 12 / 36　查看 ›</span></button>
+        <button class="mode-card glass shop" data-action="集市"><span class="mode-seal">市</span><b>集市</b><span class="desc">每日新货 · 以令易物</span><span class="mode-stat">今日物资已上架　进入 ›</span></button>
+      </div>
+      <div class="journey-note glass"><b>今日行程</b><small>登群英塔、赴演武场，积累培养与兑换资源</small></div>
+      <div class="journey-quick"><button data-action="每日任务">每日任务　›</button><button data-action="军机营">军机营　›</button><button data-action="背包">背包　›</button></div>
+      <nav class="bottom-nav"></nav>
+    </section>
+    <section class="phone" data-screen="campaign" aria-label="战役原型">
+      <div class="world campaign"></div><div class="shade"></div>
+      <header class="screen-head"><div class="topline"><span class="lord"><b>主公</b>Lv.40 · 战力 12.8万</span><span class="resources"><span class="res"><i class="sprite" data-sprite="currency_gold" data-size="18"></i>12.8万</span><span class="res"><i class="sprite" data-sprite="currency_gem" data-size="18"></i>1888</span></span></div><h2>征战天下</h2><span class="subtitle">兵起黄巾 · 逐鹿中原</span></header>
+      <div class="chapter-strip"><b>第一章 · 黄巾之乱</b><small>3 / 10 关　›</small></div>
+      <button class="map-flag stage1" data-stage="1"><span class="node">一</span><span class="flag-label">已通关</span></button>
+      <button class="map-flag stage2" data-stage="2"><span class="node">二</span><span class="flag-label">已通关</span></button>
+      <button class="map-flag stage3" data-stage="3"><span class="node">三</span><span class="flag-label">已通关</span></button>
+      <button class="map-flag stage4 current" data-stage="4"><span class="node">四</span><span class="flag-label">当前关卡</span></button>
+      <button class="map-flag stage5 locked" data-stage="5"><span class="node">五</span><span class="flag-label">尚未解锁</span></button>
+      <div class="map-quick"><button data-action="章节地图">卷<small>章节</small></button><button data-action="每日任务">令<small>任务</small></button><button data-action="背包">囊<small>背包</small></button></div>
+      <button class="camp-panel" data-action="调整编队"><span class="camp-copy">出战阵容<small>五将同心 · 可调整</small></span><span class="squad"><i>刘</i><i>关</i><i>张</i><i>廖</i><i>孟</i></span><span class="chev">›</span></button>
+      <div class="battle-idle glass"><span class="idle-copy"><b>挂机宝箱 · 已积累 01:42</b><small>铜钱 12.8万 · 精铁 ×38<br>通关越多，挂机收益越高</small></span><button class="claim gold-btn" data-action="一键收获">一键收获</button></div>
+      <div class="battle-cta"><button class="side" data-action="章节地图">征途<small>章节地图</small></button><button class="main-cta" data-action="自动出征">⚔　自动出征</button><button class="side" data-action="练兵">练兵<small>最多十胜</small></button></div>
+      <nav class="bottom-nav"></nav>
+    </section>
+  </main>
+  <p class="prototype-note">视觉与交互原型 · 图中数值仅用于排版演示，不写入游戏存档 · 主城 / 玩法 / 战役按钮可点击查看意图</p>
+  <div id="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title"><div class="modal-card"><h3 id="modal-title"></h3><p id="modal-body"></p><button class="gold-btn" id="modal-close">返回</button></div></div>
+  <script src="sprites.js"></script>
+  <script>
+    const icons={home:'nav_home',journey:'nav_journey',campaign:'nav_campaign',heroes:'nav_heroes',bag:'nav_bag'};
+    const names={home:'主城',journey:'玩法',campaign:'战役',heroes:'英雄',bag:'背包'};
+    const params=new URLSearchParams(location.search);let current=params.get('page')||'home';
+    if(params.has('capture'))document.body.classList.add('capture');
+    document.querySelectorAll('.bottom-nav').forEach(nav=>Object.keys(icons).forEach(page=>{
+      const button=document.createElement('button');button.type='button';button.dataset.nav=page;
+      button.innerHTML=`<i class="sprite" data-sprite="${icons[page]}" data-size="29"></i><span>${names[page]}</span>`;
+      nav.appendChild(button);
+    }));
+    document.querySelectorAll('[data-sprite]').forEach(el=>{
+      const item=window.CORE_SPRITES[el.dataset.sprite],rect=item.rect,size=Number(el.dataset.size||30),scale=size/Math.max(rect.w,rect.h),file='../../hero-ui-handoff-v1/assets/icons-common-v1.png';
+      el.style.width=Math.round(rect.w*scale)+'px';el.style.height=Math.round(rect.h*scale)+'px';
+      el.style.backgroundImage=`url("${file}")`;el.style.backgroundSize=`${1254*scale}px ${1254*scale}px`;
+      el.style.backgroundPosition=`-${rect.x*scale}px -${rect.y*scale}px`;
+    });
+    function select(page){if(!icons[page]||['heroes','bag'].includes(page)){showModal(names[page]||'入口','此页沿用现有设计，本轮先聚焦主城、玩法和战役三页的视觉原型。');return;}
+      current=page;document.querySelectorAll('.phone').forEach(el=>el.classList.toggle('focus',el.dataset.screen===page));
+      document.querySelectorAll('[data-show]').forEach(el=>el.classList.toggle('active',el.dataset.show===page));
+      document.querySelectorAll('[data-nav]').forEach(el=>el.classList.toggle('active',el.dataset.nav===el.closest('.phone').dataset.screen));
+      if(!document.body.classList.contains('capture')&&matchMedia('(max-width:1210px)').matches)scrollTo(0,0);
+    }
+    const descriptions={
+      '点将台':'进入武将召唤；保留现有招募令与元宝消耗规则。','群英殿':'进入已完成的群英录，可查看武将与调整编队。',
+      '演武场':'进入阵容切磋；排名、积分与每日次数读取真实存档。','铁匠铺':'进入全军军械，查看六部位共享加成。',
+      '集市':'进入每日刷新的物资兑换页面。','军机营':'打开五人编队，调整出战顺序。',
+      '每日任务':'打开每日任务与活跃奖励。','背包':'查看资源、道具及军械。','练兵':'开始最多十胜的连续练兵。',
+      '一键收获':'领取当前挂机宝箱的累积收益；原型数值不实际发奖。','自动出征':'以当前出战阵容挑战下一关；原型不实际进入战斗。',
+      '群英塔':'逐层挑战群英塔，获得成长资源。','军械图鉴':'查看军械收集、六部位培养和全军加成。',
+      '章节地图':'打开本章十关地图，可选择当前关卡查看敌阵与首通奖励。','调整编队':'进入五人编队页面，调整前后排。'
+    };
+    const modal=document.getElementById('modal');function showModal(title,body){document.getElementById('modal-title').textContent=title;document.getElementById('modal-body').textContent=body;modal.classList.add('open');}
+    document.querySelectorAll('[data-show],[data-nav]').forEach(el=>el.addEventListener('click',()=>select(el.dataset.show||el.dataset.nav)));
+    document.querySelectorAll('[data-action]').forEach(el=>el.addEventListener('click',()=>showModal(el.dataset.action,descriptions[el.dataset.action]||'此入口沿用现有玩法。')));
+    document.querySelectorAll('[data-stage]').forEach(el=>el.addEventListener('click',()=>{
+      const n=Number(el.dataset.stage);showModal(`第 ${n} 关`,n===4?'当前关卡 · 黄巾残部镇守。查看敌阵、首通奖励与挂机收益提升，再选择自动出征。':n<4?'本关已通关，可回看关卡信息；重复挑战不再领取首通奖励。':'尚未解锁，先通关前一关。');
+    }));
+    document.getElementById('modal-close').addEventListener('click',()=>modal.classList.remove('open'));
+    modal.addEventListener('click',e=>{if(e.target===modal)modal.classList.remove('open')});
+    document.addEventListener('keydown',e=>{if(e.key==='Escape')modal.classList.remove('open')});
+    select(current);
+  </script>
+</body>
+</html>
