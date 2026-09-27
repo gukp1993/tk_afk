@@ -16,6 +16,12 @@
 
 ## 最近交接（新 → 旧）
 
+### 首期开发完整转交指令 · Codex · 无变更
+
+时间：2026-09-27 21:20（Asia/Shanghai）；执行者：Codex；状态：无变更。
+
+- 概要：按用户要求把上一轮已交付的需求、原型和 T1～T7 开发拆分整理为可直接粘贴给其他 harness 的完整执行指令；没有新增产品决定或修改运行代码。权威需求仍为 `docs/plans/首期三十天主线养成与奖励.md` 与 `docs/plans/wechat-economy.md`，原型在 `docs/prototypes/首期主线养成/index.html`。
+
 ### 首期需求、交互原型与开发拆分 · Codex · 需求已交付
 
 时间：2026-09-27 21:16（Asia/Shanghai）；执行者：Codex；状态：需求已交付。
