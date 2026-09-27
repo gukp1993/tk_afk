@@ -1,5 +1,5 @@
 import { CocosUi, palette, hexColor as tone } from '../ui/CocosUi';
-import { Node } from 'cc';
+import { Color, Node } from 'cc';
 import { ScreenContext } from './ScreenContext';
 import * as store from '../domain/store';
 import * as heroData from '../domain/heroes';
@@ -13,7 +13,7 @@ const gold=tone('#f0cf8a'), paper=tone('#e9d8b4'), dim=tone('#a6906c');
 const rarityNames=['','N','R','SR','SSR'];
 const rarityColors=['','#c8ccd4','#6f9fd8','#c99af0','#f0b95e'];
 const factions:[string,string][]=[['all','全部'],['wei','魏'],['shu','蜀'],['wu','吴'],['qun','群']];
-const sorts:[string,string][]=[['power','战力'],['level','等级'],['rarity','品质'],['star','品阶']];
+const sorts:[string,string][]=[['power','战力'],['rarity','品质'],['star','星级']];
 let heroFaction='all',heroSort='power',showStarterPick=false;
 let armoryItemId='';
 
@@ -33,60 +33,90 @@ function armoryEffect(effect: string|null|undefined) {
 
 export function heroes(ctx: ScreenContext) {
     const U=ctx.ui,s=store.getState();
-    let list:any[]=store.allRoster();
-    if(heroFaction!=='all')list=list.filter(h=>h.faction===heroFaction);
-    const order=(h:any)=>heroSort==='rarity'?h.rarity*100000+h.power:heroSort==='star'?h.star*100000+h.power:Number(h[heroSort])||0;
-    list.sort((a,b)=>order(b)-order(a));
-    U.rect('HeroBackdrop',0,0,720,1280,ink);
+    const allHeroes:any[]=store.allRoster();
+    let list=allHeroes.filter((h:any)=>heroData.getHero(h.id));
+    if(heroFaction!=='all')list=list.filter((h:any)=>h.faction===heroFaction);
+    const stableId=(a:any,b:any)=>a.id<b.id?-1:a.id>b.id?1:0;
+    list.sort((a:any,b:any)=>{
+      const primary=heroSort==='rarity'?b.rarity-a.rarity:heroSort==='star'?b.star-a.star:b.power-a.power;
+      if(primary)return primary;
+      const second=heroSort==='rarity'?b.star-a.star:heroSort==='star'?b.rarity-a.rarity:b.rarity-a.rarity;
+      if(second)return second;
+      if(heroSort==='power'&&b.star!==a.star)return b.star-a.star;
+      if(heroSort!=='power'&&b.power!==a.power)return b.power-a.power;
+      return stableId(a,b);
+    });
+    U.sprite('HeroFortress','background_fortress',0,0,720,1280);
+    U.rect('HeroBackdrop',0,0,720,1280,new Color(12,23,20,154));
     const resourcePills:[string,number][]=[['铜钱',s.res.gold],['元宝',s.res.gem],['招募令',s.res.scroll]];
     resourcePills.forEach(([label,value],i)=>{
-      const x=-232+i*232;
-      U.panel('HeroResource'+i,x,606,224,40,ink,20,border);
-      U.text('HeroResourceText'+i,`${label} ${fmt.fmtNum(value)}`,x,606,207,18,gold);
+      const x=-226+i*224;
+      U.panel('HeroResource'+i,x,612,210,38,ink,20,border);
+      if(i<2)U.sprite('HeroResourceIcon'+i,i===0?'currency_gold':'currency_gem',x-78,612,28,28);
+      U.text('HeroResourceText'+i,`${label} ${fmt.fmtNum(value)}`,x+10,612,155,17,gold);
     });
-    U.text('HeroesTitle','英雄 · 群英录',-157,548,390,40,gold);
-    U.text('HeroesIntro','点击英雄，查看技能、升级与装备',-145,504,415,20,dim);
-    U.panel('HeroesFormation',260,533,170,60,tone('#d9a94e'),8,gold);
-    U.text('HeroesFormationText','调整编队',260,533,154,24,ink);
-    U.tap('HeroesFormationTap',260,533,170,60,()=>ctx.go('formation'));
+    U.text('HeroesTitle','群 英 录',-190,558,340,39,gold);
+    U.text('HeroesIntro','关中群山 · 天下英杰',-190,519,325,19,dim);
+    U.panel('HeroesFormation',257,540,177,58,tone('#d9a94e'),8,gold);
+    U.sprite('HeroesFormationIcon','formation',199,540,32,32);
+    U.text('HeroesFormationText','调整编队',274,540,119,22,ink);
+    U.tap('HeroesFormationTap',257,540,177,58,()=>ctx.go('formation'));
     const first=store.firstWinChoice().available;
     if(first){
-      U.panel('StarterReward',0,456,686,53,tone('#d9a94e'),7,gold);
-      U.text('StarterRewardText','首胜奖励：选择一名初始武将，自动升 1 星',0,456,670,21,ink);
-      U.tap('StarterRewardTap',0,456,686,53,()=>{showStarterPick=true;ctx.show('heroes');});
+      U.panel('StarterReward',0,476,686,54,tone('#d9a94e'),7,gold);
+      U.text('StarterRewardText','首胜奖励 · 选择一名武将升星',0,476,670,21,ink);
+      U.tap('StarterRewardTap',0,476,686,54,()=>{showStarterPick=true;ctx.show('heroes');});
     }
-    const ownedY=first?384:438, filterY=first?300:354, sortY=first?238:292;
-    U.panel('HeroOwnedPanel',0,ownedY,686,77,panel,8,border);
-    U.text('HeroOwned',`已拥有 ${list.length} 名武将`,-156,ownedY+17,360,25,gold);
-    U.text('HeroSharedLevel',`共享玩家等级 Lv.${store.playerLevel()} · 新将可立即上阵`,-85,ownedY-17,505,18,dim);
-    U.text('HeroFactionLabel','阵营',-319,filterY,60,18,dim);
-    factions.forEach(([key,label],i)=>chip(U,'Faction'+key,label,-235+i*117,filterY,105,key===heroFaction,()=>{heroFaction=key;CocosUi.resetScroll('HeroGrid');ctx.show('heroes');}));
-    U.text('HeroSortLabel','排序',-319,sortY,60,18,dim);
-    sorts.forEach(([key,label],i)=>chip(U,'Sort'+key,label,-220+i*155,sortY,142,key===heroSort,()=>{heroSort=key;CocosUi.resetScroll('HeroGrid');ctx.show('heroes');}));
-    const scrollTop=sortY-44, scrollBottom=-532,viewH=scrollTop-scrollBottom;
-    const rows=Math.ceil(list.length/3), pitch=318,contentH=Math.max(viewH,rows*pitch+14);
+    const sharedY=first?400:435,filterY=first?330:365,sortY=first?257:292;
+    U.panel('HeroOwnedPanel',0,sharedY,686,65,panel,8,border);
+    U.text('HeroOwned',`已拥有 ${allHeroes.length} / ${heroData.HEROES.length} 名`,-193,sharedY+12,300,22,gold);
+    U.text('HeroSharedLevel',`主公 Lv.${store.playerLevel()} · 全体武将共享等级`,-57,sharedY-13,525,17,dim);
+    const factionXs=[-280,-140,0,140,280];
+    factions.forEach(([key,label],i)=>{
+      const x=factionXs[i],active=key===heroFaction;
+      U.sprite('FactionBadge'+key,'faction_'+key,x,filterY,50,50);
+      U.text('FactionLabel'+key,label,x,filterY,54,18,active?gold:paper);
+      if(active)U.panel('FactionActive'+key,x,filterY-34,48,3,gold,1);
+      U.tap('FactionTap'+key,x,filterY,116,62,()=>{if(key===heroFaction)return;heroFaction=key;CocosUi.resetScroll('HeroGrid');ctx.show('heroes');});
+    });
+    sorts.forEach(([key,label],i)=>{
+      const x=-223+i*223,active=key===heroSort;
+      U.panel('Sort'+key,x,sortY,210,53,active?tone('#564328'):ink,7,active?gold:border);
+      U.text('SortText'+key,label+(active?'  ↓':''),x,sortY,188,19,active?gold:paper);
+      U.tap('SortTap'+key,x,sortY,210,53,()=>{if(key===heroSort)return;heroSort=key;CocosUi.resetScroll('HeroGrid');ctx.show('heroes');});
+    });
+    const scrollTop=sortY-37, scrollBottom=-505,viewH=scrollTop-scrollBottom;
+    const rows=Math.ceil(list.length/3),pitch=310,contentH=Math.max(viewH,rows*pitch+12);
     U.scroll('HeroGrid',0,(scrollTop+scrollBottom)/2,696,viewH,contentH,grid=>{
       list.forEach((h:any,i:number)=>{
-        const x=-228+(i%3)*228,y=contentH/2-157-Math.floor(i/3)*pitch;
+        const x=-225+(i%3)*225,y=contentH/2-151-Math.floor(i/3)*pitch;
         const data=heroData.getHero(h.id),rarity=data?.rarity||h.rarity||1;
         const accent=tone(rarityColors[rarity]);
-        grid.panel('HeroCard'+i,x,y,213,300,panel,10,accent);
-        grid.portrait('HeroAvatar'+i,x,y+50,145,142,tone(h.faction==='wei'?'#28374a':h.faction==='shu'?'#263d32':h.faction==='wu'?'#493024':'#383047'),accent);
-        grid.text('HeroAvatarText'+i,data?.surname||h.name[0],x,y+50,118,74,paper);
-        grid.text('HeroCardName'+i,h.name,x-36,y-41,130,25,paper);
-        grid.text('HeroCardRarity'+i,rarityNames[rarity],x+75,y-41,55,19,accent);
-        grid.text('HeroCardTitle'+i,h.title||'',x,y-79,190,17,dim);
+        grid.panel('HeroCard'+i,x,y,211,296,panel,10,accent);
+        const imageTop=y+26;
+        grid.panel('HeroCardArtBg'+i,x,imageTop,204,229,tone(h.faction==='wei'?'#28374a':h.faction==='shu'?'#263d32':h.faction==='wu'?'#493024':'#383047'),8);
+        if(h.id==='guanyu')grid.sprite('HeroCardPortrait'+i,'hero_guanyu_full',x,imageTop,153,229);
+        else grid.text('HeroAvatarText'+i,data?.surname||h.name[0],x,imageTop+8,128,84,paper);
+        grid.sprite('HeroCardFrame'+i,`frame_${(['','n','r','sr','ssr'] as string[])[rarity]||'n'}`,x,y,211,296);
+        grid.sprite('HeroFaction'+i,`faction_${h.faction}`,x-76,y+126,43,43);
+        grid.text('HeroFactionLabel'+i,({wei:'魏',shu:'蜀',wu:'吴',qun:'群'} as any)[h.faction]||'?',x-76,y+126,38,19,paper);
+        if(s.formation.includes(h.id)){
+          grid.panel('HeroFormationFlag'+i,x-76,y+91,52,25,tone('#813d2e'),4,gold);
+          grid.text('HeroFormationFlagText'+i,'出战',x-76,y+91,48,16,paper);
+        }
+        grid.text('HeroCardRarity'+i,rarityNames[rarity],x+73,y+124,56,17,accent);
+        grid.panel('HeroCardNameShade'+i,x,y-95,202,82,new Color(18,26,22,235),6,border);
+        grid.text('HeroCardName'+i,h.name,x,y-75,170,22,paper);
         const maxStar=(config.RARITIES?.[rarity]?.maxStar)||5;
-        grid.text('HeroCardStars'+i,'★'.repeat(h.star||0)+'☆'.repeat(Math.max(0,maxStar-(h.star||0))),x,y-109,190,18,gold);
-        grid.text('HeroCardLevel'+i,`Lv.${h.level||store.playerLevel()}`,x-53,y-136,100,17,gold);
-        grid.text('HeroCardPower'+i,`战力 ${fmt.fmtNum(h.power)}`,x+49,y-136,105,17,dim);
-        grid.tap('HeroCardTap'+i,x,y,213,300,()=>{ctx.selectedHeroId=h.id;ctx.go('heroDetail');});
+        grid.text('HeroCardStars'+i,'★'.repeat(h.star||0)+'☆'.repeat(Math.max(0,maxStar-(h.star||0))),x,y-113,185,16,gold);
+        grid.tap('HeroCardTap'+i,x,y,211,296,()=>{ctx.selectedHeroId=h.id;ctx.heroDetailOrigin='heroes';CocosUi.resetScroll(`HeroDetail:${h.id}`);ctx.go('heroDetail');});
       });
       if(!list.length){
-        grid.text('EmptyHeroes',heroFaction==='all'?'还没有英雄，先去召唤一位吧':'还未拥有这个阵营的英雄',0,contentH/2-80,620,23,dim);
-        grid.button('EmptySummon','前往召唤',0,contentH/2-165,240,60,()=>ctx.go('summon'),palette.gold);
+        grid.text('EmptyHeroes',heroFaction==='all'?'尚未获得武将':'尚未拥有这个阵营的武将',0,contentH/2-95,620,23,dim);
+        grid.button('EmptySummon','前往召唤',0,contentH/2-175,250,72,()=>ctx.go('summon'),palette.gold);
       }
     });
+    U.text('HeroGrowthHint','重复获得同名武将，自动升星',0,-536,530,18,gold);
     if(showStarterPick&&first){
       U.rect('StarterMask',0,0,720,1280,tone('#171009')).on(Node.EventType.TOUCH_END,()=>{showStarterPick=false;ctx.show('heroes');});
       U.panel('StarterPanel',0,0,660,444,panel,14,gold);
@@ -103,84 +133,81 @@ export function heroes(ctx: ScreenContext) {
   }
 
 export function heroDetail(ctx: ScreenContext) {
-    const h:any=store.calcHero(ctx.selectedHeroId), owned:any=store.getOwned(ctx.selectedHeroId), U=ctx.ui;
-    if(!h||!owned){ctx.go('heroes');return;}
-    const s=store.getState(),maxStar=config.RARITIES[h.rarity].maxStar;
-    const bonuses:any=store.getArmoryBonuses(),xpNeed=store.playerXpNeeded(s.player.level);
-    const pct=(n:number)=>Math.round((Number(n)||0)*100)+'%';
-    const factionName:{[key:string]:string}={wei:'魏',shu:'蜀',wu:'吴',qun:'群'};
-    const clsName:{[key:string]:string}={warrior:'战士',tank:'坦克',mage:'法师',support:'辅助',assassin:'刺客'};
-    U.rect('DetailBackdrop',0,0,720,1280,ink);
-    U.text('DetailHeading','武 将',0,585,370,36,gold);
-    U.text('DetailBack','‹ 返回',-288,585,130,23,gold);
-    U.tap('DetailBackTap',-288,585,140,63,()=>ctx.back('heroes'));
-    const contentH=1660,viewH=1210;
-    U.scroll('DetailScroll',0,-35,708,viewH,contentH,V=>{
-      const top=contentH/2;
-      V.panel('DetailHeroPanel',0,top-113,680,184,panel,12,gold);
-      V.portrait('DetailPortrait',-242,top-113,142,146,tone('#314236'),tone(rarityColors[h.rarity]));
-      V.text('HeroSurname',h.surname||h.name[0],-242,top-113,118,87,paper);
-      V.text('DetailName',`${h.name}   ${rarityNames[h.rarity]}`,35,top-52,360,35,gold);
-      V.text('DetailIdentity',`${h.title} · ${factionName[h.faction]||h.faction} · ${clsName[h.cls]||h.cls||'武将'}`,59,top-91,405,21,dim);
-      V.text('DetailStars','★'.repeat(owned.star||0)+'☆'.repeat(Math.max(0,maxStar-(owned.star||0))),18,top-126,330,22,gold);
-      V.text('DetailLevel',`全体共享 Lv.${h.level}  ·  战力 ${fmt.fmtNum(h.power)}`,62,top-162,420,20,paper);
-      V.text('StatsHeading','属 性',-276,top-241,132,27,gold);
-      V.panel('StatsPanel',0,top-328,680,139,panel,9,border);
-      const stats:[string,string][]=[['生命',fmt.fmtNum(h.stats.hp)],['攻击',fmt.fmtNum(h.stats.atk)],['防御',fmt.fmtNum(h.stats.def)],['攻速',String(h.stats.spd)],['暴击',pct(h.stats.crit||0.05)],['同名卡',`${owned.cards}张`]];
-      stats.forEach(([key,value],i)=>{
-        const x=-224+(i%3)*224,y=top-297-Math.floor(i/3)*52;
-        V.text('StatsKey'+i,key,x-46,y,86,20,dim);
-        V.text('StatsValue'+i,value,x+42,y,117,20,paper);
-      });
-      V.text('SkillsHeading','技 能',-276,top-433,132,27,gold);
-      V.panel('UltPanel',0,top-505,680,109,panel,9,border);
-      V.text('Ult',`必杀  ${h.ult.name}`,-154,top-477,356,23,gold);
-      V.text('UltDesc',h.ult.desc,0,top-522,626,20,paper);
-      V.panel('PassivePanel',0,top-625,680,109,panel,9,border);
-      V.text('Passive',`被动  ${h.passiveDef.name}`,-154,top-596,356,23,gold);
-      V.text('PassiveDesc',h.passiveDef.desc,0,top-643,626,20,paper);
-      V.text('ArmoryHeading','全军共享军械',-231,top-712,225,27,gold);
-      V.panel('ArmoryBonusPanel',0,top-782,680,104,panel,9,border);
-      V.text('ArmoryBonus',`攻击 +${pct(bonuses.atk)}   生命 +${pct(bonuses.hp)}   防御 +${pct(bonuses.def)}`,-59,top-751,529,19,gold);
-      V.text('ArmoryShared','已享受当前军械，无需为武将单独配装',-84,top-797,485,18,dim);
-      V.button('HeroArmory','军械图鉴 ›',238,top-798,163,51,()=>ctx.go('armory'),palette.paperDark);
-      V.text('GrowthHeading','成 长',-276,top-878,132,27,gold);
-      V.panel('GrowthPanel',0,top-1000,680,197,panel,9,border);
-      V.text('GrowthLevel',`玩家等级 Lv.${s.player.level} · 全体武将共用`,-84,top-925,470,21,gold);
-      V.progress('PlayerExperience',0,top-963,619,xpNeed?Math.min(1,s.player.exp/xpNeed):1,palette.gold);
-      V.text('GrowthXP',s.player.level>=config.MAX_LEVEL?'等级已达上限':`战斗经验 ${fmt.fmtNum(s.player.exp)} / ${fmt.fmtNum(xpNeed)}`,-49,top-990,550,18,dim);
-      V.text('GrowthStar',`星级 ★${owned.star} / ★${maxStar}${owned.star>=maxStar?' · 已满星':''}`,-158,top-1031,330,19,gold);
-      V.text('GrowthStarHint',owned.star>=maxStar?'满星后重复卡可兑换英雄碎片':`抽到重复的 ${h.name} 会自动升星，无需铜钱`,-25,top-1064,590,18,dim);
-      if(owned.cards>0){
-        V.panel('ExtraCards',0,top-1144,680,90,panel,9,border);
-        V.text('ExtraCardsText',`${owned.star>=maxStar?'满星后额外卡':'保留同名卡'} ${owned.cards} 张${owned.lockedCards?' · 已保护':''}`,-144,top-1122,385,20,gold);
-        V.button('LockCards',owned.lockedCards?'取消保护':'保护',57,top-1164,153,48,()=>{
-          const r:any=store.setCardsLocked(h.id,!owned.lockedCards);store.save();ctx.tell(r,r.locked?'同名卡已保护':'已取消保护');
-        },palette.paperDark);
-        const canConvert=owned.star>=maxStar&&!owned.lockedCards;
-        V.button('ConvertCards','换 1 张碎片',245,top-1164,163,48,()=>{
-          if(!canConvert)return ctx.tell({ok:false,msg:'仅可兑换未保护的满星多余卡'},'');
-          const run=()=>{const r:any=store.convertCards([{id:h.id,count:1,confirmHigh:h.rarity>=3}]);store.save();ctx.tell(r,`获得英雄碎片 ×${r.shards||0}`);};
-          if(h.rarity>=3)ctx.confirm('兑换高稀有度同名卡',`消耗 ${h.name} 1 张，兑换后不能撤回`,run);else run();
-        },canConvert?palette.gold:palette.paperDark);
-      }
-      const inFormation=s.formation.includes(h.id);
-      V.button('FormationAction',inFormation?'下 阵':'上 阵',0,top-1245,310,61,()=>{
-        const formation=s.formation;
-        if(inFormation){
-          if(formation.filter(Boolean).length<=1)return ctx.tell({ok:false,msg:'至少保留一名上阵武将'},'');
-          store.setFormationSlot(formation.indexOf(h.id),null);
-        }else{
-          const empty=formation.indexOf(null);
-          if(empty<0){ctx.go('formation');return;}
-          store.setFormationSlot(empty,h.id);
-        }
-        store.save();ctx.tell({ok:true},inFormation?'已下阵':'已上阵');
-      },inFormation?palette.paperDark:palette.gold);
-      if((s.vouchers[h.rarity===4?'ssr':'sr']||0)>0&&h.rarity>=3)
-        V.button('UseVoucher','使用英雄自选券',0,top-1322,400,58,()=>ctx.confirm('使用自选券',`选择 ${h.name}，获得该武将一张`,()=>ctx.tell(store.useChoiceVoucher(h.rarity,h.id),`获得 ${h.name}`)),palette.gold);
-    });
-  }
+  const def:any=heroData.getHero(ctx.selectedHeroId), own:any=store.getOwned(ctx.selectedHeroId);
+  if(!def||!own){ctx.notice='没有找到该武将或尚未拥有';ctx.back(ctx.heroDetailOrigin||'heroes');return;}
+  const h:any=store.calcHero(ctx.selectedHeroId), U=ctx.ui, s=store.getState();
+  const max=config.RARITIES[h.rarity].maxStar, bonus:any=store.getArmoryBonuses(), xp=store.playerXpNeeded(s.player.level);
+  const faction:Record<string,string>={wei:'魏',shu:'蜀',wu:'吴',qun:'群'}, factionKey=['wei','shu','wu','qun'].includes(h.faction)?h.faction:'all';
+  const cls=(config.CLASSES as any)[h.cls]?.name||'武将', formed=s.formation.includes(h.id);
+  const top=940, contentH=1880, pct=(v:number)=>Math.round((Number(v)||0)*100)+'%';
+  U.sprite('DetailFortress','background_fortress',0,0,720,1280);U.rect('DetailBackdrop',0,0,720,1280,new Color(12,23,20,175));
+  U.panel('DetailHeader',0,585,720,86,new Color(16,35,30,240),0,gold);U.sprite('DetailBackIcon','chevron_left',-302,585,23,32);
+  U.text('DetailHeading','武将详情',0,585,300,31,gold);U.tap('DetailBackTap',-288,585,98,78,()=>ctx.back(ctx.heroDetailOrigin||'heroes'));
+  U.sprite('DetailGoldIcon','currency_gold',197,585,29,29);U.text('DetailGold',fmt.fmtNum(s.res.gold),247,585,78,17,paper);
+  U.sprite('DetailGemIcon','currency_gem',285,585,28,28);U.text('DetailGem',fmt.fmtNum(s.res.gem),331,585,66,17,paper);
+  U.scroll('HeroDetail:'+h.id,0,-24,708,1010,contentH,V=>{
+    V.sprite('DetailStageBackground','background_fortress',0,top-266,680,520);
+    V.panel('DetailStageShade',0,top-266,680,520,new Color(15,30,25,100),12,gold);
+    if(h.id==='guanyu')V.sprite('DetailPortrait','hero_guanyu_full',145,top-270,407,610);
+    else{V.portrait('DetailPortraitPlaceholder',145,top-270,320,440,tone('#263d32'),tone(rarityColors[h.rarity]));V.text('DetailPortraitInitial',h.surname||h.name[0],145,top-270,240,160,paper);}
+    V.sprite('DetailFaction','faction_'+factionKey,-248,top-76,51,51);V.text('DetailFactionLabel',faction[h.faction]||'群',-248,top-76,45,20,paper);
+    V.text('DetailTitle',h.title||'武将',-224,top-136,194,23,paper);V.text('DetailName',h.name,-224,top-203,205,54,gold);
+    V.text('DetailIdentity',(faction[h.faction]||h.faction)+' · '+cls,-217,top-254,214,19,paper);
+    V.panel('DetailRarity',-220,top-306,118,39,tone(rarityColors[h.rarity]),5,gold);V.text('DetailRarityText',rarityNames[h.rarity],-220,top-306,110,20,ink);
+    V.text('DetailStars','★'.repeat(own.star||0)+'☆'.repeat(Math.max(0,max-(own.star||0))),-216,top-353,218,21,gold);
+    V.panel('DetailStatus',0,top-474,650,61,new Color(15,34,29,230),7,gold);V.text('DetailLevel','全军共享 Lv.'+h.level,-175,top-474,260,20,paper);
+    V.text('DetailFormationState',formed?'已上阵':'未上阵',176,top-474,220,20,formed?gold:dim);
+    V.text('StatsHeading','武将属性',-253,top-545,165,26,gold);V.panel('StatsPanel',0,top-624,660,113,new Color(27,39,32,235),8,border);
+    const stats:[string,string,string][]=[['stat_hp','生命',fmt.fmtNum(h.stats.hp)],['stat_atk','攻击',fmt.fmtNum(h.stats.atk)],['stat_def','防御',fmt.fmtNum(h.stats.def)]];
+    stats.forEach(([icon,label,value],i)=>{const x=-212+i*212;V.sprite('StatIcon'+i,icon,x-51,top-608,31,31);V.text('StatLabel'+i,label,x,top-597,106,18,dim);V.text('StatValue'+i,value,x,top-635,168,21,paper);});
+    V.tap('StatsTap',0,top-624,660,113,()=>heroInfoModal(ctx,'详细属性',['战力：'+fmt.fmtNum(h.power),
+      '生命：'+fmt.fmtNum(h.stats.hp)+'    攻击：'+fmt.fmtNum(h.stats.atk),'防御：'+fmt.fmtNum(h.stats.def)+'    攻速：'+h.stats.spd,
+      '暴击：'+pct(h.stats.crit||0)+'    同名卡：'+(own.cards||0)+' 张','当前面板值仅供参考，战斗效果以实战结算为准。']));
+    V.text('SkillsHeading','武将技能',-253,top-710,165,26,gold);
+    const skills=[{name:h.ult.name,desc:h.ult.desc,icon:h.id==='guanyu'?'skill_guanyu_ult':'skill_guanyu_passive',kind:'必杀技能'},
+      {name:h.passiveDef.name,desc:h.passiveDef.desc,icon:h.id==='guanyu'?'skill_guanyu_passive':'skill_guanyu_ult',kind:'被动技能'}];
+    skills.forEach((skill,i)=>{const x=i===0?-170:170,y=top-833;V.panel('SkillTile'+i,x,y,327,170,new Color(22,38,31,244),8,border);
+      V.sprite('SkillIcon'+i,skill.icon,x-119,y+24,79,79);V.text('SkillType'+i,skill.kind,x-105,y-30,102,18,dim);
+      V.text('SkillName'+i,skill.name,x+26,y+34,176,22,gold);V.text('SkillSummary'+i,skill.desc.length>22?skill.desc.slice(0,21)+'…':skill.desc,x+20,y-14,212,16,paper);
+      V.tap('SkillTap'+i,x,y,327,170,()=>heroInfoModal(ctx,skill.name,[skill.kind,skill.desc]));});
+    V.panel('ArmoryBonusPanel',0,top-1028,660,100,new Color(20,36,30,238),8,border);
+    V.sprite('ArmoryWeapon','armory_weapon',-266,top-1028,42,53);V.sprite('ArmoryArmor','armory_armor',-218,top-1028,45,45);V.sprite('ArmoryJade','armory_jade',-168,top-1028,42,47);
+    V.text('ArmoryHeading','全军军械',54,top-1006,210,22,gold);V.text('ArmoryBonus','攻击 +'+pct(bonus.atk)+' · 生命 +'+pct(bonus.hp)+' · 防御 +'+pct(bonus.def),54,top-1038,315,16,paper);
+    V.text('ArmoryShared','全体武将共享加成',67,top-1064,262,15,dim);V.sprite('ArmoryChevron','chevron_right',283,top-1028,20,27);
+    V.tap('HeroArmoryTap',0,top-1028,660,100,()=>ctx.go('armory'));
+    const gy=top-1152;V.panel('GrowthPanel',0,gy,660,126,new Color(27,39,32,238),8,border);
+    V.text('GrowthLevel','主公 Lv.'+s.player.level+' · 全体武将共享等级',-91,gy+35,440,19,gold);
+    V.text('GrowthXP',xp?'当前经验 '+fmt.fmtNum(s.player.exp)+' / '+fmt.fmtNum(xp):'主公等级已达上限',-24,gy+10,550,16,dim);
+    V.text('GrowthStar','重复同名武将自动升星 · '+own.star+' / '+max+' 星'+(own.star>=max?' · 已满星':''),-1,gy-24,620,18,paper);
+    V.text('GrowthCardHint',own.star>=max?'满星后多余同名卡可保留或兑换':'获得重复的 '+h.name+' 将自动升星',-9,gy-48,600,15,dim);
+    let next=gy-126;
+    if(own.cards>0){const cy=next-48;V.panel('ExtraCards',0,cy,660,84,new Color(27,39,32,238),8,border);
+      V.text('ExtraCardsText',(own.star>=max?'满星后额外卡':'保留同名卡')+' '+own.cards+' 张'+(own.lockedCards?' · 已保护':''),-87,cy+21,424,18,gold);
+      V.button('LockCards',own.lockedCards?'取消保护':'保护',237,cy+20,124,42,()=>{const r:any=store.setCardsLocked(h.id,!own.lockedCards);store.save();ctx.tell(r,r.locked?'同名卡已保护':'已取消保护');},palette.paperDark);
+      const can=own.star>=max&&!own.lockedCards;V.button('ConvertCards',can?'兑换多余卡':'暂不可兑换',0,cy-20,280,41,()=>{
+        if(!can)return ctx.tell({ok:false,msg:own.lockedCards?'请先取消保护':'满星后可兑换多余卡'},'');
+        const run=()=>{const r:any=store.convertCards([{id:h.id,count:1,confirmHigh:h.rarity>=3}]);store.save();ctx.tell(r,'获得英雄碎片 ×'+(r.shards||0));};
+        if(h.rarity>=3)ctx.confirm('兑换高稀有度同名卡','消耗 '+h.name+' 1 张，兑换后不能撤回',run);else run();},can?palette.gold:palette.paperDark);next=cy-78;}
+    if((s.vouchers[h.rarity===4?'ssr':'sr']||0)>0&&h.rarity>=3){V.button('UseVoucher','使用武将自选券',0,next-39,410,70,()=>ctx.confirm(
+      '使用自选券','消耗对应品质自选券，获得 '+h.name+' 一张；重复获得按现有升星规则处理。',
+      ()=>ctx.tell(store.useChoiceVoucher(h.rarity,h.id),'获得 '+h.name)),palette.gold);next-=104;}
+    if(ctx.heroDetailOrigin==='heroes')V.button('ReturnHeroes','返回群英录',0,next-40,350,72,()=>ctx.back('heroes'),palette.paperDark);
+  });
+  U.button('FormationAction','调整编队',0,-566,530,76,()=>ctx.go('formation'),palette.green);
+}
+function heroInfoModal(ctx: ScreenContext,title:string,lines:string[]) {
+  const U=ctx.ui,body=lines.map(line=>wrapHeroText(line,27)).join('\n');
+  U.rect('HeroInfoShade',0,0,720,1280,new Color(5,12,11,214));
+  U.tap('HeroInfoShadeTap',0,0,720,1280,()=>ctx.show(ctx.page));
+  U.panel('HeroInfoPanel',0,6,638,514,new Color(26,37,31,255),14,gold);
+  U.text('HeroInfoTitle',title,0,192,560,34,gold);U.text('HeroInfoBody',body,0,4,560,24,paper);
+  U.button('HeroInfoClose','关闭',0,-210,246,67,()=>ctx.show(ctx.page),palette.green);
+}
+function wrapHeroText(value:string,max:number) {
+  const lines:string[]=[];for(const source of String(value||'').split('\n')){let rest=source;
+    while(rest.length>max){lines.push(rest.slice(0,max));rest=rest.slice(max);}lines.push(rest);}
+  return lines.join('\n');
+}
 
 export function summon(ctx: ScreenContext) {
     const s=store.getState(),U=ctx.ui;
@@ -254,7 +281,7 @@ export function summonResults(ctx: ScreenContext) {
       const x=-(cols-1)*111+(i%cols)*222;
       const y=ctx.lastSummon.length===1?70:313-Math.floor(i/cols)*207;
       const rarity=rarityNames[hero.rarity]||'N';
-      const openHero = () => {ctx.selectedHeroId=result.id;ctx.go('heroDetail');};
+      const openHero = () => {ctx.selectedHeroId=result.id;ctx.heroDetailOrigin='summonResults';ctx.go('heroDetail');};
       const single=ctx.lastSummon.length===1;
       const accent=tone(rarityColors[hero.rarity]);
       U.panel('DrawCard'+i,x,y,single?350:205,single?420:193,panel,9,accent);

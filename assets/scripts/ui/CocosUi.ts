@@ -1,4 +1,5 @@
-import { Color, EventTouch, Graphics, Label, Mask, Node, ScrollView, UITransform, Vec2, Vec3 } from 'cc';
+import { Color, EventTouch, Graphics, isValid, Label, Mask, Node, ScrollView, Size, Sprite, SpriteFrame, UITransform, Vec2, Vec3 } from 'cc';
+import { loadHeroSpriteFrame } from '../services/HeroUiAssets';
 
 export const hexColor = (hex: string) => new Color(
   parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16), 255
@@ -18,6 +19,21 @@ export class CocosUi {
 
   private y(value: number) { return value * this.verticalScale; }
   private height(value: number) { return value >= 1000 ? value * this.verticalScale : value; }
+
+  /** Adds a native Cocos Sprite immediately; lazy image callbacks cannot reorder UI labels or touch nodes. */
+  sprite(name: string, assetId: string, x: number, y: number, w: number, h: number) {
+    const node = new Node(name);
+    node.setPosition(new Vec3(x, this.y(y), 0));
+    node.addComponent(UITransform).setContentSize(new Size(w, h * this.verticalScale));
+    const sprite = node.addComponent(Sprite);
+    sprite.sizeMode = Sprite.SizeMode.CUSTOM;
+    this.parent.addChild(node);
+    this.nodes.set(name, node);
+    loadHeroSpriteFrame(assetId, (frame: SpriteFrame | null) => {
+      if (frame && isValid(node) && sprite.isValid) sprite.spriteFrame = frame;
+    });
+    return node;
+  }
 
   static resetScroll(name: string) { this.scrollOffsets.delete(name); }
 

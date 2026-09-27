@@ -23,6 +23,7 @@ export class CocosBootstrap extends Component implements ScreenContext {
   public notice = '';
   public pageIndex = 0;
   public selectedHeroId = 'liubei';
+  public heroDetailOrigin: Page = 'heroes';
   public selectedArmorySlot = 'weapon';
   public selectedFormationSlot = 0;
   public formationPageIndex = 0;

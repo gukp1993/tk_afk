@@ -9,6 +9,7 @@ export interface ScreenContext {
   notice: string;
   pageIndex: number;
   selectedHeroId: string;
+  heroDetailOrigin: Page;
   selectedArmorySlot: string;
   selectedFormationSlot: number;
   formationPageIndex: number;
