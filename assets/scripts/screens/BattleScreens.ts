@@ -111,7 +111,10 @@ export function resultView(ctx: ScreenContext) {
   lines.slice(0,3).forEach((line,i)=>U.text(`ResultLine${i}`,line,0,99-i*40,515,22,PAPER));
   const msLabels=(reward.milestones||[]).map((m:any)=>m.label);
   if(r?.win&&reward.finale)U.text('ResultFinale','第一期主线完成 · 主线 120/120',0,14,500,24,GOLD);
-  else if(r?.win&&msLabels.length)U.text('ResultMilestone',`里程碑：${msLabels.join('；')}`,0,14,515,19,GOLD);
+  else if(r?.win&&msLabels.length){
+    U.text('ResultMilestone',`里程碑：${msLabels.join('；')} ›`,0,14,515,19,GOLD);
+    U.tap('ResultMilestoneTap',0,14,515,30,()=>ctx.go(reward.milestones.some((m:any)=>m.kind==='armoryBox')?'armory':'bag'));
+  }
   if(r?.win&&reward.first){
     const dropName=reward.armory&&!reward.armory.duplicate
       ?(items.CATALOG.find((x:any)=>x.id===reward.armory.itemId)?.name||'随机军械'):null;

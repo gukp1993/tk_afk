@@ -14,7 +14,7 @@ const rarityNames=['','N','R','SR','SSR'];
 const factions:[string,string][]=[['all','全部'],['wei','魏'],['shu','蜀'],['wu','吴'],['qun','群']];
 const sorts:[string,string][]=[['power','战力'],['rarity','品质'],['star','星级']];
 const previewIds = ['zhaoyun','caocao','zhouyu','diaochan','zhugeliang'];
-let heroFaction='all',heroSort='power',showStarterPick=false;
+let heroFaction='all',heroSort='power',showStarterPick=false,shardTier=0;
 let armoryItemId='';
 
 function chip(U: ScreenContext['ui'], name:string, label:string, x:number,y:number,w:number,active:boolean,action:()=>void) {
@@ -28,8 +28,9 @@ function armoryStats(stats: Record<string,number>|undefined) {
     return Object.entries(stats||{}).filter(([key,value])=>names[key]&&Number(value)).map(([key,value])=>`${names[key]} +${Math.round(Number(value)*100)}%`).join(' · ')||'暂无属性加成';
 }
 function armoryEffect(effect: string|null|undefined) {
-    return ({heal:'主动治疗与持续治疗效果提升',shield:'战斗开始时为全体英雄提供护盾',energy:'战斗开始时增加全体英雄怒气',reduction:'降低全体英雄受到的直接伤害'} as {[key:string]:string})[effect||'']||'';
+  return ({heal:'主动治疗与持续治疗效果提升',shield:'战斗开始时为全体英雄提供护盾',energy:'战斗开始时增加全体英雄怒气',reduction:'降低全体英雄受到的直接伤害'} as {[key:string]:string})[effect||'']||'';
 }
+function rarityMax(r:number){return (config.RARITIES as any)[r]?.maxStar||5;}
 
 export function heroes(ctx: ScreenContext) {
     const U=ctx.ui,s=store.getState();
@@ -68,6 +69,12 @@ export function heroes(ctx: ScreenContext) {
       U.panel('StarterReward',22,515,230,63,tone('#d9a94e'),7,gold);
       U.text('StarterRewardText','首胜升星待选',22,515,213,23,ink);
       U.tap('StarterRewardTap',22,515,230,63,()=>{showStarterPick=true;ctx.show('heroes');});
+    }else{
+      const qs=store.qualityShardInfo();
+      U.panel('ShardEntry',22,515,230,63,tone('#3a2a1b'),7,gold);
+      U.text('ShardEntryText','碎片兑换 ›',22,529,213,22,gold);
+      U.text('ShardEntrySub',`SSR ${qs[4]}/10 · SR ${qs[3]}/10 · R ${qs[2]}/10 · N ${qs[1]}/10`,22,500,213,14,dim);
+      U.tap('ShardEntryTap',22,515,230,63,()=>{shardTier=4;ctx.show('heroes');});
     }
     const sharedY=455,filterY=378,sortY=303;
     U.panel('HeroOwnedPanel',0,sharedY,720,66,new Color(14,32,28,240),0,gold);
@@ -124,6 +131,42 @@ export function heroes(ctx: ScreenContext) {
         U.text('StarterName'+i,h.name,x,-43,160,24,paper);
         U.button('StarterChoose'+i,'选择',x,-83,150,50,()=>{showStarterPick=false;ctx.tell(store.claimFirstWinChoice(id),`${h.name} 自动升星`);},palette.gold);
       });
+    }
+    if(shardTier){
+      const qs=store.qualityShardInfo();
+      U.rect('ShardMask',0,0,720,1280,ink).on(Node.EventType.TOUCH_END,()=>{shardTier=0;ctx.show('heroes');});
+      U.panel('ShardPanel',0,-10,664,1000,panel,14,gold);
+      U.tap('ShardBlock',0,-10,664,1000,()=>{});
+      U.text('ShardHeading','品质碎片兑换',0,438,600,30,gold);
+      U.text('ShardHint','同品质碎片 10 片兑换该品质任意武将 1 张：未拥有直接解锁，未满星自动升星，已满星兑换会返还 1 片',0,399,590,16,dim);
+      ['N','R','SR','SSR'].forEach((name,i)=>{
+        const tier=i+1,x=-243+i*162,active=shardTier===tier;
+        U.panel('ShardTier'+tier,x,340,150,56,active?tone('#45321b'):ink,8,active?gold:border);
+        U.text('ShardTierText'+tier,`${name} ${qs[tier]}/10`,x,340,140,20,active?gold:paper);
+        U.tap('ShardTierTap'+tier,x,340,150,56,()=>{shardTier=tier;ctx.show('heroes');});
+      });
+      const pool=heroData.HEROES.filter((h:any)=>h.rarity===shardTier);
+      const cols=3,pitch=190,ch=196,rows=Math.ceil(pool.length/cols);
+      const gridH=Math.max(560,rows*ch+16);
+      U.scroll('ShardGrid',0,-158,616,700,gridH,(V)=>{
+        pool.forEach((h:any,i:number)=>{
+          const x=-201+(i%cols)*201,y=gridH/2-103-Math.floor(i/cols)*ch;
+          const own=store.getOwned(h.id),maxed=own&&own.star>=rarityMax(h.rarity),can=qs[shardTier]>=10;
+          V.panel('ShardCard'+i,x,y,184,184,tone('#322319'),8,own?gold:border);
+          V.heroIcon('ShardFace'+i,x,y+42,150,100,{surname:h.name[0],faction:h.faction,rarity:h.rarity});
+          V.text('ShardName'+i,h.name,x,y-18,166,21,paper);
+          V.text('ShardState'+i,!own?'可解锁':maxed?'已满星 · 返1片':'可升星 ★'+(own.star+1),x,y-44,166,16,maxed?dim:(can?gold:tone('#ad9977')));
+          V.tap('ShardTap'+i,x,y,184,184,()=>{
+            if(qs[shardTier]<10)return ctx.tell({ok:false,msg:'同品质碎片不足 10 片'},'');
+            ctx.confirm('碎片兑换',`消耗 ${['','N','R','SR','SSR'][shardTier]} 碎片 10 片，兑换 ${h.name}${maxed?'（已满星，兑换后返还 1 片）':''}`,()=>{
+              const r=store.exchangeQualityShard(shardTier,h.id);
+              ctx.tell(r,r.ok?`已兑换 ${h.name}`:'');
+              ctx.show('heroes');
+            });
+          });
+        });
+      });
+      U.button('ShardClose','关闭',0,-490,300,58,()=>{shardTier=0;ctx.show('heroes');},palette.paperDark);
     }
   }
 
