@@ -16,6 +16,12 @@
 
 ## 最近交接（新 → 旧）
 
+### Cocos 微信与抖音构建方法说明 · Codex · 无变更
+
+时间：2026-09-27 14:42（Asia/Shanghai）；执行者：Codex；状态：无变更。
+
+- 概要：核对 scripts/cocos-build.sh，向用户说明从仓库根目录分别执行 wechatgame 与 bytedance-mini-game 构建，以及对应开发者工具导入 build/ 下生成目录。本轮未执行构建、未修改游戏代码或生成包。
+
 ### 关羽英雄UI设计与素材开发交付包 · Codex · 需求已交付
 
 时间：2026-09-27 14:41（Asia/Shanghai）；执行者：Codex（产品设计/开发文档两个互斥子任务）；状态：需求已交付。
