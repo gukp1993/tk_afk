@@ -1,3 +1,4 @@
+import { Color } from 'cc';
 import { palette, hexColor as tone } from '../ui/CocosUi';
 import { Page, ScreenContext } from './ScreenContext';
 import * as store from '../domain/store';
@@ -6,9 +7,12 @@ import * as heroes from '../domain/heroes';
 import * as items from '../domain/items';
 import * as config from '../domain/config';
 import * as fmt from '../domain/fmt';
+import { recommendFormation } from '../domain/formation';
 import { campaignMap, campaignFlag, campaignCamp, cityMap, CITY_BUILDINGS } from '../ui/Scenery';
 
 const INK = tone('#3d4337'), PAPER = tone('#eee3bf'), GOLD = tone('#edcf88'), LIGHT = tone('#f5e8c9');
+let chapterMapOpen=false;
+let formationRecommended: Array<string|null>|null=null;
 
 function campaignHeader(ctx: ScreenContext, chapter: any, stage: number) {
   const U=ctx.ui,s=store.getState(),level=store.playerLevel(),need=store.playerXpNeeded(level);
@@ -80,7 +84,7 @@ export function campaign(ctx: ScreenContext) {
   U.panel('MapButton',-288,-480,103,86,tone('#3a291a'),8,GOLD);
   U.text('MapButtonTitle','征途',-288,-466,90,24,LIGHT);
   U.text('MapButtonSub','本章地图',-288,-494,90,14,tone('#d6c7a1'));
-  U.tap('JourneyTap',-288,-480,103,86,()=>ctx.go('journey'));
+  U.tap('JourneyTap',-288,-480,103,86,()=>{chapterMapOpen=true;ctx.show('campaign');});
   U.panel('AutoButton',0,-480,445,86,ctx.auto?palette.red:tone('#39695a'),10,GOLD);
   U.text('AutoButtonTitle',ctx.auto?'本场后停止':'自动出征',0,-467,422,35,LIGHT);
   U.text('AutoButtonSub',`第 ${stage} 关 · ${enemy.name||chapter.name}`,0,-498,417,15,tone('#e5e5bf'));
@@ -95,41 +99,52 @@ export function campaign(ctx: ScreenContext) {
   U.tap('GoalTap',-150,-536,405,24,()=>ctx.go('stagePreview'));
   U.tap('IdleMoreTap',278,-536,147,24,()=>ctx.idleClaimChoice());
   campaignHeader(ctx,chapter,stage);
+  if(chapterMapOpen){
+    U.rect('ChapterMapShade',0,0,720,1280,new Color(12,10,8,190));
+    U.tap('ChapterMapShadeTap',0,0,720,1280,()=>{chapterMapOpen=false;ctx.show('campaign');});
+    U.panel('ChapterMapPanel',0,0,658,974,tone('#251b14'),12,GOLD);
+    U.tap('ChapterMapBlock',0,0,658,974,()=>{});
+    U.text('ChapterMapTitle',chapter.name,0,437,590,29,GOLD);
+    U.text('ChapterMapCount',`本章征途 · 已通关 ${chapter.inCh}/${stages.STAGES_PER_CH}`,0,393,580,19,LIGHT);
+    const first=chapter.idx*stages.STAGES_PER_CH+1;
+    U.scroll('ChapterMapList',0,-8,612,741,10*73+12,(V)=>{
+      for(let i=0;i<stages.STAGES_PER_CH;i++){
+        const n=first+i,y=(10*73+12)/2-37-i*73,current=n===stage,cleared=n<stage;
+        const title=stages.makeStageEnemies(n).story?.stage?.name || stages.chapterOf(n).name;
+        V.panel('ChapterRow'+i,0,y,600,64,current?tone('#375c4b'):tone('#302b1c'),5);
+        V.text('ChapterRowText'+i,`${String(n).padStart(2,'0')}  ${title}`,-111,y,347,22,current?GOLD:LIGHT);
+        V.text('ChapterRowState'+i,cleared?'已通关':current?'当前':'未开放',234,y,116,17,current?GOLD:tone('#a99778'));
+        if(current)V.tap('ChapterRowTap'+i,0,y,600,64,()=>{chapterMapOpen=false;ctx.go('stagePreview');});
+      }
+    });
+    U.button('ChapterMapClose','返回战役',0,-443,554,55,()=>{chapterMapOpen=false;ctx.show('campaign');},palette.gold);
+  }
 }
 
 export function stagePreview(ctx: ScreenContext) {
   const stage=store.getState().campaign.cleared+1;
   const enemy=stages.makeStageEnemies(stage), reward=store.campaignRewardPreview(stage);
   const gain=Math.max(0,config.idleRates(stage).gold-config.idleRates(stage-1).gold);
-  const U=ctx.ui,dim=tone('#a99778'),dark=tone('#25190f');
-  U.rect('StageBackdrop',0,0,720,1280,dark);
-  U.text('StageHeading',`第 ${stage} 关 · ${enemy.name || '两军对阵'}`,0,535,660,36,GOLD);
-  U.text('StageChapter',stages.chapterOf(stage).name,0,488,560,21,dim);
-  U.panel('StagePanel',0,32,680,810,tone('#322319'),14,tone('#8c6a3a'));
-  U.text('StageEnemyTitle','敌方阵容',0,385,590,27,GOLD);
-  enemy.units.slice(0,5).forEach((unit: any,i: number)=>{
-    const x=-267+i*133;
-    U.panel('StageEnemyCard'+i,x,245,119,178,tone('#3b2a20'),11,tone('#8d6b68'));
-    U.text('StageEnemyGlyph'+i,unit.hero.name[0],x,272,93,61,LIGHT);
-    U.text('StageEnemyName'+i,unit.hero.name,x,216,113,19,LIGHT);
-    U.text('StageEnemyLevel'+i,`Lv.${unit.level}`,x,187,108,15,dim);
+  campaign(ctx);
+  const U=ctx.ui,dim=tone('#a99778');
+  U.rect('StageModalShade',0,0,720,1280,new Color(12,10,8,190));
+  U.tap('StageShadeTap',0,0,720,1280,()=>ctx.back('campaign'));
+  U.panel('StagePanel',0,0,658,782,tone('#251b14'),13,tone('#9b793f'));
+  U.tap('StagePanelBlock',0,0,658,782,()=>{});
+  U.text('StageHeading',`第 ${stage} 关 · ${enemy.story?.stage?.name||enemy.name||'两军对阵'}`,0,343,600,30,GOLD);
+  U.text('StageEnemyTitle',enemy.isBoss?'名将镇守 · 首通奖励':'敌阵与首通奖励',-155,289,311,21,GOLD);
+  enemy.units.slice(0,5).forEach((unit:any,i:number)=>{
+    U.text('StageEnemy'+i,`${unit.hero.name} Lv.${unit.level}${unit.isBoss?' · 首领':''}`,-163,249-i*38,310,19,LIGHT);
   });
-  U.text('StageRewardHeading','首通奖励',0,102,570,26,GOLD);
-  U.panel('StageRewardPanel',0,-19,624,159,tone('#241a12'),8,tone('#6e5435'));
-  U.text('StageRewards',`铜钱 +${fmt.fmtNum(reward.gold)} · 元宝 +${reward.gem} · 招募令 +${reward.scroll}`,0,22,585,21,LIGHT);
-  U.text('StageArmory',reward.armoryBox?'里程碑：军械自选箱 ×1':'65% 概率获得随机军械',0,-19,575,19,dim);
-  U.text('StageIdle',`通关后挂机铜钱/时 +${fmt.fmtNum(gain)}`,0,-60,575,18,GOLD);
+  U.panel('StageRewardPanel',0,-45,616,165,tone('#302a1c'),7);
+  U.text('StageRewards',`确定奖励：铜钱 +${fmt.fmtNum(reward.gold)} · 元宝 +${fmt.fmtNum(reward.gem)} · 招募令 +${reward.scroll}`,0,2,589,18,LIGHT);
+  U.text('StageArmory',reward.first?'首通：65% 概率获得随机军械':'重复挑战奖励 · 不重复领取首通奖励',0,-41,582,18,dim);
+  U.text('StageIdle',reward.armoryBox?'里程碑：军械自选箱 ×1':`挂机铜钱/时：通关后 +${fmt.fmtNum(gain)}`,0,-86,582,18,GOLD);
   const team=store.getState().formation.map((id:string|null)=>id?heroes.getHero(id)?.name:null).filter(Boolean).join(' · ');
-  U.text('StageOurTeam',`出战：${team||'尚未编队'}`,0,-141,615,19,dim);
-  U.panel('StageManual',-164,-294,292,79,palette.red,9,GOLD);
-  U.text('StageManualText','手动挑战',-164,-294,272,26,LIGHT);
-  U.tap('StageManualTap',-164,-294,292,79,()=>ctx.startBattle('campaign',stage));
-  U.panel('StageAuto',164,-294,292,79,tone('#3d6653'),9,GOLD);
-  U.text('StageAutoText','自动出征',164,-294,272,26,LIGHT);
-  U.tap('StageAutoTap',164,-294,292,79,()=>ctx.startAuto('campaign'));
-  U.panel('StagePreviewBack',0,-417,350,65,tone('#483521'),8,tone('#947346'));
-  U.text('StagePreviewBackText','返回战役',0,-417,330,21,LIGHT);
-  U.tap('StagePreviewBackTap',0,-417,350,65,()=>ctx.go('campaign'));
+  U.text('StageOurTeam',`出战：${team||'尚未编队'}`,0,-159,610,18,dim);
+  U.button('StageAuto','自动出征',0,-307,596,66,()=>ctx.startAuto('campaign'),tone('#3d6653'));
+  U.text('StageClose','×',302,345,43,28,GOLD);
+  U.tap('StageCloseTap',302,345,44,44,()=>ctx.back('campaign'));
 }
 
 export function home(ctx: ScreenContext) {
@@ -179,175 +194,294 @@ export function home(ctx: ScreenContext) {
     U.text('CityLord',`主公 · Lv.${store.playerLevel()}`,-133,585,228,19,tone('#766a51'));
     U.text('CityPower',`战力 ${fmt.fmtNum(store.teamPower())}`,252,608,180,18,INK);
     U.text('CityExp',`战斗经验 ${fmt.fmtNum(s.player.exp)}`,254,580,181,15,tone('#766a51'));
-    const res:[string,string,number][]=[['铜钱','gold',s.res.gold],['元宝','gem',s.res.gem],['招募令','scroll',s.res.scroll]];
+    const res:[string,string,number][]=[['铜钱','gold',s.res.gold],['元宝','gem',s.res.gem],['招募令','scroll',s.res.scroll],['精铁','iron',s.res.iron]];
     res.forEach(([label,key,value],i)=>{
-      const x=-242+i*242;
-      U.panel('CityRes'+key,x,521,225,44,tone('#ddd0b2'),7,tone('#aa9a76'));
-      U.text('CityResLabel'+key,label,x-55,521,95,17,tone('#766a51'));
-      U.text('CityResValue'+key,fmt.fmtNum(value),x+60,521,95,20,INK);
+      const x=-261+i*174;
+      U.panel('CityRes'+key,x,521,164,44,tone('#ddd0b2'),7,tone('#aa9a76'));
+      U.text('CityResLabel'+key,label,x-36,521,84,17,tone('#766a51'));
+      U.text('CityResValue'+key,fmt.fmtNum(value),x+43,521,79,19,INK);
     });
   }
 
 export function journey(ctx: ScreenContext) {
-    const s=store.getState(),U=ctx.ui;ctx.title('玩法 · 王庭','挑战群英塔，演武切磋，经营军械与集市');
-    const cards:[Page,string,string,string,number,number][]=[
-      ['tower','群英塔','无限挑战，节节高升',`已登 ${s.tower.best} 层`,-168,224],
-      ['arena','演武场','切磋武艺，争夺排名',`积分 ${s.arena.points} · 剩余 ${s.arena.attempts} 次`,168,224],
-      ['armory','军械图鉴','全军共享，培养六部位','装备与升星',-168,-34],
-      ['shop','集市','每日刷新，物资兑换','每日限购',168,-34]
+    const s=store.getState(),U=ctx.ui,armory=store.getArmoryState();
+    U.text('JourneyHeading','玩法 · 王庭',-204,521,275,29,GOLD);
+    const cards:[Page,string,string,string,string,number,number][]=[
+      ['tower','塔','群英塔','无限挑战，节节高升',`已登 ${s.tower.best} 层`,-168,416],
+      ['arena','演','演武场','切磋武艺，争锋排名',`${items.arenaRank(s.arena.points)} · 今日剩 ${s.arena.attempts} 次`,168,416],
+      ['armory','械','军械图鉴','全军共用，培养六部位',`已解锁 ${armory.unlockedCount}/${armory.total}`,-168,218],
+      ['shop','市','集市','每日刷新，奇货可居','每日刷新',168,218]
     ];
-    cards.forEach(([page,name,description,stat,x,y],i)=>{
-      U.panel('JourneyCard'+i,x,y,312,226,tone('#312218'),12,tone('#a17b40'));
-      U.text('JourneyGlyph'+i,['塔','演','械','市'][i],x-99,y+55,69,53,GOLD);
-      U.text('JourneyName'+i,name,x+18,y+53,200,31,LIGHT);
-      U.text('JourneyDescription'+i,description,x,y-12,275,19,tone('#ad9977'));
-      U.text('JourneyStat'+i,stat,x,y-76,275,19,GOLD);
-      U.tap('JourneyTap'+i,x,y,312,226,()=>ctx.go(page));
+    cards.forEach(([page,glyph,name,description,stat,x,y],i)=>{
+      U.panel('JourneyCard'+i,x,y,319,177,tone('#312218'),10,tone('#a17b40'));
+      U.text('JourneyGlyph'+i,glyph,x-113,y+43,59,49,GOLD);
+      U.text('JourneyName'+i,name,x+25,y+44,207,28,LIGHT);
+      U.text('JourneyDescription'+i,description,x,y-9,289,18,tone('#ad9977'));
+      U.text('JourneyStat'+i,stat,x,y-54,289,19,GOLD);
+      U.tap('JourneyTap'+i,x,y,319,177,()=>ctx.go(page));
     });
-    U.panel('JourneyCampaign',-165,-292,309,76,tone('#3d6653'),9,GOLD);
-    U.text('JourneyCampaignText',`主线 · 已过 ${s.campaign.cleared} 关`,-165,-292,287,23,LIGHT);
-    U.tap('JourneyCampaignTap',-165,-292,309,76,()=>ctx.go('campaign'));
-    U.panel('JourneyTraining',165,-292,309,76,tone('#a47a3e'),9,GOLD);
-    U.text('JourneyTrainingText','自动练兵 · 最多10胜',165,-292,287,21,INK);
-    U.tap('JourneyTrainingTap',165,-292,309,76,()=>ctx.startAuto('training'));
+    U.text('JourneyVersion','「挂机定三国」放置卡牌 · v2.0.0',0,53,580,18,tone('#ad9977'));
+    U.text('JourneyGuide','挑战群英塔获取资源，在演武场切磋阵容',0,5,620,18,LIGHT);
+    U.text('JourneyGuide2','装备培养与物资兑换也在这里。',0,-20,620,18,LIGHT);
   }
 
 export function bag(ctx: ScreenContext) {
-    const s=store.getState(), idle=store.idlePending(),U=ctx.ui;ctx.title('背包','查看物资 · 了解用途 · 管理装备');
+    const s=store.getState(),U=ctx.ui;ctx.title('背包','查看物资 · 了解用途 · 管理装备');
     U.panel('BagResourcesTab',-169,385,308,63,palette.gold,9);
     U.text('BagResourcesText','资源道具',-169,385,283,24,INK);
     U.panel('BagArmoryTab',169,385,308,63,tone('#342518'),9,GOLD);
     U.text('BagArmoryText','军械图鉴',169,385,280,23,GOLD);
     U.tap('BagArmoryTap',169,385,308,63,()=>ctx.go('armory'));
-    const resources:[string,number,string,Page][]=[
-      ['铜钱',s.res.gold,'英雄升星与军械部位升星','heroes'],
-      ['精铁',s.res.iron,'解锁军械图鉴、培养部位','armory'],
-      ['元宝',s.res.gem,'召唤英雄、购买集市物资','summon'],
-      ['招募令',s.res.scroll,'在召唤页面招募新英雄','summon'],
-      ['演武令',s.res.token,'进入演武场切磋','arena'],
-      ['英雄碎片',s.res.shard,'英雄培养材料','heroes']
+    const resources:[string,string,number,string,string,Page][]=[
+      ['钱','铜钱',s.res.gold,'英雄升星与军械部位升星','去培养英雄','heroes'],
+      ['铁','精铁',s.res.iron,'解锁军械图鉴、培养部位','去军械图鉴','armory'],
+      ['宝','元宝',s.res.gem,'召唤英雄、购买集市物资','前往集市','shop'],
+      ['令','招募令',s.res.scroll,'在召唤页面招募新英雄','去召唤英雄','summon'],
+      ['武','演武令',s.res.token,'在集市兑换招募令、自选卡','前往集市','shop'],
+      ['魂','英雄碎片',s.res.shard,'在集市兑换英雄自选卡','前往集市','shop']
     ];
-    resources.forEach(([name,n,desc,page],i)=>{
-      const x=i%2?169:-169,y=224-Math.floor(i/2)*206;
-      U.panel('BagCard'+i,x,y,310,181,tone('#302219'),11,tone('#795b34'));
-      U.text('BagCardName'+i,name,x-40,y+51,170,26,LIGHT);
-      U.text('BagCardCount'+i,fmt.fmtNum(n),x+53,y+51,124,26,GOLD);
-      U.text('BagCardDesc'+i,desc,x,y-14,275,18,tone('#ad9977'));
-      U.text('BagCardLink'+i,'查看用途 ›',x,y-64,275,18,GOLD);
-      U.tap('BagCardTap'+i,x,y,310,181,()=>ctx.go(page));
+    resources.forEach(([glyph,name,n,desc,action,page],i)=>{
+      const x=i%2?169:-169,y=208-Math.floor(i/2)*210;
+      U.panel('BagCard'+i,x,y,310,193,tone('#302219'),9,tone('#795b34'));
+      U.panel('BagMarkPanel'+i,x-105,y+54,56,56,tone('#443421'),7);
+      U.text('BagMark'+i,glyph,x-105,y+54,46,34,GOLD);
+      U.text('BagCardName'+i,name,x+28,y+66,178,24,LIGHT);
+      U.text('BagCardCount'+i,fmt.fmtNum(n),x+28,y+34,178,28,GOLD);
+      U.text('BagCardDesc'+i,desc,x,y-17,282,19,tone('#ad9977'));
+      U.text('BagCardLink'+i,action+' ›',x,y-70,275,18,GOLD);
+      U.tap('BagCardTap'+i,x,y,310,193,()=>ctx.go(page));
     });
-    U.text('IdleBag',`待领挂机  铜 ${fmt.fmtNum(idle.gold)} · 铁 ${idle.iron} · 令 ${idle.scroll}`,0,-404,630,20,GOLD);
-    U.button('ClaimAll','一键领取',0,-480,453,69,()=>{
-      const result=store.claimFreeRewards();
-      ctx.tell(result,result.changed?'可领取资源已结算':'暂无可领取资源');
-    },palette.gold);
+    U.text('BagGuide','点击物资卡片，前往对应功能使用',0,-458,620,18,tone('#ad9977'));
   }
 
 export function quests(ctx: ScreenContext) {
-    ctx.title('每日军令',`活跃度 ${store.activePoints()} · 每日刷新`);
-    store.questList().slice(0,6).forEach((q: any,i: number)=>ctx.row('Quest'+i,`${q.name}  ${q.count}/${q.target} ${q.claimed?'已领':''}`,350-i*112,()=>ctx.tell(store.claimQuest(q.id),`已领取 ${q.name}`),q.claimed?'已领':q.done?'领取':'查看'));
-    items.ACTIVE_CHESTS.forEach((chest: any,i: number)=>{
-      const claimed=store.getState().daily.active.includes(i);
-      ctx.ui.button('Chest'+i,`${chest.need}活跃 · ${claimed?'已领':'领取'}`,-220+i*220,-337,205,62,
-        ()=>ctx.tell(store.claimActiveChest(i),`已领取 ${chest.need} 活跃宝箱`),claimed?palette.green:palette.paperDark);
+    const U=ctx.ui,quests=store.questList(),active=store.activePoints(),chests=items.ACTIVE_CHESTS;
+    ctx.title('每日任务',`活跃度 ${Math.min(100,active)} · 每日刷新`);
+    const contentH=Math.max(740,quests.length*106+187);
+    U.scroll('QuestScroll',0,-11,665,805,contentH,(V)=>{
+      quests.forEach((q:any,i:number)=>{
+        const y=contentH/2-53-i*106;
+        V.panel('QuestCard'+i,0,y,639,97,tone('#312218'),8,tone('#795b34'));
+        V.text('QuestName'+i,q.name,-159,y+20,319,24,LIGHT);
+        V.text('QuestCount'+i,`${q.count}/${q.target}`,125,y+23,98,17,tone('#ad9977'));
+        const reward=Object.entries(q.reward).map(([key,n])=>`${store.CURRENCY_NAME[key]||key}×${fmt.fmtNum(n)}`).join(' · ');
+        V.text('QuestReward'+i,reward,-153,y-22,319,17,tone('#ad9977'));
+        V.button('QuestClaim'+i,q.claimed?'已领取':q.done?'领取':'未完成',236,y,144,59,()=>{
+          if(!q.done||q.claimed)return;
+          ctx.tell(store.claimQuest(q.id),`已领取 ${q.name}`);
+        },q.done&&!q.claimed?palette.gold:tone('#423022'));
+      });
+      const chestY=contentH/2-53-quests.length*106;
+      V.text('QuestActive',`活跃度 ${Math.min(100,active)} · 活跃宝箱`,-141,chestY+28,340,23,GOLD);
+      chests.forEach((chest:any,i:number)=>{
+        const claimed=store.getState().daily.active.includes(i),can=active>=chest.need;
+        const x=-212+i*212;
+        V.button('Chest'+i,`${chest.need} 活跃`,x,chestY-37,193,62,()=>{
+          if(!can||claimed)return;
+          ctx.tell(store.claimActiveChest(i),`已领取 ${chest.need} 活跃宝箱`);
+        },can&&!claimed?palette.gold:tone('#423022'));
+        V.text('ChestStatus'+i,claimed?'已领取':can?'领取宝箱':'未达成',x,chestY-76,183,17,tone('#ad9977'));
+      });
     });
-    ctx.ui.button('ClaimDaily','领取全部可得',0,-430,435,80,()=>{
+    U.button('ClaimDaily','领取全部日常',-167,-484,315,63,()=>{
       const result=store.claimAllDailyRewards();
       ctx.tell(result,result.changed?'可领取军令已结算':'暂无可领取奖励');
     },palette.gold);
+    U.button('QuestBack','返 回',167,-484,315,63,()=>ctx.back('campaign'),palette.paperDark);
   }
 
+let shopPickRarity=0;
 export function shop(ctx: ScreenContext) {
-    ctx.title('集市','每日限购 · 资源由真实存档结算');
-    items.SHOP_GOODS.slice(0,7).forEach((good: any,i: number)=>ctx.row('Shop'+i,`${good.name}  ${good.price} ${store.CURRENCY_NAME[good.cur]}`,352-i*103,()=>ctx.confirm('确认购买',`消耗 ${good.price} ${store.CURRENCY_NAME[good.cur]}，购买 ${good.name}`,()=>ctx.tell(store.buyGood(good.id),`购得 ${good.name}`)),'购买'));
+    store.checkDailyReset();
+    const U=ctx.ui,s=store.getState(),goods=items.SHOP_GOODS;
+    ctx.title('集 市');
+    U.text('ShopToday','今 日 商 品（每日刷新）',-176,414,365,24,GOLD);
+    U.text('ShopVouchers',`待用自选券：SR ${s.vouchers.sr} · SSR ${s.vouchers.ssr}`,-136,379,464,19,tone('#ad9977'));
+    let top=349;
+    if(s.vouchers.sr||s.vouchers.ssr){
+      if(s.vouchers.sr)U.button('UseSr',`使用 SR 自选券 ×${s.vouchers.sr}`,-171,336,317,48,()=>{shopPickRarity=3;ctx.show('shop');},palette.gold);
+      if(s.vouchers.ssr)U.button('UseSsr',`使用 SSR 自选券 ×${s.vouchers.ssr}`,171,336,317,48,()=>{shopPickRarity=4;ctx.show('shop');},palette.gold);
+      top=303;
+    }
+    const height=top+443,contentH=Math.max(height,goods.length*101+62);
+    U.scroll('ShopGoods',0,(top-443)/2,680,height,contentH,(V)=>{
+      goods.forEach((good:any,i:number)=>{
+        const y=contentH/2-51-i*101,bought=s.buyLog.buys[good.id]||0,sold=bought>=good.limit,afford=s.res[good.cur]>=good.price;
+        V.panel('ShopGood'+i,0,y,662,92,tone('#312218'),8,tone('#795b34'));
+        V.text('ShopName'+i,good.name,-150,y+19,334,26,good.give.ssrPick?GOLD:LIGHT);
+        V.text('ShopLimit'+i,`限购 ${bought}/${good.limit}`,-187,y-21,249,18,tone('#ad9977'));
+        if(good.give.srPick||good.give.ssrPick)V.text('ShopChoiceTag'+i,'自选',58,y+19,77,17,GOLD);
+        V.button('ShopBuy'+i,sold?'售罄':`${fmt.fmtNum(good.price)} ${store.CURRENCY_NAME[good.cur]}`,233,y,198,62,()=>{
+          if(sold||!afford)return;
+          ctx.confirm('确认兑换',`购买 ${good.name}；消耗 ${fmt.fmtNum(good.price)} ${store.CURRENCY_NAME[good.cur]}。持有 ${fmt.fmtNum(s.res[good.cur])} → 兑换后 ${fmt.fmtNum(s.res[good.cur]-good.price)}`,()=>{
+            const r=store.buyGood(good.id);
+            if(r.ok&&(good.give.srPick||good.give.ssrPick))shopPickRarity=good.give.ssrPick?4:3;
+            ctx.tell(r,`购得 ${good.name}`);
+          });
+        },sold||!afford?tone('#423022'):palette.gold);
+      });
+      V.text('ShopTip','满星后的同名卡可兑换碎片；关闭自选窗口不会消耗自选券。',0,contentH/2-51-goods.length*101-16,645,16,tone('#ad9977'));
+    });
+    U.button('ShopBack','返 回',0,-493,298,56,()=>{shopPickRarity=0;ctx.back('journey');},palette.paperDark);
+    if(shopPickRarity){
+      const rarity=shopPickRarity,key=rarity===4?'ssr':'sr';
+      if(!s.vouchers[key]){shopPickRarity=0;return;}
+      U.rect('ShopPickShade',0,0,720,1280,new Color(12,10,8,190));
+      U.tap('ShopPickShadeTap',0,0,720,1280,()=>{shopPickRarity=0;ctx.show('shop');});
+      U.panel('ShopPickPanel',0,0,658,974,tone('#211911'),12,GOLD);
+      U.tap('ShopPickPanelBlock',0,0,658,974,()=>{});
+      U.text('ShopPickHeading',rarity===4?'自 选 SSR 名 将':'自 选 SR 名 将',0,449,595,29,GOLD);
+      const list=heroes.HEROES.filter((hero:any)=>hero.rarity===rarity),rows=Math.ceil(list.length/3),ch=188,gridH=Math.max(720,rows*ch+12);
+      U.scroll('ShopPickGrid',0,-19,622,811,gridH,(V)=>{
+        list.forEach((hero:any,i:number)=>{
+          const x=-206+i%3*206,y=gridH/2-94-Math.floor(i/3)*ch;
+          V.panel('ShopPickCard'+i,x,y,185,177,tone('#322319'),8,rarity===4?GOLD:tone('#795b34'));
+          V.panel('ShopPickPortrait'+i,x,y+32,149,89,tone('#37463a'),7);
+          V.text('ShopPickGlyph'+i,hero.name[0],x,y+33,91,54,LIGHT);
+          V.text('ShopPickName'+i,hero.name,x,y-25,166,22,LIGHT);
+          V.text('ShopPickTitle'+i,hero.title||'',x,y-51,164,16,tone('#ad9977'));
+          V.tap('ShopPickTap'+i,x,y,185,177,()=>{
+            const r=store.useChoiceVoucher(rarity,hero.id);
+            if(r.ok)shopPickRarity=0;
+            ctx.tell(r,r.isNew?`解锁 ${hero.name}`:r.autoStar?`${hero.name} 自动升至 ★${r.star}`:`获得 ${hero.name}`);
+          });
+        });
+      });
+      U.button('ShopPickClose','暂不选择',0,-443,290,55,()=>{shopPickRarity=0;ctx.show('shop');},palette.paperDark);
+    }
   }
 
 export function formation(ctx: ScreenContext) {
-  const s=store.getState();
-  const U=ctx.ui;
-  ctx.title('出征编队',`五人共享等级 · 总战力 ${fmt.fmtNum(store.teamPower())}`);
-  U.panel('FormationSummary',0,336,670,118,tone('#342518'),11,GOLD);
-  U.text('FormationSummaryTitle','出征编队',-186,358,270,30,GOLD);
-  U.text('FormationPower',`总战力 ${fmt.fmtNum(store.teamPower())}`,-190,317,270,26,GOLD);
-  U.text('FormationTip','点击将位，换上已拥有的武将',178,337,310,19,tone('#ad9977'));
-  U.text('FormationBackLabel','后排（远程输出 / 辅助）',0,242,510,22,tone('#ad9977'));
-  U.text('FormationFrontLabel','前排（承伤 / 近战）',0,-53,510,22,tone('#ad9977'));
-  U.scene('FormationDivider',g=>{g.strokeColor=GOLD;g.lineWidth=2;g.moveTo(-300,-18);g.lineTo(300,-18);g.stroke();});
+  const s=store.getState(), U=ctx.ui,bonus=store.formationFactionBonus().bonus;
+  ctx.title('编 队');
+  U.panel('FormationSummary',0,331,682,120,tone('#342518'),11,GOLD);
+  U.text('FormationSummaryTitle','出征编队',-204,366,260,28,GOLD);
+  U.text('FormationPower',`总战力 ${fmt.fmtNum(store.teamPower())}`,-202,331,270,25,GOLD);
+  U.text('FormationFaction',bonus.atk>0?`同阵营 ×${bonus.atk>=.18?5:bonus.atk>=.12?4:3}：攻击/生命 +${Math.round(bonus.atk*100)}%`:'同阵营 3/4/5 人激活全队加成',-181,295,355,18,tone('#ad9977'));
+  U.button('FormationRecommend','推荐布阵',244,331,170,55,()=>{
+    formationRecommended=recommendFormation(store.allRoster());ctx.show('formation');
+  },palette.gold);
+  U.text('FormationBackLabel','后 排（远程输出 / 辅助）',0,238,540,19,tone('#ad9977'));
+  U.text('FormationFrontLabel','前 排（承伤 / 近战）',0,-8,540,19,tone('#ad9977'));
+  U.line('FormationDivider',[[-250,25],[250,25]],2,tone('#766349'));
   s.formation.forEach((id: string|null,i: number)=>{
-    const x=i<3?-226+i*226:-113+(i-3)*226,y=i<3?-197:118;
+    const x=i<3?-216+i*216:-108+(i-3)*216,y=i<3?-117:136;
     const hero=id?heroes.getHero(id):null;
-    U.panel('Slot'+i,x,y,182,192,tone('#322319'),13,id?GOLD:tone('#827563'));
-    U.panel('SlotAvatar'+i,x,y+11,142,140,tone('#37463a'),14,id?GOLD:tone('#827563'));
-    U.text('SlotGlyph'+i,hero?.name?.[0]||'空',x,y+15,113,73,LIGHT);
-    U.text('SlotName'+i,hero?.name||'点击选将',x,y-66,160,20,GOLD);
-    U.tap('SlotTap'+i,x,y,182,192,()=>{
-      ctx.selectedFormationSlot=i;
-      ctx.formationPageIndex=0;
-      ctx.go('formationPick');
-    });
+    U.panel('Slot'+i,x,y,188,172,tone('#322319'),9,id?GOLD:tone('#827563'));
+    U.panel('SlotAvatar'+i,x,y+25,145,105,tone('#37463a'),8,id?GOLD:tone('#827563'));
+    U.text('SlotGlyph'+i,hero?.name?.[0]||'+',x,y+27,105,63,LIGHT);
+    U.text('SlotName'+i,hero?.name||'点击上阵',x,y-49,165,21,GOLD);
+    U.text('SlotLevel'+i,hero?`Lv.${store.playerLevel()}`:'',x,y-71,150,16,tone('#ad9977'));
+    U.tap('SlotTap'+i,x,y,188,172,()=>{ctx.selectedFormationSlot=i;ctx.go('formationPick');});
   });
+  U.text('FormationHelp1','点击已上阵武将可更换；阵营克制：魏→蜀→吴→群→魏',0,-260,650,18,tone('#ad9977'));
+  U.text('FormationHelp2','克制方伤害 +25%',0,-285,600,18,tone('#ad9977'));
+  U.button('FormationBack','返 回',0,-473,297,58,()=>ctx.back('campaign'),palette.paperDark);
+  if(formationRecommended){
+    const recommended=formationRecommended;
+    U.rect('FormationRecShade',0,0,720,1280,new Color(12,10,8,190));
+    U.tap('FormationRecShadeTap',0,0,720,1280,()=>{formationRecommended=null;ctx.show('formation');});
+    U.panel('FormationRecPanel',0,0,618,576,tone('#251b14'),12,GOLD);
+    U.tap('FormationRecBlock',0,0,618,576,()=>{});
+    U.text('FormationRecTitle','均衡推荐编队',0,248,546,29,GOLD);
+    U.text('FormationRecHint','按职业与战力生成建议；不会因抽到新将自动换阵。',0,206,570,17,tone('#ad9977'));
+    recommended.forEach((id:string|null,i:number)=>{
+      const hero=id?store.allRoster().find((h:any)=>h.id===id):null;
+      U.text('FormationRecSlot'+i,`${i+1}号位 · ${i<3?'前排':'后排'} · ${hero?`${hero.name}（战力 ${fmt.fmtNum(hero.power)}）`:'空位'}`,
+        0,136-i*52,550,20,hero?LIGHT:tone('#ad9977'));
+    });
+    U.button('FormationRecCancel','保留当前阵容',-149,-220,271,59,()=>{formationRecommended=null;ctx.show('formation');},tone('#423022'));
+    U.button('FormationRecApply','应用推荐编队',149,-220,271,59,()=>{
+      formationRecommended=null;ctx.tell(store.applyFormation(recommended),'均衡推荐编队已应用');
+    },palette.gold);
+  }
 }
 
 export function formationPick(ctx: ScreenContext) {
-  const slot=ctx.selectedFormationSlot, s=store.getState();
-  const list=store.allRoster().sort((a: any,b: any)=>b.power-a.power);
-  const totalPages=Math.max(1,Math.ceil(list.length/6));
-  ctx.formationPageIndex=Math.min(ctx.formationPageIndex,totalPages-1);
-  ctx.title(`选择${slot<3?'前排':'后排'}武将`,`${list.length} 名已拥有 · 第 ${ctx.formationPageIndex+1}/${totalPages} 页`);
-  list.slice(ctx.formationPageIndex*6,ctx.formationPageIndex*6+6).forEach((hero: any,i: number)=>{
-    const inTeam=s.formation.includes(hero.id);
-    ctx.row('Pick'+i,`${hero.name} · 战力 ${fmt.fmtNum(hero.power)} ${inTeam?'· 已上阵':''}`,
-      355-i*111,()=>{
-        const next=s.formation.slice(), other=next.indexOf(hero.id), prior=next[slot];
-        next[slot]=hero.id;
-        if(other>=0&&other!==slot)next[other]=prior;
-        const result=store.applyFormation(next);
-        ctx.notice=result.ok?`已上阵 ${hero.name}`:result.msg;
-        ctx.show(result.ok?'formation':'formationPick');
-      },'选用');
-  });
-  ctx.ui.button('PickPrev','上一页',-162,-405,250,65,()=>{
-    ctx.formationPageIndex=Math.max(0,ctx.formationPageIndex-1);ctx.show('formationPick');
-  },palette.paperDark);
-  ctx.ui.button('PickNext','下一页',162,-405,250,65,()=>{
-    ctx.formationPageIndex=Math.min(totalPages-1,ctx.formationPageIndex+1);ctx.show('formationPick');
-  },palette.paperDark);
-  ctx.ui.button('PickEmpty','撤下该位置',-161,-488,250,64,()=>{
+  const slot=ctx.selectedFormationSlot,s=store.getState(),U=ctx.ui;
+  const formed=new Set(s.formation);
+  const list=store.allRoster().filter((hero:any)=>!formed.has(hero.id)).sort((a:any,b:any)=>b.power-a.power);
+  ctx.title(`选 择 武 将（${slot+1}号位）`);
+  U.panel('FormationPickerPanel',0,-5,654,918,tone('#2a1e15'),12,GOLD);
+  U.button('PickEmpty','卸下该位置',0,382,591,48,()=>{
     const next=s.formation.slice();next[slot]=null;
     const result=store.applyFormation(next);
-    ctx.notice=result.ok?'已撤下武将':result.msg;
-    ctx.show(result.ok?'formation':'formationPick');
-  },palette.red);
-  ctx.ui.button('PickBack','返回编队',161,-488,250,64,()=>ctx.go('formation'),palette.green);
+    if(result.ok){ctx.back('formation');ctx.notice='已撤下武将';ctx.show('formation');}
+    else ctx.tell(result,'');
+  },tone('#423022'));
+  const rows=Math.ceil(list.length/3),contentH=Math.max(707,rows*200+12);
+  U.scroll('FormationPickerGrid',0,-26,607,704,contentH,(V)=>{
+    list.forEach((hero:any,i:number)=>{
+      const col=i%3,row=Math.floor(i/3),x=-201+col*201,y=contentH/2-103-row*200;
+      V.panel('PickCard'+i,x,y,184,184,tone('#322319'),8,hero.rarity>=4?GOLD:tone('#795b34'));
+      V.panel('PickFace'+i,x,y+39,155,97,tone('#37463a'),8);
+      V.text('PickGlyph'+i,hero.name[0],x,y+42,105,55,LIGHT);
+      V.text('PickName'+i,hero.name,x,y-23,166,22,LIGHT);
+      V.text('PickGrade'+i,['','N','R','SR','SSR'][hero.rarity]||'',x+58,y-47,60,17,GOLD);
+      V.text('PickLevel'+i,`Lv.${hero.level}`,x-48,y-48,80,17,GOLD);
+      V.text('PickPower'+i,`战力 ${fmt.fmtNum(hero.power)}`,x,y-70,170,16,tone('#ad9977'));
+      V.tap('PickTap'+i,x,y,184,184,()=>{
+        const next=s.formation.slice();next[slot]=hero.id;
+        const result=store.applyFormation(next);
+        if(result.ok){ctx.back('formation');ctx.notice=`已上阵 ${hero.name}`;ctx.show('formation');}
+        else {ctx.notice=result.msg;ctx.show('formationPick');}
+      });
+    });
+    if(!list.length)V.text('PickEmptyText','没有可上阵的武将了',0,contentH/2-80,525,22,tone('#ad9977'));
+  });
+  U.button('PickBack','返回编队',0,-477,354,63,()=>ctx.back('formation'),palette.paperDark);
 }
 
 export function tower(ctx: ScreenContext) {
-    const n=store.getState().tower.best+1,U=ctx.ui;
-    ctx.title('群英塔',`已登 ${n-1} 层 · ${stages.makeTowerEnemies(n).name}`);
-    U.panel('TowerPanel',0,39,660,752,tone('#312218'),13,GOLD);
-    U.text('TowerLabel','当前挑战层',0,334,560,28,GOLD);
-    U.text('Floor',String(n),0,137,300,175,GOLD);
-    U.text('TowerEnemy',stages.makeTowerEnemies(n).name,0,-29,570,25,LIGHT);
-    U.text('TowerRule','层层登高 · 每层胜利后开启下一层',0,-114,565,20,tone('#ad9977'));
-    U.button('TowerFight','挑战本层',0,-322,445,89,()=>ctx.startBattle('tower',n),palette.red);
+    const best=store.getState().tower.best,n=best+1,U=ctx.ui;
+    ctx.title('群 英 塔');
+    U.panel('TowerSummary',0,333,682,116,tone('#312218'),10,GOLD);
+    U.text('TowerBest',`已登第 ${best} 层`,-171,360,322,31,GOLD);
+    U.text('TowerPower',`我军战力 ${fmt.fmtNum(store.teamPower())} · 每 5 层一名将坐镇`,-104,314,474,18,tone('#ad9977'));
+    U.button('TowerFight',`挑战 ${n} 层`,244,339,172,60,()=>ctx.startBattle('tower',n),palette.red);
+    const start=Math.max(1,best-2),floors=Array.from({length:11},(_,i)=>start+i),contentH=Math.max(680,floors.length*107);
+    U.scroll('TowerFloors',0,-77,688,695,contentH,(V)=>{
+      floors.forEach((floor,i)=>{
+        const y=contentH/2-54-i*107,cleared=floor<=best,current=floor===n,boss=floor%5===0;
+        V.panel('FloorCard'+i,0,y,672,95,tone('#312218'),8,current?GOLD:tone('#795b34'));
+        V.panel('FloorSeal'+i,-276,y,68,68,tone('#211c16'),34,current?GOLD:tone('#795b34'));
+        V.text('FloorNum'+i,String(floor),-276,y,58,30,current?GOLD:LIGHT);
+        V.text('FloorEnemy'+i,boss?'名将层':'寻常守军',-102,y+20,305,24,LIGHT);
+        V.text('FloorStatus'+i,cleared?'已通关（可重复挑战）':current?'当前可挑战':'暂无首通奖励',-58,y-23,392,18,tone('#ad9977'));
+        V.text('FloorAction'+i,cleared?'复盘':'挑战',279,y,95,22,GOLD);
+        V.tap('FloorTap'+i,0,y,672,95,()=>ctx.startBattle('tower',floor));
+      });
+    });
+    U.button('TowerBack','返 回',0,-510,296,56,()=>ctx.back('journey'),palette.paperDark);
   }
 
 export function arena(ctx: ScreenContext) {
-    const s=store.getState(),U=ctx.ui; ctx.title('演武场',`积分 ${s.arena.points} · 剩余 ${s.arena.attempts} 次`);
-    U.panel('ArenaSummary',0,338,670,123,tone('#322319'),12,GOLD);
-    U.text('ArenaPoints',`都尉 · ${s.arena.points} 分`,-146,357,344,30,GOLD);
-    U.text('ArenaPower',`我军战力 ${fmt.fmtNum(store.teamPower())}`,170,357,298,23,LIGHT);
-    U.text('ArenaAttempts',`今日剩余 ${s.arena.attempts} 次 · 胜利可获得积分与演武令`,0,309,626,18,tone('#ad9977'));
-    U.text('ArenaToday','今 日 对 手',-216,240,244,27,GOLD);
-    [0.8,1,1.2].forEach((diff,i)=>{
-      const y=153-i*170,power=Math.round(store.teamPower()*diff);
-      U.panel('Arena'+i,0,y,668,145,tone('#312218'),11,tone('#8c6a3a'));
-      U.text('ArenaEnemy'+i,['守关老卒 · 1号','游历侠客 · 2号','无名猛将 · 3号'][i],-163,y+31,312,27,GOLD);
-      U.text('ArenaEnemyPower'+i,`守军战力约 ${fmt.fmtNum(power)}`,-177,y-15,283,20,tone('#ad9977'));
-      U.panel('ArenaFight'+i,218,y,168,65,palette.red,8,GOLD);
-      U.text('ArenaFightText'+i,'切磋',218,y,148,25,LIGHT);
-      U.tap('ArenaTap'+i,0,y,668,145,()=>ctx.startBattle('arena',i+1,diff));
+    const s=store.getState(),U=ctx.ui;ctx.title('演 武 场');
+    U.panel('ArenaSummary',0,335,682,119,tone('#322319'),10,GOLD);
+    U.text('ArenaPoints',`${items.arenaRank(s.arena.points)} · ${s.arena.points} 分`,-158,361,340,30,GOLD);
+    U.text('ArenaPowerTitle','我军战力',212,366,200,17,tone('#ad9977'));
+    U.text('ArenaPower',fmt.fmtNum(store.teamPower()),215,337,200,26,GOLD);
+    U.text('ArenaAttempts',`战绩 ${s.arena.wins} 胜 ${s.arena.losses} 负 · 今日剩 ${s.arena.attempts} 次`,-141,302,420,18,tone('#ad9977'));
+    U.text('ArenaFormation','调整编队 ›',222,302,198,18,tone('#ad9977'));
+    U.tap('ArenaFormationTap',218,328,228,104,()=>ctx.go('formation'));
+    U.text('ArenaToday','今 日 对 手',-219,233,235,26,GOLD);
+    const date=new Date(),day=date.getFullYear()*10000+(date.getMonth()+1)*100+date.getDate();
+    [
+      {diff:.8,name:'守碉老卒·1号'},
+      {diff:1.05,name:'游历侠客·2号'},
+      {diff:1.35,name:'无名猛将·3号'}
+    ].forEach((o,i)=>{
+      const y=134-i*142,enemy=stages.makeArenaEnemies(store.teamPower(),day*97+i*13,o.diff);
+      const power=Math.floor(enemy.units.reduce((sum:number,unit:any)=>sum+heroes.heroPower(unit.hero,unit.level,unit.star),0)*(o.diff>1?o.diff*.98:o.diff));
+      U.panel('Arena'+i,0,y,682,126,tone('#312218'),9,o.diff>1.2?GOLD:tone('#8c6a3a'));
+      U.text('ArenaEnemy'+i,o.name,-161,y+32,320,26,GOLD);
+      U.text('ArenaDifficulty'+i,o.diff>1.2?'凶险':'寻常',267,y+32,115,18,o.diff>1.2?palette.red:tone('#ad9977'));
+      U.text('ArenaEnemyPower'+i,`守军约 Lv.${enemy.units[0].level} · 战力 ${fmt.fmtNum(power)}`,-138,y-26,369,18,tone('#ad9977'));
+      U.button('ArenaFight'+i,'切 磋',244,y-20,174,54,()=>ctx.startArenaBattle(o.diff,day*97+i*13),palette.red);
     });
+    U.text('ArenaRule1','胜得积分与演武令×2，败亦得演武令×1',0,-335,660,18,LIGHT);
+    U.text('ArenaRule2','演武令可在集市兑换招募令与自选卡',0,-359,660,18,tone('#ad9977'));
+    U.button('ArenaBack','返 回',0,-481,295,59,()=>ctx.back('journey'),palette.paperDark);
   }
 
 export function storyView(ctx: ScreenContext) {
@@ -369,5 +503,5 @@ export function storyView(ctx: ScreenContext) {
       store.markStorySeen(ctx.storyStage); store.save(); ctx.startBattle('campaign',ctx.storyStage);
     });
     U.text('StoryBackText','返回关卡预览',0,-482,318,20,GOLD);
-    U.tap('StoryBackTap',0,-482,318,45,()=>ctx.go('stagePreview'));
+    U.tap('StoryBackTap',0,-482,318,45,()=>ctx.back('stagePreview'));
   }

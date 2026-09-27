@@ -32,8 +32,10 @@ export class CocosBootstrap extends Component implements ScreenContext {
   public battleMode = 'campaign';
   public battleIndex = 1;
   public battleDiff = 1;
+  public battleArenaSeed = 0;
   private refreshTime = 0;
   public outcome: any = null;
+  public lastBattleSnapshot: any[] = [];
   public storyStage = 1;
   public auto = false;
   public autoStopPending = false;
@@ -43,9 +45,10 @@ export class CocosBootstrap extends Component implements ScreenContext {
   private adReturn: Page = 'home';
   private adReward: (() => void) | null = null;
   public lastSummon: any[] = [];
+  private navigation: Page[] = [];
 
   onLoad() {
-    view.setDesignResolutionSize(720, 1280, ResolutionPolicy.SHOW_ALL);
+    view.setDesignResolutionSize(720, 1280, ResolutionPolicy.FIXED_WIDTH);
     profiler.hideStats();
     store.load();
     store.checkDailyReset();
@@ -87,12 +90,17 @@ export class CocosBootstrap extends Component implements ScreenContext {
   public show(page: Page) {
     this.page = page;
     for (const child of this.content.children.slice()) child.destroy();
-    const U = this.ui = new CocosUi(this.content), s = store.getState();
+    const verticalScale=Math.max(1,view.getVisibleSize().height/1280);
+    const U = this.ui = new CocosUi(this.content,verticalScale), s = store.getState();
     U.rect('Backdrop', 0, 0, 720, 1280, palette.ink);
-    if (!['campaign','home','summon','summonResults','heroes','heroDetail','battle','result','stagePreview','story'].includes(page)) {
-      U.rect('Header', 0, 570, 720, 140, palette.ink);
-      U.text('Player', `${s.name} · Lv.${s.player.level} · 战力 ${fmt.fmtNum(store.teamPower())}`, 0, 602, 680, 26, palette.gold);
-      U.text('Resources', `铜 ${fmt.fmtNum(s.res.gold)}    元宝 ${s.res.gem}    令 ${s.res.scroll}    铁 ${s.res.iron}`, 0, 548, 680, 21, palette.paper);
+    if (page === 'journey' || page === 'shop') {
+      const resources: [string, number][] = [['铜钱',s.res.gold],['元宝',s.res.gem],['招募令',s.res.scroll],['演武令',s.res.token],['碎片',s.res.shard]];
+      const y=page==='journey'?590:513;
+      resources.forEach(([label,value],i)=>{
+        const x=-278+i*139;
+        U.panel('ResourcePill'+i,x,y,130,39,palette.ink,19,palette.gold);
+        U.text('ResourceText'+i,`${label} ${fmt.fmtNum(value)}`,x,y,119,16,palette.gold);
+      });
     }
     const render: Record<Page, () => void> = {
       campaign: () => campaignScreens.campaign(this), stagePreview: () => campaignScreens.stagePreview(this), home: () => campaignScreens.home(this), journey: () => campaignScreens.journey(this),
@@ -103,9 +111,9 @@ export class CocosBootstrap extends Component implements ScreenContext {
     };
     render[page]();
     if (this.notice) U.text('Notice', this.notice, 0, -510, 670, 20, palette.gold);
-    if(!['ad','battle','result','stagePreview','story','heroDetail'].includes(page)) {
+    if(['home','journey','campaign','heroes','bag'].includes(page)) {
       U.rect('NavBackground', 0, -594, 720, 92, palette.ink);
-      const nav: [Page,string,string][] = [['home','城','主城'],['heroes','将','英雄'],['summon','召','召唤'],['bag','囊','背包'],['campaign','战','战役']];
+      const nav: [Page,string,string][] = [['home','城','主城'],['journey','图','玩法'],['campaign','战','战役'],['heroes','将','英雄'],['bag','囊','背包']];
       nav.forEach(([p,glyph,label], i) => {
         const x=-288+144*i, active=p===page || (p==='campaign'&&page==='stagePreview');
         if(active) U.panel('NavActive'+p,x,-591,135,84,palette.paperDark,8,palette.gold);
@@ -123,8 +131,14 @@ export class CocosBootstrap extends Component implements ScreenContext {
       this.battleId='';
     }
     this.notice = '';
+    if (page !== this.page) {
+      if (['home','journey','campaign','heroes','bag'].includes(page)) this.navigation = [];
+      else if (this.navigation[this.navigation.length-1] === page) this.navigation.pop();
+      else this.navigation.push(this.page);
+    }
     this.show(page);
   }
+  public back(fallback: Page = 'campaign') { this.go(this.navigation[this.navigation.length-1] || fallback); }
   public tell(result: any, good: string) { this.notice = result?.ok ? good : (result?.msg || '操作失败'); this.show(this.page); }
   public confirm(title: string, detail: string, act: () => void) {
     const U = this.ui;
@@ -180,8 +194,8 @@ export class CocosBootstrap extends Component implements ScreenContext {
     },palette.gold);
   }
   public title(text: string, sub = '') {
-    this.ui.text('Title', text, 0, 481, 650, 35, palette.gold);
-    if (sub) this.ui.text('Subtitle', sub, 0, 438, 650, 19, palette.muted);
+    this.ui.text('Title', text, 0, 569, 650, 35, palette.gold);
+    if (sub) this.ui.text('Subtitle', sub, 0, 523, 650, 19, palette.muted);
   }
   public row(name: string, text: string, y: number, action?: () => void, actionText = '查看') {
     this.ui.panel(name, 0, y, 652, 91, palette.green, 9, palette.gold);
@@ -200,6 +214,7 @@ export class CocosBootstrap extends Component implements ScreenContext {
   }
   private finishBattle(win: boolean) {
     const duration=this.fighting?.result()?.duration || 0;
+    this.lastBattleSnapshot=this.fighting?.snapshot() || [];
     const settled=store.settleBattle(this.battleId,{win});
     this.outcome={...settled,win,duration};
     this.fighting=null;
@@ -228,7 +243,9 @@ export class CocosBootstrap extends Component implements ScreenContext {
     }
   }
 
-  public startBattle(mode: string,index: number,diff=1,fromAuto=false) {
+  public startArenaBattle(diff: number, seed: number) { this.startBattle('arena',0,diff,false,seed); }
+
+  public startBattle(mode: string,index: number,diff=1,fromAuto=false,arenaSeed=0) {
     if(this.fighting)return this.tell({ok:false,msg:'已有战斗进行中'},'');
     if(this.auto && !fromAuto) return this.confirm('自动出征进行中','结束当前自动会话后再开始手动挑战？',()=>{
       this.autoAction(this.autoSession.stop('replaced-by-battle'));
@@ -238,14 +255,16 @@ export class CocosBootstrap extends Component implements ScreenContext {
       this.storyStage=index;this.go('story');return;
     }
     if(mode==='campaign'&&fromAuto&&!store.isStorySeen(index)){store.markStorySeen(index);store.save();}
-    const enemy=mode==='campaign'?stages.makeStageEnemies(index):mode==='tower'?stages.makeTowerEnemies(index):mode==='training'?stages.makePracticeEnemies(store.playerLevel(),Date.now()):stages.makeArenaEnemies(store.teamPower(),Date.now(),diff);
+    const effectiveArenaSeed=arenaSeed||Date.now();
+    const enemy=mode==='campaign'?stages.makeStageEnemies(index):mode==='tower'?stages.makeTowerEnemies(index):mode==='training'?stages.makePracticeEnemies(store.playerLevel(),Date.now()):stages.makeArenaEnemies(store.teamPower(),effectiveArenaSeed,diff);
     const started=store.beginBattle({mode,index,diff,referenceLevel:enemy.units[0]?.level||store.playerLevel()});
     if(!started.ok){
       if(fromAuto) this.autoAction(this.autoSession.battleStarted(false,undefined,started.msg));
       return this.tell(started,'');
     }
-    this.battleId=started.id;this.battleMode=mode;this.battleIndex=index;this.battleDiff=diff;
+    this.battleId=started.id;this.battleMode=mode;this.battleIndex=index;this.battleDiff=diff;this.battleArenaSeed=mode==='arena'?effectiveArenaSeed:0;
     this.fighting=battleRules.createBattle({team:store.playerUnits(),enemy:store.enemyUnits(enemy.units),seed:Date.now()});
+    this.lastBattleSnapshot=[];
     if(fromAuto) this.autoAction(this.autoSession.battleStarted(true,started.id));
     this.refreshTime=0;this.go('battle');
   }

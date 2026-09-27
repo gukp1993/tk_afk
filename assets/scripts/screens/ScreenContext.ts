@@ -18,13 +18,16 @@ export interface ScreenContext {
   battleMode: string;
   battleIndex: number;
   battleDiff: number;
+  battleArenaSeed: number;
   outcome: any;
+  lastBattleSnapshot: any[];
   storyStage: number;
   auto: boolean;
   autoStopPending: boolean;
   lastSummon: any[];
   show(page: Page): void;
   go(page: Page): void;
+  back(fallback?: Page): void;
   tell(result: any, good: string): void;
   confirm(title: string, detail: string, act: () => void): void;
   playAd(placement: string, reward: () => void): void;
@@ -32,6 +35,7 @@ export interface ScreenContext {
   title(text: string, sub?: string): void;
   row(name: string, text: string, y: number, action?: () => void, actionText?: string): void;
   startBattle(mode: string, index: number, diff?: number): void;
+  startArenaBattle(diff: number, seed: number): void;
   startAuto(mode: 'campaign'|'training'): void;
   stopAuto(afterBattle?: boolean): void;
   skipBattle(): void;

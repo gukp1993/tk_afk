@@ -1,115 +1,144 @@
-import { palette, hexColor as tone } from '../ui/CocosUi';
+import { Color } from 'cc';
+import { CocosUi, hexColor as tone } from '../ui/CocosUi';
 import { ScreenContext } from './ScreenContext';
 import * as store from '../domain/store';
+import * as stages from '../domain/stages';
 import * as fmt from '../domain/fmt';
 import { AutoSummary } from '../services/AutoBattleSession';
 
-const GOLD=tone('#e3ba70'),PAPER=tone('#f0dfbd'),DIM=tone('#a69776');
-function fighterPosition(side:string,index:number):[number,number] {
-  const front:[number,number][]=[[-185,0],[0,0],[185,0]];
-  const back:[number,number][]=[[-94,0],[94,0]];
-  const slot=index<3?front[index]:back[index-3];
-  return [slot[0],(side==='A'?-210:303)+(index<3?0:(side==='A'?148:-148))];
+const GOLD=tone('#e3ba70'), PAPER=tone('#f0dfbd'), DIM=tone('#a69776');
+const BG=tone('#1d120b'), CARD=tone('#2a1a18'), BLUE=tone('#4d91bd');
+const PURPLE=tone('#a678c5'), GREEN=tone('#7fbd94'), RED=tone('#bb614c');
+
+function fighterPosition(side: string, slot: number): [number, number] {
+  const frontX=[-215,0,215], backX=[-114,114];
+  return slot<3 ? [frontX[slot],side==='A'?-208:245]
+    : [backX[slot-3],side==='A'?-467:480];
+}
+
+function battleTitle(ctx: ScreenContext) {
+  if(ctx.battleMode==='campaign') {
+    const stage=stages.makeStageEnemies(ctx.battleIndex);
+    return `第 ${ctx.battleIndex} 关 · ${stage.name}`;
+  }
+  return ({tower:'群英塔',training:'连续练兵',arena:'演武场'} as Record<string,string>)[ctx.battleMode] || '战斗';
+}
+
+function returnPage(ctx: ScreenContext) {
+  return ctx.battleMode==='arena'?'arena':ctx.battleMode==='tower'?'tower':'campaign';
+}
+
+function drawFighter(U: CocosUi, unit: any, index: number) {
+  const [x,y]=fighterPosition(unit.side,unit.slot ?? index%5);
+  const rim=unit.side==='A'?([GOLD,BLUE,PURPLE,GOLD,BLUE][unit.slot%5]):([PURPLE,BLUE,RED,PURPLE,BLUE][unit.slot%5]);
+  U.panel(`Fighter${index}`,x,y,90,91,CARD,13,rim);
+  U.text(`FighterGlyph${index}`,unit.name.slice(0,1),x,y+2,76,53,PAPER);
+  if(unit.cc)U.text(`FighterCC${index}`,'✦',x+46,y+48,25,18,GOLD);
+  U.progress(`HP${index}`,x,y-58,105,unit.hp/unit.maxHp,unit.side==='A'?GREEN:RED);
+  U.progress(`Energy${index}`,x,y-69,105,(unit.energy||0)/100,GOLD);
+  U.text(`FighterName${index}`,unit.name,x,y-88,116,17,unit.side==='A'?GOLD:DIM);
+}
+
+function drawField(U: CocosUi, ctx: ScreenContext, snapshot: any[]) {
+  U.rect('BattleBackdrop',0,0,720,1280,BG);
+  U.text('BattleTitle',battleTitle(ctx),-82,592,520,27,GOLD);
+  const left=Math.max(0,90-Math.floor(ctx.fighting?.result()?.duration||ctx.outcome?.duration||0));
+  U.text('BattleTimer',`⌛ ${left}s`,292,592,115,23,left<15?RED:DIM);
+  U.scene('BattleCenterLine',g=>{
+    g.strokeColor=tone('#795b34');g.lineWidth=2;
+    g.moveTo(-330,8);g.lineTo(330,8);g.stroke();
+  });
+  U.panel('BattleVsBg',0,8,108,34,BG,4);
+  U.text('BattleVs','对 阵',0,8,92,18,DIM);
+  snapshot.forEach((unit,index)=>drawFighter(U,unit,index));
 }
 
 export function battleView(ctx: ScreenContext) {
-    const U=ctx.ui,mode:Record<string,string>={campaign:'战役',tower:'群英塔',training:'练兵',arena:'演武场'};
-    U.rect('BattleBackdrop',0,0,720,1280,tone('#20160e'));
-    U.text('BattleTitle',`${mode[ctx.battleMode]||'战斗'} · 第 ${ctx.battleIndex} 关`,-99,565,500,36,GOLD);
-    U.text('BattleHint','敌军',0,424,200,22,DIM);
-    U.scene('BattleGround',g=>{
-      g.strokeColor=tone('#503b25');g.lineWidth=3;
-      g.moveTo(-355,40);g.lineTo(355,40);g.stroke();
-      g.moveTo(-355,-320);g.lineTo(355,-320);g.stroke();
-    });
-    if(!ctx.fighting)return;
-    ctx.fighting.snapshot().forEach((u: any,i: number)=>{
-      const [x,y]=fighterPosition(u.side,i%5),accent=u.side==='A'?tone('#e1aa58'):tone('#8c6a9a');
-      U.panel('Fighter'+i,x,y,122,118,tone('#30241c'),15,accent);
-      U.text('FighterGlyph'+i,u.name[0]||'将',x,y+2,101,61,PAPER);
-      U.progress('HP'+i,x,y-77,121,u.hp/u.maxHp,tone('#d96f4d'));
-      U.text('FighterName'+i,`${u.name}${u.alive?'':' · 阵亡'}`,x,y-106,148,18,DIM);
-    });
-    U.panel('SpeedPanel',-179,-431,250,68,tone('#3c2c1c'),9,GOLD);
-    U.text('SpeedText',`倍速 ×${store.getState().settings.autoBattleSpeed||1}`,-179,-431,234,22,GOLD);
-    U.tap('SpeedTap',-179,-431,250,68,()=>{
-      const speed=store.getState().settings.autoBattleSpeed||1;store.setAutoBattleSpeed(speed===1?2:speed===2?4:1);ctx.show('battle');
-    });
-    U.panel('BackBattle',179,-431,250,68,tone('#3c2c1c'),9,GOLD);
-    U.text('BackBattleText',ctx.auto?(ctx.autoStopPending?'已预约停止':'本场后停止'):'退出战斗',179,-431,235,22,GOLD);
-    U.tap('BackBattleTap',179,-431,250,68,()=>ctx.auto?ctx.stopAuto(true):ctx.go(ctx.battleMode==='campaign'?'campaign':'journey'));
-    U.panel('SkipBattle',0,-522,344,64,tone('#c99a4a'),9,GOLD);
-    U.text('SkipBattleText','跳过战斗',0,-522,325,25,tone('#342215'));
-    U.tap('SkipBattleTap',0,-522,344,64,()=>ctx.skipBattle());
+  const U=ctx.ui;
+  if(!ctx.fighting)return;
+  drawField(U,ctx,ctx.fighting.snapshot());
+  if(ctx.auto){
+    U.panel('AutoStatus',0,-565,678,116,tone('#281b13'),10,GOLD);
+    U.text('AutoStatusTitle',ctx.autoStopPending?'本场结束后停止':'自动出征进行中',0,-527,620,23,GOLD);
+    U.text('AutoStatusDetail',`第 ${ctx.battleIndex} 关 · 战斗中`,0,-558,615,17,DIM);
+    U.button('AutoSpeed',`×${store.getState().settings.autoBattleSpeed||1}`,-240,-590,118,38,()=>changeSpeed(ctx),tone('#443024'));
+    U.button('AutoStopAfter','本场后停止',-39,-590,246,38,()=>ctx.stopAuto(true),tone('#443024'));
+    U.button('AutoStop','立即停止',238,-590,170,38,()=>ctx.stopAuto(false),tone('#443024'));
+  }else{
+    U.button('Retreat','撤退',-245,-579,132,58,()=>ctx.go(returnPage(ctx)),tone('#443024'));
+    U.button('Speed',`加速 ×${store.getState().settings.autoBattleSpeed||1}`,-45,-579,190,58,()=>changeSpeed(ctx),tone('#443024'));
+    U.button('Skip','跳过战斗',219,-579,208,58,()=>ctx.skipBattle(),tone('#b78b43'));
   }
+}
+
+function changeSpeed(ctx: ScreenContext) {
+  const speed=store.getState().settings.autoBattleSpeed||1;
+  store.setAutoBattleSpeed(speed===1?2:speed===2?4:1);
+  ctx.show('battle');
+}
 
 export function refreshBattleView(ctx: ScreenContext) {
-    if (!ctx.fighting) return;
-    ctx.fighting.snapshot().forEach((unit: any,i: number)=>{
-      const [x,y]=fighterPosition(unit.side,i%5);
-      ctx.ui.setText('FighterName'+i,`${unit.name}${unit.alive?'':' · 阵亡'}`);
-      ctx.ui.updateProgress('HP'+i,x,y-77,121,unit.hp/unit.maxHp);
-    });
+  if(!ctx.fighting)return;
+  ctx.fighting.snapshot().forEach((unit: any,i: number)=>{
+    const [x,y]=fighterPosition(unit.side,unit.slot ?? i%5);
+    ctx.ui.updateProgress(`HP${i}`,x,y-58,105,unit.hp/unit.maxHp);
+    ctx.ui.updateProgress(`Energy${i}`,x,y-69,105,(unit.energy||0)/100);
+    ctx.ui.setText(`FighterName${i}`,unit.alive?unit.name:`${unit.name} · 阵亡`);
+  });
+  ctx.ui.setText('BattleTimer',`⌛ ${Math.max(0,90-Math.floor(ctx.fighting.result()?.duration||0))}s`);
 }
 
 export function resultView(ctx: ScreenContext) {
-    const r=ctx.outcome,U=ctx.ui;
-    U.rect('ResultBackdrop',0,0,720,1280,tone('#20160e'));
-    U.text('ResultTitle',r?.win?'战斗胜利':'战斗失败',0,522,610,42,GOLD);
-    U.text('ResultExperience',r?.ok?`经验 +${r.gainedXP||0}`:(r?.msg||'结算失败'),0,471,540,22,DIM);
-    U.panel('Result',0,28,666,715,r?.win?tone('#334a3a'):tone('#50302a'),16,GOLD);
-    U.scene('ResultEmblem',g=>{
-      g.strokeColor=GOLD;g.lineWidth=4;g.circle(0,239,107);g.stroke();
-      g.circle(0,239,93);g.stroke();
-    });
-    U.text('Victory',r?.win?'凯旋':'整备后再战',0,239,590,60,GOLD);
-    const reward = r?.reward || {};
-    let rewardText = '调整编队与军械后重试';
-    if (ctx.battleMode === 'arena') rewardText = `演武积分 ${reward.delta>=0?'+':''}${reward.delta||0} · 演武令 +${reward.tokens||0}`;
-    else if (r?.win && ctx.battleMode === 'tower') rewardText = `元宝 +${reward.gem||0} · 招募令 +${reward.scroll||0} · 碎片 +${reward.shard||0}`;
-    else if (r?.win && ctx.battleMode === 'training') rewardText = `练兵经验 +${r.gainedXP||0}`;
-    else if (r?.win) rewardText = `铜钱 +${fmt.fmtNum(reward.gold||0)} · 元宝 +${(reward.gem||0)+(reward.chest?.gem||0)} · 招募令 +${(reward.scroll||0)+(reward.chest?.scroll||0)}`;
-    U.text('RewardHeading',r?.win?'本场收获':'战斗建议',0,67,590,25,GOLD);
-    U.panel('RewardPanel',0,-16,600,112,tone('#28382e'),8,tone('#8c784f'));
-    U.text('Reward',rewardText,0,3,575,22,PAPER);
-    if (r?.win && reward.armoryBox) U.text('ExtraReward',`获得军械自选箱 ×1`,0,-41,550,20,GOLD);
-    U.text('Duration',`战斗用时 ${r?.duration || 0} 秒`,0,-133,580,19,DIM);
-    U.panel('Continue',-166,-295,284,80,tone('#3c2c1c'),9,GOLD);
-    U.text('ContinueText',ctx.battleMode==='campaign'?'返回战役':'返回玩法',-166,-295,270,24,PAPER);
-    U.tap('ContinueTap',-166,-295,284,80,()=>ctx.go(ctx.battleMode==='campaign'?'campaign':'journey'));
-    if(!ctx.auto){
-      U.panel('ResultNext',166,-295,284,80,tone('#c99a4a'),9,GOLD);
-      U.text('ResultNextText',r?.win&&['campaign','tower'].includes(ctx.battleMode)?'挑战下一关':r?.win?'返回玩法':'再战一次',166,-295,270,23,tone('#342215'));
-      U.tap('ResultNextTap',166,-295,284,80,()=>{
+  const r=ctx.outcome,U=ctx.ui;
+  drawField(U,ctx,ctx.lastBattleSnapshot||[]);
+  U.rect('ResultDim',0,0,720,1280,new Color(0,0,0,185));
+  U.panel('ResultPanel',0,-12,572,512,tone('#271b13'),16,GOLD);
+  U.text('ResultTitle',r?.win?'凯  旋':'败  北',0,174,514,56,r?.win?GOLD:DIM);
+  const reward=r?.reward||{};
+  let lines: string[]=[];
+  if(!r?.ok) lines=[r?.msg||'结算失败'];
+  else if(ctx.battleMode==='arena') lines=[`演武积分 ${reward.delta>=0?'+':''}${reward.delta||0} · 演武令 +${reward.tokens||0}`];
+  else if(ctx.battleMode==='tower') lines=[`元宝 +${reward.gem||0} · 招募令 +${reward.scroll||0}`,`武将碎片 +${reward.shard||0}`];
+  else if(ctx.battleMode==='training') lines=[`练兵经验 +${r.gainedXP||0}`];
+  else if(r?.win) lines=[`铜钱 +${fmt.fmtNum(reward.gold||0)} · 元宝 +${(reward.gem||0)+(reward.chest?.gem||0)}`,`招募令 +${(reward.scroll||0)+(reward.chest?.scroll||0)} · 经验 +${r.gainedXP||0}`];
+  else lines=['普通奖励需凯旋后方可领取',`用时 ${r?.duration||0} 秒`];
+  lines.forEach((line,i)=>U.text(`ResultLine${i}`,line,0,89-i*40,515,22,PAPER));
+  if(r?.win&&reward.armoryBox)U.text('ResultBox','军械自选箱 ×1',0,-23,480,20,GOLD);
+  U.text('ResultDuration',`用时 ${r?.duration||0} 秒`,0,-76,470,19,DIM);
+  U.button('ResultBack','返回',-139,-165,232,59,()=>ctx.go(returnPage(ctx)),tone('#3a2b20'));
+  U.button('ResultRetry','再战',139,-165,232,59,()=>ctx.battleMode==='arena'?ctx.startArenaBattle(ctx.battleDiff,ctx.battleArenaSeed):ctx.startBattle(ctx.battleMode,ctx.battleIndex,ctx.battleDiff),tone('#3a2b20'));
+  if(!ctx.auto){
+    U.button('ResultGrowth',r?.win?'已凯旋':'查看成长',-139,-228,232,53,()=>ctx.go('armory'),r?.win?tone('#37291d'):tone('#4c6e57'));
+    U.button('ResultNext',r?.win&&['campaign','tower'].includes(ctx.battleMode)?'挑战下一关':r?.win?'返回玩法':'重新挑战',139,-228,232,53,()=>{
       if(r?.win&&ctx.battleMode==='campaign')ctx.startBattle('campaign',ctx.battleIndex+1);
       else if(r?.win&&ctx.battleMode==='tower')ctx.startBattle('tower',ctx.battleIndex+1);
-      else if(r?.win)ctx.go('journey');
+      else if(r?.win)ctx.go(returnPage(ctx));
+      else if(ctx.battleMode==='arena')ctx.startArenaBattle(ctx.battleDiff,ctx.battleArenaSeed);
       else ctx.startBattle(ctx.battleMode,ctx.battleIndex,ctx.battleDiff);
-      });
-    }
-    if(!r?.win&&!ctx.auto){
-      U.panel('GrowthHelp',0,-412,386,64,tone('#406b55'),8,GOLD);
-      U.text('GrowthHelpText','查看共享军械',0,-412,363,20,PAPER);
-      U.tap('GrowthHelpTap',0,-412,386,64,()=>ctx.go('armory'));
-    }
-    if(ctx.auto)U.text('NextAuto','自动出征：按当前规则继续',0,-411,600,21,GOLD);
-  }
+    },tone('#b78b43'));
+  }else U.text('NextAuto','自动出征 · 即将继续',0,-218,500,22,GOLD);
+}
 
 export function autoSummary(ctx: ScreenContext, summary: AutoSummary) {
-  const reasons: Record<string,string> = {
-    'manual-stop':'已手动停止', 'stopped-after-battle':'本场结束后停止',
-    'recovery-exhausted':'暂时受阻，收获材料后再战',
-    'training-loss':'练兵失败', 'training-win-limit':'练兵次数已满',
-    'training-level-target':'达到本轮练兵目标', 'level-max':'主公等级已满',
-    'replaced-by-battle':'已切换手动挑战'
+  const reason: Record<string,string>={
+    'manual-stop':'已手动停止','stopped-after-battle':'本场结束后停止',
+    'recovery-exhausted':'暂时受阻，收获材料后再战','training-loss':'练兵失败',
+    'training-win-limit':'练兵次数已满','training-level-target':'达到本轮练兵目标',
+    'level-max':'主公等级已满','replaced-by-battle':'已切换手动挑战'
   };
-  ctx.title('自动出征结算', reasons[summary.reason] || summary.reason || '本轮已停止');
-  ctx.ui.rect('AutoSummaryPanel',0,20,645,710,palette.green);
-  ctx.ui.text('AutoRecord',`战斗 ${summary.battles} 场 · 胜 ${summary.wins} · 败 ${summary.losses}`,0,260,610,31,palette.gold);
-  ctx.ui.text('AutoStage',`主线推进 ${summary.stages} 关 · 下一关 ${summary.endStage}`,0,171,600,23);
-  ctx.ui.text('AutoLevel',`主公 Lv.${summary.startLevel} → Lv.${summary.endLevel} · 经验 +${summary.xp}`,0,95,610,23);
-  ctx.ui.text('AutoGain',`铜 +${fmt.fmtNum(summary.gold)}  元宝 +${summary.gem}  招募令 +${summary.scroll}`,0,20,610,22);
-  ctx.ui.text('AutoDuration',`本轮用时 ${summary.elapsedSeconds} 秒`,0,-64,600,21);
-  ctx.ui.text('AutoRecent',summary.recent.join(' · '),0,-152,605,18);
-  ctx.ui.button('AutoSummaryBack','返回战役',0,-410,430,86,()=>ctx.go('campaign'),palette.gold);
+  const U=ctx.ui;
+  U.rect('SummaryBackdrop',0,0,720,1280,BG);
+  U.text('SummaryTitle','自动出征已停止',0,510,640,38,GOLD);
+  U.text('SummaryReason',reason[summary.reason]||summary.reason||'本轮已结束',0,460,625,21,DIM);
+  U.panel('SummaryPanel',0,31,648,725,tone('#291d15'),13,GOLD);
+  U.text('SummaryStage',`关卡 ${summary.startStage} → ${summary.endStage}`,0,310,597,31,GOLD);
+  U.text('SummaryBattles',`战斗 ${summary.battles} 场 · 胜 ${summary.wins} · 败 ${summary.losses}`,0,245,597,25,PAPER);
+  U.text('SummaryTime',`用时 ${Math.floor(summary.elapsedSeconds/60)}分${summary.elapsedSeconds%60}秒`,0,189,597,21,DIM);
+  U.panel('SummaryRewards',0,40,577,188,tone('#1f2e25'),9,tone('#8a7650'));
+  U.text('SummaryRewardTitle','本轮收获',0,103,530,24,GOLD);
+  U.text('SummaryGold',`铜钱 +${fmt.fmtNum(summary.gold)} · 元宝 +${summary.gem} · 招募令 +${summary.scroll}`,0,49,530,19,PAPER);
+  U.text('SummaryXP',`经验 +${summary.xp} · 精铁 +${summary.iron}`,0,4,530,19,PAPER);
+  U.text('SummaryLevel',`主公 Lv.${summary.startLevel} → Lv.${summary.endLevel}`,0,-113,550,21,DIM);
+  U.text('SummaryRecent',summary.recent.join(' · '),0,-169,550,18,DIM);
+  U.button('SummaryBack','返回战役',0,-405,430,78,()=>ctx.go('campaign'),tone('#b78b43'));
 }
