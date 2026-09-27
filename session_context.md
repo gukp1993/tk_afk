@@ -16,6 +16,14 @@
 
 ## 最近交接（新 → 旧）
 
+### 清理旧版小游戏目录与构建依赖迁移 · Codex · 已实施待验收
+
+时间：2026-09-27 14:45（Asia/Shanghai）；执行者：Codex；状态：已实施待验收。
+
+- 概要：按用户指令删除根 `build.js`、`assets_gen/`、`src/`、`wechat/`、`douyin/`、`legacy-miniprogram/`、`preview/`、`test/`。为维持 Cocos 构建，把广告桥接源迁到 `scripts/rewarded-bridge.js`，将微信/抖音 AppID 放到 `scripts/cocos-appids.json`，并更新 Cocos 同步脚本、README、AGENTS 与迁移状态文档。
+- 验证：规则镜像 `--check`、两同步脚本 Node 语法检查、TypeScript 检查和 AppID 输出同步均通过；确认请求删除的目录/文件均不存在，`git diff --check` 通过。未运行旧版测试（目录已按要求删除），未执行完整平台构建或真机验收。
+- 边界：保留 `utils/` 作为规则源；Cocos 构建输出仍在被忽略的 `build/`。工作区中其他执行者的未提交文件变更未纳入本轮提交。
+
 ### Cocos 微信与抖音构建方法说明 · Codex · 无变更
 
 时间：2026-09-27 14:42（Asia/Shanghai）；执行者：Codex；状态：无变更。

@@ -1,5 +1,5 @@
 // @ts-nocheck
-// Generated from src/ads/bridge.js. Do not edit here.
+// Generated from scripts/rewarded-bridge.js. Do not edit here.
 import * as __platform from '../domain/platform';
 // 广告桥接层：自定义统一广告 API，微信 / 抖音的接入差异到此为止
 // 统一契约：createRewarded(adUnitId) → { preload(), show() → Promise<{ended:boolean}> }

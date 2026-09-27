@@ -1,7 +1,0 @@
-{
-  "navigationBarTitleText": "三国远征 · 主城",
-  "usingComponents": {
-    "hero-card": "/components/hero-card/index",
-    "popup": "/components/popup/index"
-  }
-}

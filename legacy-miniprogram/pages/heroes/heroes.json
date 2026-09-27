@@ -1,6 +1,0 @@
-{
-  "navigationBarTitleText": "群英录",
-  "usingComponents": {
-    "hero-card": "/components/hero-card/index"
-  }
-}

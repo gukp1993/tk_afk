@@ -32,11 +32,11 @@ for (const filename of fs.readdirSync(sourceDir).filter(f => f.endsWith('.js') &
 // Keep the platform video-ad contract identical to the V1 bridge (including its old-SDK fallback).
 const serviceDir = path.join(root, 'assets', 'scripts', 'services');
 fs.mkdirSync(serviceDir, { recursive: true });
-const bridgeSource = fs.readFileSync(path.join(root, 'src', 'ads', 'bridge.js'), 'utf8');
+const bridgeSource = fs.readFileSync(path.join(root, 'scripts', 'rewarded-bridge.js'), 'utf8');
 const bridgeBody = bridgeSource
   .replace(/require\(['"]\.\.\/\.\.\/utils\/platform['"]\)/, '__platform')
   .replace(/module\.exports\s*=\s*\{([\s\S]*?)\};\s*$/, 'export {$1};\n');
 if (bridgeBody.includes('module.exports') || bridgeBody.includes('require(')) throw new Error('Unsupported ad bridge syntax');
 const bridgeOutput = path.join(serviceDir, 'RewardedBridge.ts');
-const bridgeNext = '// @ts-nocheck\n// Generated from src/ads/bridge.js. Do not edit here.\nimport * as __platform from \'../domain/platform\';\n' + bridgeBody;
+const bridgeNext = '// @ts-nocheck\n// Generated from scripts/rewarded-bridge.js. Do not edit here.\nimport * as __platform from \'../domain/platform\';\n' + bridgeBody;
 sync(bridgeOutput, bridgeNext);

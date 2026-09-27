@@ -1,7 +1,0 @@
-{
-  "navigationBarTitleText": "集市",
-  "usingComponents": {
-    "popup": "/components/popup/index",
-    "hero-card": "/components/hero-card/index"
-  }
-}

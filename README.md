@@ -11,7 +11,7 @@
 ./scripts/cocos-build.sh bytedance-mini-game
 ```
 
-微信、抖音 Cocos 包在 `build/wechatgame/`、`build/bytedance-mini-game/`。构建脚本从旧平台配置同步 AppID。目前已接入真实存档、主线战斗、自动出征与练兵、挂机、召唤、英雄、共享军械、集市、塔和演武的基础入口；抖音开发者工具模拟器已验证主线首战与结算，微信开发者工具和两平台真机仍需验收。画面与完整交互仍在对照迁移。下面的 `src/`、`utils/`、`wechat/`、`douyin/` 是对照和回归基线，在功能验收前保留。
+微信、抖音 Cocos 包在 `build/wechatgame/`、`build/bytedance-mini-game/`。构建脚本从 `scripts/cocos-appids.json` 读取 AppID。目前已接入真实存档、主线战斗、自动出征与练兵、挂机、召唤、英雄、共享军械、集市、塔和演武的基础入口；抖音开发者工具模拟器已验证主线首战与结算，微信开发者工具和两平台真机仍需验收。画面与完整交互仍在对照迁移。旧版 `build.js`、`assets_gen/`、`legacy-miniprogram/`、`preview/`、`test/`、`src/`、`wechat/`、`douyin/` 已删除。
 
 小游戏默认执行发布构建以缩减主包，Web 默认调试构建；需要排查小游戏时可用 `COCOS_DEBUG=true ./scripts/cocos-build.sh wechatgame` 临时覆盖。打包后仍须检查实际主包大小及开发者工具提示。
 
@@ -26,21 +26,7 @@
 - 微信 AppID：`wx03eb4074ce45033b`（**小游戏类账号**，与项目类型匹配）
 - 抖音 AppID：`ttdd05abb8437df5b602`
 - 平台差异由 `utils/platform.js` 适配层收口（wx / tt 唯一入口），游戏代码零平台分支
-- 旧版原生微信小程序实现完整保留在 `legacy-miniprogram/`（不参与打包），游戏内核与各版共用
-
-## 旧 Canvas 发布流程（双平台）
-
-```bash
-node build.js          # 把共享源码（src/ utils/）同步进 wechat/ douyin/ 打包目录
-node build.js --watch  # 开发时开着：改共享源码自动同步
-```
-
-| 平台 | 操作 |
-|---|---|
-| 微信小游戏 | 微信开发者工具 →「导入项目」→ 选择 **`wechat/`** 目录（AppID 已配置，compileType=game） |
-| 抖音小游戏 | 抖音开发者工具 →「导入项目」→ 选择 **`douyin/`** 目录（先把 project.config.json 里的 appid 换成你的） |
-
-共享代码只改根目录的 `src/`、`utils/`，打包目录里的同名目录是生成物（已 gitignore），手改会被覆盖。
+旧 Canvas 打包同步流程已删除。Cocos 包请使用上方 `scripts/cocos-build.sh` 命令生成。
 
 首次进入自动建号：赠送 刘备(SSR)、关羽(SSR)、张飞(SSR)、廖化(N) + 1888 元宝 + 12 招募令。
 主城点「出征」开打；挂机收益实时累计，记得「一键领取」。
@@ -66,7 +52,7 @@ node build.js --watch  # 开发时开着：改共享源码自动同步
 
 ## 激励视频广告（测试模式）
 
-已统一接入 `src/ads.js` 广告管理器，4 个场景（每日上限配置在 `utils/config.js` 的 `AD.placements`）：
+Cocos 广告服务使用 `utils/config.js` 中的 `AD.placements` 配置每日上限：
 
 | 场景 | 效果 | 每日上限 |
 |---|---|---|
@@ -79,52 +65,26 @@ node build.js --watch  # 开发时开着：改共享源码自动同步
 - `AD.rewardedUnitIds` 对应平台为空（当前）：点击按钮播放**内置模拟广告**（3 秒倒计时 → 领取奖励），开发者工具/体验版/真机都能完整验证流程与每日次数；
 - 正式变现：微信开通流量主（UV≥1000）→ 创建激励视频广告位 → 把 `adunit-xxx` 填入 `AD.rewardedUnitIds.wechat`；抖音开通变现后同理填 `AD.rewardedUnitIds.douyin`。各平台按钮自动切换为真广告，代码无需再改。
 
-**平台接入分层**：业务代码只调统一接口，平台差异全部关在 `src/ads/bridge.js` 桥接层——`show()` 永远返回 `Promise<{ended}>`；微信实现 show 优先、失败自动重拉一次，抖音实现 load 在前（官方推荐），老基础库不返回 Promise 时走事件回调，onError 噪音不干扰重试判定。契约由 `test/smoke.js` 的广告桥接用例锁定。
+**平台接入分层**：业务代码只调统一接口，平台差异由 `scripts/rewarded-bridge.js` 提供，Cocos 构建时复制生成到 `assets/scripts/services/RewardedBridge.ts`。`show()` 永远返回 `Promise<{ended}>`；微信实现 show 优先、失败自动重拉一次，抖音实现 load 在前，老基础库不返回 Promise 时走事件回调。旧版广告桥接测试已删除，当前修改后按 Cocos 类型检查与构建命令检查。
 
 广告计数随存档每日重置；提前关闭模拟广告或 `isEnded === false` 时不发奖。
 
 ## 架构
 
 ```
-build.js                       双平台打包同步（src/ utils/ → wechat/ douyin/，--watch 可监听）
-wechat/                        微信小游戏打包目录（微信开发者工具打开）
-  game.js game.json project.config.json    平台入口与配置（手工维护）
-  src/ utils/                  共享源码生成物（gitignore，勿手改）
-douyin/                        抖音小游戏打包目录（抖音开发者工具打开），结构同上
-src/                           共享游戏代码（只改这里）
-  app.js                       画布/主循环/触摸/场景导航/底部导航
-  scenes.js                    场景注册表（平台入口与离屏渲染共用）
-  ui.js                        Canvas IMGUI 框架（面板/按钮/滚动/弹窗/飘字/脸谱）
-  ads.js                       广告业务门面（场景/频次/发奖判定/模拟广告 UI）
-  ads/bridge.js                广告桥接层：自定义统一广告 API，微信/抖音接入差异到此为止
-  theme.js                     主题令牌（墨黑漆器 + 鎏金 + 朱砂）
-  screens/                     11 个场景（主城/群英/点将/王庭/详情/编队/塔/演武/铁匠/集市/战斗）
-utils/                         共享游戏内核（纯 JS，无平台依赖）
-  platform.js                  平台适配层：全项目唯一引用 wx/tt 的文件
-  config.js heroes.js stages.js items.js battle.js store.js rng.js fmt.js
-preview/mini/                  离屏渲染自检工具（见下）
-legacy-miniprogram/            旧版原生微信小程序实现（存档参考，不打包）
-test/
-  smoke.js                     内核逻辑冒烟测试（127 项断言，含广告桥接契约）
-  static-check.js              项目静态一致性检查（285 项，含双平台入口与打包目录一致性）
+assets/scene/Main.scene         Cocos 启动场景
+assets/scripts/                 Cocos 启动、页面、服务、UI 和规则镜像
+utils/                          规则源，生成到 assets/scripts/domain/
+scripts/rewarded-bridge.js      Cocos 广告桥接生成源
+scripts/cocos-appids.json      微信/抖音小游戏 AppID 配置
+scripts/                        Cocos 构建、规则同步、AppID 同步脚本
+build/                          Cocos 构建输出（git 忽略，可重新生成）
+library/、temp/、profiles/      Creator 缓存/本机配置（git 忽略）
 ```
 
-内核（`utils/`）为纯 JS：可播种随机数的战斗引擎、存档、挂机、固定概率招募等，通过 `platform.js` 适配层访问平台能力，小游戏版与 legacy 版共用。
-
-## 离屏渲染自检（无需开发者工具）
-
-`preview/mini/` 内置一个把 Canvas 调用录制成 SVG 的离屏渲染器，可在 Node 里跑起整个游戏并逐屏截图：
-
-```bash
-node preview/mini/record.js      # 生成 out/*.svg 与审查页 out/view*.html
-python3 preview/mini/makeview.py # 组织成 2×2 审查页
-# 浏览器打开 out/view0.html 即可人工审查
-```
-
-已用该方式对 17 个画面（含战斗进行中/结算/各弹窗/模拟广告两状态）做过视觉审查，并据此修复了
-弹窗面板 NaN 高度、裁剪组泄漏、战斗站位过密三个渲染问题。
+内核（`utils/`）为纯 JS：可播种随机数的战斗引擎、存档、挂机、固定概率招募等，通过平台适配层访问小游戏平台能力。
 
 ## 数据与存档
 
-- 存档经平台存储持久化（微信 `wx.setStorageSync` / 抖音 `tt.setStorageSync`，经 `utils/platform.js` 适配；key：`sanguo_afk_save_v1`），切后台自动保存。两平台存档相互独立。
+- 存档经平台存储持久化（微信 `wx.setStorageSync` / 抖音 `tt.setStorageSync`，经 Cocos 平台适配层访问；key：`sanguo_afk_save_v1`），切后台自动保存。两平台存档相互独立。
 - 开发者工具「清除缓存」即可重置进度。

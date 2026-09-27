@@ -12,12 +12,14 @@ assets/scripts/ui/CocosUi.ts        原生 Node + Graphics + Label、ScrollView/
 assets/scripts/ui/Scenery.ts        从 wechat/ 原创 Canvas 构图迁来的 Cocos Graphics 山水/城镇/营地
 assets/scripts/services/           自动战斗会话、广告门面与桥接
 assets/scripts/domain/             从旧 utils/ 生成的规则与存档镜像；只手写 platform.ts
+scripts/rewarded-bridge.js          生成 Cocos RewardedBridge.ts 的平台桥接源码
+scripts/cocos-appids.json           微信/抖音 Cocos 构建使用的 AppID
 scripts/cocos-sync-domain.js        更新并检查规则镜像
 scripts/cocos-build.sh              调用 Creator CLI 构建
 scripts/cocos-sync-appid.js         同步两平台 AppID
 ```
 
-规则的唯一编辑源仍是 `utils/`；Cocos 页通过静态导入使用生成的 TS 镜像。生成的文件带 `@ts-nocheck`，因为源文件是经过旧版测试的原生 JS；手写的 Cocos 层由 Creator 自带 TypeScript 编译器检查。存档 key 沿用 `sanguo_afk_save_v1`，小游戏平台走 `wx/tt` 存储，Web 预览走 localStorage。战斗过程仅更新已有武将文本与血条节点，不再每 0.3 秒销毁并重建整屏节点。旧 `src/`、`wechat/`、`douyin/` 在迁移验收前保留作行为和画面对照，不参与 Cocos 打包。
+规则的唯一编辑源仍是 `utils/`；Cocos 页通过静态导入使用生成的 TS 镜像。生成的文件带 `@ts-nocheck`；手写的 Cocos 层由 Creator 自带 TypeScript 编译器检查。广告桥接由 `scripts/rewarded-bridge.js` 生成，平台 AppID 位于 `scripts/cocos-appids.json`。存档 key 沿用 `sanguo_afk_save_v1`，小游戏平台走 `wx/tt` 存储，Web 预览走 localStorage。战斗过程仅更新已有武将文本与血条节点，不再每 0.3 秒销毁并重建整屏节点。旧 Canvas 源码、微信/抖音旧打包目录、旧预览工具和旧自动化测试已按用户指令删除。
 
 ## 功能对照
 
@@ -32,17 +34,15 @@ scripts/cocos-sync-appid.js         同步两平台 AppID
 | 日常与玩法 | 背包资源双列卡、王庭四入口、塔/演武场面板与实际对手数据、每日任务/活跃箱、集市、练兵；长列表由原生 ScrollView 裁剪和拖动 | 部分副玩法提示、军械图鉴和自选箱页的细节仍需逐项对齐 |
 | 广告 | 与旧版同契约的真实广告桥接；未配广告位时三秒测试广告，提前关闭不发奖；可用入口为挂机双倍、免费收获与免费招募 | 微信/抖音开发者工具及真机广告验证；旧版禁用的失败复活入口保持禁用 |
 
-本轮 UI 对照以 `wechat/` 的战役、主城、点将台、群英录、英雄详情、剧情、战斗和结算为基线，Cocos 画面在 Web 预览中逐页检查。主城已接入道路、六个建筑、快捷任务/背包、推图与挂机操作；旧版绘景被转为 Cocos 原生 Graphics，不依赖运行时 Canvas 或外部美术包。页面导航与旧版五个主标签对齐；王庭、集市等子页使用各自资源栏，返回路径保持来源页。背包、王庭玩法入口、编队、军械总览、塔和演武场改为旧版的卡片与站位结构。后续对照旧版离屏截图，统一楷体与深棕背景，调整群英资源栏/筛选、武将头像、详情页可视区域、点将台和编队的纵向布局。功能与信息层级已接近原页，但局部间距和动效仍未达到逐像素一致。
+本轮 UI 实施时曾以旧版战役、主城、点将台、群英录、英雄详情、剧情、战斗和结算为基线；旧版目录现已按用户指令清理，Cocos 画面在 Web 预览中逐页检查。主城已接入道路、六个建筑、快捷任务/背包、推图与挂机操作；旧版绘景被转为 Cocos 原生 Graphics，不依赖运行时 Canvas 或外部美术包。页面导航与旧版五个主标签对齐；王庭、集市等子页使用各自资源栏，返回路径保持来源页。背包、王庭玩法入口、编队、军械总览、塔和演武场改为旧版的卡片与站位结构。后续对照旧版离屏截图，统一楷体与深棕背景，调整群英资源栏/筛选、武将头像、详情页可视区域、点将台和编队的纵向布局。功能与信息层级已接近原页，但局部间距和动效仍未达到逐像素一致。
 
-当前 Cocos 包**不是已验收的上架版本**。Web 预览覆盖了关卡预览、剧情、战斗胜利/跳过/退出后重试、下一关、自动停止摘要、连续练兵、招募结果直达详情、模拟广告、编队换将与军械解锁/启用/自选箱。本轮实点战役、群英筛选与滚动详情、王庭、塔、演武、背包到集市、编队换将、召唤、战斗跳过与结算，浏览器控制台无脚本错误。最终微信构建包在微信开发者工具 iPhone 17 模拟器显示群英录，实点底部英雄标签及武将卡进入详情，场景加载成功且控制台未见游戏运行错误；模拟器后续自动化点击超时，因此未继续宣称逐页验收。抖音开发者工具 4.5.6 的 iPhone 15 Pro 模拟器此前从新档实际进入主线，开战、跳过并领取结算奖励；本轮新 UI 尚未在该模拟器复验。两平台真机尚未验收。旧工程仍保留作功能与画面对照。
+当前 Cocos 包**不是已验收的上架版本**。Web 预览覆盖了关卡预览、剧情、战斗胜利/跳过/退出后重试、下一关、自动停止摘要、连续练兵、招募结果直达详情、模拟广告、编队换将与军械解锁/启用/自选箱。本轮实点战役、群英筛选与滚动详情、王庭、塔、演武、背包到集市、编队换将、召唤、战斗跳过与结算，浏览器控制台无脚本错误。最终微信构建包在微信开发者工具 iPhone 17 模拟器显示群英录，实点底部英雄标签及武将卡进入详情，场景加载成功且控制台未见游戏运行错误；模拟器后续自动化点击超时，因此未继续宣称逐页验收。抖音开发者工具 4.5.6 的 iPhone 15 Pro 模拟器此前从新档实际进入主线，开战、跳过并领取结算奖励；本轮新 UI 尚未在该模拟器复验。两平台真机尚未验收。旧工程已清理；本文件记录的旧版差异只供追溯。
 
 ## 校验
 
 ```bash
 node scripts/cocos-sync-domain.js --check
 node /Applications/Cocos/Creator/3.8.8/CocosCreator.app/Contents/Resources/app.asar.unpacked/node_modules/typescript/bin/tsc --noEmit --pretty false
-node test/smoke.js
-node test/static-check.js
 ./scripts/cocos-build.sh web-mobile
 ./scripts/cocos-build.sh wechatgame
 ./scripts/cocos-build.sh bytedance-mini-game
