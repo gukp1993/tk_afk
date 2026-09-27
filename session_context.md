@@ -16,6 +16,13 @@
 
 ## 最近交接（新 → 旧）
 
+### 当前项目目录与可清理项盘点 · Codex · 无变更
+
+时间：2026-09-27 11:54（Asia/Shanghai）；执行者：Codex；状态：无变更。
+
+- 概要：只读核对根目录、`.gitignore`、`package.json` 与 Cocos 迁移状态文档。确认根目录为 Cocos Creator 3.8.8 主工程；`build/`、`library/`、`temp/`、`profiles/` 为忽略的构建/缓存/本地配置目录；旧 `src/`、`utils/`、`wechat/`、`douyin/` 与 `legacy-miniprogram/`、`preview/`、`test/` 暂作为对照或回归基线保留。给用户说明可再生目录可按需清理，未执行删除。
+- 边界：工作区已有多项未提交代码、预览产物及文件删除，本轮未触碰或提交这些变更。
+
 ### Cocos 按微信旧版界面补齐核心页面 · Codex · 已实施待验收
 
 时间：2026-09-27 11:08（Asia/Shanghai）；执行者：Codex；状态：已实施待验收。
