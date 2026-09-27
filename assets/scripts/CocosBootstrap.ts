@@ -1,4 +1,4 @@
-import { _decorator, Component, game, Game, Node, profiler, ResolutionPolicy, view } from 'cc';
+import { _decorator, Color, Component, game, Game, Node, profiler, ResolutionPolicy, view } from 'cc';
 import { CocosUi, hexColor, palette } from './ui/CocosUi';
 import * as store from './domain/store';
 import * as stages from './domain/stages';
@@ -113,13 +113,14 @@ export class CocosBootstrap extends Component implements ScreenContext {
     render[page]();
     if (this.notice) U.text('Notice', this.notice, 0, -510, 670, 20, palette.gold);
     if(['home','journey','campaign','heroes','bag','summon'].includes(page)) {
-      U.rect('NavBackground', 0, -594, 720, 92, palette.ink);
-      const nav: [Page,string,string][] = [['home','城','主城'],['journey','图','玩法'],['campaign','战','战役'],['heroes','将','英雄'],['bag','囊','背包']];
-      nav.forEach(([p,glyph,label], i) => {
+      U.rect('NavBackground', 0, -594, 720, 92, new Color(9, 31, 27, 248));
+      U.line('NavGoldTop',[[-360,-548],[360,-548]],2,palette.gold);
+      const nav: [Page,string,string][] = [['home','主城','nav_home'],['journey','玩法','nav_journey'],['campaign','战役','nav_campaign'],['heroes','英雄','nav_heroes'],['bag','背包','nav_bag']];
+      nav.forEach(([p,label,icon], i) => {
         const x=-288+144*i, active=p===page || (p==='campaign'&&page==='stagePreview');
-        if(active) U.panel('NavActive'+p,x,-591,135,84,palette.paperDark,8,palette.gold);
-        U.text('NavGlyph'+p,glyph,x,-577,120,34,active?palette.ink:palette.gold);
-        U.text('NavLabel'+p,label,x,-613,120,16,active?palette.ink:palette.muted);
+        if(active) U.panel('NavActive'+p,x,-594,140,89,new Color(91,69,35,240),5,palette.gold);
+        U.sprite('NavIcon'+p,icon,x,-575,59,54);
+        U.text('NavLabel'+p,label,x,-620,123,23,active?palette.gold:palette.paper);
         U.tap('Nav'+p,x,-594,138,90,()=>this.go(p));
       });
     }

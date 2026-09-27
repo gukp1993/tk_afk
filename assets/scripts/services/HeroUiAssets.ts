@@ -269,6 +269,10 @@ function sourceFrame(sheet: string, done: (frame: SpriteFrame | null) => void) {
 
 /** Loads source textures lazily and caches derived rect frames. The caller validates its Node before assignment. */
 export function loadHeroSpriteFrame(id: string, done: (frame: SpriteFrame | null) => void) {
+  if (id.startsWith('portrait_')) {
+    sourceFrame(`portraits/${id.slice('portrait_'.length)}`, done);
+    return;
+  }
   const art = SPRITES[id];
   if (!art) return done(null);
   if (CUT_FRAMES[id]?.isValid) return done(CUT_FRAMES[id]);
@@ -278,7 +282,8 @@ export function loadHeroSpriteFrame(id: string, done: (frame: SpriteFrame | null
       const frame = new SpriteFrame();
       frame.reset({
         texture: source.texture,
-        rect: new Rect(art.x, source.texture.height - art.y - art.h, art.w, art.h),
+        // SpriteFrame rects use top-left texture coordinates, as does the design manifest.
+        rect: new Rect(art.x, art.y, art.w, art.h),
         originalSize: new Size(art.w, art.h),
         offset: new Vec2(0, 0),
       });

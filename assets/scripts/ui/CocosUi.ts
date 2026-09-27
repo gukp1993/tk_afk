@@ -35,6 +35,19 @@ export class CocosUi {
     return node;
   }
 
+  /** Keep character and scenery proportions while cropping them to a card or stage window. */
+  clippedSprite(name: string, assetId: string, x: number, y: number,
+    viewW: number, viewH: number, imageW: number, imageH: number, offsetX = 0, offsetY = 0) {
+    const viewport = new Node(name);
+    viewport.setPosition(new Vec3(x, this.y(y), 0));
+    viewport.addComponent(UITransform).setContentSize(viewW, viewH);
+    viewport.addComponent(Mask).type = Mask.Type.GRAPHICS_RECT;
+    this.parent.addChild(viewport);
+    new CocosUi(viewport).sprite(name + 'Image', assetId, offsetX, offsetY, imageW, imageH);
+    this.nodes.set(name, viewport);
+    return viewport;
+  }
+
   static resetScroll(name: string) { this.scrollOffsets.delete(name); }
 
   rect(name: string, x: number, y: number, w: number, h: number, fill: Color) {
@@ -175,6 +188,15 @@ export class CocosUi {
     label.overflow = Label.Overflow.SHRINK;
     this.parent.addChild(node);
     this.nodes.set(name, node);
+    return node;
+  }
+
+  textBlock(name: string, value: string, x: number, y: number, w: number, h: number, size = 20, color = palette.text) {
+    const node = this.text(name, value, x, y, w, size, color);
+    node.getComponent(UITransform)!.setContentSize(w, h);
+    const label = node.getComponent(Label)!;
+    label.enableWrapText = true;
+    label.overflow = Label.Overflow.CLAMP;
     return node;
   }
 
