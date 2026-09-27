@@ -16,6 +16,13 @@
 
 ## 最近交接（新 → 旧）
 
+### 删除 douyin-template 空白模板 · Codex · 已实施待验收
+
+时间：2026-09-27 14:56（Asia/Shanghai）；执行者：Codex；状态：已实施待验收。
+
+- 概要：按用户明确指令删除未跟踪目录 `douyin-template/`（含 `game.js`、`game.json`、`project.config.json`、`icon.png`）。
+- 验证：检查确认目录已不存在；未改动其他工作区内容。
+
 ### douyin-template 用途说明 · Codex · 无变更
 
 时间：2026-09-27 14:55（Asia/Shanghai）；执行者：Codex；状态：无变更。
