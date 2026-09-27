@@ -52,7 +52,8 @@ function makeStageEnemies(globalStage) {
     const h = getHero(pick(i));
     units.push({
       hero: h,
-      level: lv,
+      // 敌方等级斜率 1.5：120 关约 179 级，配合玩家经验曲线让等级差落在可通关区间（200 种子仿真校准）。
+      level: Math.max(1, Math.round(1 + (globalStage - 1) * 1.5)),
       star: Math.min(2, Math.floor((globalStage - 1) / 40)),
       scale: i === 0 && isBoss ? scale : scale * 0.92,
       isBoss: i === 0 && isBoss,

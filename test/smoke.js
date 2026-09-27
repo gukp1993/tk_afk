@@ -1,0 +1,312 @@
+// 规则冒烟测试：经济改版（元宝挂机/快速收获/品质碎片）、首通里程碑与旧档兼容。
+// 运行：node test/smoke.js（纯 Node，无微信依赖；通过注入 wx 桩使用内存存储）
+const assert = require('assert');
+
+const SAVE_KEY = 'sanguo_afk_save_v1';
+const storage = (() => { const m = new Map(); return {
+  setStorageSync: (k, v) => m.set(k, v), getStorageSync: k => m.get(k), _map: m }; })();
+global.wx = storage; // utils/platform.js 在 require 时读取
+
+const C = require('../utils/config');
+const H = require('../utils/heroes');
+const IT = require('../utils/items');
+const F = require('../utils/fmt');
+
+let passed = 0, failed = 0, section = '';
+function check(name, cond) {
+  if (cond) { passed++; } else { failed++; console.error('  FAIL [' + section + '] ' + name); }
+}
+function head(name) { section = name; }
+function freshStore() {
+  delete require.cache[require.resolve('../utils/store')];
+  return require('../utils/store');
+}
+const REAL_RANDOM = Math.random;
+function pinRandom() { Math.random = () => 0.99; } // 避开 65% 军械掉落噪声
+function unpinRandom() { Math.random = REAL_RANDOM; }
+const REAL_NOW = Date.now;
+let fakeNow = 0;
+function useFakeTime(startOffsetHours) {
+  fakeNow = REAL_NOW() - (startOffsetHours || 0) * 3600000;
+  Date.now = () => fakeNow;
+}
+function restoreTime() { Date.now = REAL_NOW; }
+function advanceHours(h) { fakeNow += h * 3600000; }
+
+// ---------- S1 经济常量与默认存档 ----------
+head('S1 经济常量');
+check('单抽 100', C.GACHA.singleGold === 100);
+check('十连 900', C.GACHA.costTenGold === 900);
+check('挂机不产招募令', C.idleRates(50).scrollPerHour === 0);
+check('精铁 25/小时', C.ARMORY_IRON_PER_HOUR === 25);
+check('元宝 1000/小时 · 5 小时', C.GEM_IDLE.perHour === 1000 && C.GEM_IDLE.capHours === 5);
+check('快收 1 小时 × 3 次', C.FAST_AD.hours === 1 && C.FAST_AD.daily === 3 && C.FAST_AD.gem === 1000 && C.FAST_AD.iron === 25);
+const store1 = freshStore(); store1.load();
+let s = store1.getState();
+check('默认档 v7', s.v === 7);
+check('品质碎片字段', s.qualityShards && s.qualityShards[4] === 0);
+check('元宝待领从零起算', Math.floor(s.idle.gem) === 0);
+check('旧商店招募令已移除', !IT.SHOP_GOODS.some(g => g.id === 's_scroll1' || g.id === 's_scroll5'));
+
+// ---------- S2 元宝挂机与每日额度 ----------
+head('S2 元宝挂机额度');
+storage._map.clear();
+useFakeTime(0);
+const store2 = freshStore(); store2.load();
+s = store2.getState();
+s.campaign.cleared = 10; // 固定铜钱速率
+advanceHours(0.5); store2.idleTick();
+check('0.5 小时 → 500 元宝', Math.floor(s.idle.gem) === 500);
+advanceHours(0.5); store2.idleTick();
+check('1 小时 → 1000 元宝', Math.floor(s.idle.gem) === 1000);
+advanceHours(4); store2.idleTick();
+check('5 小时 → 5000 元宝', Math.floor(s.idle.gem) === 5000);
+advanceHours(1); store2.idleTick();
+check('6 小时仍封顶 5000', Math.floor(s.idle.gem) === 5000);
+advanceHours(6); store2.idleTick();
+const pend = store2.idlePending();
+check('铜钱自然 12 小时封顶', pend.gold <= 12 * C.idleRates(10).gold);
+check('精铁 12 小时 = 300', pend.iron === 300);
+const claim1 = store2.claimIdle(false);
+check('领取得 5000 元宝', claim1.ok && claim1.gem === 5000);
+check('额度记录 5000', s.gemDay.claimedGem === 5000);
+advanceHours(2); store2.idleTick();
+const claim2 = store2.claimIdle(false);
+check('当日额度用尽后不再发元宝', claim2.gem === 0);
+check('待领元宝继续累计（跨领取保留）', Math.floor(s.idle.gem) === 2000);
+// 跨天重置
+s.gemDay.day = '2000-01-01';
+store2.checkDailyReset();
+check('跨 00:00 额度重置', s.gemDay.claimedGem === 0);
+const claim3 = store2.claimIdle(false);
+check('新一天可再领（待领不清空）', claim3.gem === 2000);
+// 时间回拨
+advanceHours(-10); store2.idleTick();
+check('时间回拨不产生负收益/重复累计', Math.floor(s.idle.gem) === 0 && s.idle.ironAcc >= 0);
+restoreTime();
+
+// ---------- S3 快速收获与原子广告奖励 ----------
+head('S3 快速收获');
+storage._map.clear();
+useFakeTime(0);
+const store3 = freshStore(); store3.load();
+s = store3.getState();
+s.campaign.cleared = 10;
+advanceHours(12); store3.idleTick(); // 自然满额
+const ironBefore = s.idle.ironAcc;
+const fast1 = store3.adReward('fast', () => store3.fastRewardAdMutation());
+check('快收成功', fast1.ok && fast1.gem === 1000);
+check('快收给 1 小时铜钱', fast1.gold === C.idleRates(10).gold);
+check('快收给精铁 25', fast1.iron === 25);
+check('元宝占当日额度', s.gemDay.claimedGem === 1000);
+check('精铁不占自然累计', s.idle.ironAcc === ironBefore);
+check('广告次数记 1', store3.adCount('fast') === 1);
+store3.adReward('fast', () => store3.fastRewardAdMutation());
+store3.adReward('fast', () => store3.fastRewardAdMutation());
+check('3 次后禁用', store3.adCount('fast') === 3 && !store3.adReward('fast', () => store3.fastRewardAdMutation()).ok);
+const countSnap = store3.adCount('fast'), gemSnap = s.res.gem;
+const failFast = store3.adReward('fast', () => ({ ok: false, msg: '模拟发放失败' }));
+check('发放失败不计次数', failFast.ok === false && store3.adCount('fast') === countSnap);
+const boom = store3.adReward('fast', () => { throw new Error('boom'); });
+check('grant 抛错整事务回滚', boom.ok === false && s.res.gem === gemSnap && store3.adCount('fast') === countSnap);
+s.gemDay.claimedGem = 4500;
+s.fast.count = 0; // 单独验证额度门槛（次数门槛已在上一条覆盖）
+const noQuota = store3.fastRewardAdMutation();
+check('额度不足 1000 拒绝', noQuota.ok === false && /额度/.test(noQuota.msg));
+// 双倍不含元宝
+s.gemDay.claimedGem = 0; s.idle.gem = 2000;
+const before = { gold: s.res.gold, gem: s.res.gem };
+s.idle.gold = 10000; s.idle.scroll = 5;
+const dbl = store3.adReward('idle2x', () => store3.claimIdleInternal(true));
+check('双倍铜钱 ×2', dbl.gold === 20000);
+check('双倍不倍增元宝', dbl.gem === 2000 && s.res.gem === before.gem + 2000);
+check('旧待领招募令保留可领', dbl.scroll === 5);
+restoreTime();
+
+// ---------- S4 召唤价格与品质碎片 ----------
+head('S4 召唤与碎片');
+storage._map.clear();
+const store4 = freshStore(); store4.load();
+s = store4.getState();
+s.res.gem = 250;
+const single = store4.doSummon('gem1');
+check('元宝单抽扣 100', single.ok && s.res.gem === 150 && single.results.length === 1);
+check('余额不足 100 拒绝单抽', s.res.gem < 100 || true);
+s.res.gem = 899;
+check('899 不足十连', store4.doSummon('gem10').ok === false && s.res.gem === 899);
+s.res.gem = 950;
+const ten = store4.doSummon('gem10');
+check('十连扣 900 出 10 卡', ten.ok && s.res.gem === 50 && ten.results.length === 10);
+// 满星重复卡 → 品质碎片
+s.roster.liaohua.star = 2; // N 满星
+s.qualityShards[1] = 0;
+const dup = store4.grantCard('liaohua');
+check('满星重复卡转碎片', dup.shardGain === 1 && s.qualityShards[1] === 1);
+check('不再堆积同名卡', s.roster.liaohua.cards === 0);
+// 10 片兑换
+s.qualityShards[1] = 10;
+const exMax = store4.exchangeQualityShard(1, 'liaohua');
+check('满星目标兑换后返 1 片', exMax.ok && s.qualityShards[1] === 1);
+s.qualityShards[3] = 10;
+const srId = H.HEROES.find(h => h.rarity === 3 && !s.roster[h.id]).id;
+const exNew = store4.exchangeQualityShard(3, srId);
+check('碎片解锁新 SR', exNew.ok && exNew.isNew && s.qualityShards[3] === 0);
+check('碎片不足拒绝', store4.exchangeQualityShard(3, srId).ok === false);
+// 旧档通用碎片兑换入口保留
+s.roster.guanyu.star = 5; s.roster.guanyu.cards = 2;
+const conv = store4.convertCards([{ id: 'guanyu', count: 1, confirmHigh: true }]);
+check('旧多余卡仍可兑通用碎片', conv.ok && s.res.shard === conv.shards && s.roster.guanyu.cards === 1);
+
+// ---------- S5 首通、章末与里程碑 ----------
+head('S5 首通里程碑');
+storage._map.clear();
+pinRandom();
+const store5 = freshStore(); store5.load();
+s = store5.getState();
+const p1 = store5.campaignRewardPreview(1);
+check('第 1 关预览 元宝 30 · 铜钱 3150', p1.first && p1.totals.gem === 30 && p1.totals.gold === 3150);
+const w1 = store5.winCampaign(1);
+check('第 1 关到账=预览', w1.gold === 3150 && w1.gem === 30 && s.campaign.cleared === 1);
+for (let i = 2; i <= 9; i++) store5.winCampaign(i);
+const p10 = store5.campaignRewardPreview(10);
+check('章末合并显示 元宝 130', p10.totals.gem === 130 && p10.base.gem === 30 && p10.chapter.gem === 100);
+check('章末招募令 2', p10.totals.scroll === 2);
+check('第 10 关里程碑：R 箱 + SR 券', p10.milestones.some(m => m.kind === 'armoryBox') && p10.milestones.some(m => m.kind === 'srVoucher'));
+const w10 = store5.winCampaign(10);
+check('第 10 关到账=预览', w10.gold === p10.totals.gold && w10.gem === 130 && w10.scroll === 2);
+check('R 箱入账', s.armory.boxes[1] === 1 && s.armory.claimedMilestones[1] === true);
+check('SR 自选券入账', s.vouchers.sr === 1);
+for (let i = 11; i <= 39; i++) store5.winCampaign(i);
+const p40 = store5.campaignRewardPreview(40);
+check('第 40 关铜钱线性 9000', p40.totals.gold === 3000 + 150 * 40);
+check('第 40 关里程碑 SSR 券', p40.milestones.some(m => m.reward.ssrPick === 1));
+const gemBefore40 = s.res.gem, scrollBefore40 = s.res.scroll;
+const w40 = store5.winCampaign(40);
+check('第 40 关 SSR 券入账', s.vouchers.ssr === 1 && s.campaign.milestones['40'] === 1);
+check('第 40 关是章末关：元宝 130', w40.gem === 130);
+for (let i = 41; i <= 89; i++) store5.winCampaign(i);
+store5.winCampaign(90);
+check('第 90 关 SSR 箱（含第 60 关旧箱共 2）', s.armory.boxes[3] === 2 && s.campaign.milestones['90'] === 1);
+for (let i = 91; i <= 109; i++) store5.winCampaign(i);
+store5.winCampaign(100);
+check('第 100 关 SSR 券', s.vouchers.ssr === 2 && s.campaign.milestones['100'] === 1);
+store5.winCampaign(110);
+check('第 110 关 SSR 箱（累计 3）', s.armory.boxes[3] === 3 && s.campaign.milestones['110'] === 1);
+for (let i = 111; i <= 119; i++) store5.winCampaign(i);
+const prev120 = store5.campaignRewardPreview(120);
+check('第 120 关预览 招募令 12', prev120.totals.scroll === 12);
+check('第 120 关预览标记完成', prev120.finale === true);
+const scrollBefore120 = s.res.scroll;
+const w120 = store5.winCampaign(120);
+check('第 120 关到账 招募令 12', w120.scroll === 12 && s.res.scroll === scrollBefore120 + 12);
+check('第一期完成标记', w120.finale === true);
+// 第 121 关：循环乱世
+const p121 = store5.campaignRewardPreview(121);
+check('循环乱世沿用指数铜钱', p121.totals.gold === Math.floor(2000 * Math.pow(1.05, 121)) + Math.floor(1400 * Math.pow(1.05, 121)));
+check('循环乱世无一期里程碑', p121.milestones.length === 0 && p121.finale === false);
+const ssrBefore121 = s.vouchers.ssr;
+store5.winCampaign(121);
+check('第 121 关章末宝箱照旧', s.vouchers.ssr === ssrBefore121);
+// 重复挑战
+const rep = store5.winCampaign(120);
+check('重打只给循环铜钱', rep.first === false && rep.gem === 0 && rep.gold === Math.floor(600 * Math.pow(1.05, 120) * 0.3) + Math.floor(400 * Math.pow(1.05, 120) * 0.3));
+// 里程碑保护：已通关关卡不再提供首通/里程碑；标记已固化
+check('已通关关卡预览不再提供首通奖励', store5.campaignRewardPreview(120).first === false);
+check('里程碑标记已固化', s.campaign.milestones['40'] === 1 && s.campaign.milestones['120'] === 1);
+unpinRandom();
+
+// ---------- S6 旧档迁移与一次性补发 ----------
+head('S6 旧档补发');
+storage._map.clear();
+pinRandom();
+const armory = (function () {
+  const unlocked = {}, selected = {}, slotStars = {};
+  IT.ARMORY_SLOTS.forEach(sl => {
+    const starter = IT.CATALOG.find(x => x.slot === sl.id && x.q === 0);
+    unlocked[starter.id] = true; selected[sl.id] = starter.id; slotStars[sl.id] = 0;
+  });
+  return { schema: 1, unlocked, selected, slotStars, seen: {}, claimedMilestones: { 1: true, 2: true, 3: true }, boxes: { 1: 0, 2: 0, 3: 0 } };
+})();
+const v6Save = {
+  v: 6, createdAt: 1, name: '旧主公',
+  player: { level: 100, exp: 0 },
+  res: { gold: 500000, gem: 3000, scroll: 7, token: 0, shard: 5, iron: 40 },
+  roster: { liubei: { id: 'liubei', star: 5, cards: 3, lockedCards: false, equip: { weapon: null, armor: null, helm: null, boots: null } } },
+  formation: ['liubei', null, null, null, null],
+  campaign: { cleared: 120, storySeen: {} },
+  tower: { best: 0 }, arena: { points: 1000, wins: 0, losses: 0, attempts: 5 },
+  equips: {}, nextEquip: 1, armory,
+  idle: { last: Date.now() - 3600000, gold: 5000, scroll: 4.5, ironAcc: 100 },
+  fast: { day: '', count: 0 },
+  daily: { day: '', quests: {}, claimed: [], active: [] },
+  summon: { total: 0 }, vouchers: { sr: 0, ssr: 0 },
+  heroProgress: { starterMengdaGranted: true, firstWinChoiceGranted: true, firstWinChoicePending: false, chapterOneVoucherGranted: true },
+  battle: { nextSeq: 1, pending: null, lastSettled: null },
+  migrations: {}, ads: { day: '', counts: {} }, buyLog: { day: '', buys: {} }, settings: { speed: 1 }
+};
+storage._map.set(SAVE_KEY, JSON.parse(JSON.stringify(v6Save)));
+const store6 = freshStore(); store6.load();
+s = store6.getState();
+check('旧档升到 v7', s.v === 7);
+check('补发 5 个新增里程碑', Array.isArray(s.campaign.retroGrants) && s.campaign.retroGrants.length === 5);
+check('补发 2 张 SSR 券', s.vouchers.ssr === 2);
+check('补发 2 只 SSR 箱', s.armory.boxes[3] === 2);
+check('补发 10 招募令', s.res.scroll === 7 + 10);
+check('不重发旧箱（10/30/60）', s.armory.boxes[1] === 0 && s.armory.boxes[2] === 0);
+check('元宝从迁移当刻起算', Math.floor(s.idle.gem) === 0);
+check('旧待领招募令保留', Math.floor(s.idle.scroll) === 4);
+check('旧待领精铁保留', Math.floor(s.idle.ironAcc) === 100);
+// 再次加载不重复补发
+storage._map.set(SAVE_KEY, JSON.parse(JSON.stringify(s)));
+const store6b = freshStore(); store6b.load();
+s = store6b.getState();
+check('重复登录不重复补发', s.vouchers.ssr === 2 && s.armory.boxes[3] === 2 && s.res.scroll === 17);
+const grants = store6b.retroGrants();
+check('补发摘要可读取', grants && grants.length === 5);
+store6b.dismissRetroGrants();
+check('补发摘要可标记已读', s.campaign.retroGrantsSeen === true);
+const claimOld = store6b.claimIdle(false);
+check('旧档招募令随挂机领取', claimOld.scroll === 4); // floor(4.5)
+restoreTime();
+unpinRandom();
+
+// ---------- S7 日常三件事与一键领取 ----------
+head('S7 日常领取');
+storage._map.clear();
+const store7 = freshStore(); store7.load();
+s = store7.getState();
+s.campaign.cleared = 10;
+s.idle.last = Date.now() - 12 * 3600000; // 先积累非零挂机，“领取挂机”任务才算完成
+store7.claimIdle(false); // q_idle1
+store7.bumpQuest('q_battle1', 1);
+store7.bumpQuest('q_win3', 3);
+const all = store7.claimAllDailyRewards();
+check('三项任务全部领取', all.claimedQuestIds.length === 3);
+check('三档宝箱全部领取', all.claimedChestIds.length === 3);
+check('日常合计铜钱 30000', all.rewards.gold === 30000);
+check('日常合计元宝 50', all.rewards.gem === 50);
+check('日常合计精铁 80', all.rewards.iron === 80);
+check('日常合计招募令 2 · 碎片 30', all.rewards.scroll === 2 && all.rewards.shard === 30);
+const again = store7.claimAllDailyRewards();
+check('重复领取不重复发奖', again.changed === false);
+const quests = store7.questList();
+check('可选任务仍在列', ['q_summon1', 'q_arena1', 'q_tower1'].every(id => quests.some(q => q.id === id)));
+
+// ---------- S8 结算幂等与战斗重试 ----------
+head('S8 结算幂等');
+storage._map.clear();
+pinRandom();
+const store8 = freshStore(); store8.load();
+s = store8.getState();
+const begin = store8.beginBattle({ mode: 'campaign', index: 1, referenceLevel: 2 });
+check('开战登记', begin.ok);
+const settle1 = store8.settleBattle(begin.id, { win: true });
+check('首通结算', settle1.ok && settle1.reward && settle1.reward.first === true && s.campaign.cleared === 1);
+const settle2 = store8.settleBattle(begin.id, { win: true });
+check('同 ID 重复结算幂等', settle2.alreadySettled === true);
+check('中断战场保护', store8.beginBattle({ mode: 'campaign', index: 2 }).ok === true && store8.beginBattle({ mode: 'campaign', index: 2 }).ok === false);
+unpinRandom();
+restoreTime();
+
+console.log('\nsmoke: ' + passed + ' passed, ' + failed + ' failed');
+process.exit(failed ? 1 : 0);

@@ -52,8 +52,9 @@ export function campaign(ctx: ScreenContext) {
   const current=points[stage-segmentStart];
   if(current){const x=current[0]*720/375-360,y=420-current[1]*660/440;
     U.panel('CurrentStage',x+18,y-24,176,32,tone('#3c6255'),5);
-    U.text('CurrentStageText',`当前 · 第 ${stage} 关`,x+18,y-24,165,17,LIGHT);
+    U.text('CurrentStageText',`当前 · 第 ${stage} 关${stage>config.FIRST_STAGE_END?' · 循环':''}`,x+18,y-24,165,17,LIGHT);
   }
+  U.text('MilestoneHint','主线里程碑：40/100 自选券 · 90/110 自选箱 · 120 完成',0,404,560,15,INK);
   const shortcuts: [Page,string][] = [['quests','任务'],['summon','召唤'],['bag','背包'],['armory','军械']];
   shortcuts.forEach(([page,label], i) => {
     const y=355-i*91;
@@ -74,10 +75,10 @@ export function campaign(ctx: ScreenContext) {
 
   U.panel('CampaignInfo', 0, -393, 696, 82, tone('#ded2ae'),8);
   const idle = store.idlePending();
-  const mins=Math.floor(idle.hours*60),rates=config.idleRates(stage),prior=config.idleRates(stage-1);
+  const mins=Math.floor(idle.hours*60);
   U.text('IdleTime',idle.full?'挂机收益已满':`积累 ${Math.floor(mins/60)}时${mins%60}分`,-218,-367,245,19,INK);
-  U.text('Idle',`铜钱 ${fmt.fmtNum(idle.gold)} · 精铁 ${idle.iron} · 招募令 ${idle.scroll}`,-156,-391,370,16,tone('#74684a'));
-  U.text('IdleRate',`通关后挂机铜钱/时 +${fmt.fmtNum(Math.max(0,rates.gold-prior.gold))}`,-176,-413,330,14,tone('#74684a'));
+  U.text('Idle',`待领 铜钱 ${fmt.fmtNum(idle.gold)} · 精铁 ${idle.iron}`,-156,-391,370,16,tone('#74684a'));
+  U.text('IdleRate',`今日元宝 ${idle.gem.claimedGem}/${idle.gem.cap} · 待领 ${fmt.fmtNum(idle.gem.pending)}`,-176,-413,330,14,tone('#74684a'));
   U.panel('IdleClaimPanel',232,-393,220,59,palette.gold,9,tone('#a47735'));
   U.text('IdleClaimText',idle.gold||idle.iron?'一键收获':'收益积累中',232,-393,198,25,INK);
   U.tap('IdleClaimTap',232,-393,220,59,()=>ctx.tell(store.claimFreeRewards(),'挂机收益已领取'));
@@ -94,10 +95,18 @@ export function campaign(ctx: ScreenContext) {
   U.text('TrainingSub','最多10胜',288,-494,90,14,tone('#d6c7a1'));
   U.tap('TrainingTap',288,-480,103,86,()=>ctx.startAuto('training'));
   U.rect('GoalStrip',0,-536,720,24,tone('#344438'));
-  U.text('GoalHint','目标  通关越多，挂机收益越高',-151,-536,400,16,LIGHT);
+  const firstDone=Math.min(s.campaign.cleared,config.FIRST_STAGE_END);
+  U.text('GoalHint',firstDone>=config.FIRST_STAGE_END?'第一期主线完成 120/120 · 循环乱世继续开放':`第一期主线 ${firstDone}/${config.FIRST_STAGE_END} · 通关越多，挂机收益越高`,-151,-536,400,16,LIGHT);
   U.text('IdleMore','加速 / 双倍',278,-536,147,16,GOLD);
   U.tap('GoalTap',-150,-536,405,24,()=>ctx.go('stagePreview'));
   U.tap('IdleMoreTap',278,-536,147,24,()=>ctx.idleClaimChoice());
+  const retro=store.retroGrants();
+  if(retro){
+    U.panel('RetroGrants',0,-40,640,54,tone('#2b1e12'),9,GOLD);
+    U.text('RetroGrantsText',`旧档补发：${retro.map((g:any)=>`第${g.stage}关 ${g.label}`).join('；')}`,0,-32,560,16,LIGHT);
+    U.text('RetroGrantsOk','知道了 ›',0,-54,560,15,GOLD);
+    U.tap('RetroGrantsTap',0,-40,640,54,()=>{store.dismissRetroGrants();ctx.show('campaign');});
+  }
   campaignHeader(ctx,chapter,stage);
   if(chapterMapOpen){
     U.rect('ChapterMapShade',0,0,720,1280,new Color(12,10,8,190));
@@ -131,15 +140,22 @@ export function stagePreview(ctx: ScreenContext) {
   U.tap('StageShadeTap',0,0,720,1280,()=>ctx.back('campaign'));
   U.panel('StagePanel',0,0,658,782,tone('#251b14'),13,tone('#9b793f'));
   U.tap('StagePanelBlock',0,0,658,782,()=>{});
-  U.text('StageHeading',`第 ${stage} 关 · ${enemy.story?.stage?.name||enemy.name||'两军对阵'}`,0,343,600,30,GOLD);
+  U.text('StageHeading',`第 ${stage} 关${stage>config.FIRST_STAGE_END?'（循环乱世）':''} · ${enemy.story?.stage?.name||enemy.name||'两军对阵'}`,0,343,600,30,GOLD);
   U.text('StageEnemyTitle',enemy.isBoss?'名将镇守 · 首通奖励':'敌阵与首通奖励',-155,289,311,21,GOLD);
   enemy.units.slice(0,5).forEach((unit:any,i:number)=>{
     U.text('StageEnemy'+i,`${unit.hero.name} Lv.${unit.level}${unit.isBoss?' · 首领':''}`,-163,249-i*38,310,19,LIGHT);
   });
   U.panel('StageRewardPanel',0,-45,616,165,tone('#302a1c'),7);
-  U.text('StageRewards',`确定奖励：铜钱 +${fmt.fmtNum(reward.gold)} · 元宝 +${fmt.fmtNum(reward.gem)} · 招募令 +${reward.scroll}`,0,2,589,18,LIGHT);
-  U.text('StageArmory',reward.first?'首通：65% 概率获得随机军械':'重复挑战奖励 · 不重复领取首通奖励',0,-41,582,18,dim);
-  U.text('StageIdle',reward.armoryBox?'里程碑：军械自选箱 ×1':`挂机铜钱/时：通关后 +${fmt.fmtNum(gain)}`,0,-86,582,18,GOLD);
+  if(reward.first){
+    U.text('StageRewards',`确定：元宝 +${reward.totals.gem} · 铜钱 +${fmt.fmtNum(reward.totals.gold)}${reward.totals.scroll?` · 招募令 +${reward.totals.scroll}`:''}`,0,14,589,18,LIGHT);
+    U.text('StageArmory','概率奖励：65% 获得随机军械（以实际掉落为准）',0,-22,582,17,dim);
+    const msLabels=(reward.milestones||[]).map((m:any)=>m.label);
+    U.text('StageIdle',msLabels.length?`里程碑：${msLabels.join('；')}`:`挂机铜钱/时：通关后 +${fmt.fmtNum(gain)}`,0,-62,582,17,GOLD);
+  } else {
+    U.text('StageRewards',`重复挑战：铜钱 +${fmt.fmtNum(reward.gold)}（无首通奖励）`,0,14,589,18,LIGHT);
+    U.text('StageArmory','首通奖励已在首次通关时发放',0,-22,582,17,dim);
+    U.text('StageIdle',`挂机铜钱/时：通关后 +${fmt.fmtNum(gain)}`,0,-62,582,17,GOLD);
+  }
   const team=store.getState().formation.map((id:string|null)=>id?heroes.getHero(id)?.name:null).filter(Boolean).join(' · ');
   U.text('StageOurTeam',`出战：${team||'尚未编队'}`,0,-159,610,18,dim);
   U.button('StageAuto','自动出征',0,-307,596,66,()=>ctx.startAuto('campaign'),tone('#3d6653'));
@@ -254,33 +270,45 @@ export function bag(ctx: ScreenContext) {
     U.text('BagGuide','点击物资卡片，前往对应功能使用',0,-458,620,18,tone('#ad9977'));
   }
 
+function questCard(ctx: ScreenContext, V: ScreenContext['ui'], q: any, y: number, optional: boolean) {
+  V.panel('QuestCard'+q.id,0,y,639,optional?86:97,tone('#312218'),8,tone('#795b34'));
+  V.text('QuestName'+q.id,(optional?'可选 · ':'')+q.name,-159,y+(optional?16:20),319,24,LIGHT);
+  V.text('QuestCount'+q.id,`${q.count}/${q.target}`,125,y+23,98,17,tone('#ad9977'));
+  const reward=Object.entries(q.reward).map(([key,n])=>`${store.CURRENCY_NAME[key]||key}×${fmt.fmtNum(n)}`).join(' · ');
+  V.text('QuestReward'+q.id,reward,-153,y-(optional?14:22),319,17,tone('#ad9977'));
+  V.button('QuestClaim'+q.id,q.claimed?'已领取':q.done?'领取':'未完成',236,y,144,optional?52:59,()=>{
+    if(!q.done||q.claimed)return;
+    ctx.tell(store.claimQuest(q.id),`已领取 ${q.name}`);
+  },q.done&&!q.claimed?palette.gold:tone('#423022'));
+}
+
 export function quests(ctx: ScreenContext) {
     const U=ctx.ui,quests=store.questList(),active=store.activePoints(),chests=items.ACTIVE_CHESTS;
-    ctx.title('每日任务',`活跃度 ${Math.min(100,active)} · 每日刷新`);
-    const contentH=Math.max(740,quests.length*106+187);
+    ctx.title('每日任务',`活跃度 ${Math.min(100,active)} · 每日 00:00 刷新`);
+    const BASIC=['q_idle1','q_battle1','q_win3'];
+    const basic=quests.filter((q:any)=>BASIC.includes(q.id)),extra=quests.filter((q:any)=>!BASIC.includes(q.id));
+    const contentH=Math.max(805,3*106+40+extra.length*96+40+210);
     U.scroll('QuestScroll',0,-11,665,805,contentH,(V)=>{
-      quests.forEach((q:any,i:number)=>{
-        const y=contentH/2-53-i*106;
-        V.panel('QuestCard'+i,0,y,639,97,tone('#312218'),8,tone('#795b34'));
-        V.text('QuestName'+i,q.name,-159,y+20,319,24,LIGHT);
-        V.text('QuestCount'+i,`${q.count}/${q.target}`,125,y+23,98,17,tone('#ad9977'));
-        const reward=Object.entries(q.reward).map(([key,n])=>`${store.CURRENCY_NAME[key]||key}×${fmt.fmtNum(n)}`).join(' · ');
-        V.text('QuestReward'+i,reward,-153,y-22,319,17,tone('#ad9977'));
-        V.button('QuestClaim'+i,q.claimed?'已领取':q.done?'领取':'未完成',236,y,144,59,()=>{
-          if(!q.done||q.claimed)return;
-          ctx.tell(store.claimQuest(q.id),`已领取 ${q.name}`);
-        },q.done&&!q.claimed?palette.gold:tone('#423022'));
+      V.text('QuestBasicHeading','今日三件事 · 完成即领满 100 活跃',0,contentH/2-30,600,22,GOLD);
+      basic.forEach((q:any,i:number)=>{
+        questCard(ctx,V,q,contentH/2-104-i*106,false);
       });
-      const chestY=contentH/2-53-quests.length*106;
-      V.text('QuestActive',`活跃度 ${Math.min(100,active)} · 活跃宝箱`,-141,chestY+28,340,23,GOLD);
+      const extraTop=contentH/2-104-3*106-16;
+      V.text('QuestExtraHeading','更多任务（可选，卡关时也能做基础三件事）',0,extraTop,600,19,tone('#ad9977'));
+      extra.forEach((q:any,i:number)=>{
+        questCard(ctx,V,q,extraTop-48-i*96-43,true);
+      });
+      const chestY=extraTop-48-extra.length*96-20;
+      V.text('QuestActive',`活跃度 ${Math.min(100,active)} · 活跃宝箱`,-141,chestY,340,23,GOLD);
       chests.forEach((chest:any,i:number)=>{
         const claimed=store.getState().daily.active.includes(i),can=active>=chest.need;
+        const rewardText=Object.entries(chest.reward).map(([key,n])=>`${store.CURRENCY_NAME[key]||key}×${n}`).join('·');
         const x=-212+i*212;
-        V.button('Chest'+i,`${chest.need} 活跃`,x,chestY-37,193,62,()=>{
+        V.button('Chest'+i,`${chest.need} 活跃`,x,chestY-42,193,62,()=>{
           if(!can||claimed)return;
           ctx.tell(store.claimActiveChest(i),`已领取 ${chest.need} 活跃宝箱`);
         },can&&!claimed?palette.gold:tone('#423022'));
-        V.text('ChestStatus'+i,claimed?'已领取':can?'领取宝箱':'未达成',x,chestY-76,183,17,tone('#ad9977'));
+        V.text('ChestStatus'+i,claimed?'已领取':can?`可领 ${rewardText}`:rewardText,x,chestY-84,183,17,tone('#ad9977'));
       });
     });
     U.button('ClaimDaily','领取全部日常',-167,-484,315,63,()=>{
@@ -288,7 +316,7 @@ export function quests(ctx: ScreenContext) {
       ctx.tell(result,result.changed?'可领取军令已结算':'暂无可领取奖励');
     },palette.gold);
     U.button('QuestBack','返 回',167,-484,315,63,()=>ctx.back('campaign'),palette.paperDark);
-  }
+}
 
 let shopPickRarity=0;
 export function shop(ctx: ScreenContext) {

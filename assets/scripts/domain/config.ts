@@ -52,26 +52,31 @@ const FOOD_VALUE = { 1: 1, 2: 2, 3: 4, 4: 8 };
 function goldCost(lv) { return Math.floor(90 * Math.pow(lv, 1.35)); }
 function expCost(lv) { return Math.floor(70 * Math.pow(lv, 1.35)); }
 
-// 挂机收益（按已通关最高关卡）
+// 挂机收益（按已通关最高关卡）。gold=铜钱/小时；gem 与铜钱、精铁分账计算。
+// 元宝固定 1000/小时，不受关卡影响；自然日（00:00 重置）最多领取 5 小时／5000 元宝，
+// 快速收获广告占用同一额度；铜钱、精铁仍各自最多自然累计 12 小时。
 function idleRates(cleared) {
   // v3 及旧版本的挂机兵书价值并入铜钱；在线状态不再生成兵书。
+  // scrollPerHour 归零：挂机不再产出招募令，旧档已积累的待领招募令原样保留。
   return {
     gold: Math.floor((1800 + 260 * cleared) + (1200 + 170 * cleared)),
     exp: 0,
-    scrollPerHour: 0.25
+    scrollPerHour: 0
   };
 }
 const IDLE_CAP_HOURS = 12;
-const ARMORY_IRON_PER_HOUR = 12;
-const FAST_REWARD_HOURS = 2;
-const FAST_REWARD_COST = 50;
-const FAST_REWARD_DAILY = 6;
+const GEM_IDLE = { perHour: 1000, capHours: 5, dailyCap: 5000 };
+const ARMORY_IRON_PER_HOUR = 25;
+// 快速收获：广告版每次立即给 1 小时收益（元宝 1000＋铜钱 1 小时＋精铁 25），每日 3 次；
+// 元宝占用当日 5 小时额度，铜钱／精铁不占自然累计。付费版只给铜钱／精铁，不产生元宝。
+const FAST_AD = { hours: 1, daily: 3, gem: 1000, iron: 25 };
+const FAST_PAID = { hours: 2, cost: 50, daily: 3 };
 
 // 招募
 const GACHA = {
   costScroll: 1,
-  costTenGold: 2880,
-  singleGold: 300,
+  costTenGold: 900,
+  singleGold: 100,
   // 白/蓝/紫/橙 四档固定概率，无保底
   rates: { ssr: 0.02, sr: 0.10, r: 0.28, n: 0.60 }
 };
@@ -111,16 +116,28 @@ const AD = {
   rewardedUnitIds: { wechat: '', douyin: '' },
   placements: {
     idle2x: { limit: 3, name: '双倍领取挂机收益' },
-    fast:   { limit: 3, name: '免费快速收获 +2小时' },
+    fast:   { limit: 3, name: '快速收获 · 立即 1 小时收益' },
     summon: { limit: 1, name: '免费招募令' },
     revive: { limit: 1, name: '战败复活再战' }
   }
 };
 
+// 第一期主线：12 章 × 10 关；第 121 关起为循环乱世，不套用一期里程碑。
+const FIRST_STAGE_END = 120;
+// 一期固定里程碑（在普通首通与章末奖励之外，只发一次；旧档通关后补发一次）。
+const CAMPAIGN_MILESTONES = {
+  40:  { ssrPick: 1, label: 'SSR 武将自选券 ×1' },
+  90:  { armoryBox: 3, label: 'SSR 军械自选箱 ×1' },
+  100: { ssrPick: 1, label: 'SSR 武将自选券 ×1' },
+  110: { armoryBox: 3, label: 'SSR 军械自选箱 ×1' },
+  120: { scroll: 10, label: '招募令 ×10 · 第一期主线完成' }
+};
+
 export {
   FACTIONS, BEATS, FACTION_ADV, CLASSES, RARITIES,
   LEVEL_CAPS, MAX_LEVEL, PLAYER_LEVEL, BATTLE_XP, AUTO_BATTLE, FOOD_VALUE,
-  goldCost, expCost, idleRates, IDLE_CAP_HOURS, ARMORY_IRON_PER_HOUR,
-  FAST_REWARD_HOURS, FAST_REWARD_COST, FAST_REWARD_DAILY,
-  GACHA, factionBonus, FORMATION_ROWS, BATTLE, ARENA, AD
+  goldCost, expCost, idleRates, IDLE_CAP_HOURS, GEM_IDLE, ARMORY_IRON_PER_HOUR,
+  FAST_AD, FAST_PAID,
+  GACHA, factionBonus, FORMATION_ROWS, BATTLE, ARENA, AD,
+  FIRST_STAGE_END, CAMPAIGN_MILESTONES
 };

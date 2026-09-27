@@ -1,37 +1,26 @@
 // 确定性均衡编队建议，不修改传入阵容。
+// 前排取坦度（坦克/战士按战力），后排取输出（法师/神射按攻击，战士次之，辅助兜底），
+// 避免按总战力挑选时凑出五坦克的零输出阵容（输出不足会打满 90 秒超时判负）。
 function recommendFormation(roster) {
   const all = (roster || []).filter(Boolean).slice();
+  if (!all.length) return [null, null, null, null, null];
   const powerOrder = (a, b) => (Number(b.power) || 0) - (Number(a.power) || 0) || String(a.id).localeCompare(String(b.id));
-  const allByPower = all.slice().sort(powerOrder);
-  const tanks = all.filter(h => h.cls === 'tank').sort(powerOrder);
-  const fighters = all.filter(h => h.cls === 'warrior').sort(powerOrder);
-  const firstFront = tanks[0] || fighters[0] || allByPower[0];
-  if (!firstFront) return [null, null, null, null, null];
-  const chosen = [firstFront];
-  const supports = all.filter(h => h.id !== firstFront.id && h.cls === 'support').sort(powerOrder);
-  if (supports.length) chosen.push(supports[0]);
-  allByPower.forEach(h => { if (chosen.length < 5 && !chosen.some(x => x.id === h.id)) chosen.push(h); });
+  const atkOf = h => (Number(h.stats && h.stats.atk) || 0);
+  const backRank = h => (h.cls === 'mage' || h.cls === 'archer' ? 0 : h.cls === 'support' ? 2 : 1);
+  const backOrder = (a, b) => backRank(a) - backRank(b) || atkOf(b) - atkOf(a) || powerOrder(a, b);
 
-  const front = chosen.filter(h => h.cls === 'tank' || h.cls === 'warrior').sort((a, b) => {
-    const role = (h) => h.cls === 'tank' ? 0 : 1;
-    return role(a) - role(b) || powerOrder(a, b);
-  }).slice(0, 3);
-  const remaining = chosen.filter(h => !front.some(x => x.id === h.id));
-  const bulk = remaining.filter(h => h.cls !== 'support').sort((a, b) =>
-    (Number(b.stats && b.stats.hp) || 0) - (Number(a.stats && a.stats.hp) || 0) ||
-    (Number(b.stats && b.stats.def) || 0) - (Number(a.stats && a.stats.def) || 0) || powerOrder(a, b));
-  while (front.length < 3 && bulk.length) front.push(bulk.shift());
-  const back = chosen.filter(h => !front.some(x => x.id === h.id)).sort((a, b) => {
-    const support = (h) => h.cls === 'support' ? 0 : 1;
-    return support(a) - support(b) || powerOrder(a, b);
+  // 前排：坦克/战士按战力取前三
+  const front = all.filter(h => h.cls === 'tank' || h.cls === 'warrior').sort(powerOrder).slice(0, 3);
+  const usedIds = new Set(front.map(h => h.id));
+  const rest = all.filter(h => !usedIds.has(h.id)).sort(powerOrder);
+  // 后排：优先远程输出位（按攻击），不足两名时用剩余高战力补
+  const back = rest.slice().sort(backOrder).slice(0, 2);
+  rest.forEach(h => {
+    if (front.length < 3 && !front.some(x => x.id === h.id) && !back.some(x => x.id === h.id)) front.push(h);
   });
-  // 只有非辅助不足三名时，剩余成员才会补前排。
-  while (front.length < 3 && back.length) front.push(back.shift());
-  while (back.length < 2 && chosen.some(h => !front.some(x => x.id === h.id) && !back.some(x => x.id === h.id))) {
-    const next = chosen.find(h => !front.some(x => x.id === h.id) && !back.some(x => x.id === h.id));
-    if (!next) break;
-    back.push(next);
-  }
+  rest.forEach(h => {
+    if (back.length < 2 && !front.some(x => x.id === h.id) && !back.some(x => x.id === h.id)) back.push(h);
+  });
   const ids = front.slice(0, 3).concat(back.slice(0, 2)).map(h => h ? h.id : null);
   while (ids.length < 5) ids.push(null);
   return ids;

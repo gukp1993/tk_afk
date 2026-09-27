@@ -98,9 +98,9 @@ const DROP_SLOTS = ['weapon', 'armor', 'helm', 'boots'];
 
 // ---- 商铺（每日刷新） ----
 // cur: gold 铜钱 / gem 元宝 / scroll 招募卷 / token 演武令 / shard 英雄碎片
+// 元宝直购招募令旧价（300/1350）已随召唤新价（单抽 100／十连 900）移除；
+// 演武令兑换与通用碎片商品保留。
 const SHOP_GOODS = [
-  { id: 's_scroll1', name: '招募令 ×1', cur: 'gem', price: 300, give: { scroll: 1 }, limit: 3 },
-  { id: 's_scroll5', name: '招募令 ×5', cur: 'gem', price: 1350, give: { scroll: 5 }, limit: 1 },
   { id: 's_gold', name: '铜钱 ×20万', cur: 'gem', price: 80, give: { gold: 200000 }, limit: 3 },
   { id: 't_scroll', name: '招募令 ×1', cur: 'token', price: 40, give: { scroll: 1 }, limit: 5 },
   { id: 't_sr', name: 'SR 自选卡', cur: 'token', price: 300, give: { srPick: 1 }, limit: 1 },

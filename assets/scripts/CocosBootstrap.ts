@@ -44,7 +44,8 @@ export class CocosBootstrap extends Component implements ScreenContext {
   private adPlacement = '';
   private adSeconds = 0;
   private adReturn: Page = 'home';
-  private adReward: (() => void) | null = null;
+  private adGrant: (() => any) | null = null;
+  private adSuccessText = '';
   public lastSummon: any[] = [];
   private navigation: Page[] = [];
 
@@ -67,14 +68,29 @@ export class CocosBootstrap extends Component implements ScreenContext {
     game.off(Game.EVENT_SHOW, this.onShow, this);
     store.save();
   }
-  private onHide() { if(this.auto) this.autoAction(this.autoSession.pause('background')); store.save(); }
-  private onShow() { if(this.auto) this.autoAction(this.autoSession.resume('background')); store.idlePending(); this.show(this.page); }
+  private onHide() {
+    // 退后台中断模拟广告：不发奖、不占成功次数
+    if (this.page === 'ad' && this.adPlacement) { this.adPlacement = ''; this.adGrant = null; }
+    if (this.auto) this.autoAction(this.autoSession.pause('background'));
+    store.save();
+  }
+  private onShow() {
+    if (this.page === 'ad' && !this.adPlacement) this.page = this.adReturn;
+    if (this.auto) this.autoAction(this.autoSession.resume('background'));
+    store.idlePending();
+    this.show(this.page);
+  }
 
   update(dt: number) {
     if (this.page === 'ad' && this.adPlacement && this.adSeconds > 0) {
       const before = Math.ceil(this.adSeconds);
       this.adSeconds = Math.max(0, this.adSeconds - dt);
       if (Math.ceil(this.adSeconds) !== before) this.show('ad');
+    }
+    if (this.page === 'ad' && this.adPlacement) {
+      const ratio = Math.min(1, 1 - this.adSeconds / 3);
+      this.ui.updateProgress('AdProgress', 0, 40, 540, ratio);
+      this.ui.setText('AdTimer', ratio >= 1 ? '播放完成 · 可领取奖励' : `播放中… ${Math.ceil(this.adSeconds)} 秒 · ${Math.floor(ratio * 100)}%`);
     }
     if (this.fighting && this.autoSession.state.status !== 'suspended') {
       const speed = store.getState().settings.autoBattleSpeed || 1;
@@ -152,11 +168,15 @@ export class CocosBootstrap extends Component implements ScreenContext {
     U.button('ConfirmCancel', '再想想', -150, -112, 240, 72, () => this.show(this.page), palette.green);
     U.button('ConfirmDo', '确认', 150, -112, 240, 72, act, palette.red);
   }
-  public playAd(placement: string, reward: () => void) {
+  public playAd(placement: string, grant: () => any, successText: string) {
     if (rewarded.remaining(placement) <= 0) return this.tell({ok:false,msg:'今日该奖励次数已用完'},'');
     if (rewarded.configured()) {
       rewarded.showConfigured(placement).then(done => {
-        if (done) reward();
+        if (done) {
+          // 真实广告路径同样走原子事务：次数与奖励同存档提交
+          const r = store.adReward(placement, grant);
+          this.tell(r, r.ok ? successText : '');
+        }
         else this.tell({ok:false,msg:'未看完广告，无奖励'},'');
       }).catch(() => this.tell({ok:false,msg:'广告暂不可用，稍后重试'},''));
       return;
@@ -164,36 +184,51 @@ export class CocosBootstrap extends Component implements ScreenContext {
     this.adReturn = this.page;
     this.adPlacement = placement;
     this.adSeconds = 3;
-    this.adReward = reward;
+    this.adGrant = grant;
+    this.adSuccessText = successText;
     this.go('ad');
   }
+  private claimAdReward() {
+    const grant = this.adGrant, placement = this.adPlacement, target = this.adReturn, text = this.adSuccessText;
+    this.adGrant = null; this.adPlacement = '';
+    if (!grant) { this.go(target); return; }
+    const r = store.adReward(placement, grant);
+    this.go(target);
+    this.tell(r, r.ok ? text : '');
+  }
   public idleClaimChoice() {
-    const U=this.ui, idle=store.idlePending();
+    const U=this.ui, idle=store.idlePending(), quota=store.gemQuotaInfo();
+    const fastLimit=config.AD.placements.fast.limit, fastLeft=Math.max(0, fastLimit-store.adCount('fast'));
+    const fastOk=fastLeft>0 && quota.remaining>=config.FAST_AD.gem;
     U.rect('IdleChoiceMask',0,0,720,1280,palette.ink).on(Node.EventType.TOUCH_END,()=>{});
-    U.rect('IdleChoicePanel',0,0,630,405,palette.paper);
-    U.text('IdleChoiceTitle','领取挂机收益',0,130,565,34,palette.ink);
-    U.text('IdleChoiceAmount',`可领铜钱 ${fmt.fmtNum(idle.gold)} · 精铁 ${idle.iron}`,0,48,565,24,palette.ink);
-    U.button('IdleNormal','普通领取',-155,-65,255,81,()=>{
-      const r=store.claimIdle(false);this.tell(r,`获得铜钱 ${fmt.fmtNum(r.gold)}、精铁 ${r.iron}`);
+    U.rect('IdleChoicePanel',0,-10,664,648,palette.paper);
+    U.text('IdleChoiceTitle','领取挂机收益',0,252,565,34,palette.ink);
+    U.text('IdleChoiceAmount',`自然待领：铜钱 ${fmt.fmtNum(idle.gold)} · 精铁 ${idle.iron}`,0,204,565,24,palette.ink);
+    U.text('IdleGemLine',`今日元宝额度 ${quota.claimedGem}/${quota.cap} · 待领元宝 ${fmt.fmtNum(quota.pending)} · 00:00 重置`,0,170,600,19,palette.ink);
+    U.button('IdleNormal','普通领取',-155,100,255,81,()=>{
+      const r=store.claimIdle(false);
+      this.tell(r,`获得铜钱 ${fmt.fmtNum(r.gold)}${r.gem?` · 元宝 ${fmt.fmtNum(r.gem)}`:''} · 精铁 ${r.iron}`);
     },palette.green);
-    U.button('IdleAd','双倍 · 看广告',155,-65,255,81,()=>this.playAd('idle2x',()=>{
-      const r=store.claimIdle(true);this.tell(r,`双倍领取铜钱 ${fmt.fmtNum(r.gold)}`);
-    }),palette.gold);
-    U.button('IdleCancel','稍后再领',0,-151,250,56,()=>this.show('campaign'),palette.paperDark);
+    U.button('IdleAd','双倍 · 看模拟广告',155,100,255,81,()=>this.playAd('idle2x',()=>store.claimIdleInternal(true),'双倍领取挂机收益'),palette.gold);
+    U.text('IdleAdNote','双倍只加倍铜钱，不倍增元宝',155,40,255,16,palette.ink);
+    U.panel('FastPanel',0,-52,600,148,palette.paperDark,8);
+    U.text('FastTitle','快速收获 · 看模拟广告',-88,-16,340,24,palette.ink);
+    U.text('FastLeft',`剩余 ${fastLeft}/${fastLimit} 次`,218,-16,140,22,palette.ink);
+    U.text('FastDesc','立即获得 1 小时：元宝 1000＋铜钱＋精铁 25\n元宝计入今日 5000 额度；精铁不占自然累计',0,-62,560,32,palette.ink);
+    U.button('IdleFast',fastOk?'立即快收':'今日次数或额度不足',0,-172,560,64,()=>this.playAd('fast',()=>store.fastRewardAdMutation(),'快速收获成功'),fastOk?palette.gold:palette.paperDark);
+    U.button('IdleCancel','稍后再领',0,-256,250,56,()=>this.show('campaign'),palette.paperDark);
   }
   private adView() {
     const conf = config.AD.placements[this.adPlacement];
     this.title('模拟广告 · 测试模式', conf?.name || '激励视频');
-    this.ui.rect('AdPanel',0,60,640,725,palette.green);
-    this.ui.text('AdIcon','▣',0,170,200,105,palette.gold);
-    this.ui.text('AdTimer',this.adSeconds>0?`播放中… ${Math.ceil(this.adSeconds)} 秒`:'播放完成',0,5,520,33);
-    this.ui.text('AdHint','提前关闭不发奖励',0,-90,510,22,palette.paper);
-    this.ui.button('AdClose','关闭',-158,-335,280,87,()=>{this.adPlacement='';this.adReward=null;this.go(this.adReturn);},palette.paperDark);
-    if(this.adSeconds<=0)this.ui.button('AdClaim','领取奖励',158,-335,280,87,()=>{
-      const callback=this.adReward, target=this.adReturn, placement=this.adPlacement;
-      this.adPlacement='';this.adReward=null;
-      store.adBump(placement);store.save();this.go(target);callback?.();
-    },palette.gold);
+    this.ui.rect('AdPanel',0,40,640,760,palette.green);
+    this.ui.text('AdIcon','▣',0,190,200,105,palette.gold);
+    this.ui.progress('AdProgress',0,40,540,0);
+    this.ui.text('AdTimer',this.adSeconds>0?`播放中… ${Math.ceil(this.adSeconds)} 秒 · ${Math.floor((1-this.adSeconds/3)*100)}%`:'播放完成 · 可领取奖励',0,-25,520,26);
+    this.ui.text('AdHint','提前关闭不扣次数、不发奖励',0,-90,510,22,palette.paper);
+    this.ui.text('AdTest','模拟广告 · 测试模式 · 不接真实广告位',0,-140,560,18,palette.muted);
+    this.ui.button('AdClose','关闭',-158,-335,280,87,()=>{this.adPlacement='';this.adGrant=null;this.go(this.adReturn);},palette.paperDark);
+    if(this.adSeconds<=0)this.ui.button('AdClaim','领取奖励',158,-335,280,87,()=>this.claimAdReward(),palette.gold);
   }
   public title(text: string, sub = '') {
     this.ui.text('Title', text, 0, 609, 650, 35, palette.gold);

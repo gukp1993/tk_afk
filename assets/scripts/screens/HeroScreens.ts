@@ -254,20 +254,21 @@ export function summon(ctx: ScreenContext) {
     const draws:[string,string,string,string,()=>void][]=[
       ['Single','招募 ×1','招募令 ×1','#392719',()=>ctx.confirm('确认招募','消耗招募令 ×1',()=>ctx.summonDraw('scroll1'))],
       ['TenScroll','招募 ×10','招募令 ×10','#d9ac5f',()=>ctx.confirm('确认招募','消耗招募令 ×10',()=>ctx.summonDraw('scroll10'))],
+      ['SingleGem','元宝单抽',`元宝 ×${config.GACHA.singleGold}`,'#d9ac5f',()=>ctx.confirm('确认招募',`消耗元宝 ×${config.GACHA.singleGold}`,()=>ctx.summonDraw('gem1'))],
       ['TenGem','元宝十连',`元宝 ×${config.GACHA.costTenGold}`,'#d9ac5f',()=>ctx.confirm('确认招募',`消耗元宝 ×${config.GACHA.costTenGold}`,()=>ctx.summonDraw('gem10'))]
     ];
     draws.forEach(([id,title,cost,hex,action],i)=>{
-      const x=-232+i*232,bg=tone(hex),dark=i===0;
-      U.panel(id,x,199,214,88,bg,9,gold);
-      U.text(id+'Title',title,x,218,194,27,dark?gold:ink);
-      U.text(id+'Cost',cost,x,179,194,17,dark?dim:tone('#573d1e'));
-      U.tap(id+'Tap',x,199,214,88,action);
+      const x=-267+i*178,bg=tone(hex),dark=i===0;
+      U.panel(id,x,199,166,88,bg,9,gold);
+      U.text(id+'Title',title,x,218,150,26,dark?gold:ink);
+      U.text(id+'Cost',cost,x,179,150,17,dark?dim:tone('#573d1e'));
+      U.tap(id+'Tap',x,199,166,88,action);
     });
     U.panel('SummonAd',0,133,678,51,tone('#2b1e12'),8,border);
-    U.text('SummonAdText','看广告得招募令 ×1',0,133,618,20,gold);
+    U.text('SummonAdText','看模拟广告 · 免费招募令 ×1',0,133,618,20,gold);
     U.tap('SummonAdTap',0,133,678,51,()=>ctx.playAd('summon',()=>{
-      store.applyReward({scroll:1});store.save();ctx.tell({ok:true},'获得招募令 ×1');
-    }));
+      store.applyReward({scroll:1});return {ok:true};
+    },'获得招募令 ×1'));
   }
 
 export function summonDraw(ctx: ScreenContext, type: string) {
@@ -299,7 +300,7 @@ export function summonResults(ctx: ScreenContext) {
       U.heroIcon('DrawAvatar'+i,x,single?y+54:y+38,single?214:135,single?220:98,{surname:hero.surname||hero.name[0],faction:hero.faction,rarity:hero.rarity});
       U.text('DrawName'+i,hero.name,x,single?y-78:y-35,single?290:180,single?30:23,paper);
       U.text('DrawRarity'+i,rarity,x,single?y-120:y-63,single?210:154,20,accent);
-      U.text('DrawStatus'+i,result.isNew?'NEW':result.autoStar?`★${result.fromStar}→${result.star}`:`留存 ×${result.cards||1}`,x,single?y-157:y-83,single?235:162,17,dim);
+      U.text('DrawStatus'+i,result.isNew?'NEW':result.autoStar?`★${result.fromStar}→${result.star}`:result.shardGain?`品质碎片 +1 · ${result.qualityShards||0}/10`:`留存 ×${result.cards||1}`,x,single?y-157:y-83,single?235:162,17,dim);
       U.tap('DrawCardTap'+i,x,y,single?350:205,single?420:193,openHero);
     });
     U.panel('DrawContinue',-169,-478,298,62,tone('#d9a94e'),9,gold);

@@ -21,18 +21,20 @@ function defaultState() {
   C.BATTLE.STARTER.forEach(id => { roster[id] = newHero(id); });
   roster.mengda = newHero('mengda');
   return {
-    v: 6, createdAt: Date.now(), name: '主公',
+    v: 7, createdAt: Date.now(), name: '主公',
     player: { level: 1, exp: 0 },
     res: { gold: 100000, gem: 1888, scroll: 12, token: 20, shard: 0, iron: 60 },
     roster,
     formation: ['zhangfei', 'guanyu', 'liaohua', 'liubei', 'mengda'],
-    campaign: { cleared: 0, storySeen: {} },
+    campaign: { cleared: 0, storySeen: {}, milestones: {}, retroGrants: null, retroGrantsSeen: false },
     tower: { best: 0 },
     arena: { points: 1000, wins: 0, losses: 0, attempts: C.ARENA.DAILY },
     equips: {}, nextEquip: 1,
     armory: createArmory(),
-    idle: { last: Date.now(), gold: 0, scroll: 0, ironAcc: 0 },
+    idle: { last: Date.now(), gold: 0, gem: 0, scroll: 0, ironAcc: 0 },
+    gemDay: { day: F.todayStr(), claimedGem: 0 },
     fast: { day: '', count: 0 },
+    qualityShards: { 1: 0, 2: 0, 3: 0, 4: 0 },
     daily: { day: '', quests: {}, claimed: [], active: [] },
     summon: { total: 0 },
     vouchers: { sr: 0, ssr: 0 },
@@ -210,36 +212,87 @@ function migrateSaveV5(raw) {
   return raw;
 }
 
+// v6→v7：经济改版。元宝挂机从迁移当刻起算（不追溯补发）；已通关新增里程碑的旧档
+// 只补发一次第 40/90/100/110/120 关对应奖励；旧待领招募令、多余卡、保护标记与通用碎片原样保留。
+const RETRO_MILESTONE_STAGES = [40, 90, 100, 110, 120];
+function migrateSaveV6(raw) {
+  raw.v = 7;
+  raw.idle = raw.idle || { last: Date.now(), gold: 0, scroll: 0, ironAcc: 0 };
+  raw.idle.gem = 0;
+  // 元宝经济从迁移当刻起算：重置累计锚点，避免 load 时按离线时长追溯生成元宝
+  // （旧档迁移前最后一小段离线的铜钱/精铁按旧口径本就微乎其微，一并从当刻起算）。
+  raw.idle.last = Date.now();
+  raw.gemDay = { day: F.todayStr(), claimedGem: 0 };
+  raw.qualityShards = { 1: 0, 2: 0, 3: 0, 4: 0 };
+  raw.campaign = raw.campaign || { cleared: 0, storySeen: {} };
+  raw.campaign.milestones = raw.campaign.milestones || {};
+  const grants = [];
+  RETRO_MILESTONE_STAGES.forEach(stage => {
+    if ((raw.campaign.cleared || 0) < stage || raw.campaign.milestones[stage]) return;
+    const reward = C.CAMPAIGN_MILESTONES[stage];
+    if (!reward) return;
+    applyRewardToRaw(raw, reward);
+    raw.campaign.milestones[stage] = 1;
+    grants.push({ stage, label: reward.label || '里程碑奖励' });
+  });
+  raw.campaign.retroGrants = grants.length ? grants : null;
+  raw.campaign.retroGrantsSeen = false;
+  raw.migrations = raw.migrations || {};
+  raw.migrations.economyV1 = { applied: true, retroGrants: grants.length };
+  return raw;
+}
+// 迁移期直接对裸存档发奖（尚未进入 normalize 的 state 形态）。
+function applyRewardToRaw(raw, r) {
+  if (!r || typeof r !== 'object') return;
+  raw.res = raw.res || {};
+  if (r.gold) raw.res.gold = (raw.res.gold || 0) + r.gold;
+  if (r.gem) raw.res.gem = (raw.res.gem || 0) + r.gem;
+  if (r.scroll) raw.res.scroll = (raw.res.scroll || 0) + r.scroll;
+  if (r.iron) raw.res.iron = (raw.res.iron || 0) + Math.floor(r.iron);
+  if (r.srPick) raw.vouchers = Object.assign(raw.vouchers || {}, { sr: (raw.vouchers && raw.vouchers.sr || 0) + r.srPick });
+  if (r.ssrPick) raw.vouchers = Object.assign(raw.vouchers || {}, { ssr: (raw.vouchers && raw.vouchers.ssr || 0) + r.ssrPick });
+  if (r.armoryBox) {
+    raw.armory = raw.armory || createArmory();
+    raw.armory.boxes = raw.armory.boxes || { 1: 0, 2: 0, 3: 0 };
+    raw.armory.boxes[r.armoryBox] = (raw.armory.boxes[r.armoryBox] || 0) + 1;
+  }
+}
+
 function load() {
   const raw = rawGet(SAVE_KEY);
   if (raw && raw.v === 1) {
     rawSet(SAVE_KEY + '.backup.v3', JSON.parse(JSON.stringify(raw)));
-    state = migrateSaveV5(migrateSaveV4(migrateSaveV3(migrateSaveV2(migrateSaveV1(raw)))));
+    state = migrateSaveV6(migrateSaveV5(migrateSaveV4(migrateSaveV3(migrateSaveV2(migrateSaveV1(raw))))));
     save();
   } else if (raw && raw.v === 2) {
     rawSet(SAVE_KEY + '.backup.v3', JSON.parse(JSON.stringify(raw)));
-    state = migrateSaveV5(migrateSaveV4(migrateSaveV3(migrateSaveV2(raw))));
+    state = migrateSaveV6(migrateSaveV5(migrateSaveV4(migrateSaveV3(migrateSaveV2(raw)))));
     save();
   } else if (raw && raw.v === 3) {
     rawSet(SAVE_KEY + '.backup.v3', JSON.parse(JSON.stringify(raw)));
-    state = migrateSaveV5(migrateSaveV4(migrateSaveV3(raw)));
+    state = migrateSaveV6(migrateSaveV5(migrateSaveV4(migrateSaveV3(raw))));
     save();
   } else if (raw && raw.v === 4) {
     rawSet(SAVE_KEY + '.backup.v4', JSON.parse(JSON.stringify(raw)));
-    state = migrateSaveV5(migrateSaveV4(raw));
+    state = migrateSaveV6(migrateSaveV5(migrateSaveV4(raw)));
     normalizeState(state);
     // Persist normalized fields and abandon any battle interrupted before this load.
     save();
   } else if (raw && raw.v === 5) {
     rawSet(SAVE_KEY + '.backup.v5', JSON.parse(JSON.stringify(raw)));
-    state = migrateSaveV5(raw);
+    state = migrateSaveV6(migrateSaveV5(raw));
     normalizeState(state);
     save();
   } else if (raw && raw.v === 6) {
+    rawSet(SAVE_KEY + '.backup.v7', JSON.parse(JSON.stringify(raw)));
+    state = migrateSaveV6(raw);
+    normalizeState(state);
+    save();
+  } else if (raw && raw.v === 7) {
     state = raw;
     normalizeState(state);
     save();
-  } else if (raw && raw.v > 6) {
+  } else if (raw && raw.v > 7) {
     throw new Error('存档版本较新，停止加载以保护数据');
   } else if (raw) {
     throw new Error('存档版本无法识别，保留原数据并停止加载');
@@ -274,9 +327,20 @@ function normalizeState(s) {
   s.roster = s.roster || {}; s.vouchers = s.vouchers || { sr: 0, ssr: 0 };
   s.heroProgress = s.heroProgress || { starterMengdaGranted: true, firstWinChoiceGranted: false, firstWinChoicePending: false, chapterOneVoucherGranted: false };
   s.battle = s.battle || { nextSeq: 1, pending: null, lastSettled: null };
-  s.idle = s.idle || { last: Date.now(), gold: 0, scroll: 0 };
+  s.idle = s.idle || { last: Date.now(), gold: 0, gem: 0, scroll: 0, ironAcc: 0 };
   if (!Number.isFinite(s.idle.ironAcc)) s.idle.ironAcc = 0;
   s.idle.ironAcc = Math.max(0, Math.min(C.IDLE_CAP_HOURS * C.ARMORY_IRON_PER_HOUR, s.idle.ironAcc));
+  if (!Number.isFinite(s.idle.gem)) s.idle.gem = 0;
+  s.idle.gem = Math.max(0, Math.min(C.GEM_IDLE.dailyCap, s.idle.gem));
+  if (!Number.isFinite(s.idle.scroll)) s.idle.scroll = 0;
+  s.gemDay = s.gemDay || { day: F.todayStr(), claimedGem: 0 };
+  s.gemDay.claimedGem = Math.max(0, Math.min(C.GEM_IDLE.dailyCap, Math.floor(s.gemDay.claimedGem || 0)));
+  s.qualityShards = Object.assign({ 1: 0, 2: 0, 3: 0, 4: 0 }, s.qualityShards || {});
+  [1, 2, 3, 4].forEach(q => { s.qualityShards[q] = Math.max(0, Math.floor(Number(s.qualityShards[q]) || 0)); });
+  s.campaign = s.campaign || { cleared: 0, storySeen: {} };
+  s.campaign.milestones = s.campaign.milestones || {};
+  if (!Array.isArray(s.campaign.retroGrants)) s.campaign.retroGrants = null;
+  s.campaign.retroGrantsSeen = !!s.campaign.retroGrantsSeen;
   if (!Array.isArray(s.formation)) s.formation = [null, null, null, null, null];
   s.formation.length = 5;
   Object.keys(s.roster).forEach(id => {
@@ -323,6 +387,8 @@ function checkDailyReset() {
   if (state.fast.day !== today) state.fast = { day: today, count: 0 };
   if (state.buyLog.day !== today) state.buyLog = { day: today, buys: {} };
   if (state.ads.day !== today) state.ads = { day: today, counts: {} };
+  // 元宝当日额度 00:00 重置；已积累的待领元宝跨天保留（待领总额封顶 5000）。
+  if (!state.gemDay || state.gemDay.day !== today) state.gemDay = { day: today, claimedGem: 0 };
 }
 
 // ---------- 武将 ----------
@@ -346,8 +412,28 @@ function addHeroCard(id) {
     return { id, isNew: false, autoStar: true, fromStar, star: own.star, maxStar, cards: own.cards || 0, before, after,
       powerDelta: after.power - before.power, statDelta: { hp: after.hp - before.hp, atk: after.atk - before.atk, def: after.def - before.def } };
   }
-  own.cards = (own.cards || 0) + 1;
-  return { id, isNew: false, autoStar: false, fromStar, star: own.star, maxStar, cards: own.cards, overflow: true };
+  // 满星后抽到同名卡：立即转为对应品质碎片（新抽卡不再堆积同名卡；旧档已存同名卡原样保留）。
+  state.qualityShards[def.rarity] = (state.qualityShards[def.rarity] || 0) + 1;
+  return { id, isNew: false, autoStar: false, fromStar, star: own.star, maxStar, cards: own.cards || 0,
+    shardGain: 1, qualityShards: state.qualityShards[def.rarity], overflow: true };
+}
+// 品质碎片兑换：同品质 10 片换 1 张该品质任意武将卡（可解锁新将或给未满星将升星；
+// 满星武将也可选，但按重复卡规则只返 1 片，界面需二次确认）。
+function exchangeQualityShard(rarity, heroId) {
+  return withSavedMutation(() => {
+    const key = Math.floor(Number(rarity) || 0);
+    if (![1, 2, 3, 4].includes(key)) return { ok: false, msg: '碎片品质无效' };
+    const def = H.getHero(heroId);
+    if (!def || def.rarity !== key) return { ok: false, msg: '请选择对应品质的武将' };
+    if ((state.qualityShards[key] || 0) < 10) return { ok: false, msg: '碎片不足 10 片' };
+    const maxedTarget = state.roster[heroId] && state.roster[heroId].star >= C.RARITIES[key].maxStar;
+    state.qualityShards[key] -= 10;
+    const received = addHeroCard(heroId);
+    return { ok: true, rarity: key, heroId, shards: state.qualityShards[key], spent: 10, maxedTarget, ...received };
+  });
+}
+function qualityShardInfo() {
+  return { 1: state.qualityShards[1] || 0, 2: state.qualityShards[2] || 0, 3: state.qualityShards[3] || 0, 4: state.qualityShards[4] || 0, need: 10 };
 }
 function heroFeedback(id) {
   const h = calcHero(id);
@@ -744,14 +830,9 @@ function salvageBatch(q) {
 }
 
 // ---------- 挂机 ----------
-function idlePending() {
-  idleTick();
-  const rate = C.idleRates(state.campaign.cleared);
-  const gold = Math.floor(state.idle.gold), scroll = Math.floor(state.idle.scroll);
-  const hours = rate.gold > 0 ? state.idle.gold / rate.gold : 0;
-  const full = state.idle.gold >= C.IDLE_CAP_HOURS * rate.gold - 1;
-  return { gold, exp: 0, scroll, iron: Math.floor(state.idle.ironAcc), hours, full };
-}
+// 元宝：固定 1000/小时，待领总额封顶 5000（跨天保留），当日可领受自然日 5 小时额度限制；
+// 铜钱：随关卡线性，自然累计最多 12 小时；精铁：25/小时，自然累计最多 12 小时；
+// 招募令：不再产出，旧档已积累的待领招募令原样保留、原样领取。
 function idleTick() {
   // 把离线时间折算进累计（入 state.idle 缓存）
   const now = Date.now();
@@ -759,42 +840,101 @@ function idleTick() {
   const rate = C.idleRates(state.campaign.cleared);
   state.idle.gold += addH * rate.gold;
   if (state.idle.exp) { state.idle.gold += state.idle.exp; state.idle.exp = 0; }
-  state.idle.scroll += addH * rate.scrollPerHour;
+  if (rate.scrollPerHour > 0) {
+    state.idle.scroll += addH * rate.scrollPerHour;
+    state.idle.scroll = Math.min(state.idle.scroll, C.IDLE_CAP_HOURS * rate.scrollPerHour);
+  }
+  state.idle.gem = Math.min(C.GEM_IDLE.dailyCap, (Number(state.idle.gem) || 0) + addH * C.GEM_IDLE.perHour);
   state.idle.ironAcc += addH * C.ARMORY_IRON_PER_HOUR;
   const capG = C.IDLE_CAP_HOURS * rate.gold;
   state.idle.gold = Math.min(state.idle.gold, capG);
-  state.idle.scroll = Math.min(state.idle.scroll, C.IDLE_CAP_HOURS * rate.scrollPerHour);
   state.idle.ironAcc = Math.min(state.idle.ironAcc, C.IDLE_CAP_HOURS * C.ARMORY_IRON_PER_HOUR);
   state.idle.last = now;
 }
+function idlePending() {
+  idleTick();
+  const rate = C.idleRates(state.campaign.cleared);
+  const gold = Math.floor(state.idle.gold), scroll = Math.floor(state.idle.scroll);
+  const hours = rate.gold > 0 ? state.idle.gold / rate.gold : 0;
+  const full = state.idle.gold >= C.IDLE_CAP_HOURS * rate.gold - 1;
+  const quota = gemQuotaInfo();
+  return { gold, exp: 0, scroll, iron: Math.floor(state.idle.ironAcc), hours, full, gem: quota };
+}
+// 当日元宝额度：自然领取与快速收获共用 5 小时／5000；待领元宝跨天保留。
+function gemQuotaInfo() {
+  checkDailyReset();
+  const claimedGem = state.gemDay.claimedGem || 0;
+  const remaining = Math.max(0, C.GEM_IDLE.dailyCap - claimedGem);
+  const pending = Math.floor(state.idle.gem || 0);
+  return {
+    day: state.gemDay.day, claimedGem, remaining,
+    claimable: Math.min(remaining, pending),
+    pending, perHour: C.GEM_IDLE.perHour, cap: C.GEM_IDLE.dailyCap
+  };
+}
 function claimIdleInternal(double) {
   idleTick();
+  const rate = C.idleRates(state.campaign.cleared);
+  const quota = gemQuotaInfo();
   let g = Math.floor(state.idle.gold), s = Math.floor(state.idle.scroll), iron = Math.floor(state.idle.ironAcc);
-  if (double) { g *= 2; s *= 2; }
+  // 元宝只按当日剩余额度领取，双倍不倍增元宝。
+  const gem = Math.min(quota.remaining, Math.floor(state.idle.gem || 0));
+  if (double) { g *= 2; }
   state.res.gold += g; state.res.scroll += s; state.res.iron += iron;
+  state.res.gem += gem;
   state.idle.gold -= Math.floor(state.idle.gold); state.idle.scroll -= Math.floor(state.idle.scroll); state.idle.ironAcc -= iron;
-  const changed = !!(g || s || iron);
+  state.idle.gem = Math.max(0, (state.idle.gem || 0) - gem);
+  state.gemDay.claimedGem = Math.min(C.GEM_IDLE.dailyCap, (state.gemDay.claimedGem || 0) + gem);
+  const changed = !!(g || s || iron || gem);
   if (changed) bumpQuest('q_idle1', 1);
-  return { ok: true, gold: g, exp: 0, scroll: s, iron, double: !!double, changed };
+  return { ok: true, gold: g, exp: 0, scroll: s, iron, gem, gemClaimed: gem, double: !!double, changed, gemDay: gemQuotaInfo() };
 }
 function claimIdle(double) {
   return withSavedMutation(() => claimIdleInternal(double));
 }
+// 付费快速收获：只给铜钱／精铁（2 小时），不产生元宝、招募令。
 function fastReward(free) {
   return withSavedMutation(() => fastRewardMutation(free));
 }
 function fastRewardMutation(free) {
-  if (state.fast.count >= C.FAST_REWARD_DAILY) return { ok: false, msg: '今日快速收获次数已用完' };
   if (!free) {
-    if (state.res.gem < C.FAST_REWARD_COST) return { ok: false, msg: '元宝不足' };
-    state.res.gem -= C.FAST_REWARD_COST;
+    if (state.fast.count >= C.FAST_PAID.daily) return { ok: false, msg: '今日快速收获次数已用完' };
+    if (state.res.gem < C.FAST_PAID.cost) return { ok: false, msg: '元宝不足' };
+    state.res.gem -= C.FAST_PAID.cost;
     state.fast.count += 1;
+    const rate = C.idleRates(state.campaign.cleared);
+    const gold = Math.floor(C.FAST_PAID.hours * rate.gold), iron = Math.floor(C.FAST_PAID.hours * C.ARMORY_IRON_PER_HOUR);
+    state.res.gold += gold; state.res.iron += iron;
+    return { ok: true, gold, iron, paid: true };
   }
+  return fastRewardAdMutation();
+}
+// 广告快速收获（在 adReward 事务内执行）：立即 1 小时收益——元宝 1000＋铜钱 1 小时＋精铁 25。
+// 元宝占用当日 5 小时额度；铜钱／精铁直接入账，不占自然累计 12 小时。
+function fastRewardAdMutation() {
+  if (state.fast.count >= C.FAST_AD.daily) return { ok: false, msg: '今日快速收获次数已用完' };
+  const quota = gemQuotaInfo();
+  if (quota.remaining < C.FAST_AD.gem) return { ok: false, msg: '今日元宝额度不足，明天再来' };
+  state.fast.count += 1;
+  state.gemDay.claimedGem = Math.min(C.GEM_IDLE.dailyCap, (state.gemDay.claimedGem || 0) + C.FAST_AD.gem);
+  state.res.gem += C.FAST_AD.gem;
   const rate = C.idleRates(state.campaign.cleared);
-  const g = Math.floor(C.FAST_REWARD_HOURS * rate.gold);
-  const s = Math.floor(C.FAST_REWARD_HOURS * rate.scrollPerHour);
-  state.res.gold += g; state.res.scroll += s;
-  return { ok: true, gold: g, exp: 0, scroll: s, free: !!free };
+  const gold = Math.floor(C.FAST_AD.hours * rate.gold), iron = C.FAST_AD.iron;
+  state.res.gold += gold; state.res.iron += iron;
+  return { ok: true, gem: C.FAST_AD.gem, gold, iron, fastCount: state.fast.count, fastDaily: C.FAST_AD.daily };
+}
+// 广告成功次数与奖励的原子事务：次数已达上限→拒绝；grant 失败→回滚且不计次数；
+// grant 成功→同一存档事务内发奖并记录次数，取代 UI 层先 adBump 再发奖。
+function adReward(placement, grant) {
+  return withSavedMutation(() => {
+    const conf = C.AD.placements[placement];
+    if (!conf) return { ok: false, msg: '未知的奖励入口' };
+    if (adCount(placement) >= conf.limit) return { ok: false, msg: '今日该奖励次数已用完' };
+    const result = grant ? grant() : null;
+    if (!result || result.ok === false) return result || { ok: false, msg: '奖励发放失败，请重试' };
+    adBump(placement);
+    return Object.assign({ adCount: adCount(placement), adLimit: conf.limit }, result);
+  });
 }
 
 // ---------- 广告 ----------
@@ -824,14 +964,16 @@ function doSummon(type) {
   return withSavedMutation(() => doSummonMutation(type));
 }
 function doSummonMutation(type) {
-  // type: scroll1 | scroll10 | gem10
+  // type: scroll1 | scroll10 | gem1 | gem10（元宝单抽 100／十连 900，与招募令分开支付）
   const g = C.GACHA;
-  const count = type === 'scroll1' ? 1 : 10;
+  const count = type === 'scroll1' || type === 'gem1' ? 1 : 10;
   let costOk = false;
   if (type === 'scroll1') {
     if (state.res.scroll >= 1) { state.res.scroll -= 1; costOk = true; }
   } else if (type === 'scroll10') {
     if (state.res.scroll >= 10) { state.res.scroll -= 10; costOk = true; }
+  } else if (type === 'gem1') {
+    if (state.res.gem >= g.singleGold) { state.res.gem -= g.singleGold; costOk = true; }
   } else {
     if (state.res.gem >= g.costTenGold) { state.res.gem -= g.costTenGold; costOk = true; }
   }
@@ -853,61 +995,126 @@ function grantCard(id) {
 }
 
 // ---------- 战役 / 塔 / 演武 ----------
-// 章末宝箱：每章第 10 关（名将关）首通额外发放
+// 章末（每章第 10 关）与第一期里程碑在普通首通之外；预览与结算共用 campaignFirstReward。
 const CHAPTER_CHEST = { gem: 100, scroll: 1 };
+const LEGACY_BOX_STAGES = { 10: 1, 30: 2, 60: 3 };
+const BOX_Q_NAME = { 1: 'R', 2: 'SR', 3: 'SSR' };
+
+// 首通铜钱：一期线性（3000＋150×关），循环乱世（>120）沿用旧指数曲线。
+function firstClearGold(stage) {
+  return stage <= C.FIRST_STAGE_END
+    ? 3000 + 150 * stage
+    : Math.floor(2000 * Math.pow(1.05, stage)) + Math.floor(1400 * Math.pow(1.05, stage));
+}
+function repeatGold(stage) {
+  return Math.floor(600 * Math.pow(1.05, stage) * 0.3) + Math.floor(400 * Math.pow(1.05, stage) * 0.3);
+}
+
+// 首通奖励统一计算，返回 base／chapter／milestones／randomDrop 结构供页面分区显示。
+// 里程碑只列「尚未领取」的项；实际入账与打标在 winCampaign 内完成。
+function campaignFirstReward(stageIdx) {
+  const inFirst = stageIdx <= C.FIRST_STAGE_END;
+  const isBoss = stageIdx % 10 === 0;
+  const base = { gem: 30, gold: firstClearGold(stageIdx), scroll: 0 };
+  let chapter = null;
+  if (isBoss) {
+    chapter = inFirst
+      ? { gem: 100, scroll: 2, label: '章末奖励' }
+      : { gem: CHAPTER_CHEST.gem, scroll: 1 + CHAPTER_CHEST.scroll, label: '章末宝箱' };
+  }
+  const milestones = [];
+  if (inFirst) {
+    const ms = C.CAMPAIGN_MILESTONES[stageIdx];
+    if (ms && !state.campaign.milestones[stageIdx]) {
+      milestones.push({ stage: stageIdx, kind: 'milestone', reward: ms, label: ms.label || '里程碑奖励' });
+    }
+    const legacyQ = LEGACY_BOX_STAGES[stageIdx] || 0;
+    if (legacyQ && !state.armory.claimedMilestones[legacyQ]) {
+      milestones.push({ stage: stageIdx, kind: 'armoryBox', boxQ: legacyQ, reward: { armoryBox: legacyQ },
+        label: BOX_Q_NAME[legacyQ] + ' 军械自选箱 ×1' });
+    }
+    if (stageIdx >= 10 && !state.heroProgress.chapterOneVoucherGranted) {
+      milestones.push({ stage: stageIdx, kind: 'srVoucher', reward: { srPick: 1 }, label: 'SR 武将自选券 ×1' });
+    }
+  }
+  const totals = {
+    gem: base.gem + (chapter ? chapter.gem : 0),
+    gold: base.gold,
+    scroll: base.scroll + (chapter ? chapter.scroll : 0) + milestones.reduce((s, m) => s + (m.reward.scroll || 0), 0)
+  };
+  return { stage: stageIdx, isBoss, base, chapter, milestones, randomDrop: { armoryChance: 0.65 }, totals,
+    gold: totals.gold, gem: totals.gem, scroll: totals.scroll,
+    finale: stageIdx === C.FIRST_STAGE_END };
+}
+
 function campaignRewardPreview(stageIdx) {
   stageIdx = Math.max(1, Math.floor(Number(stageIdx) || 1));
   const first = stageIdx === state.campaign.cleared + 1;
-  const isBoss = require('./stages').chapterOf(stageIdx).isBoss;
-  if (!first) return { first: false, stage: stageIdx,
-    gold: Math.floor(600 * Math.pow(1.05, stageIdx) * 0.3) + Math.floor(400 * Math.pow(1.05, stageIdx) * 0.3),
-    gem: 0, scroll: 0, armoryChance: 0, armoryBox: 0, isBoss };
-  const milestoneQ = stageIdx === 10 ? 1 : stageIdx === 30 ? 2 : stageIdx === 60 ? 3 : 0;
-  return {
-    first: true, stage: stageIdx,
-    gold: Math.floor(2000 * Math.pow(1.05, stageIdx)) + Math.floor(1400 * Math.pow(1.05, stageIdx)),
-    gem: 30 + (isBoss ? CHAPTER_CHEST.gem : 0),
-    scroll: (isBoss ? 1 : 0) + (isBoss ? CHAPTER_CHEST.scroll : 0),
-    armoryChance: 0.65,
-    armoryBox: milestoneQ && !(state.armory.claimedMilestones[milestoneQ]) ? milestoneQ : 0,
-    isBoss
-  };
-}
-function winCampaign(stageIdx) {
-  // stageIdx 从 1 开始
-  const first = stageIdx === state.campaign.cleared + 1;
-  const reward = { gold: 0, gem: 0, scroll: 0, armory: null, armoryBox: null, chest: null };
-  if (first) {
-    state.campaign.cleared = stageIdx;
-    reward.gem = 30;
-    reward.gold = Math.floor(2000 * Math.pow(1.05, stageIdx));
-    reward.gold += Math.floor(1400 * Math.pow(1.05, stageIdx)); // 旧兵书奖励并入铜钱
-    const { isBoss } = require('./stages').chapterOf(stageIdx);
-    if (isBoss) {
-      reward.scroll = 1;
-      reward.chest = { gem: CHAPTER_CHEST.gem, scroll: CHAPTER_CHEST.scroll };
-    }
-    const milestoneQ = stageIdx === 10 ? 1 : stageIdx === 30 ? 2 : stageIdx === 60 ? 3 : 0;
-    if (milestoneQ && !state.armory.claimedMilestones[milestoneQ]) {
-      state.armory.claimedMilestones[milestoneQ] = true;
-      state.armory.boxes[milestoneQ] = (state.armory.boxes[milestoneQ] || 0) + 1;
-      reward.armoryBox = milestoneQ;
-    }
-    if (Math.random() < 0.65) {
-      reward.armory = rollArmoryDrop(stageIdx);
-    }
-  } else {
-    // 重复挑战仍给小额奖励
-    reward.gold = Math.floor(600 * Math.pow(1.05, stageIdx) * 0.3);
-    reward.gold += Math.floor(400 * Math.pow(1.05, stageIdx) * 0.3);
+  const { isBoss } = require('./stages').chapterOf(stageIdx);
+  if (!first) {
+    const gold = repeatGold(stageIdx);
+    return { first: false, stage: stageIdx, gold, gem: 0, scroll: 0, armoryChance: 0, isBoss,
+      base: { gem: 0, gold, scroll: 0 }, chapter: null, milestones: [], randomDrop: null,
+      totals: { gem: 0, gold, scroll: 0 }, finale: false };
   }
-  // 奖励入账（首通含章末宝箱；此前 gold/exp/gem/scroll 只展示未入账）
-  applyReward(reward);
-  if (reward.chest) applyReward(reward.chest);
+  return Object.assign(campaignFirstReward(stageIdx), { first: true });
+}
+
+function winCampaign(stageIdx) {
+  // stageIdx 从 1 开始；奖励入账与预览共用 campaignFirstReward，重复打关只给循环铜钱。
+  const first = stageIdx === state.campaign.cleared + 1;
+  const reward = { stage: stageIdx, first, gold: 0, gem: 0, scroll: 0, armory: null, armoryBox: null,
+    chest: null, milestones: [], base: null, chapter: null, randomDrop: null, finale: false };
+  if (!first) {
+    reward.gold = repeatGold(stageIdx);
+    applyReward(reward);
+    return reward;
+  }
+  state.campaign.cleared = stageIdx;
+  const calc = campaignFirstReward(stageIdx);
+  reward.base = calc.base; reward.chapter = calc.chapter; reward.milestones = calc.milestones;
+  reward.randomDrop = calc.randomDrop;
+  reward.gold = calc.totals.gold; reward.gem = calc.totals.gem; reward.scroll = calc.totals.scroll;
+  // 基础＋章末＋里程碑资源一次入账
+  applyReward({ gold: reward.gold, gem: reward.gem, scroll: reward.scroll });
+  // 里程碑逐项打一次性标记并发放对应道具
+  calc.milestones.forEach(m => {
+    if (m.kind === 'milestone') {
+      state.campaign.milestones[m.stage] = 1;
+      if (m.reward.ssrPick) addChoiceVoucher('ssr', m.reward.ssrPick);
+      if (m.reward.srPick) addChoiceVoucher('sr', m.reward.srPick);
+      if (m.reward.armoryBox) {
+        state.armory.boxes[m.reward.armoryBox] = (state.armory.boxes[m.reward.armoryBox] || 0) + 1;
+        reward.armoryBox = m.reward.armoryBox;
+      }
+    } else if (m.kind === 'armoryBox') {
+      state.armory.claimedMilestones[m.boxQ] = true;
+      state.armory.boxes[m.boxQ] = (state.armory.boxes[m.boxQ] || 0) + 1;
+      reward.armoryBox = m.boxQ;
+    } else if (m.kind === 'srVoucher') {
+      state.heroProgress.chapterOneVoucherGranted = true;
+      state.vouchers.sr += 1;
+    }
+  });
+  if (Math.random() < calc.randomDrop.armoryChance) {
+    reward.armory = rollArmoryDrop(stageIdx);
+  }
+  reward.finale = calc.finale;
   return reward;
 }
 
 // ---------- 剧情关卡 ----------
+// 旧档更新后的一次性补发摘要：读取后由页面展示，dismissRetroGrants 标记已读不再显示。
+function retroGrants() {
+  return Array.isArray(state.campaign.retroGrants) ? state.campaign.retroGrants : null;
+}
+function dismissRetroGrants() {
+  return withSavedMutation(() => {
+    if (!state.campaign.retroGrants || state.campaign.retroGrantsSeen) return { ok: true, changed: false };
+    state.campaign.retroGrantsSeen = true;
+    return { ok: true, changed: true };
+  });
+}
 function markStorySeen(stageIdx) {
   if (!state.campaign.storySeen) state.campaign.storySeen = {};
   state.campaign.storySeen[stageIdx] = 1;
@@ -1168,14 +1375,15 @@ module.exports = {
   load, save, getState, checkDailyReset, SAVE_KEY,
   allRoster, getOwned, addHeroCard, grantCard, crystalInfo, effectiveLevel, playerLevel, playerXpNeeded, addPlayerXP, levelCap, calcHero,
   levelUp, ascend, ascendPreview, foodPoints, dismiss, resetHero, convertCards, setCardsLocked, addChoiceVoucher, useChoiceVoucher, firstWinChoice, claimFirstWinChoice,
+  exchangeQualityShard, qualityShardInfo,
   getFormationCalc, setFormationSlot, applyFormation, formationFactionBonus, teamPower, playerUnits, enemyUnits,
   getArmoryBonuses, getArmoryState, armoryUnlock, armorySelect, armoryUpgrade, armoryClaimBox, grantArmoryItem, applyArmoryRecommendations,
   addEquip, equipInventory, equipTo, unequip, enhanceEquip, fodderPickIds, salvageEquip, salvageBatch, isEquipped,
-  migrateSaveV1, migrateSaveV2, migrateSaveV3, migrateSaveV4, migrateSaveV5, normalizeState,
-  idlePending, idleTick, claimIdle, fastReward,
+  migrateSaveV1, migrateSaveV2, migrateSaveV3, migrateSaveV4, migrateSaveV5, migrateSaveV6, normalizeState,
+  idlePending, idleTick, gemQuotaInfo, claimIdle, claimIdleInternal, fastReward, fastRewardMutation, fastRewardAdMutation, adReward,
   doSummon, rollRarity, pickHeroOfRarity,
   winCampaign, campaignRewardPreview, winTower, arenaFight, beginBattle, settleBattle,
-  markStorySeen, isStorySeen,
+  markStorySeen, isStorySeen, retroGrants, dismissRetroGrants,
   questList, claimQuest, activePoints, claimActiveChest, claimAllDailyRewards, claimFreeRewards, bumpQuest, applyReward,
   interruptBattle, setAutoBattleSpeed,
   buyGood, CURRENCY_NAME,

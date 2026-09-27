@@ -31,7 +31,7 @@ export interface ScreenContext {
   back(fallback?: Page): void;
   tell(result: any, good: string): void;
   confirm(title: string, detail: string, act: () => void): void;
-  playAd(placement: string, reward: () => void): void;
+  playAd(placement: string, grant: () => any, successText: string): void;
   idleClaimChoice(): void;
   title(text: string, sub?: string): void;
   row(name: string, text: string, y: number, action?: () => void, actionText?: string): void;
