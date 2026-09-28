@@ -16,6 +16,13 @@
 
 ## 最近交接（新 → 旧）
 
+### 屏幕录制指示纠错与定位 · zcode · 无变更
+
+时间：2026-09-28 08:58（Asia/Shanghai）；执行者：zcode；状态：无变更。
+
+- 概要：**纠正上一条交接的误判**：用户在"系统设置→隐私与安全性→录屏与系统录音"列表中确认 ZCode 无屏幕录制授权，紫色圆标并非 ZCode 所画。重新核查：今天 08:34:46 启动 ChatGPT.app，08:35:12 其 Codex Computer Use 服务（`~/.codex/computer-use/.../SkyComputerUseService`，录屏授权为开）随之运行，cua_node 08:37:20 启动，与圆标出现时间吻合；判定当前正在采集屏幕的是 ChatGPT/Codex「Computer Use」。已告知用户可在 ChatGPT 内结束会话或退出 App，或在设置页关闭其录屏授权。
+- 教训：首轮进程扫描关键词过窄（漏掉微信/ChatGPT/Codex/Qoder/Chrome 等），导致误判为 ZCode；此类排查应先以系统授权列表为准，再逐个核对进程与启动时间。
+
 ### 询问客户端屏幕录制指示 · zcode · 无变更
 
 时间：2026-09-28 08:44（Asia/Shanghai）；执行者：zcode；状态：无变更。
