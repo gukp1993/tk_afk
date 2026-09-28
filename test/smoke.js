@@ -208,6 +208,13 @@ check('战役败北给 25% 经验', ls.ok && ls.gainedXP > 0);
 // 重复通关线性铜钱
 s4b.campaign.cleared = 10;
 check('重复通关铜钱线性 800+12×关', store4b.campaignRewardPreview(12).gold === 944);
+// 三国羁绊
+check('羁绊表 8 组且成员有效', (H.BONDS || []).length === 8 && H.BONDS.every(b => b.heroes.every(id => !!H.getHero(id))));
+s4b.formation = ['liubei', 'guanyu', 'zhangfei', null, null];
+check('桃园结义激活', store4b.activeBonds().some(b => b.id === 'taoyuan'));
+check('羁绊注入全军被动（全军 atk≥+8%）', store4b.playerUnits().every(u => (u.passive.atk || 0) >= 0.08));
+s4b.formation = ['zhangfei', 'guanyu', 'liaohua', 'liubei', 'mengda'];
+check('默认阵容激活且仅激活桃园结义', store4b.activeBonds().some(b => b.id === 'taoyuan') && store4b.activeBonds().length === 1);
 // 时钟回拨防护：lastSeenTs 在未来时当日不重置
 s4b.arena.attempts = 2;
 s4b.lastSeenTs = REAL_NOW() + 86400000;

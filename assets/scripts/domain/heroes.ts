@@ -1222,4 +1222,18 @@ function heroPower(h, lv, star) {
   const s = heroStatsStar(h, lv, star);
   return Math.floor((s.hp / 6 + s.atk * 2.2 + s.def * 1.5) * (1 + 0.05 * star));
 }
-export { HEROES, GROWTH, getHero, heroName, heroStats, heroStatsStar, heroPower };
+
+// 三国羁绊：编队同时上阵指定武将时全军生效的固定加成（mods 语义与 passive.mods 一致）。
+// 目标：给图鉴收集与编队选择一个长线目标，全部为 SSR/SR 组合。
+const BONDS = [
+  { id: 'taoyuan', name: '桃园结义', heroes: ['liubei', 'guanyu', 'zhangfei'], mods: { atk: 0.08, hp: 0.08 }, desc: '不求同年同月同日生，但求同年同月同日死：全军攻击+8%、生命+8%。' },
+  { id: 'wuhu', name: '五虎上将', heroes: ['guanyu', 'zhangfei', 'zhaoyun', 'machao', 'huangzhong'], mods: { atk: 0.12 }, desc: '关张赵马黄，五虎震华夏：全军攻击+12%。' },
+  { id: 'wolongfengchu', name: '卧龙凤雏', heroes: ['zhugeliang', 'pangtong'], mods: { atk: 0.06, hp: 0.06 }, desc: '卧龙凤雏，得一可安天下：全军攻击+6%、生命+6%。' },
+  { id: 'jiangdong', name: '江东基业', heroes: ['sunce', 'zhouyu', 'ganning'], mods: { atk: 0.08 }, desc: '小霸王与美周郎会师：全军攻击+8%。' },
+  { id: 'huwei', name: '虎卫双雄', heroes: ['xuchu', 'dianwei'], mods: { def: 0.10 }, desc: '虎痴恶来护卫左右：全军防御+10%。' },
+  { id: 'weiwu', name: '魏武谋主', heroes: ['caocao', 'guojia', 'xunyu'], mods: { atk: 0.08 }, desc: '魏武挥鞭，谋主在侧：全军攻击+8%。' },
+  { id: 'wuzi', name: '五子良将', heroes: ['zhangliao', 'zhanghe', 'xuhuang', 'yujin', 'yuejin'], mods: { atk: 0.10 }, desc: '太祖建兹武功，而时之良将，五子为先：全军攻击+10%。' },
+  { id: 'feijiang', name: '飞将奉先', heroes: ['lvbu', 'diaochan'], mods: { atk: 0.10 }, desc: '人中吕布，马中赤兔，貂蝉在侧：全军攻击+10%。' }
+];
+
+export { HEROES, GROWTH, getHero, heroName, heroStats, heroStatsStar, heroPower, BONDS };

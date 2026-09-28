@@ -786,10 +786,28 @@ function teamPower() {
   const calc = getFormationCalc();
   return calc.reduce((s, x) => s + (x ? x.power : 0), 0);
 }
+// 三国羁绊：编队同时上阵完整组合时，全军获得固定加成（注入各单元 passive，战斗内经 effStat 生效）
+function activeBonds(formationIds = null) {
+  const ids = new Set((formationIds || state.formation).filter(Boolean));
+  return (H.BONDS || []).filter(b => b.heroes.every(h => ids.has(h)));
+}
+function bondMods() {
+  const out = {};
+  activeBonds().forEach(b => {
+    Object.keys(b.mods).forEach(k => { out[k] = (out[k] || 0) + b.mods[k]; });
+  });
+  return out;
+}
 // 生成战斗用双方单元
 function playerUnits() {
   const calc = getFormationCalc();
-  return calc.map((x, i) => x ? buildUnit(x, 'A' + i, i <= 2 ? 0 : 1) : null).filter(Boolean);
+  const extra = bondMods();
+  return calc.map((x, i) => {
+    if (!x) return null;
+    const u = buildUnit(x, 'A' + i, i <= 2 ? 0 : 1);
+    if (Object.keys(extra).length) u.passive = Object.assign({}, u.passive, extra);
+    return u;
+  }).filter(Boolean);
 }
 function enemyUnits(units) {
   const H2 = __domain_heroes;
@@ -1532,7 +1550,7 @@ export {
   allRoster, getOwned, addHeroCard, grantCard, crystalInfo, effectiveLevel, playerLevel, playerXpNeeded, addPlayerXP, levelCap, calcHero,
   levelUp, ascend, ascendPreview, foodPoints, dismiss, resetHero, convertCards, setCardsLocked, addChoiceVoucher, useChoiceVoucher, firstWinChoice, claimFirstWinChoice,
   exchangeQualityShard, qualityShardInfo,
-  getFormationCalc, setFormationSlot, applyFormation, formationFactionBonus, teamPower, playerUnits, enemyUnits,
+  getFormationCalc, setFormationSlot, applyFormation, formationFactionBonus, teamPower, playerUnits, enemyUnits, activeBonds, bondMods,
   getArmoryBonuses, getArmoryState, armoryUnlock, armorySelect, armoryUpgrade, armoryUpgradeToNode, armoryClaimBox, grantArmoryItem, applyArmoryRecommendations,
   addEquip, equipInventory, equipTo, unequip, enhanceEquip, fodderPickIds, salvageEquip, salvageBatch, isEquipped,
   migrateSaveV1, migrateSaveV2, migrateSaveV3, migrateSaveV4, migrateSaveV5, migrateSaveV6, normalizeState,

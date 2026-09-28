@@ -423,6 +423,20 @@ export function formation(ctx: ScreenContext) {
   });
   U.text('FormationHelp1','点击已上阵武将可更换；阵营克制：魏→蜀→吴→群→魏',0,60,650,18,tone('#ad9977'));
   U.text('FormationHelp2','克制方伤害 +25%',0,35,600,18,tone('#ad9977'));
+  const bondsNow=store.activeBonds(),allBonds=heroes.BONDS||[],mods=store.bondMods();
+  U.panel('BondsPanel',0,-258,682,436,tone('#342518'),11,GOLD);
+  U.text('BondsTitle',`三国羁绊 · 已激活 ${bondsNow.length}/${allBonds.length}`,-160,-70,400,24,GOLD);
+  const modLabel:any={atk:'攻击',hp:'生命',def:'防御'};
+  const modText=['atk','hp','def'].map((k:string)=>mods[k]?`${modLabel[k]}+${Math.round(mods[k]*100)}%`:'').filter(Boolean).join(' · ');
+  U.text('BondsEffect',modText||'—',190,-70,270,20,GOLD);
+  U.text('BondsHint','组合内武将同时上阵即全军生效',-180,-98,420,16,tone('#ad9977'));
+  allBonds.forEach((b:any,i:number)=>{
+    const y=-140-i*44;
+    const active=bondsNow.some((x:any)=>x.id===b.id);
+    U.text('BondName'+i,(active?'● ':'○ ')+b.name,-232,y,170,19,active?GOLD:tone('#a99778'));
+    U.text('BondMembers'+i,b.heroes.map((hid:string)=>heroes.getHero(hid)?.name||hid).join('·'),-70,y,330,17,LIGHT);
+    U.text('BondState'+i,active?'已激活':'未集齐',225,y,120,17,active?GOLD:tone('#a99778'));
+  });
   if(formationRecommended){
     const recommended=formationRecommended;
     U.rect('FormationRecShade',0,0,720,1280,new Color(12,10,8,190));
@@ -522,6 +536,12 @@ export function arena(ctx: ScreenContext) {
       U.text('ArenaEnemy'+i,o.name,-161,y+32,320,26,GOLD);
       U.text('ArenaDifficulty'+i,o.diff>1.2?'凶险':'寻常',267,y+32,115,18,o.diff>1.2?palette.red:tone('#ad9977'));
       U.text('ArenaEnemyPower'+i,`守军约 Lv.${enemy.units[0].level} · 战力 ${fmt.fmtNum(power)}`,-138,y-26,369,18,tone('#ad9977'));
+      const fCountA:any={};
+      enemy.units.forEach((unit:any)=>{fCountA[unit.hero.faction]=(fCountA[unit.hero.faction]||0)+1;});
+      const domA=Object.keys(fCountA).sort((a:string,b:string)=>fCountA[b]-fCountA[a])[0];
+      const domNameA=(config.FACTIONS as any)[domA]?.name||'';
+      const counterA=Object.keys(config.BEATS).find((k:any)=>(config.BEATS as any)[k]===domA);
+      U.text('ArenaFaction'+i,`${domNameA}×${fCountA[domA]} · ${counterA?(config.FACTIONS as any)[counterA]?.name:''}克`,105,y+32,180,16,tone('#ad9977'));
       U.button('ArenaFight'+i,'切 磋',244,y-20,174,54,()=>ctx.startArenaBattle(o.diff,day*97+i*13),palette.red);
     });
     U.text('ArenaRule1','胜得积分与演武令（2~4 按难度），败亦得演武令×1',0,-335,660,18,LIGHT);
