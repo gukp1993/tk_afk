@@ -430,7 +430,7 @@ function addHeroCard(id) {
     shardGain: 1, qualityShards: state.qualityShards[def.rarity], overflow: true };
 }
 // 品质碎片兑换：同品质 10 片换 1 张该品质任意武将卡（可解锁新将或给未满星将升星；
-// 满星武将也可选，但按重复卡规则只返 1 片，界面需二次确认）。
+// 已满星武将不可兑换，避免"花 10 返 1"陷阱）。
 function exchangeQualityShard(rarity, heroId) {
   return withSavedMutation(() => {
     const key = Math.floor(Number(rarity) || 0);
@@ -1004,7 +1004,7 @@ function adBump(placement) {
   state.ads.counts[placement] = (state.ads.counts[placement] || 0) + 1;
 }
 
-// ---------- 招募（白/蓝/紫/橙 四档固定概率，无保底）----------
+// ---------- 招募（四档固定概率 + 保底：十连必出 R+，40 抽必出 SSR）----------
 function rollRarity() {
   const g = C.GACHA.rates;
   const r = Math.random();

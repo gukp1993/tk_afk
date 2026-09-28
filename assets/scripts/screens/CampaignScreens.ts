@@ -77,8 +77,8 @@ export function campaign(ctx: ScreenContext) {
   const idle = store.idlePending();
   const mins=Math.floor(idle.hours*60);
   U.text('IdleTime',idle.full?'挂机收益已满':`积累 ${Math.floor(mins/60)}时${mins%60}分`,-218,-367,245,19,INK);
-  U.text('Idle',`待领 铜钱 ${fmt.fmtNum(idle.gold)} · 精铁 ${idle.iron}`,-156,-391,370,16,tone('#74684a'));
-  U.text('IdleRate',`今日元宝 ${idle.gem.claimedGem}/${idle.gem.cap} · 待领 ${fmt.fmtNum(idle.gem.pending)}`,-176,-413,330,14,tone('#74684a'));
+  U.text('Idle',`铜钱 ${fmt.fmtNum(idle.gold)} · 精铁 ${idle.iron}（自然 12 小时封顶）`,-156,-391,370,16,tone('#74684a'));
+  U.text('IdleRate',`今日元宝 ${idle.gem.claimedGem}/${idle.gem.cap} · 累计未领 ${fmt.fmtNum(idle.gem.pending)}`,-176,-413,330,14,tone('#74684a'));
   U.panel('IdleClaimPanel',232,-393,220,59,palette.gold,9,tone('#a47735'));
   U.text('IdleClaimText',idle.gold||idle.iron?'一键收获':'收益积累中',232,-393,198,25,INK);
   U.tap('IdleClaimTap',232,-393,220,59,()=>ctx.tell(store.claimFreeRewards(),'挂机收益已领取'));
@@ -97,7 +97,7 @@ export function campaign(ctx: ScreenContext) {
   U.rect('GoalStrip',0,-536,720,24,tone('#344438'));
   const firstDone=Math.min(s.campaign.cleared,config.FIRST_STAGE_END);
   U.text('GoalHint',firstDone>=config.FIRST_STAGE_END?'第一期主线完成 120/120 · 循环乱世继续开放':`第一期主线 ${firstDone}/${config.FIRST_STAGE_END} · 通关越多，挂机收益越高`,-151,-536,400,16,LIGHT);
-  U.text('IdleMore','加速 / 双倍',278,-536,147,16,GOLD);
+  U.text('IdleMore','双倍 / 快收',278,-536,147,16,GOLD);
   U.tap('GoalTap',-150,-536,405,24,()=>ctx.go('stagePreview'));
   U.tap('IdleMoreTap',278,-536,147,24,()=>ctx.idleClaimChoice());
   const retro=store.retroGrants();
@@ -152,11 +152,14 @@ export function stagePreview(ctx: ScreenContext) {
   if(fCount[domFaction]>=4){
     const counterKey=Object.keys(config.BEATS).find((k:any)=>(config.BEATS as any)[k]===domFaction);
     const counterName=counterKey?(config.FACTIONS as any)[counterKey]?.name:'';
-    U.text('StageAuraHint',`敌军同阵营×${fCount[domFaction]}（光环+${fCount[domFaction]>=5?'18%':'12%'}）· ${counterName}阵营对其伤害+25%`,0,62,610,17,tone('#d9a94e'));
+    // 光环显示按 ENEMY_FACTION_AURA 折算后的实际生效值，与战斗内一致
+    const baseAura=config.factionBonus(fCount[domFaction]).atk;
+    const realAura=Math.round(baseAura*(config as any).ENEMY_FACTION_AURA*1000)/10;
+    U.text('StageAuraHint',`敌军同阵营×${fCount[domFaction]}（光环生效 +${realAura}%）· ${counterName}阵营对其伤害+25%`,0,62,610,17,tone('#d9a94e'));
   }
   U.panel('StageRewardPanel',0,-45,616,165,tone('#302a1c'),7);
   if(reward.first){
-    U.text('StageRewards',`确定：元宝 +${reward.totals.gem} · 铜钱 +${fmt.fmtNum(reward.totals.gold)}${reward.totals.scroll?` · 招募令 +${reward.totals.scroll}`:''}`,0,14,589,18,LIGHT);
+    U.text('StageRewards',`首通必得：元宝 +${reward.totals.gem} · 铜钱 +${fmt.fmtNum(reward.totals.gold)}${reward.totals.scroll?` · 招募令 +${reward.totals.scroll}`:''}`,0,14,589,18,LIGHT);
     U.text('StageArmory','概率奖励：65% 获得随机军械（以实际掉落为准）',0,-22,582,17,dim);
     const msLabels=(reward.milestones||[]).map((m:any)=>m.label);
     U.text('StageIdle',msLabels.length?`里程碑：${msLabels.join('；')}`:`挂机铜钱/时：通关后 +${fmt.fmtNum(gain)}`,0,-62,582,17,GOLD);
@@ -210,7 +213,7 @@ export function home(ctx: ScreenContext) {
     U.text('CityIdleClaimText',idle.gold||idle.iron?'一键收获':'积累中',62,-505,210,19,INK);
     U.tap('CityIdleClaimTap',62,-505,228,52,()=>ctx.tell(store.claimFreeRewards(),'挂机收益已领取'));
     U.panel('CityIdleMore',277,-505,145,52,tone('#3a291a'),7,GOLD);
-    U.text('CityIdleMoreText','加速 / 双倍',277,-505,137,16,LIGHT);
+    U.text('CityIdleMoreText','双倍 / 快收',277,-505,137,16,LIGHT);
     U.tap('CityIdleMoreTap',277,-505,145,52,()=>ctx.idleClaimChoice());
     U.rect('CityHeader',0,551,720,178,PAPER);
     U.panel('CityEmblem',-301,596,83,87,tone('#56695f'),7,GOLD);

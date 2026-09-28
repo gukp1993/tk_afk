@@ -146,7 +146,7 @@ export function heroes(ctx: ScreenContext) {
       U.panel('ShardPanel',0,-10,664,1000,panel,14,gold);
       U.tap('ShardBlock',0,-10,664,1000,()=>{});
       U.text('ShardHeading','品质碎片兑换',0,438,600,30,gold);
-      U.text('ShardHint','同品质碎片 10 片兑换该品质任意武将 1 张：未拥有直接解锁，未满星自动升星，已满星兑换会返还 1 片',0,399,590,16,dim);
+      U.text('ShardHint','同品质碎片 10 片兑换该品质任意武将 1 张：未拥有直接解锁，未满星自动升星，已满星武将不可兑换',0,399,590,16,dim);
       ['N','R','SR','SSR'].forEach((name,i)=>{
         const tier=i+1,x=-243+i*162,active=shardTier===tier;
         U.panel('ShardTier'+tier,x,340,150,56,active?tone('#45321b'):ink,8,active?gold:border);
@@ -278,9 +278,9 @@ export function summon(ctx: ScreenContext) {
     U.text('GemBalanceText',`元宝 ${fmt.fmtNum(s.res.gem)}`,-175,611,304,20,gold);
     U.panel('ScrollBalance',175,611,334,42,ink,21,border);
     U.text('ScrollBalanceText',`招募令 ${s.res.scroll}`,175,611,304,20,gold);
-    U.panel('SummonHall',0,458,686,288,panel,13,gold);
-    U.text('SummonHallTitle','召唤 · 点将台',0,558,600,42,gold);
-    U.text('SummonHallSubtitle','聚天下英杰 · 成千秋霸业',0,511,590,20,dim);
+    U.panel('SummonHall',0,442,686,288,panel,13,gold);
+    U.text('SummonHallTitle','召唤 · 点将台',0,552,600,42,gold);
+    U.text('SummonHallSubtitle','聚天下英杰 · 成千秋霸业',0,508,590,20,dim);
     U.scene('SummonSealArt',g=>{
       g.strokeColor=tone('#765a30');g.lineWidth=3;g.circle(0,436,74);g.stroke();
       for(let i=0;i<12;i++){
@@ -292,17 +292,17 @@ export function summon(ctx: ScreenContext) {
     });
     U.panel('SummonSeal',0,436,72,72,tone('#57402d'),10,gold);
     U.text('SummonSealText','将',0,436,68,42,gold);
-    U.text('SummonRates','概率 SSR 2% · SR 10% · R 28% · N 60%',0,348,630,19,dim);
+    U.text('SummonRates','概率 SSR 2% · SR 10% · R 28% · N 60%',0,352,630,19,dim);
     const pity=store.summonPityInfo();
-    U.panel('SummonPool',0,294,686,110,panel,9,border);
-    U.text('PoolTitle',`武将池 · ${heroData.HEROES.length} 将 · SSR 保底 ${pity.sinceSsr}/${pity.ssrHard} 抽`,-73,326,590,19,dim);
+    U.panel('SummonPool',0,290,686,96,panel,9,border);
+    U.text('PoolTitle',`武将池 · ${heroData.HEROES.length} 将 · SSR 保底 ${pity.sinceSsr}/${pity.ssrHard} 抽`,-73,318,590,19,dim);
     const rarity:[string,string,number][]=[['SSR','#e2b95f',4],['SR','#b37ac9',3],['R','#5f90c8',2],['N','#b9bec3',1]];
     rarity.forEach(([name,hex],i)=>{
       const x=-264+i*175;
       U.panel('RarityMark'+i,x-47,285,19,19,tone(hex),2);
       U.text('RarityName'+i,name,x+4,285,83,20,tone(hex));
     });
-    U.text('PoolCounts',rarity.map(([name,,level])=>`${name} ${heroData.HEROES.filter((h:any)=>h.rarity===level).length}`).join(' · '),0,258,610,17,dim);
+    U.text('PoolCounts',rarity.map(([name,,level])=>`${name} ${heroData.HEROES.filter((h:any)=>h.rarity===level).length}`).join(' · '),0,252,610,17,dim);
     const draws:[string,string,string,string,()=>void][]=[
       ['Single','招募 ×1','招募令 ×1','#392719',()=>ctx.confirm('确认招募','消耗招募令 ×1',()=>ctx.summonDraw('scroll1'))],
       ['TenScroll','招募 ×10','招募令 ×10','#d9ac5f',()=>ctx.confirm('确认招募','消耗招募令 ×10',()=>ctx.summonDraw('scroll10'))],
@@ -311,13 +311,13 @@ export function summon(ctx: ScreenContext) {
     ];
     draws.forEach(([id,title,cost,hex,action],i)=>{
       const x=-267+i*178,bg=tone(hex),dark=i===0;
-      U.panel(id,x,199,166,88,bg,9,gold);
-      U.text(id+'Title',title,x,218,150,26,dark?gold:ink);
-      U.text(id+'Cost',cost,x,179,150,17,dark?dim:tone('#573d1e'));
-      U.tap(id+'Tap',x,199,166,88,action);
+      U.panel(id,x,185,166,88,bg,9,gold);
+      U.text(id+'Title',title,x,204,150,26,dark?gold:ink);
+      U.text(id+'Cost',cost,x,165,150,17,dark?dim:tone('#573d1e'));
+      U.tap(id+'Tap',x,185,166,88,action);
     });
     U.panel('SummonAd',0,133,678,51,tone('#2b1e12'),8,border);
-    U.text('SummonAdText','看模拟广告 · 免费招募令 ×1',0,133,618,20,gold);
+    U.text('SummonAdText','看广告 · 免费招募令 ×1',0,133,618,20,gold);
     U.tap('SummonAdTap',0,133,678,51,()=>ctx.playAd('summon',()=>{
       store.applyReward({scroll:1});return {ok:true};
     },'获得招募令 ×1'));

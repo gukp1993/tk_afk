@@ -12,7 +12,7 @@ const FACTIONS = {
 const BEATS = { wei: 'shu', shu: 'wu', wu: 'qun', qun: 'wei' };
 const FACTION_ADV = 1.25;
 // 敌方同阵营光环折减系数：剧情敌阵普遍同阵营 4-5 人吃满 +18%，玩家看不见也难以对位，
-// B 侧（敌方/塔/演武对手）按 0.5 折算，缓解"表观战力达标却打不过"的隐性墙。
+// B 侧（敌方/塔/演武对手）按 0.75 折算，缓解"表观战力达标却打不过"的隐性墙。
 const ENEMY_FACTION_AURA = 0.75;
 
 const CLASSES = {
