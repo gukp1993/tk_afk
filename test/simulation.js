@@ -92,6 +92,40 @@ function fightPractice(battleSeed) {
   return { win };
 }
 
+function fightTower(floor, battleSeed) {
+  const enemy = stages.makeTowerEnemies(floor);
+  const begin = store.beginBattle({ mode: 'tower', index: floor, referenceLevel: enemy.units[0]?.level || 1 });
+  if (!begin.ok) return { win: false };
+  const fighting = battleRules.createBattle({
+    team: store.playerUnits(), enemy: store.enemyUnits(enemy.units), seed: battleSeed
+  });
+  let done = null;
+  for (let i = 0; i < 1200 && !done; i++) {
+    const step = fighting.step(0.1);
+    if (step.done) done = step;
+  }
+  const win = done ? done.winner === 'A' : false;
+  store.settleBattle(begin.id, { win });
+  return { win };
+}
+
+function fightArena(diff, battleSeed) {
+  const enemy = stages.makeArenaEnemies(store.teamPower(), battleSeed, diff);
+  const begin = store.beginBattle({ mode: 'arena', diff, referenceLevel: enemy.units[0]?.level || 1 });
+  if (!begin.ok) return { win: false };
+  const fighting = battleRules.createBattle({
+    team: store.playerUnits(), enemy: store.enemyUnits(enemy.units), seed: battleSeed
+  });
+  let done = null;
+  for (let i = 0; i < 1200 && !done; i++) {
+    const step = fighting.step(0.1);
+    if (step.done) done = step;
+  }
+  const win = done ? done.winner === 'A' : false;
+  store.settleBattle(begin.id, { win });
+  return { win };
+}
+
 function bestTarget(rarity) {
   const state = store.getState();
   const pool = H.HEROES.filter(h => h.rarity === rarity);
@@ -230,6 +264,19 @@ function runSeed(seed) {
       const r = fightPractice((seed * 104729 + day * 7919 + battles * 17) >>> 0);
       battles++; ops++;
       if (r.win) wins++;
+    }
+    // 每日副玩法：群英塔最多 3 场（败即停）+ 演武 1 场（中等难度）。
+    // SIM_TOWER=0 可关闭，用于对照"最低限度玩家"（只领挂机+三胜）画像。
+    if (process.env.SIM_TOWER !== '0') {
+      let towerBattles = 0;
+      while (towerBattles < 3) {
+        const floor = store.getState().tower.best + 1;
+        const r = fightTower(floor, (seed * 31 + day * 7 + towerBattles * 5) >>> 0);
+        towerBattles++; ops++;
+        if (!r.win) break;
+      }
+      fightArena(1.05, (seed * 977 + day * 13) >>> 0);
+      ops++;
     }
     store.claimAllDailyRewards(); // 三件套任务 + 活跃宝箱
     ops++;

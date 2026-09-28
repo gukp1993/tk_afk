@@ -176,6 +176,45 @@ check('十连保底 R+（全白时末位补 R）', tenN.ok
 check('保底进度可读', store4.summonPityInfo().sinceSsr === 10 && store4.summonPityInfo().ssrHard === 40);
 Math.random = REAL_RANDOM;
 
+// ---------- S4b 七日目标 / 演武分段 / 练兵上限 / 塔奖励（第二轮） ----------
+head('S4b 第二轮规则');
+storage._map.clear();
+const store4b = freshStore(); store4b.load();
+const s4b = store4b.getState();
+check('七日表 7 天且第 7 天 SSR 券', C.SEVEN_DAY.length === 7 && C.SEVEN_DAY[6].reward.ssrPick === 1);
+check('七日第 1 天可领', store4b.sevenDayInfo().list[0].claimable === true);
+const sd1 = store4b.claimSevenDay(1);
+check('七日第 1 天领取到账', sd1.ok && s4b.res.scroll >= 3);
+check('七日重复领取拒绝', store4b.claimSevenDay(1).ok === false);
+check('七日第 2 天当日不可领', store4b.claimSevenDay(2).ok === false);
+// 演武：令牌按难度分档 + 段位首达一次性奖励
+const af1 = store4b.arenaFight(true, 1.35, true);
+check('演武凶险档胜 4 令', af1.tokens === 4);
+check('段位首达一次性奖励', !!af1.rankUp && af1.rankUp.name === '都尉' && s4b.res.gem >= 100);
+check('段位奖励不重复', store4b.arenaFight(true, 1.35, true).rankUp === null);
+// 塔：首通带精铁
+const tw1 = store4b.winTower(1);
+check('塔首通 元宝32 · 精铁2', tw1.gem === 32 && tw1.iron === 2);
+check('塔非首通无奖励', store4b.winTower(1).gem === 0);
+// 练兵经验每日上限
+s4b.daily.trainingWins = C.TRAINING_DAILY_CAP;
+const tb = store4b.beginBattle({ mode: 'training', index: 0, referenceLevel: 5 });
+const ts = store4b.settleBattle(tb.id, { win: true });
+check('练兵超每日上限零经验', ts.ok && ts.gainedXP === 0);
+// 败北 25% 经验
+const lb = store4b.beginBattle({ mode: 'campaign', index: 1, referenceLevel: 5 });
+const ls = store4b.settleBattle(lb.id, { win: false });
+check('战役败北给 25% 经验', ls.ok && ls.gainedXP > 0);
+// 重复通关线性铜钱
+s4b.campaign.cleared = 10;
+check('重复通关铜钱线性 800+12×关', store4b.campaignRewardPreview(12).gold === 944);
+// 时钟回拨防护：lastSeenTs 在未来时当日不重置
+s4b.arena.attempts = 2;
+s4b.lastSeenTs = REAL_NOW() + 86400000;
+store4b.checkDailyReset();
+check('时钟回拨当日不重置', s4b.arena.attempts === 2);
+s4b.lastSeenTs = REAL_NOW() - 1000;
+
 // ---------- S5 首通、章末与里程碑 ----------
 head('S5 首通里程碑');
 storage._map.clear();
@@ -228,7 +267,7 @@ store5.winCampaign(121);
 check('第 121 关章末宝箱照旧', s.vouchers.ssr === ssrBefore121);
 // 重复挑战
 const rep = store5.winCampaign(120);
-check('重打只给循环铜钱', rep.first === false && rep.gem === 0 && rep.gold === Math.floor(600 * Math.pow(1.05, 120) * 0.3) + Math.floor(400 * Math.pow(1.05, 120) * 0.3));
+check('重打只给循环铜钱（线性）', rep.first === false && rep.gem === 0 && rep.gold === 800 + 12 * 120);
 // 里程碑保护：已通关关卡不再提供首通/里程碑；标记已固化
 check('已通关关卡预览不再提供首通奖励', store5.campaignRewardPreview(120).first === false);
 check('里程碑标记已固化', s.campaign.milestones['40'] === 1 && s.campaign.milestones['120'] === 1);

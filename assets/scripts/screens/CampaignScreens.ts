@@ -55,6 +55,13 @@ export function campaign(ctx: ScreenContext) {
     U.text('CurrentStageText',`当前 · 第 ${stage} 关${stage>config.FIRST_STAGE_END?' · 循环':''}`,x+18,y-24,165,17,LIGHT);
   }
   U.text('MilestoneHint','主线里程碑：40/100 自选券 · 90/110 自选箱 · 120 完成',0,404,560,15,INK);
+  const sd=store.sevenDayInfo();
+  if(!sd.allDone){
+    const claimable=sd.canClaim;
+    U.panel('SevenDayBanner',-60,372,500,44,claimable?tone('#3a2c17'):tone('#2b2118'),7,claimable?GOLD:tone('#6b5837'));
+    U.text('SevenDayBannerText',claimable?'七日目标 · 今天有奖励可领 ›':`七日目标 · 第 ${sd.cur} 天 ›`,-60,372,470,18,claimable?GOLD:LIGHT);
+    U.tap('SevenDayBannerTap',-60,372,500,44,()=>ctx.go('sevenDay'));
+  }
   const shortcuts: [Page,string][] = [['quests','任务'],['summon','召唤'],['bag','背包'],['armory','军械']];
   shortcuts.forEach(([page,label], i) => {
     const y=355-i*91;
@@ -517,7 +524,7 @@ export function arena(ctx: ScreenContext) {
       U.text('ArenaEnemyPower'+i,`守军约 Lv.${enemy.units[0].level} · 战力 ${fmt.fmtNum(power)}`,-138,y-26,369,18,tone('#ad9977'));
       U.button('ArenaFight'+i,'切 磋',244,y-20,174,54,()=>ctx.startArenaBattle(o.diff,day*97+i*13),palette.red);
     });
-    U.text('ArenaRule1','胜得积分与演武令×2，败亦得演武令×1',0,-335,660,18,LIGHT);
+    U.text('ArenaRule1','胜得积分与演武令（2~4 按难度），败亦得演武令×1',0,-335,660,18,LIGHT);
     U.text('ArenaRule2','演武令可在集市兑换招募令与自选卡',0,-359,660,18,tone('#ad9977'));
     U.button('ArenaBack','返 回',0,-481,295,59,()=>ctx.back('journey'),palette.paperDark);
   }
@@ -543,3 +550,26 @@ export function storyView(ctx: ScreenContext) {
     U.text('StoryBackText','返回关卡预览',0,-482,318,20,GOLD);
     U.tap('StoryBackTap',0,-482,318,45,()=>ctx.back('stagePreview'));
   }
+
+const SEVEN_DAY_CN = ['一', '二', '三', '四', '五', '六', '七'];
+
+export function sevenDayView(ctx: ScreenContext) {
+  const info=store.sevenDayInfo(),U=ctx.ui;
+  ctx.title('七 日 目 标');
+  U.text('SevenDayBack','‹ 返回',-291,484,130,22,GOLD);
+  U.tap('SevenDayBackTap',-291,484,136,52,()=>ctx.back('campaign'));
+  U.text('SevenDayGuide','开服首 7 天每天一份厚礼；漏领可在 7 天内补领',0,443,640,18,tone('#ad9977'));
+  info.list.forEach((d:any,i:number)=>{
+    const y=375-i*116;
+    U.panel('SevenDay'+i,0,y,640,102,
+      d.claimed?tone('#26301f'):d.claimable?tone('#3a2c17'):tone('#2b2118'),9,
+      d.claimable?GOLD:tone('#6b5837'));
+    U.text('SevenDayDay'+i,`第${SEVEN_DAY_CN[i]}天`,-228,y+20,150,26,d.claimable?GOLD:d.claimed?tone('#6f8a5f'):tone('#a99778'));
+    U.text('SevenDayLabel'+i,d.label,-66,y-14,360,22,d.locked?tone('#a99778'):LIGHT);
+    U.text('SevenDayState'+i,d.claimed?'已领取':d.claimable?'待领取 ›':`第 ${d.day} 天解锁`,205,y+18,160,20,d.claimable?GOLD:d.claimed?tone('#6f8a5f'):tone('#a99778'));
+    if(d.claimable)U.tap('SevenDayTap'+i,0,y,640,102,()=>{
+      const r=store.claimSevenDay(d.day);
+      ctx.tell(r,r.ok?`已领取：${d.label}`:'');
+    });
+  });
+}

@@ -28,7 +28,7 @@ function defaultState() {
     formation: ['zhangfei', 'guanyu', 'liaohua', 'liubei', 'mengda'],
     campaign: { cleared: 0, storySeen: {}, milestones: {}, retroGrants: null, retroGrantsSeen: false },
     tower: { best: 0 },
-    arena: { points: 1000, wins: 0, losses: 0, attempts: C.ARENA.DAILY },
+    arena: { points: 1000, wins: 0, losses: 0, attempts: C.ARENA.DAILY, rankReached: {} },
     equips: {}, nextEquip: 1,
     armory: createArmory(),
     idle: { last: Date.now(), gold: 0, gem: 0, scroll: 0, ironAcc: 0 },
@@ -37,13 +37,15 @@ function defaultState() {
     qualityShards: { 1: 0, 2: 0, 3: 0, 4: 0 },
     daily: { day: '', quests: {}, claimed: [], active: [] },
     summon: { total: 0, pity: { sinceSsr: 0 } },
+    sevenDay: { start: F.todayStr(), claimed: [] },
     vouchers: { sr: 0, ssr: 0 },
     heroProgress: { starterMengdaGranted: true, firstWinChoiceGranted: false, firstWinChoicePending: false, chapterOneVoucherGranted: false },
     battle: { nextSeq: 1, pending: null, lastSettled: null },
     migrations: {},
     ads: { day: '', counts: {} },
     buyLog: { day: '', buys: {} },
-    settings: { speed: 1 }
+    settings: { speed: 1 },
+    lastSeenTs: Date.now()
   };
 }
 function newHero(id) { return { id, star: 0, cards: 0, lockedCards: false, equip: { weapon: null, armor: null, helm: null, boots: null } }; }
@@ -330,6 +332,13 @@ function normalizeState(s) {
   // 保底计数为 v7 后增字段：旧档缺省从 0 起，不升存档版本号
   s.summon.pity = s.summon.pity || { sinceSsr: 0 };
   s.summon.pity.sinceSsr = Math.max(0, Math.min((C.GACHA.pity && C.GACHA.pity.ssrHard || 40) - 1, Math.floor(s.summon.pity.sinceSsr || 0)));
+  s.arena = s.arena || { points: 1000, wins: 0, losses: 0, attempts: C.ARENA.DAILY };
+  s.arena.rankReached = s.arena.rankReached || {};
+  s.sevenDay = s.sevenDay || { start: F.todayStr(), claimed: [] };
+  if (!Array.isArray(s.sevenDay.claimed)) s.sevenDay.claimed = [];
+  s.sevenDay.claimed = s.sevenDay.claimed.map(n => Math.floor(Number(n) || 0)).filter(n => n >= 1 && n <= 7);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s.sevenDay.start || '')) s.sevenDay.start = F.todayStr();
+  s.lastSeenTs = Math.max(0, Math.floor(Number(s.lastSeenTs) || 0));
   s.heroProgress = s.heroProgress || { starterMengdaGranted: true, firstWinChoiceGranted: false, firstWinChoicePending: false, chapterOneVoucherGranted: false };
   s.battle = s.battle || { nextSeq: 1, pending: null, lastSettled: null };
   s.idle = s.idle || { last: Date.now(), gold: 0, gem: 0, scroll: 0, ironAcc: 0 };
@@ -361,7 +370,10 @@ function normalizeState(s) {
   }
 }
 function save() {
-  if (state) idleTick();
+  if (state) {
+    state.lastSeenTs = Math.max(state.lastSeenTs || 0, Date.now());
+    idleTick();
+  }
   rawSet(SAVE_KEY, state);
 }
 function withSavedMutation(mutate) {
@@ -384,6 +396,9 @@ function getState() { return state; }
 
 // ---------- 每日重置 ----------
 function checkDailyReset() {
+  // 时钟回拨防护：设备时间早于上次记录时当日不重置（挂机由 idleTick 的单调时钟兜底）。
+  const now = Date.now();
+  if (state.lastSeenTs && now + 1000 < state.lastSeenTs) return;
   const today = F.todayStr();
   if (state.daily.day !== today) {
     state.daily = { day: today, quests: {}, claimed: [], active: [] };
@@ -891,8 +906,8 @@ function salvageBatch(q) {
 // 铜钱：随关卡线性，自然累计最多 12 小时；精铁：25/小时，自然累计最多 12 小时；
 // 招募令：不再产出，旧档已积累的待领招募令原样保留、原样领取。
 function idleTick() {
-  // 把离线时间折算进累计（入 state.idle 缓存）
-  const now = Date.now();
+  // 把离线时间折算进累计（入 state.idle 缓存）；时钟回拨时按上次记录时间起算，不产生负收益
+  const now = Math.max(state.lastSeenTs || 0, Date.now());
   const addH = Math.max(0, Math.min(C.IDLE_CAP_HOURS, (now - state.idle.last) / 3600000));
   const rate = C.idleRates(state.campaign.cleared);
   state.idle.gold += addH * rate.gold;
@@ -1084,7 +1099,8 @@ function firstClearGold(stage) {
     : Math.floor(2000 * Math.pow(1.05, stage)) + Math.floor(1400 * Math.pow(1.05, stage));
 }
 function repeatGold(stage) {
-  return Math.floor(600 * Math.pow(1.05, stage) * 0.3) + Math.floor(400 * Math.pow(1.05, stage) * 0.3);
+  // 重复通关改线性：与首通同量级，铜钱本身已严重溢出，不再指数放大
+  return 800 + 12 * stage;
 }
 
 // 首通奖励统一计算，返回 base／chapter／milestones／randomDrop 结构供页面分区显示。
@@ -1201,10 +1217,11 @@ function isStorySeen(stageIdx) {
 }
 function winTower(floor) {
   const first = floor === state.tower.best + 1;
-  const reward = { gem: 0, scroll: 0, shard: 0 };
+  const reward = { gem: 0, scroll: 0, shard: 0, iron: 0 };
   if (first) {
     state.tower.best = floor;
-    reward.gem = 25 + floor * 2;
+    reward.gem = 30 + floor * 2;
+    reward.iron = Math.floor(2 + floor / 3); // 塔是精铁副产线（60 层约 780，不动 30 天主口径）
     if (floor % 5 === 0) reward.scroll = 1;
     if (floor % 10 === 0) reward.shard = 10;
   }
@@ -1216,7 +1233,7 @@ function arenaFight(win, diff, reserved) {
   let delta = 0, tokens = 0;
   if (win) {
     delta = Math.round(14 + 8 * diff);
-    tokens = C.ARENA.WIN_TOKENS;
+    tokens = C.ARENA.winTokens ? C.ARENA.winTokens(diff) : C.ARENA.WIN_TOKENS;
     state.arena.wins += 1;
   } else {
     delta = -8;
@@ -1225,8 +1242,17 @@ function arenaFight(win, diff, reserved) {
   }
   state.arena.points = Math.max(0, state.arena.points + delta);
   state.res.token += tokens;
+  // 段位首次达成：一次性奖励（元宝+精铁），只发一次不重复
+  let rankUp = null;
+  const rank = IT.arenaRank(state.arena.points);
+  if (!state.arena.rankReached[rank]) {
+    state.arena.rankReached[rank] = 1;
+    const bonus = C.ARENA.rankBonus;
+    applyReward(bonus);
+    rankUp = { name: rank, ...bonus };
+  }
   bumpQuest('q_arena1', 1);
-  return { delta, tokens, points: state.arena.points };
+  return { delta, tokens, points: state.arena.points, rankUp };
 }
 
 // 每个对局开始时发ID并冻结等级/关卡；同一结算ID幂等，所有变化一次保存。
@@ -1272,8 +1298,15 @@ function interruptBattle(battleId, reason) {
 }
 
 function battleXP(pending, win) {
-  if (!win || state.player.level >= C.MAX_LEVEL) return 0;
   const base = C.BATTLE_XP.base + C.BATTLE_XP.perEnemyLevel * pending.referenceLevel;
+  // 败北也有少量经验：战役/塔按基础 25%，让"打不过也有进展"；练兵/演武败北不给。
+  if (!win) {
+    if (state.player.level >= C.MAX_LEVEL) return 0;
+    if (pending.mode === 'campaign') return Math.floor(base * 0.25);
+    if (pending.mode === 'tower') return Math.floor(base * 0.25);
+    return 0;
+  }
+  if (state.player.level >= C.MAX_LEVEL) return 0;
   if (pending.mode === 'campaign') {
     if (pending.first) return Math.floor(base * C.BATTLE_XP.campaignFirst);
     const rate = Math.max(0.2, Math.min(1, pending.referenceLevel / Math.max(1, pending.levelAtStart)));
@@ -1281,7 +1314,11 @@ function battleXP(pending, win) {
   }
   if (pending.mode === 'tower') return pending.first ? Math.floor(base * C.BATTLE_XP.towerFirst) : 0;
   if (pending.mode === 'arena') return Math.floor(base * C.BATTLE_XP.arenaWin);
-  if (pending.mode === 'training') return Math.floor(base * C.BATTLE_XP.training);
+  if (pending.mode === 'training') {
+    // 练兵经验每日上限：前 N 场全额，之后 0（切断"无限练兵=免费等级"）
+    const done = (state.daily.trainingWins || 0);
+    return done < C.TRAINING_DAILY_CAP ? Math.floor(base * C.BATTLE_XP.training) : 0;
+  }
   return 0;
 }
 
@@ -1313,6 +1350,7 @@ function settleBattle(battleId, outcome) {
     }
     if (win) { bumpQuest('q_battle1', 1); bumpQuest('q_win3', 1); }
     if (pending.mode === 'tower') bumpQuest('q_tower1', 1);
+    if (pending.mode === 'training' && win) state.daily.trainingWins = (state.daily.trainingWins || 0) + 1;
     const xp = battleXP(pending, win);
     const level = addPlayerXP(xp);
     state.battle.pending = null;
@@ -1343,6 +1381,38 @@ function mergeStateInPlace(target, source) {
       if (!a || typeof a !== 'object' || Array.isArray(a)) target[k] = {};
       mergeStateInPlace(target[k], b);
     } else target[k] = b;
+  });
+}
+
+// ---------- 七日目标 ----------
+// 以首日（存档创建或老档更新当日起算）为锚的 7 天任务轨；漏领可补（窗口内 day <= 当天均可领）。
+function dayDiffStr(fromStr, toStr) {
+  const p = s => { const a = String(s).split('-').map(Number); return new Date(a[0], (a[1] || 1) - 1, a[2] || 1).getTime(); };
+  return Math.round((p(toStr) - p(fromStr)) / 86400000);
+}
+function sevenDayInfo() {
+  checkDailyReset();
+  const cur = Math.min(7, dayDiffStr(state.sevenDay.start, F.todayStr()) + 1);
+  const claimed = state.sevenDay.claimed || [];
+  const list = C.SEVEN_DAY.map(d => ({
+    day: d.day, label: d.label,
+    claimed: claimed.indexOf(d.day) >= 0,
+    claimable: d.day <= cur && claimed.indexOf(d.day) < 0,
+    locked: d.day > cur
+  }));
+  return { start: state.sevenDay.start, cur, list, allDone: claimed.length >= 7, canClaim: list.some(x => x.claimable) };
+}
+function claimSevenDay(day) {
+  return withSavedMutation(() => {
+    const info = sevenDayInfo();
+    const entry = info.list.find(x => x.day === day);
+    if (!entry) return { ok: false, msg: '七日目标不存在' };
+    if (entry.claimed) return { ok: false, msg: '已领取' };
+    if (!entry.claimable) return { ok: false, msg: '尚未到领取日' };
+    const def = C.SEVEN_DAY[day - 1];
+    state.sevenDay.claimed.push(day);
+    applyReward(def.reward);
+    return { ok: true, reward: def.reward, label: def.label };
   });
 }
 
@@ -1462,6 +1532,7 @@ module.exports = {
   winCampaign, campaignRewardPreview, winTower, arenaFight, beginBattle, settleBattle,
   markStorySeen, isStorySeen, retroGrants, dismissRetroGrants,
   questList, claimQuest, activePoints, claimActiveChest, claimAllDailyRewards, claimFreeRewards, bumpQuest, applyReward,
+  sevenDayInfo, claimSevenDay,
   interruptBattle, setAutoBattleSpeed,
   buyGood, CURRENCY_NAME,
   adCount, adBump

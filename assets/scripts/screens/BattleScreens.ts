@@ -122,8 +122,10 @@ export function resultView(ctx: ScreenContext) {
   const reward=r?.reward||{};
   let lines: string[]=[];
   if(!r?.ok) lines=[r?.msg||'结算失败'];
-  else if(ctx.battleMode==='arena') lines=r?.win?[`演武积分 ${reward.delta>=0?'+':''}${reward.delta||0} · 演武令 +${reward.tokens||0}`]:[defeatDiag(ctx,r),`演武积分 ${reward.delta||0} · 演武令 +${reward.tokens||0}`];
-  else if(ctx.battleMode==='tower') lines=r?.win?[`元宝 +${reward.gem||0} · 招募令 +${reward.scroll||0}`,`武将碎片 +${reward.shard||0}`]:[defeatDiag(ctx,r)];
+  else if(ctx.battleMode==='arena') lines=r?.win?[`演武积分 ${reward.delta>=0?'+':''}${reward.delta||0} · 演武令 +${reward.tokens||0}`,
+      ...(reward.rankUp?[`首达 ${reward.rankUp.name}！元宝 +${reward.rankUp.gem} · 精铁 +${reward.rankUp.iron}`]:[])]
+    :[defeatDiag(ctx,r),`演武积分 ${reward.delta||0} · 演武令 +${reward.tokens||0}`];
+  else if(ctx.battleMode==='tower') lines=r?.win?[`元宝 +${reward.gem||0} · 精铁 +${reward.iron||0} · 招募令 +${reward.scroll||0}`,`武将碎片 +${reward.shard||0}`]:[defeatDiag(ctx,r)];
   else if(ctx.battleMode==='training') lines=[`练兵经验 +${r.gainedXP||0}`];
   else if(r?.win){
     if(reward.first){

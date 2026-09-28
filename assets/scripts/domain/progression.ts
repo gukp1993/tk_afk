@@ -11,7 +11,7 @@ const IT = __domain_items;
 const STAGES = __domain_stages;
 
 const MILESTONE_BOX_Q = { 10: 1, 30: 2, 60: 3 };
-const CHAPTER_CHEST = { gem: 100, scroll: 1 };
+const CHAPTER_CHEST = { gem: 100, scroll: 2 };
 
 function own(obj, key) { return !!obj && Object.prototype.hasOwnProperty.call(obj, key); }
 
@@ -82,9 +82,12 @@ function firstWinAvailable(storeApi) {
 function nextChapterGoal(state, stages) {
   const cleared = Math.max(0, Math.floor(Number(state.campaign && state.campaign.cleared) || 0));
   const stageNo = (Math.floor(cleared / (stages.STAGES_PER_CH || 10)) + 1) * (stages.STAGES_PER_CH || 10);
-  const reward = { firstClear: { gem: 30,
-    gold: Math.floor(2000 * Math.pow(1.05, stageNo)) + Math.floor(1400 * Math.pow(1.05, stageNo)),
-    }, bossReward: { scroll: 1 }, chapterChest: Object.assign({}, CHAPTER_CHEST), armoryBoxQ: 0, srChoiceVoucher: false };
+  // 与 store.firstClearGold / 章末奖励保持同一口径，避免主城目标卡与实际结算不符
+  const gold = stageNo <= C.FIRST_STAGE_END
+    ? 3000 + 150 * stageNo
+    : Math.floor(2000 * Math.pow(1.05, stageNo)) + Math.floor(1400 * Math.pow(1.05, stageNo));
+  const reward = { firstClear: { gem: 30, gold },
+    bossReward: { scroll: 2 }, chapterChest: Object.assign({}, CHAPTER_CHEST), armoryBoxQ: 0, srChoiceVoucher: false };
   const milestoneQ = MILESTONE_BOX_Q[stageNo] || 0;
   if (milestoneQ && !(state.armory && state.armory.claimedMilestones && state.armory.claimedMilestones[milestoneQ])) {
     reward.armoryBoxQ = milestoneQ;

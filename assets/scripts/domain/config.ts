@@ -115,8 +115,26 @@ const BATTLE = {
   STARTER: ['liubei', 'guanyu', 'zhangfei', 'liaohua']
 };
 
-// 演武场
-const ARENA = { DAILY: 5, WIN_TOKENS: 2, LOSE_TOKENS: 1 };
+// 演武场：每日 5 次；令牌按对手难度分档（胜），败给 1；段位首次达成发一次性奖励
+const ARENA = {
+  DAILY: 5,
+  LOSE_TOKENS: 1,
+  winTokens: (diff) => (diff > 1.2 ? 4 : diff >= 1 ? 3 : 2),
+  rankBonus: { gem: 100, iron: 50 }
+};
+
+// 七日目标：新档（或老档更新后）首日起 7 天，每天可领一份，第 7 天发 SSR 自选券
+const SEVEN_DAY = [
+  { day: 1, reward: { scroll: 3, gem: 100 }, label: '招募令 ×3 · 元宝 ×100' },
+  { day: 2, reward: { gem: 300 }, label: '元宝 ×300' },
+  { day: 3, reward: { scroll: 5 }, label: '招募令 ×5' },
+  { day: 4, reward: { iron: 200 }, label: '精铁 ×200' },
+  { day: 5, reward: { srPick: 1 }, label: 'SR 武将自选券 ×1' },
+  { day: 6, reward: { gem: 888 }, label: '元宝 ×888' },
+  { day: 7, reward: { ssrPick: 1 }, label: 'SSR 武将自选券 ×1' }
+];
+// 练兵经验每日上限（场数）：前 N 场全额，之后 0，切断"无限练兵=免费等级"
+const TRAINING_DAILY_CAP = 20;
 
 // 激励视频广告：按平台配置广告位 ID（微信 wechat / 抖音 douyin）
 // 对应平台为空时使用内置模拟广告（测试模式，流程完整可验证）
@@ -162,6 +180,6 @@ export {
   LEVEL_CAPS, MAX_LEVEL, PLAYER_LEVEL, BATTLE_XP, AUTO_BATTLE, FOOD_VALUE, DUPE_GOLD,
   goldCost, expCost, idleRates, IDLE_CAP_HOURS, GEM_IDLE, ARMORY_IRON_PER_HOUR,
   FAST_AD, FAST_PAID,
-  GACHA, factionBonus, FORMATION_ROWS, BATTLE, ARENA, AD,
+  GACHA, factionBonus, FORMATION_ROWS, BATTLE, ARENA, SEVEN_DAY, TRAINING_DAILY_CAP, AD,
   FIRST_STAGE_END, CAMPAIGN_DIFFICULTY, CAMPAIGN_MILESTONES
 };
