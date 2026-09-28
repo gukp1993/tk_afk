@@ -38,6 +38,7 @@ function defaultState() {
     daily: { day: '', quests: {}, claimed: [], active: [] },
     summon: { total: 0, pity: { sinceSsr: 0 } },
     sevenDay: { start: F.todayStr(), claimed: [] },
+    bounty: { day: '', list: [] },
     vouchers: { sr: 0, ssr: 0 },
     heroProgress: { starterMengdaGranted: true, firstWinChoiceGranted: false, firstWinChoicePending: false, chapterOneVoucherGranted: false },
     battle: { nextSeq: 1, pending: null, lastSettled: null },
@@ -338,6 +339,8 @@ function normalizeState(s) {
   if (!Array.isArray(s.sevenDay.claimed)) s.sevenDay.claimed = [];
   s.sevenDay.claimed = s.sevenDay.claimed.map(n => Math.floor(Number(n) || 0)).filter(n => n >= 1 && n <= 7);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(s.sevenDay.start || '')) s.sevenDay.start = F.todayStr();
+  s.bounty = s.bounty || { day: '', list: [] };
+  if (!Array.isArray(s.bounty.list)) s.bounty.list = [];
   s.lastSeenTs = Math.max(0, Math.floor(Number(s.lastSeenTs) || 0));
   s.heroProgress = s.heroProgress || { starterMengdaGranted: true, firstWinChoiceGranted: false, firstWinChoicePending: false, chapterOneVoucherGranted: false };
   s.battle = s.battle || { nextSeq: 1, pending: null, lastSettled: null };
@@ -401,9 +404,10 @@ function checkDailyReset() {
   if (state.lastSeenTs && now + 1000 < state.lastSeenTs) return;
   const today = F.todayStr();
   if (state.daily.day !== today) {
-    state.daily = { day: today, quests: {}, claimed: [], active: [] };
+    state.daily = { day: today, quests: {}, claimed: [], active: [] }; // trainingWins 练兵计数随日重置
     state.arena.attempts = C.ARENA.DAILY;
   }
+  if (!state.bounty || state.bounty.day !== today) refreshBounties(today);
   if (state.fast.day !== today) state.fast = { day: today, count: 0 };
   if (state.buyLog.day !== today) state.buyLog = { day: today, buys: {} };
   if (state.ads.day !== today) state.ads = { day: today, counts: {} };
@@ -1402,6 +1406,85 @@ function mergeStateInPlace(target, source) {
   });
 }
 
+// ---------- 悬赏派遣 ----------
+// 每日 4 单；gold 随主线进度最高翻倍，gem/scroll 固定（刻意不含精铁，保护 30 天满星日历）。
+function bountyScaleReward(reward) {
+  const scale = 1 + Math.min(1, (state.campaign.cleared || 0) / 120);
+  const out = {};
+  Object.keys(reward).forEach(k => {
+    out[k] = k === 'gold' ? Math.floor(reward[k] * scale) : reward[k];
+  });
+  return out;
+}
+function pickBountyTask() {
+  const pool = C.BOUNTY.pool;
+  const total = pool.reduce((s, t) => s + t.weight, 0);
+  let roll = Math.random() * total;
+  for (const t of pool) { roll -= t.weight; if (roll < 0) return t; }
+  return pool[pool.length - 1];
+}
+// 刷新时先自动补发"已完成未领取"的旧悬赏，奖励不因跨日丢失。
+function refreshBounties(today) {
+  const old = state.bounty && Array.isArray(state.bounty.list) ? state.bounty.list : [];
+  old.forEach(b => {
+    if (b && b.heroId && !b.claimed && b.dispatchedAt &&
+        Date.now() - b.dispatchedAt >= b.hours * 3600000) {
+      applyReward(b.reward);
+    }
+  });
+  const list = [];
+  for (let i = 0; i < C.BOUNTY.slots; i++) {
+    const t = pickBountyTask();
+    list.push({ hours: t.hours, name: t.name, reward: bountyScaleReward(t.reward),
+      heroId: null, dispatchedAt: 0, claimed: false });
+  }
+  state.bounty = { day: today, list };
+}
+function bountyInfo() {
+  checkDailyReset();
+  const now = Date.now();
+  const list = (state.bounty.list || []).map((b, idx) => {
+    const elapsed = b.heroId ? now - b.dispatchedAt : 0;
+    const remainMs = b.heroId ? Math.max(0, b.hours * 3600000 - elapsed) : 0;
+    return {
+      idx, name: b.name, hours: b.hours, reward: b.reward, heroId: b.heroId,
+      state: b.claimed ? 'claimed' : (b.heroId && remainMs <= 0 ? 'done' : b.heroId ? 'running' : 'open'),
+      remainMs: Math.ceil(remainMs / 60000) * 60000
+    };
+  });
+  const busy = {};
+  list.forEach(b => { if (b.heroId && b.state !== 'claimed') busy[b.heroId] = true; });
+  return { day: state.bounty.day, list, busyHeroIds: busy,
+    canClaim: list.some(b => b.state === 'done'),
+    idleCount: list.filter(b => b.state === 'open').length };
+}
+function dispatchBounty(idx, heroId) {
+  return withSavedMutation(() => {
+    bountyInfo();
+    const b = state.bounty.list[idx];
+    if (!b) return { ok: false, msg: '悬赏不存在' };
+    if (b.claimed) return { ok: false, msg: '该悬赏已完成' };
+    if (b.heroId) return { ok: false, msg: '该悬赏已有人出征' };
+    if (!state.roster[heroId] || !H.getHero(heroId)) return { ok: false, msg: '未拥有该武将' };
+    const busy = state.bounty.list.some(x => x && x.heroId === heroId && !x.claimed);
+    if (busy) return { ok: false, msg: '该武将已在悬赏途中' };
+    b.heroId = heroId; b.dispatchedAt = Date.now();
+    return { ok: true, idx, heroId, name: b.name };
+  });
+}
+function claimBounty(idx) {
+  return withSavedMutation(() => {
+    bountyInfo();
+    const b = state.bounty.list[idx];
+    if (!b || !b.heroId) return { ok: false, msg: '没有可领取的悬赏' };
+    if (b.claimed) return { ok: false, msg: '已领取' };
+    if (Date.now() - b.dispatchedAt < b.hours * 3600000) return { ok: false, msg: '尚未归来' };
+    b.claimed = true;
+    applyReward(b.reward);
+    return { ok: true, reward: b.reward, name: b.name, heroId: b.heroId };
+  });
+}
+
 // ---------- 七日目标 ----------
 // 以首日（存档创建或老档更新当日起算）为锚的 7 天任务轨；漏领可补（窗口内 day <= 当天均可领）。
 function dayDiffStr(fromStr, toStr) {
@@ -1550,7 +1633,7 @@ module.exports = {
   winCampaign, campaignRewardPreview, winTower, arenaFight, beginBattle, settleBattle,
   markStorySeen, isStorySeen, retroGrants, dismissRetroGrants,
   questList, claimQuest, activePoints, claimActiveChest, claimAllDailyRewards, claimFreeRewards, bumpQuest, applyReward,
-  sevenDayInfo, claimSevenDay,
+  sevenDayInfo, claimSevenDay, bountyInfo, dispatchBounty, claimBounty,
   interruptBattle, setAutoBattleSpeed,
   buyGood, CURRENCY_NAME,
   adCount, adBump

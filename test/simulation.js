@@ -265,7 +265,7 @@ function runSeed(seed) {
       battles++; ops++;
       if (r.win) wins++;
     }
-    // 每日副玩法：群英塔最多 3 场（败即停）+ 演武 1 场（中等难度）。
+    // 每日副玩法：群英塔最多 3 场（败即停）+ 演武 1 场（中等难度）+ 悬赏派遣/领赏。
     // SIM_TOWER=0 可关闭，用于对照"最低限度玩家"（只领挂机+三胜）画像。
     if (process.env.SIM_TOWER !== '0') {
       let towerBattles = 0;
@@ -276,6 +276,15 @@ function runSeed(seed) {
         if (!r.win) break;
       }
       fightArena(1.05, (seed * 977 + day * 13) >>> 0);
+      ops++;
+      // 悬赏：先领赏再派遣（bot 每天上线一次，12 时辰单次日领取）
+      const info = store.bountyInfo();
+      info.list.forEach((b, i) => { if (b.state === 'done') store.claimBounty(i); });
+      const busy = store.bountyInfo().busyHeroIds;
+      const idle = Object.keys(store.getState().roster).filter(id => !busy[id]);
+      store.bountyInfo().list.forEach((b, i) => {
+        if (b.state === 'open' && idle.length) store.dispatchBounty(i, idle.shift());
+      });
       ops++;
     }
     store.claimAllDailyRewards(); // 三件套任务 + 活跃宝箱

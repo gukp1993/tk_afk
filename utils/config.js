@@ -133,6 +133,18 @@ const SEVEN_DAY = [
 // 练兵经验每日上限（场数）：前 N 场全额，之后 0，切断"无限练兵=免费等级"
 const TRAINING_DAILY_CAP = 20;
 
+// 悬赏派遣：每日刷新 4 单，派闲置武将出征，时辰到领赏（编外武将就业 + 次日回访钩子）。
+// 刻意不含精铁：可重复的精铁来源会砸穿"六槽约 30 天满星"日历锚，精铁副产线只留给群英塔。
+// gold 随主线进度最高翻倍（铜钱本就富余，作爽点数字）；gem/scroll 固定。
+const BOUNTY = {
+  slots: 4,
+  pool: [
+    { hours: 4, weight: 40, name: '短途运粮', reward: { gold: 20000, gem: 50 } },
+    { hours: 8, weight: 35, name: '州郡剿匪', reward: { gold: 50000, gem: 150 } },
+    { hours: 12, weight: 25, name: '千里传檄', reward: { scroll: 1, gem: 250 } }
+  ]
+};
+
 // 激励视频广告：按平台配置广告位 ID（微信 wechat / 抖音 douyin）
 // 对应平台为空时使用内置模拟广告（测试模式，流程完整可验证）
 // 正式变现：微信开通流量主 / 抖音开通星图变现后，把各自广告位 ID 填入对应字段即切换为真广告
@@ -177,6 +189,6 @@ module.exports = {
   LEVEL_CAPS, MAX_LEVEL, PLAYER_LEVEL, BATTLE_XP, AUTO_BATTLE, FOOD_VALUE, DUPE_GOLD,
   goldCost, expCost, idleRates, IDLE_CAP_HOURS, GEM_IDLE, ARMORY_IRON_PER_HOUR,
   FAST_AD, FAST_PAID,
-  GACHA, factionBonus, FORMATION_ROWS, BATTLE, ARENA, SEVEN_DAY, TRAINING_DAILY_CAP, AD,
+  GACHA, factionBonus, FORMATION_ROWS, BATTLE, ARENA, SEVEN_DAY, TRAINING_DAILY_CAP, BOUNTY, AD,
   FIRST_STAGE_END, CAMPAIGN_DIFFICULTY, CAMPAIGN_MILESTONES
 };

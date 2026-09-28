@@ -255,9 +255,16 @@ export function journey(ctx: ScreenContext) {
       U.text('JourneyStat'+i,stat,x,y-54,289,19,GOLD);
       U.tap('JourneyTap'+i,x,y,319,177,()=>ctx.go(page));
     });
-    U.text('JourneyVersion','「挂机定三国」放置卡牌 · v2.0.0',0,53,580,18,tone('#ad9977'));
-    U.text('JourneyGuide','挑战群英塔获取资源，在演武场切磋阵容',0,5,620,18,LIGHT);
-    U.text('JourneyGuide2','装备培养与物资兑换也在这里。',0,-20,620,18,LIGHT);
+    const bt=store.bountyInfo();
+    U.panel('JourneyBounty',0,-75,682,130,bt.canClaim?tone('#3a2c17'):tone('#312218'),10,bt.canClaim?GOLD:tone('#a17b40'));
+    U.text('JourneyBountyGlyph','赏',-272,-60,59,49,GOLD);
+    U.text('JourneyBountyName','悬赏派遣',-198,-60,180,28,LIGHT);
+    U.text('JourneyBountyDesc','派武将出征，时辰到领赏 · 每日 4 单',-58,-95,430,18,tone('#ad9977'));
+    U.text('JourneyBountyStat',bt.canClaim?`有赏可领 · 待派遣 ${bt.idleCount}`:bt.idleCount<4?`进行中 · 待派遣 ${bt.idleCount}`:'今日 4 单待派遣',-60,-58,420,19,GOLD);
+    U.tap('JourneyBountyTap',0,-75,682,130,()=>ctx.go('bounty'));
+    U.text('JourneyVersion','「挂机定三国」放置卡牌 · v2.0.0',0,-168,580,18,tone('#ad9977'));
+    U.text('JourneyGuide','挑战群英塔获取资源，在演武场切磋阵容',0,-196,620,18,tone('#ad9977'));
+    U.text('JourneyGuide2','装备培养与物资兑换也在这里。',0,-222,620,18,tone('#ad9977'));
   }
 
 export function bag(ctx: ScreenContext) {
@@ -572,6 +579,67 @@ export function storyView(ctx: ScreenContext) {
   }
 
 const SEVEN_DAY_CN = ['一', '二', '三', '四', '五', '六', '七'];
+
+let bountyPickIdx = -1;
+
+export function bountyView(ctx: ScreenContext) {
+  const info=store.bountyInfo(),U=ctx.ui,s=store.getState();
+  ctx.title('悬 赏 派 遣');
+  U.text('BountyBack','‹ 返回',-291,484,130,22,GOLD);
+  U.tap('BountyBackTap',-291,484,136,52,()=>ctx.back('journey'));
+  U.text('BountyGuide','每日 4 单 · 派一名武将出征 · 时辰到领赏（跨日自动补发）',0,443,640,18,tone('#ad9977'));
+  info.list.forEach((b:any,i:number)=>{
+    const y=360-i*124;
+    const reward=Object.entries(b.reward).map(([k,n]:any)=>`${store.CURRENCY_NAME[k]||k}×${fmt.fmtNum(n)}`).join(' · ');
+    U.panel('BountyCard'+i,0,y,640,110,
+      b.state==='done'?tone('#3a2c17'):b.state==='claimed'?tone('#26301f'):tone('#312218'),9,
+      b.state==='done'?GOLD:tone('#795b34'));
+    U.text('BountyName'+i,b.name,-220,y+24,220,24,GOLD);
+    U.text('BountyHours'+i,`${b.hours} 时辰`,210,y+24,120,19,tone('#ad9977'));
+    U.text('BountyReward'+i,reward,-160,y-14,420,18,LIGHT);
+    const heroName=b.heroId?(heroes.getHero(b.heroId)?.name||b.heroId):'';
+    if(b.state==='open'){
+      U.button('BountyAct'+i,'派 遣',240,y-38,150,52,()=>{bountyPickIdx=i;ctx.show('bounty');},palette.gold);
+    }else if(b.state==='running'){
+      const h=Math.floor(b.remainMs/3600000),m=Math.floor(b.remainMs%3600000/60000);
+      U.text('BountyAct'+i,`${heroName} · 归来还需 ${h}时${m}分`,150,y-38,360,18,tone('#ad9977'));
+    }else if(b.state==='done'){
+      U.button('BountyAct'+i,'领 赏',240,y-38,150,52,()=>ctx.tell(store.claimBounty(i),`已领赏：${b.name}`),palette.red);
+      U.text('BountyHero'+i,heroName,-390,y-38,180,17,tone('#ad9977'));
+    }else{
+      U.text('BountyAct'+i,'已完成 · 已领赏',150,y-38,360,18,tone('#6f8a5f'));
+    }
+  });
+  if(bountyPickIdx>=0){
+    const pickIdx=bountyPickIdx;
+    U.rect('BountyPickShade',0,0,720,1280,new Color(12,10,8,190));
+    U.tap('BountyPickShadeTap',0,0,720,1280,()=>{bountyPickIdx=-1;ctx.show('bounty');});
+    U.panel('BountyPickPanel',0,0,658,974,tone('#251b14'),12,GOLD);
+    U.tap('BountyPickBlock',0,0,658,974,()=>{});
+    U.text('BountyPickTitle','选择出征武将',0,427,560,30,GOLD);
+    U.text('BountyPickHint','出征不影响出战阵容；同一武将同时只能接一单',0,388,560,17,tone('#ad9977'));
+    const ids=Object.keys(s.roster).filter(id=>s.roster[id]&&heroes.getHero(id));
+    const slice=ids.slice(0,60);
+    U.scroll('BountyPickScroll',0,-30,600,760,Math.max(760,slice.length*92),V=>{
+      slice.forEach((id,j)=>{
+        const hero=heroes.getHero(id),y=Math.max(760,slice.length*92)/2-46-j*92;
+        const busy=!!info.busyHeroIds[id];
+        V.panel('BountyHero'+j,0,y,574,82,tone('#312218'),8,tone('#795b34'));
+        V.text('BountyHeroName'+j,hero.name,-190,y+12,200,23,LIGHT);
+        V.text('BountyHeroSub'+j,`${['','N','R','SR','SSR'][hero.rarity]} · ${hero.title||''}`,-190,y-22,260,16,tone('#ad9977'));
+        if(busy){V.text('BountyHeroState'+j,'途中',225,y,110,18,tone('#a99778'));}
+        else{
+          V.button('BountyHeroGo'+j,'派遣',225,y,120,54,()=>{
+            const r=store.dispatchBounty(pickIdx,id);
+            bountyPickIdx=-1;
+            ctx.tell(r,r.ok?'已派遣出征':'');
+          },palette.gold);
+        }
+      });
+    });
+    U.button('BountyPickCancel','取消',0,-452,300,56,()=>{bountyPickIdx=-1;ctx.show('bounty');},tone('#423022'));
+  }
+}
 
 export function sevenDayView(ctx: ScreenContext) {
   const info=store.sevenDayInfo(),U=ctx.ui;

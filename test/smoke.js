@@ -215,6 +215,24 @@ check('桃园结义激活', store4b.activeBonds().some(b => b.id === 'taoyuan'))
 check('羁绊注入全军被动（全军 atk≥+8%）', store4b.playerUnits().every(u => (u.passive.atk || 0) >= 0.08));
 s4b.formation = ['zhangfei', 'guanyu', 'liaohua', 'liubei', 'mengda'];
 check('默认阵容激活且仅激活桃园结义', store4b.activeBonds().some(b => b.id === 'taoyuan') && store4b.activeBonds().length === 1);
+// 悬赏派遣：刷新 4 单、派遣、计时报酬、跨日自动补发、忙碌武将拒绝
+const bt0 = store4b.bountyInfo();
+check('悬赏刷新 4 单', bt0.list.length === 4 && bt0.list.every(b => [4, 8, 12].includes(b.hours)));
+const freeIdx = bt0.list.findIndex(b => b.state === 'open');
+const dB = store4b.dispatchBounty(freeIdx, 'liaohua');
+check('悬赏派遣成功', dB.ok);
+check('同将不可两单', store4b.dispatchBounty((freeIdx + 1) % 4, 'liaohua').ok === false);
+check('未到时辰不可领', store4b.claimBounty(freeIdx).ok === false);
+s4b.bounty.list[freeIdx].dispatchedAt -= 4 * 3600000; // 快进到归来
+const cB = store4b.claimBounty(freeIdx);
+check('到时领赏入账', cB.ok && cB.reward && s4b.res.gem > 0);
+check('悬赏奖励不含精铁', !Object.keys(cB.reward).includes('iron'));
+check('重复领取拒绝', store4b.claimBounty(freeIdx).ok === false);
+s4b.bounty.list[(freeIdx + 1) % 4] = { hours: 4, name: '测试单', reward: { gold: 1000 }, heroId: 'mengda', dispatchedAt: Date.now() - 5 * 3600000, claimed: false };
+s4b.bounty.day = '2000-01-01'; // 强制跨日刷新
+store4b.checkDailyReset();
+check('跨日刷新自动补发未领悬赏', s4b.res.gold >= 1000);
+check('刷新后新 4 单', store4b.bountyInfo().list.length === 4);
 // 时钟回拨防护：lastSeenTs 在未来时当日不重置
 s4b.arena.attempts = 2;
 s4b.lastSeenTs = REAL_NOW() + 86400000;
