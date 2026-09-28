@@ -293,8 +293,9 @@ export function summon(ctx: ScreenContext) {
     U.panel('SummonSeal',0,436,72,72,tone('#57402d'),10,gold);
     U.text('SummonSealText','将',0,436,68,42,gold);
     U.text('SummonRates','概率 SSR 2% · SR 10% · R 28% · N 60%',0,348,630,19,dim);
+    const pity=store.summonPityInfo();
     U.panel('SummonPool',0,294,686,110,panel,9,border);
-    U.text('PoolTitle',`武将池 · ${heroData.HEROES.length} 将 · 固定概率，无保底`,-73,326,590,19,dim);
+    U.text('PoolTitle',`武将池 · ${heroData.HEROES.length} 将 · SSR 保底 ${pity.sinceSsr}/${pity.ssrHard} 抽`,-73,326,590,19,dim);
     const rarity:[string,string,number][]=[['SSR','#e2b95f',4],['SR','#b37ac9',3],['R','#5f90c8',2],['N','#b9bec3',1]];
     rarity.forEach(([name,hex],i)=>{
       const x=-264+i*175;
@@ -336,7 +337,7 @@ export function summonResults(ctx: ScreenContext) {
     U.tap('DrawBackTap',-254,609,205,45,()=>ctx.back('summon'));
     U.panel('DrawResultFrame',0,-10,690,1060,panel,13,gold);
     U.text('DrawHeading',`召唤结果 · ${ctx.lastSummon.length} 名英雄`,0,469,630,33,gold);
-    U.text('DrawSubheading','新英雄直接入队；抽到重复武将自动升星，无需铜钱',0,425,630,18,dim);
+    U.text('DrawSubheading','新英雄直接入队 · 重复武将自动升星 · 满星后 N/R 转铜钱、SR/SSR 转品质碎片',0,425,630,18,dim);
     ctx.lastSummon.forEach((result: any, i: number) => {
       const hero = heroData.getHero(result.id);
       if (!hero) return;
@@ -351,7 +352,10 @@ export function summonResults(ctx: ScreenContext) {
       U.heroIcon('DrawAvatar'+i,x,single?y+54:y+38,single?214:135,single?220:98,{surname:hero.surname||hero.name[0],faction:hero.faction,rarity:hero.rarity});
       U.text('DrawName'+i,hero.name,x,single?y-78:y-35,single?290:180,single?30:23,paper);
       U.text('DrawRarity'+i,rarity,x,single?y-120:y-63,single?210:154,20,accent);
-      U.text('DrawStatus'+i,result.isNew?'NEW':result.autoStar?`★${result.fromStar}→${result.star}`:result.shardGain?`品质碎片 +1 · ${result.qualityShards||0}/10`:`留存 ×${result.cards||1}`,x,single?y-157:y-83,single?235:162,17,dim);
+      U.text('DrawStatus'+i,result.isNew?'NEW':result.autoStar?`★${result.fromStar}→${result.star}`
+        :result.shardGain?`品质碎片 +1 · ${result.qualityShards||0}/10`
+        :result.goldGain?`转化为铜钱 +${fmt.fmtNum(result.goldGain)}`
+        :`留存 ×${result.cards||1}`,x,single?y-157:y-83,single?235:162,17,dim);
       U.tap('DrawCardTap'+i,x,y,single?350:205,single?420:193,openHero);
     });
     U.panel('DrawContinue',-169,-478,298,62,tone('#d9a94e'),9,gold);

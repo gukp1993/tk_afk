@@ -4,6 +4,7 @@ import { ScreenContext } from './ScreenContext';
 import * as store from '../domain/store';
 import * as stages from '../domain/stages';
 import * as items from '../domain/items';
+import * as config from '../domain/config';
 import * as fmt from '../domain/fmt';
 import { AutoSummary } from '../services/AutoBattleSession';
 
@@ -43,7 +44,7 @@ function drawFighter(U: CocosUi, unit: any, index: number) {
 function drawField(U: CocosUi, ctx: ScreenContext, snapshot: any[]) {
   U.rect('BattleBackdrop',0,0,720,1280,BG);
   U.text('BattleTitle',battleTitle(ctx),-82,592,520,27,GOLD);
-  const left=Math.max(0,90-Math.floor(ctx.fighting?.result()?.duration||ctx.outcome?.duration||0));
+  const left=Math.max(0,config.BATTLE.TIME_LIMIT-Math.floor(ctx.fighting?.result()?.duration||ctx.outcome?.duration||0));
   U.text('BattleTimer',`⌛ ${left}s`,292,592,115,23,left<15?RED:DIM);
   U.scene('BattleCenterLine',g=>{
     g.strokeColor=tone('#795b34');g.lineWidth=2;
@@ -86,7 +87,7 @@ export function refreshBattleView(ctx: ScreenContext) {
     ctx.ui.updateProgress(`Energy${i}`,x,y-69,105,(unit.energy||0)/100);
     ctx.ui.setText(`FighterName${i}`,unit.alive?unit.name:`${unit.name} · 阵亡`);
   });
-  ctx.ui.setText('BattleTimer',`⌛ ${Math.max(0,90-Math.floor(ctx.fighting.result()?.duration||0))}s`);
+  ctx.ui.setText('BattleTimer',`⌛ ${Math.max(0,config.BATTLE.TIME_LIMIT-Math.floor(ctx.fighting.result()?.duration||0))}s`);
 }
 
 export function resultView(ctx: ScreenContext) {
@@ -107,7 +108,18 @@ export function resultView(ctx: ScreenContext) {
         `首通经验 +${r.gainedXP||0}`];
     } else lines=[`铜钱 +${fmt.fmtNum(reward.gold||0)} · 经验 +${r.gainedXP||0}`,'重复挑战不重复发放首通奖励'];
   }
-  else lines=['普通奖励需凯旋后方可领取',`用时 ${r?.duration||0} 秒`];
+  else {
+    const foes=(ctx.lastBattleSnapshot||[]).filter((u:any)=>u.side==='B'&&u.alive)
+      .sort((a:any,b:any)=>(b.hp/b.maxHp)-(a.hp/a.maxHp));
+    const top=foes[0];
+    const topPct=top?Math.round(top.hp/top.maxHp*100):null;
+    const timedOut=(r?.duration||0)>=config.BATTLE.TIME_LIMIT;
+    const diag=topPct===null?'我方全灭 · 尝试克制阵营或升级军械'
+      :topPct<=15?`敌将只剩 ${topPct}% 血 · 再强化一轮即可过关`
+      :timedOut?`敌将剩余 ${topPct}% 血 · 输出不足，试试克制阵营（魏→蜀→吴→群→魏）或升级军械`
+      :'我方被击败 · 尝试克制阵营或调整布阵';
+    lines=['普通奖励需凯旋后方可领取',diag,`用时 ${r?.duration||0} 秒`];
+  }
   lines.slice(0,3).forEach((line,i)=>U.text(`ResultLine${i}`,line,0,99-i*40,515,22,PAPER));
   const msLabels=(reward.milestones||[]).map((m:any)=>m.label);
   if(r?.win&&reward.finale)U.text('ResultFinale','第一期主线完成 · 主线 120/120',0,14,500,24,GOLD);

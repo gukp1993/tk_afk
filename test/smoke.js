@@ -41,6 +41,11 @@ check('挂机不产招募令', C.idleRates(50).scrollPerHour === 0);
 check('精铁 25/小时', C.ARMORY_IRON_PER_HOUR === 25);
 check('元宝 1000/小时 · 5 小时', C.GEM_IDLE.perHour === 1000 && C.GEM_IDLE.capHours === 5);
 check('快收 1 小时 × 3 次', C.FAST_AD.hours === 1 && C.FAST_AD.daily === 3 && C.FAST_AD.gem === 1000 && C.FAST_AD.iron === 25);
+check('保底 40 抽 · 十连保底 R+', C.GACHA.pity && C.GACHA.pity.ssrHard === 40 && C.GACHA.pity.tenMinR === true);
+check('满星 N/R 重复卡转铜钱', C.DUPE_GOLD && C.DUPE_GOLD[1] === 5000 && C.DUPE_GOLD[2] === 12000);
+check('时限 90 · 残局狂暴 75s+1%/s · 敌方光环 0.75 · 斜率 1.9', C.BATTLE.TIME_LIMIT === 90
+  && C.BATTLE.OVERTIME && C.BATTLE.OVERTIME.start === 75 && C.BATTLE.OVERTIME.atkPerSec === 0.01
+  && C.ENEMY_FACTION_AURA === 0.75 && C.CAMPAIGN_DIFFICULTY.levelSlope === 1.9);
 const store1 = freshStore(); store1.load();
 let s = store1.getState();
 check('默认档 v7', s.v === 7);
@@ -137,16 +142,17 @@ check('899 不足十连', store4.doSummon('gem10').ok === false && s.res.gem ===
 s.res.gem = 950;
 const ten = store4.doSummon('gem10');
 check('十连扣 900 出 10 卡', ten.ok && s.res.gem === 50 && ten.results.length === 10);
-// 满星重复卡 → 品质碎片
+// 满星重复卡 → N/R 转铜钱、SR/SSR 转品质碎片
 s.roster.liaohua.star = 2; // N 满星
 s.qualityShards[1] = 0;
+const goldBefore = s.res.gold;
 const dup = store4.grantCard('liaohua');
-check('满星重复卡转碎片', dup.shardGain === 1 && s.qualityShards[1] === 1);
+check('满星 N 重复卡转铜钱 5000', dup.goldGain === 5000 && s.res.gold === goldBefore + 5000 && s.qualityShards[1] === 0);
 check('不再堆积同名卡', s.roster.liaohua.cards === 0);
-// 10 片兑换
+// 10 片兑换（满星目标直接拒绝，避免负 9 片陷阱）
 s.qualityShards[1] = 10;
 const exMax = store4.exchangeQualityShard(1, 'liaohua');
-check('满星目标兑换后返 1 片', exMax.ok && s.qualityShards[1] === 1);
+check('满星目标兑换直接拒绝', exMax.ok === false && s.qualityShards[1] === 10);
 s.qualityShards[3] = 10;
 const srId = H.HEROES.find(h => h.rarity === 3 && !s.roster[h.id]).id;
 const exNew = store4.exchangeQualityShard(3, srId);
@@ -156,6 +162,19 @@ check('碎片不足拒绝', store4.exchangeQualityShard(3, srId).ok === false);
 s.roster.guanyu.star = 5; s.roster.guanyu.cards = 2;
 const conv = store4.convertCards([{ id: 'guanyu', count: 1, confirmHigh: true }]);
 check('旧多余卡仍可兑通用碎片', conv.ok && s.res.shard === conv.shards && s.roster.guanyu.cards === 1);
+// 保底：40 抽必出 SSR（计数跨单/十连，出 SSR 清零）；十连全白时末位补 R
+Math.random = () => 0.5; // 固定随机：rollRarity 恒出 N
+s.summon.pity.sinceSsr = 39;
+s.res.gem = 100;
+const forced = store4.doSummon('gem1');
+check('40 抽保底必出 SSR', forced.ok && forced.results[0].rarity === 4 && s.summon.pity.sinceSsr === 0);
+s.res.gem = 1000;
+const tenN = store4.doSummon('gem10');
+check('十连保底 R+（全白时末位补 R）', tenN.ok
+  && tenN.results.slice(0, 9).every(r => r.rarity === 1) && tenN.results[9].rarity === 2
+  && s.summon.pity.sinceSsr === 10);
+check('保底进度可读', store4.summonPityInfo().sinceSsr === 10 && store4.summonPityInfo().ssrHard === 40);
+Math.random = REAL_RANDOM;
 
 // ---------- S5 首通、章末与里程碑 ----------
 head('S5 首通里程碑');

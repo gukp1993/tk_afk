@@ -11,6 +11,9 @@ const FACTIONS = {
 // 阵营克制环：魏→蜀→吴→群→魏，克制方伤害 +25%
 const BEATS = { wei: 'shu', shu: 'wu', wu: 'qun', qun: 'wei' };
 const FACTION_ADV = 1.25;
+// 敌方同阵营光环折减系数：剧情敌阵普遍同阵营 4-5 人吃满 +18%，玩家看不见也难以对位，
+// B 侧（敌方/塔/演武对手）按 0.5 折算，缓解"表观战力达标却打不过"的隐性墙。
+const ENEMY_FACTION_AURA = 0.75;
 
 const CLASSES = {
   warrior: { key: 'warrior', name: '武将', icon: '⚔' },
@@ -77,9 +80,13 @@ const GACHA = {
   costScroll: 1,
   costTenGold: 900,
   singleGold: 100,
-  // 白/蓝/紫/橙 四档固定概率，无保底
-  rates: { ssr: 0.02, sr: 0.10, r: 0.28, n: 0.60 }
+  // 白/蓝/紫/橙 四档固定概率；叠加保底：十连至少 1 张 R+，累计 40 抽必出 SSR（出 SSR 清零计数）。
+  rates: { ssr: 0.02, sr: 0.10, r: 0.28, n: 0.60 },
+  pity: { ssrHard: 40, tenMinR: true }
 };
+
+// 满星后抽到重复卡的转化：N/R 直接转铜钱（碎片对 N/R 无实用出口），SR/SSR 仍转对应品质碎片。
+const DUPE_GOLD = { 1: 5000, 2: 12000 };
 
 // 阵型加成（同阵营人数）
 function factionBonus(count) {
@@ -96,6 +103,8 @@ const FORMATION_ROWS = [0, 0, 0, 1, 1];
 const BATTLE = {
   TICK: 0.1,
   TIME_LIMIT: 90,
+  // 残局狂暴：75 秒后双方攻击每秒 +1%，让"互相打不动"的僵局有决出迹象，但不显著翻转胜负。
+  OVERTIME: { start: 75, atkPerSec: 0.01 },
   BASE_ATTACK_INTERVAL: 2.2,
   ENERGY_MAX: 100,
   ENERGY_ATK: 10,
@@ -127,7 +136,7 @@ const FIRST_STAGE_END = 120;
 // 主线难度曲线：普通关随第一期进度平滑增长；名将关按阵容整体倍率突出。
 // 个别敌阵技能组合会形成异常超时墙，单独削峰，避免用全局降难度加速全程。
 const CAMPAIGN_DIFFICULTY = {
-  levelSlope: 1.8,
+  levelSlope: 1.9,
   normalEndScale: 1.08,
   // 这些普通关的敌阵技能组合明显强于相邻关，轻微校准后仍保留阵容特点。
   normalOverrides: { 72: 0.95, 89: 0.95, 99: 0.95, 117: 0.95 },
@@ -149,8 +158,8 @@ const CAMPAIGN_MILESTONES = {
 };
 
 export {
-  FACTIONS, BEATS, FACTION_ADV, CLASSES, RARITIES,
-  LEVEL_CAPS, MAX_LEVEL, PLAYER_LEVEL, BATTLE_XP, AUTO_BATTLE, FOOD_VALUE,
+  FACTIONS, BEATS, FACTION_ADV, ENEMY_FACTION_AURA, CLASSES, RARITIES,
+  LEVEL_CAPS, MAX_LEVEL, PLAYER_LEVEL, BATTLE_XP, AUTO_BATTLE, FOOD_VALUE, DUPE_GOLD,
   goldCost, expCost, idleRates, IDLE_CAP_HOURS, GEM_IDLE, ARMORY_IRON_PER_HOUR,
   FAST_AD, FAST_PAID,
   GACHA, factionBonus, FORMATION_ROWS, BATTLE, ARENA, AD,

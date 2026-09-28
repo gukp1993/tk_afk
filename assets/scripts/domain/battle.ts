@@ -3,7 +3,7 @@
 import * as __domain_config from './config';
 import * as __domain_rng from './rng';
 // 回合制实时战斗引擎（tick 模拟，纯 JS 可独立测试）
-const { BEATS, FACTION_ADV, factionBonus, BATTLE } = __domain_config;
+const { BEATS, FACTION_ADV, ENEMY_FACTION_AURA, factionBonus, BATTLE } = __domain_config;
 const { makeRng } = __domain_rng;
 
 // unit spec: { uid, heroId, name, faction, cls, level, star, stats:{hp,atk,def,spd,crit}, ult:{name,desc,effects}, passive:{mods...}, row, isBoss }
@@ -13,6 +13,7 @@ function createBattle(cfg) {
   const limit = cfg.timeLimit || BATTLE.TIME_LIMIT;
   const stats = {}; // uid -> {dmg, heal}
   const sides = { A: buildSide(cfg.team, 'A'), B: buildSide(cfg.enemy, 'B') };
+  let enrageAtk = 0; // 残局狂暴：step 内按战斗时长更新，effStat 叠入双方攻击
   let time = 0;
   let ended = false;
   let winner = null;
@@ -33,10 +34,13 @@ function createBattle(cfg) {
       buffs: [], dots: [], hots: [], cc: null,
       cheat: (u.passive && u.passive.cheatDeath) || 0
     }));
-    // 光环 + 阵营加成
+    // 光环 + 阵营加成（B 侧按 ENEMY_FACTION_AURA 折算：剧情敌阵普遍同阵营满编，全额 +18% 是隐性难度墙）
     const fcount = {};
     units.forEach(u => { fcount[u.faction] = (fcount[u.faction] || 0) + 1; });
-    const fb = factionBonus(Math.max.apply(null, Object.keys(fcount).map(k => fcount[k])));
+    const fbRaw = factionBonus(Math.max.apply(null, Object.keys(fcount).map(k => fcount[k])));
+    const fb = tag === 'B' && ENEMY_FACTION_AURA < 1
+      ? { hp: fbRaw.hp * ENEMY_FACTION_AURA, atk: fbRaw.atk * ENEMY_FACTION_AURA }
+      : fbRaw;
     let auraAtk = 0, auraDef = 0, auraSpd = 0;
     units.forEach(u => {
       const p = u.passive;
@@ -68,7 +72,7 @@ function createBattle(cfg) {
     let pct = u.passive[stat] || 0;
     for (const b of u.buffs) if (b.stat === stat) pct += b.pct;
     let v = u.base[stat] * (1 + pct);
-    if (stat === 'atk') v *= (1 + u.auraAtk);
+    if (stat === 'atk') v *= (1 + u.auraAtk + enrageAtk);
     if (stat === 'def') v *= (1 + u.auraDef);
     if (stat === 'spd') v *= (1 + u.auraSpd);
     return v;
@@ -302,6 +306,8 @@ function createBattle(cfg) {
     // swap & clear
     events.length = 0;
     time += dt;
+    const ot = BATTLE.OVERTIME;
+    enrageAtk = ot && time > ot.start ? (time - ot.start) * (ot.atkPerSec || 0) : 0;
     for (const tag of ['A', 'B']) {
       for (const u of sides[tag]) {
         if (!u.alive) continue;

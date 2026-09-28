@@ -45,7 +45,7 @@ function defaultState() {
     fast: { day: '', count: 0 },
     qualityShards: { 1: 0, 2: 0, 3: 0, 4: 0 },
     daily: { day: '', quests: {}, claimed: [], active: [] },
-    summon: { total: 0 },
+    summon: { total: 0, pity: { sinceSsr: 0 } },
     vouchers: { sr: 0, ssr: 0 },
     heroProgress: { starterMengdaGranted: true, firstWinChoiceGranted: false, firstWinChoicePending: false, chapterOneVoucherGranted: false },
     battle: { nextSeq: 1, pending: null, lastSettled: null },
@@ -334,6 +334,11 @@ function normalizeState(s) {
     s.armory.slotStars[slot.id] = Math.max(0, Math.min(5, Math.floor(s.armory.slotStars[slot.id] || 0)));
   });
   s.roster = s.roster || {}; s.vouchers = s.vouchers || { sr: 0, ssr: 0 };
+  s.summon = s.summon || { total: 0 };
+  s.summon.total = Math.max(0, Math.floor(s.summon.total || 0));
+  // 保底计数为 v7 后增字段：旧档缺省从 0 起，不升存档版本号
+  s.summon.pity = s.summon.pity || { sinceSsr: 0 };
+  s.summon.pity.sinceSsr = Math.max(0, Math.min((C.GACHA.pity && C.GACHA.pity.ssrHard || 40) - 1, Math.floor(s.summon.pity.sinceSsr || 0)));
   s.heroProgress = s.heroProgress || { starterMengdaGranted: true, firstWinChoiceGranted: false, firstWinChoicePending: false, chapterOneVoucherGranted: false };
   s.battle = s.battle || { nextSeq: 1, pending: null, lastSettled: null };
   s.idle = s.idle || { last: Date.now(), gold: 0, gem: 0, scroll: 0, ironAcc: 0 };
@@ -421,7 +426,14 @@ function addHeroCard(id) {
     return { id, isNew: false, autoStar: true, fromStar, star: own.star, maxStar, cards: own.cards || 0, before, after,
       powerDelta: after.power - before.power, statDelta: { hp: after.hp - before.hp, atk: after.atk - before.atk, def: after.def - before.def } };
   }
-  // 满星后抽到同名卡：立即转为对应品质碎片（新抽卡不再堆积同名卡；旧档已存同名卡原样保留）。
+  // 满星后抽到同名卡：N/R 直接转铜钱（碎片对 N/R 无实用出口），SR/SSR 转对应品质碎片
+  // （旧档已存同名卡原样保留）。
+  if (def.rarity <= 2) {
+    const goldGain = (C.DUPE_GOLD && C.DUPE_GOLD[def.rarity]) || 0;
+    state.res.gold += goldGain;
+    return { id, isNew: false, autoStar: false, fromStar, star: own.star, maxStar, cards: own.cards || 0,
+      goldGain, overflow: true };
+  }
   state.qualityShards[def.rarity] = (state.qualityShards[def.rarity] || 0) + 1;
   return { id, isNew: false, autoStar: false, fromStar, star: own.star, maxStar, cards: own.cards || 0,
     shardGain: 1, qualityShards: state.qualityShards[def.rarity], overflow: true };
@@ -435,10 +447,12 @@ function exchangeQualityShard(rarity, heroId) {
     const def = H.getHero(heroId);
     if (!def || def.rarity !== key) return { ok: false, msg: '请选择对应品质的武将' };
     if ((state.qualityShards[key] || 0) < 10) return { ok: false, msg: '碎片不足 10 片' };
-    const maxedTarget = state.roster[heroId] && state.roster[heroId].star >= C.RARITIES[key].maxStar;
+    if (state.roster[heroId] && state.roster[heroId].star >= C.RARITIES[key].maxStar) {
+      return { ok: false, msg: '该武将已满星，请选择未满星的武将' };
+    }
     state.qualityShards[key] -= 10;
     const received = addHeroCard(heroId);
-    return { ok: true, rarity: key, heroId, shards: state.qualityShards[key], spent: 10, maxedTarget, ...received };
+    return { ok: true, rarity: key, heroId, shards: state.qualityShards[key], spent: 10, ...received };
   });
 }
 function qualityShardInfo() {
@@ -1031,16 +1045,36 @@ function doSummonMutation(type) {
   }
   if (!costOk) return { ok: false, msg: '招募令/元宝不足' };
 
-  const results = [];
+  // 先定 rarity 再发卡：保底在 rarity 层生效（40 抽必出 SSR；十连无 R+ 时末位补 R）
+  const pity = state.summon.pity || (state.summon.pity = { sinceSsr: 0 });
+  const hard = (g.pity && g.pity.ssrHard) || 40;
+  const rarities = [];
   for (let i = 0; i < count; i++) {
     state.summon.total += 1;
-    const rarity = rollRarity();
+    let rarity;
+    if (pity.sinceSsr >= hard - 1) {
+      rarity = 4;
+    } else {
+      rarity = rollRarity();
+    }
+    if (rarity === 4) pity.sinceSsr = 0;
+    else pity.sinceSsr += 1;
+    rarities.push(rarity);
+  }
+  if (count === 10 && g.pity && g.pity.tenMinR && !rarities.some(r => r >= 2)) rarities[count - 1] = 2;
+  const results = rarities.map(rarity => {
     const id = pickHeroOfRarity(rarity);
     const received = addHeroCard(id);
-    results.push({ id, rarity, ...received });
-  }
+    return { id, rarity, ...received };
+  });
   bumpQuest('q_summon1', 1);
-  return { ok: true, results };
+  return { ok: true, results, pitySinceSsr: pity.sinceSsr };
+}
+// 点将台保底进度（供 UI 显示）
+function summonPityInfo() {
+  const pity = (state.summon && state.summon.pity) || { sinceSsr: 0 };
+  const hard = (C.GACHA.pity && C.GACHA.pity.ssrHard) || 40;
+  return { sinceSsr: Math.min(pity.sinceSsr, hard - 1), ssrHard: hard, total: (state.summon && state.summon.total) || 0 };
 }
 function grantCard(id) {
   return withSavedMutation(() => ({ ok: true, ...addHeroCard(id) }));
@@ -1433,7 +1467,7 @@ export {
   addEquip, equipInventory, equipTo, unequip, enhanceEquip, fodderPickIds, salvageEquip, salvageBatch, isEquipped,
   migrateSaveV1, migrateSaveV2, migrateSaveV3, migrateSaveV4, migrateSaveV5, migrateSaveV6, normalizeState,
   idlePending, idleTick, gemQuotaInfo, claimIdle, claimIdleInternal, fastReward, fastRewardMutation, fastRewardAdMutation, adReward,
-  doSummon, rollRarity, pickHeroOfRarity,
+  doSummon, rollRarity, pickHeroOfRarity, summonPityInfo,
   winCampaign, campaignRewardPreview, winTower, arenaFight, beginBattle, settleBattle,
   markStorySeen, isStorySeen, retroGrants, dismissRetroGrants,
   questList, claimQuest, activePoints, claimActiveChest, claimAllDailyRewards, claimFreeRewards, bumpQuest, applyReward,

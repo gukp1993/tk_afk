@@ -143,8 +143,17 @@ export function stagePreview(ctx: ScreenContext) {
   U.text('StageHeading',`第 ${stage} 关${stage>config.FIRST_STAGE_END?'（循环乱世）':''} · ${enemy.story?.stage?.name||enemy.name||'两军对阵'}`,0,343,600,30,GOLD);
   U.text('StageEnemyTitle',enemy.isBoss?'名将镇守 · 首通奖励':'敌阵与首通奖励',-155,289,311,21,GOLD);
   enemy.units.slice(0,5).forEach((unit:any,i:number)=>{
-    U.text('StageEnemy'+i,`${unit.hero.name} Lv.${unit.level}${unit.isBoss?' · 首领':''}`,-163,249-i*38,310,19,LIGHT);
+    const fName=(config.FACTIONS as any)[unit.hero.faction]?.name||'';
+    U.text('StageEnemy'+i,`${fName}·${unit.hero.name} Lv.${unit.level}${unit.isBoss?'·首领':''}`,-163,249-i*38,310,19,LIGHT);
   });
+  const fCount:any={};
+  enemy.units.forEach((unit:any)=>{fCount[unit.hero.faction]=(fCount[unit.hero.faction]||0)+1;});
+  const domFaction=Object.keys(fCount).sort((a:string,b:string)=>fCount[b]-fCount[a])[0];
+  if(fCount[domFaction]>=4){
+    const counterKey=Object.keys(config.BEATS).find((k:any)=>(config.BEATS as any)[k]===domFaction);
+    const counterName=counterKey?(config.FACTIONS as any)[counterKey]?.name:'';
+    U.text('StageAuraHint',`敌军同阵营×${fCount[domFaction]}（光环+${fCount[domFaction]>=5?'18%':'12%'}）· ${counterName}阵营对其伤害+25%`,0,62,610,17,tone('#d9a94e'));
+  }
   U.panel('StageRewardPanel',0,-45,616,165,tone('#302a1c'),7);
   if(reward.first){
     U.text('StageRewards',`确定：元宝 +${reward.totals.gem} · 铜钱 +${fmt.fmtNum(reward.totals.gold)}${reward.totals.scroll?` · 招募令 +${reward.totals.scroll}`:''}`,0,14,589,18,LIGHT);
