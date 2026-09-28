@@ -90,6 +90,19 @@ export function refreshBattleView(ctx: ScreenContext) {
   ctx.ui.setText('BattleTimer',`⌛ ${Math.max(0,config.BATTLE.TIME_LIMIT-Math.floor(ctx.fighting.result()?.duration||0))}s`);
 }
 
+// 败北诊断：取终局快照里存活敌方的最高血量占比，给一条可执行提示
+function defeatDiag(ctx: ScreenContext, r: any): string {
+  const foes=(ctx.lastBattleSnapshot||[]).filter((u:any)=>u.side==='B'&&u.alive)
+    .sort((a:any,b:any)=>(b.hp/b.maxHp)-(a.hp/a.maxHp));
+  const top=foes[0];
+  const topPct=top?Math.round(top.hp/top.maxHp*100):null;
+  const timedOut=(r?.duration||0)>=config.BATTLE.TIME_LIMIT;
+  if(topPct===null)return '我方全灭 · 尝试克制阵营或升级军械';
+  if(topPct<=15)return `敌将只剩 ${topPct}% 血 · 再强化一轮即可过关`;
+  if(timedOut)return `敌将剩余 ${topPct}% 血 · 输出不足，试试克制阵营（魏→蜀→吴→群→魏）或升级军械`;
+  return '我方被击败 · 尝试克制阵营或调整布阵';
+}
+
 export function resultView(ctx: ScreenContext) {
   const r=ctx.outcome,U=ctx.ui;
   drawField(U,ctx,ctx.lastBattleSnapshot||[]);
@@ -99,8 +112,8 @@ export function resultView(ctx: ScreenContext) {
   const reward=r?.reward||{};
   let lines: string[]=[];
   if(!r?.ok) lines=[r?.msg||'结算失败'];
-  else if(ctx.battleMode==='arena') lines=[`演武积分 ${reward.delta>=0?'+':''}${reward.delta||0} · 演武令 +${reward.tokens||0}`];
-  else if(ctx.battleMode==='tower') lines=[`元宝 +${reward.gem||0} · 招募令 +${reward.scroll||0}`,`武将碎片 +${reward.shard||0}`];
+  else if(ctx.battleMode==='arena') lines=r?.win?[`演武积分 ${reward.delta>=0?'+':''}${reward.delta||0} · 演武令 +${reward.tokens||0}`]:[defeatDiag(ctx,r),`演武积分 ${reward.delta||0} · 演武令 +${reward.tokens||0}`];
+  else if(ctx.battleMode==='tower') lines=r?.win?[`元宝 +${reward.gem||0} · 招募令 +${reward.scroll||0}`,`武将碎片 +${reward.shard||0}`]:[defeatDiag(ctx,r)];
   else if(ctx.battleMode==='training') lines=[`练兵经验 +${r.gainedXP||0}`];
   else if(r?.win){
     if(reward.first){
@@ -108,18 +121,7 @@ export function resultView(ctx: ScreenContext) {
         `首通经验 +${r.gainedXP||0}`];
     } else lines=[`铜钱 +${fmt.fmtNum(reward.gold||0)} · 经验 +${r.gainedXP||0}`,'重复挑战不重复发放首通奖励'];
   }
-  else {
-    const foes=(ctx.lastBattleSnapshot||[]).filter((u:any)=>u.side==='B'&&u.alive)
-      .sort((a:any,b:any)=>(b.hp/b.maxHp)-(a.hp/a.maxHp));
-    const top=foes[0];
-    const topPct=top?Math.round(top.hp/top.maxHp*100):null;
-    const timedOut=(r?.duration||0)>=config.BATTLE.TIME_LIMIT;
-    const diag=topPct===null?'我方全灭 · 尝试克制阵营或升级军械'
-      :topPct<=15?`敌将只剩 ${topPct}% 血 · 再强化一轮即可过关`
-      :timedOut?`敌将剩余 ${topPct}% 血 · 输出不足，试试克制阵营（魏→蜀→吴→群→魏）或升级军械`
-      :'我方被击败 · 尝试克制阵营或调整布阵';
-    lines=['普通奖励需凯旋后方可领取',diag,`用时 ${r?.duration||0} 秒`];
-  }
+  else lines=['普通奖励需凯旋后方可领取',defeatDiag(ctx,r),`用时 ${r?.duration||0} 秒`];
   lines.slice(0,3).forEach((line,i)=>U.text(`ResultLine${i}`,line,0,99-i*40,515,22,PAPER));
   const msLabels=(reward.milestones||[]).map((m:any)=>m.label);
   if(r?.win&&reward.finale)U.text('ResultFinale','第一期主线完成 · 主线 120/120',0,14,500,24,GOLD);
