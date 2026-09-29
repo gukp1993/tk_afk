@@ -356,7 +356,7 @@ export class CocosBootstrap extends Component implements ScreenContext {
     const started = store.beginBattle({ mode: 'weekboss', index: 1, referenceLevel: store.playerLevel() });
     if (!started.ok) return this.tell(started, '');
     this.battleId = started.id; this.battleMode = 'weekboss'; this.battleIndex = 1; this.battleDiff = 1; this.battleArenaSeed = 0;
-    this.fighting = battleRules.createBattle({ team: store.playerUnits(this.armedTactic), enemy: store.enemyUnits(enemy.units), seed: Date.now(), timeLimit: config.BATTLE.TIME_LIMIT });
+    this.fighting = battleRules.createBattle({ team: store.playerUnits(this.armedTactic, false), enemy: store.enemyUnits(enemy.units), seed: Date.now(), timeLimit: config.BATTLE.TIME_LIMIT });
     (this as any)._popupCount = 0;
     this.combatPopupDisplay = [];
     this.lastUltDisplay = '';
@@ -391,7 +391,7 @@ export class CocosBootstrap extends Component implements ScreenContext {
     if(mode==='campaign') effects=stages.stageBattleEffects(stages.makeStageEnemies(index));
     else if(mode==='expedition') effects=stages.stageBattleEffects(enemy);
     const battleSeed=Date.now();
-    this.fighting=battleRules.createBattle(Object.assign({team:store.playerUnits(this.armedTactic),enemy:store.enemyUnits(enemy.units),seed:battleSeed},effects||{}));
+    this.fighting=battleRules.createBattle(Object.assign({team:store.playerUnits(this.armedTactic,!(config.BORROW&&config.BORROW.excludedModes||[]).includes(mode)),enemy:store.enemyUnits(enemy.units),seed:battleSeed},effects||{}));
     // 每场重置弹字计数（试玩 P2：跨场保留旧计数会抑制新一场的伤害数字）
     (this as any)._popupCount = 0;
     this.combatPopupDisplay = [];
@@ -400,7 +400,7 @@ export class CocosBootstrap extends Component implements ScreenContext {
     {
       const cap=config.REPLAYS.capture;
       const specBase={ v:1 as const, seed:battleSeed, timeLimit:config.BATTLE.TIME_LIMIT,
-        team:store.playerUnits((this as any).armedTactic).map((u:any)=>({uid:u.uid,name:u.name,faction:u.faction,cls:u.cls,level:u.level,row:u.row,stats:u.stats,ult:u.ult,passive:u.passive,isBoss:false})),
+        team:store.playerUnits((this as any).armedTactic,false).map((u:any)=>({uid:u.uid,name:u.name,faction:u.faction,cls:u.cls,level:u.level,row:u.row,stats:u.stats,ult:u.ult,passive:u.passive,isBoss:false})),
         enemy:enemy.units.map((u:any)=>{const e2=store.enemyUnits([u])[0];return {uid:e2.uid,name:e2.name,faction:e2.faction,cls:e2.cls,level:e2.level,row:e2.row,stats:e2.stats,ult:e2.ult,passive:e2.passive,isBoss:!!e2.isBoss};}),
         effects:effects||null };
       if(mode==='hall'&&cap.hall){

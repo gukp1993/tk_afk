@@ -43,6 +43,7 @@ function defaultState() {
     tutorial: { seen: {} },
     dungeon: { day: '', runs: 0, bestGold: 0, bestTrain: 0 },
     weekBoss: { weekId: '', attempts: 0, bestPct: 0, bestDamage: 0 },
+    borrow: { day: '', heroId: null },
     bounty: { day: '', list: [] },
     roamer: { day: '', ids: [], bought: {} },
     vouchers: { sr: 0, ssr: 0 },
@@ -781,6 +782,9 @@ function normalizeState(s) {
   s.sevenDay = s.sevenDay || { start: F.todayStr(), claimed: [] };
   if (!Array.isArray(s.sevenDay.claimed)) s.sevenDay.claimed = [];
   s.sevenDay.claimed = s.sevenDay.claimed.map(n => Math.floor(Number(n) || 0)).filter(n => n >= 1 && n <= 7);
+  // 借将助战（研讨会五批次 1）：旧档缺省
+  s.borrow = s.borrow || { day: '', heroId: null };
+  if (s.borrow.heroId != null && !(C.BORROW && C.BORROW.pool || []).includes(s.borrow.heroId)) s.borrow.heroId = null;
   // 周常 Boss（研讨会四 P3）：旧档缺省 + 字段钳位
   s.weekBoss = s.weekBoss || { weekId: '', attempts: 0, bestPct: 0, bestDamage: 0 };
   s.weekBoss.attempts = Math.max(0, Math.floor(Number(s.weekBoss.attempts) || 0));
@@ -1447,12 +1451,12 @@ function bondMods() {
   return out;
 }
 // 生成战斗用双方单元（tacticId 可选：战前排兵战术乘区，不传=无修正）
-function playerUnits(tacticId) {
+function playerUnits(tacticId, includeBorrow) {
   const calc = getFormationCalc();
   const extra = bondMods();
   const tactic = tacticId ? (C.BATTLE_TACTICS || []).find(t => t.id === tacticId) : null;
   const tm = tactic ? tactic.mods : null;
-  return calc.map((x, i) => {
+  const base = calc.map((x, i) => {
     if (!x) return null;
     let stats = x.stats;
     if (tm) {
@@ -1469,6 +1473,23 @@ function playerUnits(tacticId) {
     if (Object.keys(extra).length) u.passive = Object.assign({}, u.passive, extra);
     return u;
   }).filter(Boolean);
+  // 借将第 6 人（研讨会五批次 1）：等级×0.8、固定 3★、白板（无军械/觉醒/兵法/羁绊加成），
+  // 仅 PVE 生效（演武/名人堂/周Boss 由调用方传 includeBorrow=false 排除）
+  if (includeBorrow !== false && C.BORROW && C.BORROW.enabled) {
+    const bi = borrowInfo();
+    if (bi.active && state.formation.indexOf(bi.active) < 0) {
+      const def = H.getHero(bi.active);
+      if (def) {
+        const lv = Math.max(1, Math.floor(state.player.level * C.BORROW.levelFactor));
+        const st = H.heroStatsStar(def, lv, C.BORROW.star);
+        base.push(buildUnit({ id: def.id, name: def.name + '·借', faction: def.faction, cls: def.cls,
+          level: lv, star: C.BORROW.star,
+          stats: { hp: st.hp, atk: st.atk, def: st.def, spd: st.spd, crit: st.crit },
+          ult: def.ult, passive: Object.assign({}, def.passive.mods || {}) }, 'A5', 1));
+      }
+    }
+  }
+  return base;
 }
 function enemyUnits(units) {
   const H2 = require('./heroes');
@@ -2655,6 +2676,40 @@ function beginWeekBoss() {
   return beginBattle({ mode: 'weekboss', index: 1, referenceLevel: state.player.level });
 }
 
+// 借将助战（研讨会五批次 1）：助将位按周键轮换；每日 1 次借用；编队已含则无需借
+function borrowOfferedHero() {
+  const weekId = F.isoWeekKey();
+  let h = 5381;
+  for (let i = 0; i < weekId.length; i++) h = ((h * 33) ^ weekId.charCodeAt(i)) >>> 0;
+  const pool = (C.BORROW && C.BORROW.pool) || [];
+  return pool[h % pool.length];
+}
+function borrowInfo() {
+  checkDailyReset();
+  const enabled = !!(C.BORROW && C.BORROW.enabled);
+  const heroId = enabled ? borrowOfferedHero() : null;
+  const usedToday = !!(state.borrow && state.borrow.day === F.todayStr() && state.borrow.heroId);
+  const def = heroId ? H.getHero(heroId) : null;
+  return { enabled, heroId, heroName: def ? def.name : '',
+    active: usedToday ? state.borrow.heroId : null,
+    usedToday, level: enabled ? Math.max(1, Math.floor(state.player.level * C.BORROW.levelFactor)) : 0,
+    star: (C.BORROW && C.BORROW.star) || 3 };
+}
+function borrowHero(heroId) {
+  return withSavedMutation(() => {
+    if (!C.BORROW || !C.BORROW.enabled) return { ok: false, msg: '借将未开放' };
+    const offered = borrowOfferedHero();
+    if (heroId !== offered) return { ok: false, msg: '该武将本周不在助战位' };
+    if (state.borrow && state.borrow.day === F.todayStr() && state.borrow.heroId) return { ok: false, msg: '今日已借用过助战将' };
+    if (state.formation.indexOf(heroId) >= 0) return { ok: false, msg: '该武将已在编队中，无需借用' };
+    state.borrow = { day: F.todayStr(), heroId };
+    return { ok: true, heroId };
+  });
+}
+function dismissBorrow() {
+  return withSavedMutation(() => { state.borrow = { day: (state.borrow && state.borrow.day) || F.todayStr(), heroId: null }; return { ok: true }; });
+}
+
 // 军屯双本（研讨会四 P2）：每日 2 次、双轨 10 层顺序解锁
 function dungeonInfo() {
   checkDailyReset();
@@ -2853,7 +2908,7 @@ module.exports = {
   winCampaign, campaignRewardPreview, winTower, arenaFight, arenaSeasonInfo, arenaBoardInfo, summonGapInfo, beginBattle, settleBattle, campaignStarChestInfo, claimStarChests,
   markStorySeen, isStorySeen, retroGrants, dismissRetroGrants, dismissReturnPending,
   questList, claimQuest, activePoints, claimActiveChest, claimAllDailyRewards, claimFreeRewards, bumpQuest, applyReward,
-  sevenDayInfo, claimSevenDay, fourteenDayInfo, claimFourteenDay, tutorialSeen, markTutorialSeen, dungeonInfo, weekBossInfo, beginWeekBoss, bountyInfo, bountyPayout, dispatchBounty, claimBounty, roamerInfo, buyRoamer, takeBountyGrantsNotice,
+  sevenDayInfo, claimSevenDay, fourteenDayInfo, claimFourteenDay, tutorialSeen, markTutorialSeen, dungeonInfo, weekBossInfo, beginWeekBoss, borrowInfo, borrowHero, dismissBorrow, bountyInfo, bountyPayout, dispatchBounty, claimBounty, roamerInfo, buyRoamer, takeBountyGrantsNotice,
   interruptBattle, setAutoBattleSpeed,
   buyGood, CURRENCY_NAME,
   adCount, adBump

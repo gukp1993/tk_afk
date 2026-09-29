@@ -175,6 +175,13 @@ function buildWeeklyBriefing(state, hallLineups) {
 function buildDefeatPrescriptions(state, api, input) {
   const rx = C.DEFEAT_RX || { enabled: true, maxItems: 2 };
   if (!rx.enabled) return null;
+  let borrowHint = null;
+  try {
+    const bi = api.borrowInfo ? api.borrowInfo() : null;
+    if (bi && bi.enabled && bi.heroName && !bi.usedToday && (state.formation || []).indexOf(bi.heroId) < 0) {
+      borrowHint = { key: 'borrow', tier: 2, gain: 5, cost: 0, text: `借${bi.heroName}助战一日`, page: 'formation' };
+    }
+  } catch (e) { /* 借将信息不可用时跳过 */ }
   const maxItems = rx.maxItems || 2;
   const inp = input || {};
   const duration = Number(inp.duration) || 0;
@@ -256,6 +263,7 @@ function buildDefeatPrescriptions(state, api, input) {
     if (dom && beats && rosterHasBeats) items.push({ key: 'counter-' + beats, tier: 2, gain: count[dom], cost: 0,
       text: `上阵${(C.FACTIONS[beats] || {}).name || ''}将克制`, page: 'formation' });
   }
+  if (borrowHint) items.push(borrowHint);
   // 排序：tier asc → gain desc → cost asc → 原序；取前 maxItems
   items.forEach((it, i) => { it.order = i; });
   items.sort((a, b) => (a.tier - b.tier) || ((b.gain || 0) - (a.gain || 0)) || ((a.cost || 0) - (b.cost || 0)) || (a.order - b.order));

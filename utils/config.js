@@ -147,6 +147,15 @@ const DUNGEON = {
   enemyLevel: (f, playerLevel) => Math.max(1, Math.round((playerLevel || 1) * (0.85 + 0.07 * Math.min(f, 10))))
 };
 
+// 借将助战（2026-09-30 研讨会五批次 1 改判先行；专项仿真 5100 场定稿参数）
+// NPC SSR 第 6 人助战 PVE（禁演武/名人堂/周Boss），等级=玩家全局等级×0.8 向下取整、固定 3★、
+// 不吃军械/觉醒/兵法/羁绊加成；每日 1 次（跨日重置）；助将位按周键轮换。回退：enabled=false。
+const BORROW = {
+  enabled: true, levelFactor: 0.8, star: 3,
+  pool: ['lvbu', 'zhaoyun', 'zhugeliang', 'zhouyu', 'sunce', 'simayi'],
+  excludedModes: ['arena', 'hall', 'weekboss']
+};
+
 // 新手首见浮层（2026-09-30 研讨会四 P1）：每场景首次进入弹一次图文说明。
 // 老档（无 tutorial 字段）视为全部已见，防浮层雨；TUTORIAL_OFF=true 全局关闭。
 const TUTORIAL_OFF = false;
@@ -524,7 +533,7 @@ module.exports = {
   MAX_LEVEL, PLAYER_LEVEL, BATTLE_XP, AUTO_BATTLE, FOOD_VALUE, DUPE_GOLD,
   goldCost, expCost, idleRates, IDLE_CAP_HOURS, GEM_IDLE, ARMORY_IRON_PER_HOUR,
   FAST_AD, FAST_PAID,
-  GACHA, factionBonus, FORMATION_ROWS, BATTLE, ARENA, DEFEAT_RX, REPLAYS, DRILL, SEVEN_DAY, FOURTEEN_DAY, DUNGEON, WEEKBOSS, TUTORIAL_OFF, TUTORIALS, TRAINING_DAILY_CAP, BOUNTY, ROAMER_POOL, AD,
+  GACHA, factionBonus, FORMATION_ROWS, BATTLE, ARENA, DEFEAT_RX, REPLAYS, DRILL, SEVEN_DAY, FOURTEEN_DAY, DUNGEON, WEEKBOSS, BORROW, TUTORIAL_OFF, TUTORIALS, TRAINING_DAILY_CAP, BOUNTY, ROAMER_POOL, AD,
   FIRST_STAGE_END, CAMPAIGN_DIFFICULTY, CAMPAIGN_MILESTONES, ELITE_STAGE, STAR_RULES, CHAPTER_STAR_CHESTS, DAILY_ELITE_CHEST,
   CAMPAIGN_MODS, BOSS_MODS, RETURN_GRANTS, SUMMON_TICKET, SUMMON_POINTS, FORGE, MOTIFS, MOTIF_COST, SMELT,
   CODEX_REWARDS, ACHV_AXES, ACHV_REWARDS, WEEKLY, HALL, AWAKEN, FORMATION_PRESETS_MAX, TACTIC, BATTLE_TACTICS, TACTIC_SR, HALL_ACHV, TACTIC_ACHV, AWAKEN_ACHV, DRILL_ACHV

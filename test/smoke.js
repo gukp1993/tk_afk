@@ -1401,4 +1401,37 @@ const storeP2 = freshStore(); storeP2.load();
   check('WB6 跨周重置次数与纪录', wNew.weekId === F.isoWeekKey() && wNew.attemptsLeft === 3 && wNew.bestPct === 0);
 }
 
+
+// 借将助战（研讨会五批次 1）：轮换/借用/第 6 人/排除口径/处方
+{
+  const storeBW = freshStore(); storeBW.load();
+  const sBW = storeBW.getState();
+  const bi = storeBW.borrowInfo();
+  check('BW1 本周助将位（池内轮换/未借用/等级×0.8）', bi.enabled && (require('../utils/config').BORROW.pool).indexOf(bi.heroId) >= 0
+    && bi.usedToday === false && bi.level === Math.max(1, Math.floor(sBW.player.level * 0.8)) && bi.star === 3);
+  const rB = storeBW.borrowHero(bi.heroId);
+  check('BW2 借用成功且当日不可再借', rB.ok && storeBW.borrowInfo().usedToday === true && storeBW.borrowHero(bi.heroId).ok === false);
+  // 第 6 人：playerUnits 默认带借将、排除口径（arena）不带、编队已含则不重复
+  sBW.formation = ['liubei', 'guanyu', 'zhangfei', 'liaohua', 'mengda'];
+  const withB = storeBW.playerUnits(null, true), withoutB = storeBW.playerUnits(null, false);
+  check('BW3 第 6 人入队（A5·3★·名字带借）', withB.length === 6 && withoutB.length === 5
+    && withB[5].uid === 'A5' && withB[5].star === 3 && /·借$/.test(withB[5].name) && withB[5].level === bi.level);
+  check('BW4 借将不吃加成（白板体魄=纯 heroStatsStar）', (() => {
+    const H2 = require('../utils/heroes');
+    const st = H2.heroStatsStar(H2.getHero(bi.heroId), bi.level, 3);
+    return withB[5].stats.hp === st.hp && withB[5].stats.atk === st.atk;
+  })());
+  // 处方单出现借将条目（未借用+不在编队；借用后消失）
+  const PB2 = require('../utils/progression');
+  sBW.campaign.cleared = 20;
+  sBW.armory.slotStars = { weapon: 5, armor: 5, helm: 5, boots: 5, jade: 5, seal: 5 };
+  sBW.armory.boxes = { 1: 0, 2: 0, 3: 0 };
+  sBW.daily = { day: F.todayStr(), quests: {}, claimed: [0, 1, 2, 3, 4, 5] };
+  sBW.borrow = { day: '', heroId: null };
+  const rx = PB2.buildDefeatPrescriptions(sBW, { questList: storeBW.questList, idlePending: storeBW.idlePending, bountyInfo: storeBW.bountyInfo, summonPityInfo: storeBW.summonPityInfo, borrowInfo: storeBW.borrowInfo }, { duration: 60, snapshot: [] });
+  check('BW5 处方单含借将条目', rx && rx.items.some(x => x.key === 'borrow' && /借.+助战一日/.test(x.text)));
+  const rx2 = PB2.buildDefeatPrescriptions(sBW, { questList: storeBW.questList, idlePending: storeBW.idlePending, bountyInfo: storeBW.bountyInfo, summonPityInfo: storeBW.summonPityInfo }, { duration: 60, snapshot: [] });
+  check('BW6 未传 borrowInfo 时无借将条目且不崩', rx2 && !rx2.items.some(x => x.key === 'borrow'));
+}
+
 console.log('\nsmoke: ' + passed + ' passed, ' + failed + ' failed');process.exit(failed ? 1 : 0);

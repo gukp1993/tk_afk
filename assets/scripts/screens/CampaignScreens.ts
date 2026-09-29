@@ -637,6 +637,19 @@ export function formation(ctx: ScreenContext) {
       U.tap('PresetSaveTap',sx,-30,146,30,()=>ctx.confirm('保存阵型模板','把当前五人编队存为模板（含站位），日后一键启用',()=>{const r=store.saveFormationPreset('p'+(Date.now()%100000),'我的阵型');ctx.tell(r,r.ok?'模板已保存':'');}));
     }
   const bondsNow=store.activeBonds(),allBonds=heroes.BONDS||[],mods=store.bondMods();
+  // 借将助战（研讨会五批次 1）：本周助将位每日一次借用，作第 6 人上阵（仅 PVE）
+  const bb=store.borrowInfo();
+  if(bb.enabled){
+    U.panel('BorrowBanner',0,-510,682,48,tone('#26301f'),8,bb.active?tone('#6f8a5f'):GOLD);
+    if(bb.active){
+      const bn=heroes.getHero(bb.active)?.name||bb.active;
+      U.text('BorrowTxt',`${bn}·借 已随军上阵（仅 PVE）· 明日可换`,0,-510,560,18,GOLD);
+      U.tap('BorrowDismissTap',0,-510,682,48,()=>{const r=store.dismissBorrow();ctx.tell(r,r.ok?'助战将已撤下':'');});
+    }else{
+      U.text('BorrowTxt',`今日助战将：${bb.heroName}（Lv.${bb.level}·${bb.star}★ · 不吃养成加成）`,-160,-510,420,18,LIGHT);
+      U.button('BorrowGo','借 用',230,-510,150,38,()=>{const r=store.borrowHero(bb.heroId);ctx.tell(r,r.ok?`${bb.heroName} 已随军（第 6 人，仅 PVE）`:'');},palette.gold);
+    }
+  }
   U.panel('BondsPanel',0,-258,682,436,tone('#342518'),11,GOLD);
   U.text('BondsTitle',`三国羁绊 · 已激活 ${bondsNow.length}/${allBonds.length}`,-160,-70,400,24,GOLD);
   const modLabel:any={atk:'攻击',hp:'生命',def:'防御'};
