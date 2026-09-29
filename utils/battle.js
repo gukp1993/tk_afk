@@ -169,6 +169,7 @@ function createBattle(cfg) {
       tgt.hp -= dmg;
       tgt.hp = Math.max(0, tgt.hp);
       stats[src.uid].dmg += dmg;
+      pushPopup(tgt, dmg, crit);
       emit({ e: 'hit', uid: tgt.uid, src: src.uid, amount: dmg, crit, kind: opts.kind || 'atk' });
       gainEnergy(tgt, BATTLE.ENERGY_HIT);
       // 吸血
@@ -215,6 +216,13 @@ function createBattle(cfg) {
       if (rk) gainEnergy(killer, rk);
     }
     checkEnd();
+  }
+
+  // 战斗内浮动伤害数字（UI 消费：BattleScreens 渲染）
+  let combatPopups = []; // { uid, amount, crit, time }
+  function pushPopup(tgt, amount, crit) {
+    combatPopups.push({ uid: tgt.uid, amount, crit, time });
+    if (combatPopups.length > 20) combatPopups = combatPopups.slice(-20);
   }
 
   // ---- 效果执行 ----
@@ -418,7 +426,7 @@ function createBattle(cfg) {
   function result() {
     return { winner, duration: Math.round(time * 10) / 10, stats };
   }
-  return { step, snapshot, result, get ended() { return ended; }, get lastUlt() { return lastUltCast; } };
+  return { step, snapshot, result, get ended() { return ended; }, get lastUlt() { return lastUltCast; }, get popups() { return combatPopups; } };
 }
 
 // 由武将定义+等级+星+装备生成战斗单元

@@ -65,6 +65,17 @@ function drawField(U: CocosUi, ctx: ScreenContext, snapshot: any[]) {
   U.text('BattleVs','对 阵',0,8,92,18,DIM);
   U.text('BattleLegend','绿条 生命 · 金条 怒气 · 卡边颜色=品质',-140,560,360,15,tone('#7c6a4e'));
   snapshot.forEach((unit,index)=>drawFighter(U,unit,index));
+  // 伤害数字弹窗
+  var popDisp = (ctx as any).combatPopupDisplay || [];
+  for (var pi = 0; pi < popDisp.length; pi++) {
+    var pp = popDisp[pi];
+    var age = Date.now() - pp.bornAt;
+    var alpha = Math.max(0, 1 - age / 800);
+    var offsetY = -100 - (age / 800) * 60;
+    var col = pp.crit ? new Color(255, 120, 40, Math.round(255 * alpha)) : new Color(255, 255, 200, Math.round(255 * alpha));
+    var fontSize = pp.crit ? 32 : 24;
+    U.text('DmgNum' + pi, pp.text, pp.x, pp.y + offsetY, 120, fontSize, col);
+  }
   // 大招释放名称弹窗
   var lu = (ctx.fighting as any) && (ctx.fighting as any).lastUlt;
   if (lu) {

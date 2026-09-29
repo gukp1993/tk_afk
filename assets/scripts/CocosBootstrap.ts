@@ -32,6 +32,7 @@ export class CocosBootstrap extends Component implements ScreenContext {
   public battleId = '';
   public battleMode = 'campaign';
   public lastUltDisplay = '';
+  public combatPopupDisplay: {x:number,y:number,text:string,crit:boolean,bornAt:number}[] = [];
   public armedTactic: string | null = null;
   public battleIndex = 1;
   public battleDiff = 1;
@@ -103,6 +104,26 @@ export class CocosBootstrap extends Component implements ScreenContext {
       if (lu && this.lastUltDisplay !== lu.name + ':' + lu.uid + ':' + lu.time) {
         this.lastUltDisplay = lu.name + ':' + lu.uid + ':' + lu.time;
       }
+      var allPops = (this.fighting as any).popups || [];
+      if (allPops.length) {
+        var lastCount = (this as any)._popupCount || 0;
+        if (allPops.length > lastCount) {
+          var newPops = allPops.slice(lastCount);
+          for (var pi = 0; pi < newPops.length; pi++) {
+            var pp = newPops[pi];
+            var unit = this.fighting.snapshot().find(function(u){return u.uid===pp.uid;});
+            if (unit) {
+              var ux = unit.slot < 3 ? [-215,0,215][unit.slot] : [-114,114][unit.slot-3];
+              var uy = unit.slot < 3 ? -280 : 245;
+              this.combatPopupDisplay.push({x:ux,y:uy,text:String(pp.amount),crit:pp.crit,bornAt:Date.now()});
+            }
+          }
+          (this as any)._popupCount = allPops.length;
+        }
+      }
+      // 清理过期弹窗（>0.8 秒）
+      var now = Date.now();
+      this.combatPopupDisplay = this.combatPopupDisplay.filter(function(p){return now - p.bornAt < 800;});
       if (step.done) this.finishBattle(step.winner === 'A');
       else if (this.page === 'battle' && this.refreshTime > 0.3) {
         this.refreshTime = 0;
