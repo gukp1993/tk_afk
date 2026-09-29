@@ -96,6 +96,7 @@ const HEROES = [
   },
   {
     id: 'machao', name: '马超', title: '锦马超', faction: 'shu', cls: 'warrior', rarity: 3,
+    tactic: { name: '铁骑冲锋', desc: '西凉铁骑践踏，敌方前排在劫难逃', perLevel: {"ultDmg":0.04} },
     quote: '西凉铁骑，踏破山川！',
     base: { hp: 2850, atk: 238, def: 156, spd: 1.12, crit: 0.08 },
     ult: { name: '铁骑冲锋', desc: '潼关杀得曹操割须弃袍：对随机3名敌军各造成150%攻击伤害。', effects: [
@@ -105,6 +106,7 @@ const HEROES = [
   },
   {
     id: 'pangtong', name: '庞统', title: '凤雏', faction: 'shu', cls: 'mage', rarity: 3,
+    tactic: { name: '连环奇谋', desc: '连环计策精研，火攻伤害加成', perLevel: {"ultDmg":0.03,"ultDebuff":0.02} },
     quote: '连环之计，正合天时。',
     base: { hp: 2280, atk: 296, def: 108, spd: 0.95, crit: 0.06 },
     ult: { name: '连环锁敌', desc: '铁索连环，火攻可借：对全体敌军造成130%攻击伤害，并削弱其防御20%，持续8秒。', effects: [
@@ -211,6 +213,7 @@ const HEROES = [
   },
   {
     id: 'fazheng', name: '法正', title: '奇画策算', faction: 'shu', cls: 'mage', rarity: 3,
+    tactic: { name: '定军谋断', desc: '法正谋断精准，睚眦必报', perLevel: {"ultDmg":0.035,"ultDebuff":0.015} },
     quote: '孝直若在，必能制主上东行。',
     base: { hp: 2320, atk: 290, def: 112, spd: 0.96, crit: 0.07 },
     ult: { name: '定军奇策', desc: '定军山声东击西：对随机2名敌军各造成190%攻击伤害，并削弱其攻击15%，持续6秒。', effects: [
@@ -221,6 +224,7 @@ const HEROES = [
   },
   {
     id: 'huangyueying', name: '黄月英', title: '机巧夫人', faction: 'shu', cls: 'support', rarity: 3,
+    tactic: { name: '木牛流马', desc: '工械改良，治疗与增益强化', perLevel: {"ultHeal":0.04} },
     quote: '妾身虽丑，机巧无双。',
     base: { hp: 2480, atk: 224, def: 120, spd: 1.0, crit: 0.05 },
     ult: { name: '木牛流马', desc: '造木牛流马，运粮不歇：治疗全体友军（攻击的150%），并令我方全体攻速+10%，持续8秒。', effects: [
@@ -368,6 +372,7 @@ const HEROES = [
   },
   {
     id: 'guojia', name: '郭嘉', title: '鬼才', faction: 'wei', cls: 'mage', rarity: 3,
+    tactic: { name: '鬼谋遗计', desc: '郭嘉遗计定辽东，毒计深远', perLevel: {"ultDmg":0.03,"ultDot":0.02} },
     quote: '兵贵神速。',
     base: { hp: 2280, atk: 288, def: 108, spd: 0.95, crit: 0.1 },
     ult: { name: '遗计定辽', desc: '身死犹留遗计，助主平辽：对随机2名敌军各造成200%攻击伤害，并使其中毒，持续6秒。', effects: [
@@ -388,6 +393,7 @@ const HEROES = [
   },
   {
     id: 'xuchu', name: '许褚', title: '虎痴', faction: 'wei', cls: 'tank', rarity: 3,
+    tactic: { name: '裸衣战衣', desc: '虎痴脱去战甲，护体罡气反震', perLevel: {"ultShield":0.04,"ultDebuff":0.015} },
     quote: '虎侯在此！',
     base: { hp: 4300, atk: 150, def: 262, spd: 0.85, crit: 0.05 },
     ult: { name: '裸衣奋战', desc: '赤膊上阵，虎痴之勇：为自己生成相当于攻击180%的护盾，并削弱敌方前排防御20%，持续8秒。', effects: [
@@ -398,6 +404,7 @@ const HEROES = [
   },
   {
     id: 'xunyu', name: '荀彧', title: '王佐之才', faction: 'wei', cls: 'support', rarity: 3,
+    tactic: { name: '王佐守正', desc: '荀彧持重守正，治疗效力增强', perLevel: {"ultHeal":0.035} },
     quote: '奉天子以令不臣。',
     base: { hp: 2500, atk: 220, def: 122, spd: 0.98, crit: 0.05 },
     ult: { name: '居中持重', desc: '坐镇后方，调度有方：治疗全体友军（攻击的140%），并使我方全体防御+12%，持续8秒。', effects: [
@@ -408,6 +415,7 @@ const HEROES = [
   },
   {
     id: 'jiaxu', name: '贾诩', title: '毒士', faction: 'wei', cls: 'mage', rarity: 3,
+    tactic: { name: '毒士鸩杀', desc: '贾诩毒计狠辣，控制更稳', perLevel: {"ultDmg":0.03,"ultDebuff":0.02} },
     quote: '文和乱武，算无遗策。',
     base: { hp: 2260, atk: 294, def: 108, spd: 0.94, crit: 0.07 },
     ult: { name: '乱武', desc: '一计可乱天下：对全体敌军造成140%攻击伤害，并使其混乱（沉默），持续3秒。', effects: [
@@ -428,6 +436,7 @@ const HEROES = [
   },
   {
     id: 'xiahouyuan', name: '夏侯渊', title: '疾行虎步', faction: 'wei', cls: 'archer', rarity: 3,
+    tactic: { name: '疾行千里', desc: '妙才奔袭如风，箭如雨下', perLevel: {"ultDmg":0.04} },
     quote: '三日五百，六日一千！',
     base: { hp: 2340, atk: 288, def: 104, spd: 1.18, crit: 0.10 },
     ult: { name: '千里奔袭', desc: '典军校尉，行军神速：对生命最高的敌军连射3箭，每箭造成105%攻击伤害。', effects: [
@@ -437,6 +446,7 @@ const HEROES = [
   },
   {
     id: 'caoren', name: '曹仁', title: '铁壁天将', faction: 'wei', cls: 'tank', rarity: 3,
+    tactic: { name: '铁壁铜墙', desc: '曹仁坚守不出，壁垒森严', perLevel: {"ultShield":0.045} },
     quote: '守城之固，仁之功也。',
     base: { hp: 4150, atk: 152, def: 258, spd: 0.86, crit: 0.05 },
     ult: { name: '铁壁坚守', desc: '守樊城，水淹不退：为自己生成攻击200%的护盾，并使我方全体防御+10%，持续8秒。', effects: [
@@ -447,6 +457,7 @@ const HEROES = [
   },
   {
     id: 'pangde', name: '庞德', title: '抬榇决死', faction: 'wei', cls: 'warrior', rarity: 3,
+    tactic: { name: '抬榇决死', desc: '庞德抬榇决死战，勇烈加身', perLevel: {"ultDmg":0.035,"ultDot":0.015} },
     quote: '吾受魏王厚恩，誓以死报！',
     base: { hp: 2760, atk: 230, def: 152, spd: 1.0, crit: 0.07 },
     ult: { name: '抬榇决死战', desc: '抬榇赴敌，不破关羽誓不还：对单体造成260%攻击伤害，并附加流血，持续5秒。', effects: [
@@ -457,6 +468,7 @@ const HEROES = [
   },
   {
     id: 'zhenji', name: '甄姬', title: '洛神', faction: 'wei', cls: 'support', rarity: 3,
+    tactic: { name: '洛神庇佑', desc: '甄姬洛神降世，治疗如泉涌', perLevel: {"ultHeal":0.04} },
     quote: '翩若惊鸿，婉若游龙。',
     base: { hp: 2500, atk: 200, def: 122, spd: 1.0, crit: 0.05 },
     ult: { name: '洛水清波', desc: '洛水之神，泽被三军：治疗全体友军（攻击的160%）。', effects: [
@@ -714,6 +726,7 @@ const HEROES = [
   },
   {
     id: 'lvmeng', name: '吕蒙', title: '白衣渡江', faction: 'wu', cls: 'warrior', rarity: 3,
+    tactic: { name: '白衣渡江', desc: '吕蒙奇袭精研，刀锋更利', perLevel: {"ultDmg":0.04} },
     quote: '士别三日，当刮目相看。',
     base: { hp: 2800, atk: 226, def: 148, spd: 1.05, crit: 0.06 },
     ult: { name: '白衣渡江', desc: '商船白衣，奇袭荆州：对敌方后排造成200%攻击伤害，并使自身攻击+15%，持续8秒。', effects: [
@@ -724,6 +737,7 @@ const HEROES = [
   },
   {
     id: 'ganning', name: '甘宁', title: '锦帆贼', faction: 'wu', cls: 'warrior', rarity: 3,
+    tactic: { name: '锦帆百翎', desc: '甘宁百翎箭雨，锦帆贼劫掠', perLevel: {"ultDmg":0.035,"ultDot":0.015} },
     quote: '百骑劫魏营。',
     base: { hp: 2880, atk: 236, def: 152, spd: 1.1, crit: 0.1 },
     ult: { name: '锦帆奇袭', desc: '百骑劫营，全身而退：对随机2名敌军各造成180%攻击伤害并使其流血，持续5秒。', effects: [
@@ -734,6 +748,7 @@ const HEROES = [
   },
   {
     id: 'taishici', name: '太史慈', title: '信义笃烈', faction: 'wu', cls: 'archer', rarity: 3,
+    tactic: { name: '笃烈贯石', desc: '太史慈笃烈贯石，箭无虚发', perLevel: {"ultDmg":0.04} },
     quote: '大丈夫当带三尺剑，立不世之功！',
     base: { hp: 2300, atk: 286, def: 102, spd: 1.15, crit: 0.08 },
     ult: { name: '酣斗', desc: '神亭酣斗小霸王，不分胜负：对单体造成245%攻击伤害。', effects: [
@@ -752,6 +767,7 @@ const HEROES = [
   },
   {
     id: 'sunjian', name: '孙坚', title: '江东猛虎', faction: 'wu', cls: 'warrior', rarity: 3,
+    tactic: { name: '破虏江东', desc: '孙坚江东猛虎，破虏先锋', perLevel: {"ultDmg":0.04} },
     quote: '坚披坚执锐，当先破敌！',
     base: { hp: 2840, atk: 232, def: 154, spd: 1.06, crit: 0.07 },
     ult: { name: '猛虎破关', desc: '汜水关前率先破敌：对敌方前排造成210%攻击伤害，并使自身攻击+12%，持续8秒。', effects: [
@@ -762,6 +778,7 @@ const HEROES = [
   },
   {
     id: 'huanggai', name: '黄盖', title: '苦肉老将', faction: 'wu', cls: 'tank', rarity: 3,
+    tactic: { name: '苦肉火攻', desc: '黄盖苦肉计成，火攻更烈', perLevel: {"ultDmg":0.03,"ultDot":0.02} },
     quote: '受吴王三世厚恩，虽肝脑涂地，亦无怨悔！',
     base: { hp: 4050, atk: 152, def: 248, spd: 0.86, crit: 0.05 },
     ult: { name: '火船突击', desc: '诈降曹操，火船直入曹营：对敌方前排造成185%攻击伤害并附加灼烧，持续5秒。', effects: [
@@ -772,6 +789,7 @@ const HEROES = [
   },
   {
     id: 'lusu', name: '鲁肃', title: '榻上策', faction: 'wu', cls: 'support', rarity: 3,
+    tactic: { name: '榻上策', desc: '鲁肃榻上策对，增益延绵', perLevel: {"ultHeal":0.03,"ultDebuff":0.015} },
     quote: '汉室不可复兴，曹操不可卒除。',
     base: { hp: 2520, atk: 212, def: 122, spd: 0.98, crit: 0.05 },
     ult: { name: '榻上之策', desc: '为吴划鼎足之计：治疗全体友军（攻击的145%），并使我方全体攻击+10%，持续8秒。', effects: [
@@ -782,6 +800,7 @@ const HEROES = [
   },
   {
     id: 'zhoutai', name: '周泰', title: '血战护主', faction: 'wu', cls: 'tank', rarity: 3,
+    tactic: { name: '江表虎臣', desc: '周泰舍身护主，虎臣威名', perLevel: {"ultShield":0.04} },
     quote: '泰身被十二创，救主于危难。',
     base: { hp: 4100, atk: 150, def: 250, spd: 0.86, crit: 0.05 },
     ult: { name: '舍身蔽主', desc: '以身蔽主，疮痍遍体而救孙权：为自己生成攻击200%的护盾，并反击敌方前排130%攻击伤害。', effects: [
@@ -981,6 +1000,7 @@ const HEROES = [
   },
   {
     id: 'huatuo', name: '华佗', title: '神医', faction: 'qun', cls: 'support', rarity: 3,
+    tactic: { name: '青囊春暖', desc: '华佗青囊医典，妙手回春', perLevel: {"ultHeal":0.045} },
     quote: '对症下药，药到病除。',
     base: { hp: 2580, atk: 214, def: 126, spd: 1.0, crit: 0.05 },
     ult: { name: '青囊济世', desc: '青囊书传世，刮骨可疗毒：治疗全体友军（攻击的190%），并附加持续回复，每秒回复攻击的30%，持续5秒。', effects: [
@@ -991,6 +1011,7 @@ const HEROES = [
   },
   {
     id: 'yuanshao', name: '袁绍', title: '四世三公', faction: 'qun', cls: 'mage', rarity: 3,
+    tactic: { name: '盟主号令', desc: '袁绍盟主号令，士气大振', perLevel: {"ultHeal":0.035} },
     quote: '吾南据河，北阻燕代，争天下可也。',
     base: { hp: 2380, atk: 278, def: 115, spd: 0.94, crit: 0.05 },
     ult: { name: '盟主号令', desc: '十八路诸侯会盟，共同讨董：使我方全体攻击+18%，持续8秒，并对全体敌军造成110%攻击伤害。', effects: [
@@ -1021,6 +1042,7 @@ const HEROES = [
   },
   {
     id: 'zhurong', name: '祝融', title: '火神后裔', faction: 'qun', cls: 'archer', rarity: 3,
+    tactic: { name: '火神降世', desc: '祝融火神降世，烈焰灼敌', perLevel: {"ultDmg":0.035,"ultDot":0.015} },
     quote: '妾乃火神祝融氏之后，飞刀百发百中！',
     base: { hp: 2340, atk: 284, def: 104, spd: 1.14, crit: 0.09 },
     ult: { name: '飞刀夺命', desc: '捻枪飞刀，百发百中：对随机2名敌军各造成170%攻击伤害，并附加灼烧，持续4秒。', effects: [
@@ -1031,6 +1053,7 @@ const HEROES = [
   },
   {
     id: 'chengong', name: '陈宫', title: '忠谋之士', faction: 'qun', cls: 'mage', rarity: 3,
+    tactic: { name: '奇策辅佐', desc: '陈宫奇策百出，辅佐精妙', perLevel: {"ultDmg":0.035,"ultDebuff":0.015} },
     quote: '今日之事，乃宫之罪也。',
     base: { hp: 2270, atk: 290, def: 106, spd: 0.96, crit: 0.06 },
     ult: { name: '明策破敌', desc: '献计献策，算无遗策：对单体造成220%攻击伤害，并削弱其防御15%，持续6秒。', effects: [
@@ -1041,6 +1064,7 @@ const HEROES = [
   },
   {
     id: 'liru', name: '李儒', title: '鸩毒谋士', faction: 'qun', cls: 'mage', rarity: 3,
+    tactic: { name: '鸩酒疑计', desc: '李儒鸩酒疑计，毒计深沉', perLevel: {"ultDmg":0.03,"ultDot":0.02} },
     quote: '毒酒一杯，了断废立之事。',
     base: { hp: 2250, atk: 286, def: 104, spd: 0.95, crit: 0.06 },
     ult: { name: '鸩酒之计', desc: '以鸩酒鸩杀少帝：对全体敌军造成130%攻击伤害，并使全体中毒，持续5秒。', effects: [

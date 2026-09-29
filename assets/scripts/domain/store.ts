@@ -400,29 +400,45 @@ function awakenHero(heroId) {
     return { ok: true, heroId, level: info.next.level, mult: info.next.level * C.AWAKEN.multPerLevel };
   });
 }
-// ---------- 专属兵法（满 5★ SSR 长线：将魂+铜钱，只加成该武将自身）----------
+// ---------- 专属兵法（SSR 满 5★ 长线：将魂+铜钱；SR 满 4★：SR 碎片+铜钱）----------
 function tacticInfo(heroId) {
   const own = state.roster[heroId];
   const def = H.getHero(heroId);
-  if (!own || !def || def.rarity !== 4 || !def.tactic) return { ok: false, msg: '该武将没有专属兵法' };
+  if (!own || !def || (def.rarity !== 4 && def.rarity !== 3) || !def.tactic) return { ok: false, msg: '该武将没有专属兵法' };
+  const isSR = def.rarity === 3;
   const star = own.star || 0, lv = own.tacticLv || 0;
-  const unlocked = star >= C.RARITIES[4].maxStar;
-  const next = lv < C.TACTIC.max ? {
-    level: lv + 1, soul: C.TACTIC.soul[lv], gold: C.TACTIC.gold[lv],
-    can: unlocked && (state.res.soul || 0) >= C.TACTIC.soul[lv] && state.res.gold >= C.TACTIC.gold[lv]
+  const maxStar = C.RARITIES[def.rarity].maxStar;
+  const maxLv = isSR ? C.TACTIC_SR.max : C.TACTIC.max;
+  const unlocked = star >= maxStar;
+  const next = lv < maxLv ? {
+    level: lv + 1,
+    soul: isSR ? 0 : C.TACTIC.soul[lv],
+    shard3: isSR ? C.TACTIC_SR.shard3[lv] : 0,
+    gold: isSR ? C.TACTIC_SR.gold[lv] : C.TACTIC.gold[lv],
+    can: unlocked && (isSR ? (state.qualityShards[3] || 0) >= C.TACTIC_SR.shard3[lv] && state.res.gold >= C.TACTIC_SR.gold[lv]
+      : (state.res.soul || 0) >= C.TACTIC.soul[lv] && state.res.gold >= C.TACTIC.gold[lv])
   } : null;
   return { ok: true, heroId, name: def.tactic.name, desc: def.tactic.desc, perLevel: def.tactic.perLevel,
-    star, level: lv, max: C.TACTIC.max, unlocked, soul: state.res.soul || 0,
+    star, level: lv, max: maxLv, unlocked, soul: state.res.soul || 0, isSR,
     ultNow: H.tacticUlt(def, lv), passiveNow: H.tacticPassive(def, lv), next };
 }
 function tacticUpgrade(heroId) {
   return withSavedMutation(() => {
     const info = tacticInfo(heroId);
     if (!info.ok) return info;
-    if (!info.unlocked) return { ok: false, msg: '需先达到 5★ 才能研习兵法' };
+    if (!info.unlocked) return { ok: false, msg: '需先达到满星才能研习兵法' };
     if (!info.next) return { ok: false, msg: '已达兵法上限' };
-    if ((state.res.soul || 0) < info.next.soul) return { ok: false, msg: '将魂不足，还差 ' + (info.next.soul - (state.res.soul || 0)) + '（满星后重复获得同名 SSR 转化）' };
-    if (state.res.gold < info.next.gold) return { ok: false, msg: '铜钱不足，还差 ' + (info.next.gold - state.res.gold) };
+    const isSR = H.getHero(heroId).rarity === 3;
+    if (isSR) {
+      if ((state.qualityShards[3] || 0) < C.TACTIC_SR.shard3[info.level]) return { ok: false, msg: 'SR 品质碎片不足' };
+      if (state.res.gold < info.next.gold) return { ok: false, msg: '铜钱不足' };
+      state.qualityShards[3] -= C.TACTIC_SR.shard3[info.level];
+      state.res.gold -= info.next.gold;
+      state.roster[heroId].tacticLv = info.next.level;
+      return { ok: true, heroId, level: info.next.level, name: info.name };
+    }
+    if ((state.res.soul || 0) < info.next.soul) return { ok: false, msg: '将魂不足' };
+    if (state.res.gold < info.next.gold) return { ok: false, msg: '铜钱不足' };
     state.res.soul -= info.next.soul;
     state.res.gold -= info.next.gold;
     state.roster[heroId].tacticLv = info.next.level;
