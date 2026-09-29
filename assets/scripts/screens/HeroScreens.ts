@@ -294,7 +294,8 @@ export function summon(ctx: ScreenContext) {
     });
     U.panel('SummonSeal',0,436,72,72,tone('#57402d'),10,gold);
     U.text('SummonSealText','将',0,436,68,42,gold);
-    U.text('SummonRates','概率 SSR 2% · SR 10% · R 28% · N 60% · 31 抽起 SSR 概率递增',0,352,630,19,dim);
+    U.text('SummonRates','概率 SSR 2% · SR 10% · R 28% · N 60%',0,360,630,19,dim);
+    U.text('SummonSoft','31 抽起 SSR 概率递增 · 40 抽必出 SSR',0,330,630,15,tone('#d9b06a'));
     const pity=store.summonPityInfo();
     U.panel('SummonPool',0,290,686,96,panel,9,border);
     U.text('PoolTitle',`武将池 · ${heroData.HEROES.length} 将 · SSR 保底 ${pity.sinceSsr}/${pity.ssrHard} 抽`,-73,318,590,19,dim);
@@ -526,7 +527,7 @@ export function achvView(ctx: ScreenContext) {
   info.axes.forEach(ax=>ax.tiers.forEach(t=>flat.push({axis:ax,name:ax.name,tier:t.tier,need:t.need,reward:t.reward,claimed:t.claimed,claimable:t.claimable,value:ax.value})));
   flat=flat.filter(t=>t.claimable||!t.claimed);
   U.scroll('AchvList',0,-60,680,830,Math.max(830,flat.length*72+20),V=>{
-    flat.slice(0,40).forEach((t,i)=>{
+    flat.forEach((t,i)=>{
       const y=Math.max(830,flat.length*72+20)/2-36-i*72;
       V.panel('AchvRow'+i,0,y,656,64,t.claimable?tone('#3a2c17'):ink,7,t.claimable?gold:border);
       V.text('AchvRowName'+i,`${t.name} · 第${t.tier+1}档（需 ${t.need}）`,-170,y,400,19,t.claimable?gold:LIGHT);
@@ -557,7 +558,7 @@ export function armory(ctx: ScreenContext) {
         ctx.confirm('免费启用军械建议',recs.map(r=>`${r.slotName}：${r.fromName} → ${r.toName}`).join('；'),()=>ctx.tell(store.applyArmoryRecommendations(recs),`已为全军启用 ${recs.length} 件`));
       });
     }
-    const top=recs.length?156:203,cardH=232,pitch=246;
+    const top=recs.length?120:160,cardH=232,pitch=246;
     const viewTop=top+cardH/2,viewBottom=-499,viewH=viewTop-viewBottom;
     const contentH=Math.max(viewH,3*pitch+190);
     U.scroll('ArmoryOverviewScroll',0,(viewTop+viewBottom)/2,700,viewH,contentH,V=>{

@@ -318,7 +318,7 @@ const ACHV_AXES = {
 const ACHV_REWARDS = [
   { gold: 10000, shard: 5, token: 10 }, { gold: 15000, shard: 8, token: 10 }, { gold: 20000, shard: 10, token: 10 },
   { gold: 30000, shard: 12, token: 10 }, { gold: 40000, shard: 14, token: 10 }, { gold: 50000, shard: 15, token: 10 },
-  { shard: 20, token: 30, title: 'name' }, { shard: 30, token: 30, title: 'name' },
+  { shard: 20, token: 30, title: '名家' }, { shard: 30, token: 30, title: '豪杰' },
   { gem: 2000, title: 'name' }, { gem: 3000, frame: 1 }
 ];
 

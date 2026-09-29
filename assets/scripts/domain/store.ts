@@ -342,7 +342,6 @@ function claimWeekActive(tier) {
     w.activeClaimed.push(tier);
     applyReward(t.reward);
     state.seals = (state.seals || 0) + (t.reward.seals || 0);
-    w.sealsEarned = (w.sealsEarned || 0) + (t.reward.seals || 0);
     return { ok: true, seals: t.reward.seals || 0 };
   });
 }
@@ -372,6 +371,13 @@ function makeExpeditionFloor(floor) {
   for (const ch of String(state.week.weekId)) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); }
   const modId = C.CAMPAIGN_MODS.pool[(h >>> 0) % C.CAMPAIGN_MODS.pool.length];
   base.mods = [modId];
+  if (modId === 'allBack') base.units.forEach(u => { u.row = 1; });
+  if (modId === 'ironWall') base.units.forEach(u => { u.extraPassive = Object.assign({}, u.extraPassive, { armoryStartShield: 0.3 }); });
+  if (modId === 'gale') base.units.forEach(u => { u.extraPassive = Object.assign({}, u.extraPassive, { firstEnergy: 40, spd: 0.10 }); });
+  if (modId === 'reinforce') {
+    const lv = base.units[0].level, star = base.units[0].star, sc = (base.units[0].scale || 1);
+    base.reinforceUnits = __domain_stages.buildReinforceUnits(0, base.units.map(u => u.heroId), lv, star, sc);
+  }
   base.name = '远征 · 第' + floor + '层 · ' + (C.CAMPAIGN_MODS.meta[modId].name);
   base.expedition = { floor };
   return base;
@@ -865,6 +871,7 @@ function forgeReroll(slot, idx) {
     if (idx !== 0 && idx !== 1) return { ok: false, msg: '词条位无效' };
     const fx = (state.armory.affixes || {})[slot];
     if (!fx || !fx.dir) return { ok: false, msg: '请先选择攻/守方向' };
+    if (fx.lock[idx]) return { ok: false, msg: '该词条已锁定，先解锁再洗' };
     const cost = { gold: C.FORGE.reroll.gold, iron: C.FORGE.reroll.iron };
     if (fx.lock[1 - idx]) { cost.gold *= 2; cost.iron *= 2; } // 另一条已锁定：费用 ×2
     const freeLeft = state.armory.freeRerolls == null ? C.FORGE.freeRerolls : state.armory.freeRerolls;
@@ -1462,6 +1469,11 @@ function claimAchv(axis, tier) {
     state.achv.claimed = state.achv.claimed || {};
     state.achv.claimed[axis + '-' + tier] = 1;
     applyReward(t.reward);
+    if (t.reward.title) {
+      const full = ax.name + '·' + t.reward.title;
+      state.titles = state.titles || [];
+      if (state.titles.indexOf(full) < 0) state.titles.push(full);
+    }
     return { ok: true, name: ax.name + ' 第' + (tier + 1) + '档' };
   });
 }
@@ -1534,10 +1546,11 @@ function smeltMelt(itemId) {
     const stock = state.armory.smeltStock || {};
     const cat = IT.CATALOG.find(x => x.id === itemId);
     if (!cat || !stock[itemId]) return { ok: false, msg: '库存中没有该军械' };
-    const iron = Math.floor(IT.GRADES[cat.q].duplicate * C.SMELT.meltRate);
+    const count = stock[itemId];
+    const iron = Math.floor(IT.GRADES[cat.q].duplicate * C.SMELT.meltRate) * count;
     delete stock[itemId];
     state.res.iron += iron;
-    return { ok: true, iron, name: cat.name };
+    return { ok: true, iron, count, name: cat.name };
   });
 }
 function smeltCombine(slot, q) {
@@ -1566,7 +1579,7 @@ function smeltCombine(slot, q) {
       state.armory.unlocked[item.id] = true; state.armory.seen[item.id] = true;
       return { ok: true, itemId: item.id, name: item.name };
     }
-    const iron = IT.GRADES[q + 1].duplicate;
+    const iron = IT.GRADES[q - 1].duplicate;
     state.res.iron += iron;
     return { ok: true, convertedIron: iron };
   });
@@ -1579,7 +1592,14 @@ function grantArmoryItem(itemId) {
     if ((state.campaign.cleared || 0) >= 25) {
       // 25 关后重复件入熔炉库存（可零损耗熔回 70% 或攒合成）
       const stock = state.armory.smeltStock = state.armory.smeltStock || {};
-      stock[itemId] = Math.min(C.SMELT.stockCap, (stock[itemId] || 0) + 1);
+      const cur = stock[itemId] || 0;
+      if (cur >= C.SMELT.stockCap) {
+        // 满仓不再静默蒸发：按熔铁价自动折算
+        const iron = Math.floor(IT.GRADES[item.q].duplicate * C.SMELT.meltRate);
+        state.res.iron += iron;
+        return { ok: true, duplicate: true, iron, overflow: true, itemId };
+      }
+      stock[itemId] = cur + 1;
       return { ok: true, duplicate: true, smelted: true, itemId };
     }
     const iron = IT.GRADES[item.q].duplicate;
@@ -1881,6 +1901,7 @@ function arenaFight(win, diff, reserved) {
 // 每个对局开始时发ID并冻结等级/关卡；同一结算ID幂等，所有变化一次保存。
 function beginBattle(spec) {
   spec = spec || {};
+  checkDailyReset();
   if (state.battle.pending) {
     return { ok: false, msg: '已有未结束战斗，请先结束或中断' };
   }
@@ -1961,11 +1982,12 @@ function settleBattle(battleId, outcome) {
     let reward = null;
     if (pending.mode === 'campaign') {
       if (win) {
+        const relaxed = __domain_stages.isEliteStage(pending.index) || (__domain_stages.resolveMods(pending.index).length > 0);
         const stageStars = __domain_stages.stageStars(win, outcome.duration || 0,
-          Number(outcome.aliveCount) || 0, __domain_stages.isEliteStage(pending.index));
+          Number(outcome.aliveCount) || 0, relaxed);
         state.campaign.stars = state.campaign.stars || {};
         state.campaign.stars[pending.index] = Math.max(state.campaign.stars[pending.index] || 0, stageStars);
-        reward = winCampaign(pending.index, { stars: stageStars, elite: __domain_stages.isEliteStage(pending.index) });
+        reward = winCampaign(pending.index, { stars: stageStars, elite: __domain_stages.isEliteStage(pending.index) || relaxed });
         reward.stars = stageStars;
         if (pending.index === 1 && !state.heroProgress.firstWinChoiceGranted && !state.heroProgress.firstWinChoicePending) state.heroProgress.firstWinChoicePending = true;
         if (pending.index >= 10 && !state.heroProgress.chapterOneVoucherGranted) {
@@ -2038,6 +2060,7 @@ function refreshBounties(today) {
   const now = Date.now();
   const carried = [];
   const settled = [];
+  const prevUnread = (state.bounty && state.bounty.unreadGrants) || null;
   old.forEach(b => {
     if (!b || !b.heroId || b.claimed) return;
     if (now - b.dispatchedAt >= b.hours * 3600000) { applyReward(b.reward); settled.push(b.name); }
@@ -2058,7 +2081,7 @@ function refreshBounties(today) {
     list.push({ hours: t.hours, name: t.name, reward: bountyScaleReward(t.reward),
       heroId: null, dispatchedAt: 0, claimed: false });
   }
-  state.bounty = { day: today, list };
+  state.bounty = { day: today, list, unreadGrants: settled.length ? [today, settled.length] : prevUnread };
 }
 function bountyInfo() {
   checkDailyReset();
@@ -2082,7 +2105,7 @@ function bountyInfo() {
 function takeBountyGrantsNotice() {
   checkDailyReset();
   const g = state.bounty && state.bounty.unreadGrants;
-  if (g && g[0]) { state.bounty.unreadGrants = null; return g[2] || 0; }
+  if (g && g[0]) { state.bounty.unreadGrants = null; return g[1] || 0; }
   return 0;
 }
 function dispatchBounty(idx, heroId) {

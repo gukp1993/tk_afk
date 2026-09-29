@@ -307,7 +307,9 @@ export class CocosBootstrap extends Component implements ScreenContext {
       return this.tell(started,'');
     }
     this.battleId=started.id;this.battleMode=mode;this.battleIndex=index;this.battleDiff=diff;this.battleArenaSeed=mode==='arena'?effectiveArenaSeed:0;
-    const effects=mode==='campaign'?stages.stageBattleEffects(stages.makeStageEnemies(index)):null;
+    let effects=null;
+    if(mode==='campaign') effects=stages.stageBattleEffects(stages.makeStageEnemies(index));
+    else if(mode==='expedition') effects=stages.stageBattleEffects(enemy);
     this.fighting=battleRules.createBattle(Object.assign({team:store.playerUnits(),enemy:store.enemyUnits(enemy.units),seed:Date.now()},effects||{}));
     this.lastBattleSnapshot=[];
     if(fromAuto) this.autoAction(this.autoSession.battleStarted(true,started.id));

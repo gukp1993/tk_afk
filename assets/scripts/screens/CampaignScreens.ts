@@ -174,9 +174,9 @@ export function stagePreview(ctx: ScreenContext) {
   const domFaction=Object.keys(fCount).sort((a:string,b:string)=>fCount[b]-fCount[a])[0];
   if(enemy.mods&&enemy.mods.length){
     const modNames=enemy.mods.map((m:any)=>(config.CAMPAIGN_MODS.meta as any)[m]).filter(Boolean);
-    U.text('StageModsHint',`机制：${modNames.map((m:any)=>m.name+' — '+m.desc).join('；')}`,0,42,620,16,palette.red);
+    U.text('StageModsHint',`机制：${modNames.map((m:any)=>m.name+' — '+m.desc).join('；')}`,0,54,620,16,palette.red);
   } else if(enemy.bossMod){
-    U.text('StageModsHint',`敌方主将机制：${enemy.bossMod.name} — ${enemy.bossMod.desc}`,0,42,620,16,palette.red);
+    U.text('StageModsHint',`敌方主将机制：${enemy.bossMod.name} — ${enemy.bossMod.desc}`,0,54,620,16,palette.red);
   }
   if(fCount[domFaction]>=4){
     const counterKey=Object.keys(config.BEATS).find((k:any)=>(config.BEATS as any)[k]===domFaction);
@@ -198,7 +198,7 @@ export function stagePreview(ctx: ScreenContext) {
     U.text('StageIdle',`挂机铜钱/时：通关后 +${fmt.fmtNum(gain)}`,0,-62,582,17,GOLD);
   }
   const team=store.getState().formation.map((id:string|null)=>id?heroes.getHero(id)?.name:null).filter(Boolean).join(' · ');
-  U.text('StageStarRule','评星：★1 通关 · ★2 限时 ≤60秒 · ★3 存活 ≥4',0,-130,600,15,dim);
+  U.text('StageStarRule','评星：★1 通关 · ★2 限时 ≤60秒（精锐/机制关 70 秒）· ★3 存活 ≥4',0,-130,620,15,dim);
   U.text('StageOurTeam',`出战：${team||'尚未编队'}`,0,-159,610,18,dim);
   U.button('StageAuto','自动出征',0,-307,596,66,()=>ctx.startAuto('campaign'),tone('#3d6653'));
   U.text('StageClose','×',302,345,43,28,GOLD);
@@ -659,11 +659,11 @@ export function expeditionView(ctx: ScreenContext) {
   // 周任务
   U.text('ExpQuestTitle','周任务 · 印信主要来源',0,32,640,18,LIGHT);
   w.quests.forEach((q:any,i:number)=>{
-    const y=-14-i*64;
+    const y=-14-i*56;
     U.panel('ExpQuest'+i,0,y,640,58,tone('#171009'),7,tone('#5a452a'));
     U.text('ExpQuestLabel'+i,q.label,-160,y+10,420,18,LIGHT);
     U.text('ExpQuestProg'+i,`${q.prog}/${q.target}`,150,y-16,150,15,tone('#a6906c'));
-    U.button('ExpQuestGo'+i,q.claimed?'已领':q.claimable?'+${q.reward.seals} 印':'未完成',235,y,150,46,()=>{
+    U.button('ExpQuestGo'+i,q.claimed?'已领':q.claimable?'领印信':'未完成',235,y,150,46,()=>{
       if(!q.claimable)return;
       const r=store.claimWeekQuest(q.idx);
       ctx.tell(r,r.ok?`已领取 ${r.seals} 印信`:'');
@@ -671,12 +671,13 @@ export function expeditionView(ctx: ScreenContext) {
   });
   // 印信兑换
   U.text('ExpShopTitle','印信兑换',0,-412,640,18,LIGHT);
-  config.WEEKLY.shop.slice(0,3).forEach((g:any,i:number)=>{
-    const x=-224+i*224;
-    U.panel('ExpShopCard'+i,x,-458,216,66,g.weekly>0&&(st.week as any).shopBought[g.id]?tone('#171009'):tone('#3a2c17'),7,g.weekly>0&&(st.week as any).shopBought[g.id]?tone('#5a452a'):GOLD);
-    U.text('ExpShopName'+i,g.name,x,-444,206,16,LIGHT);
-    U.text('ExpShopCost'+i,`${g.seals} 印信`+((g.weekly>0&&(st.week as any).shopBought[g.id])?' · 已兑':''),x,-472,206,14,tone('#a6906c'));
-    U.tap('ExpShopTap'+i,x,-458,216,66,()=>{const r=store.buyWeekly(g.id);ctx.tell(r,r.ok?'兑换 '+r.name:'');});
+  config.WEEKLY.shop.forEach((g:any,i:number)=>{
+    const x=i%2===0?-224:14, y=-450-Math.floor(i/2)*62;
+    const bought=g.weekly>0&&(st.week as any).shopBought[g.id];
+    U.panel('ExpShopCard'+i,x,y,210,54,bought?tone('#171009'):tone('#3a2c17'),7,bought?tone('#5a452a'):GOLD);
+    U.text('ExpShopName'+i,g.name,x,y+10,200,15,LIGHT);
+    U.text('ExpShopCost'+i,`${g.seals} 印信`+(bought?' · 已兑':''),x,y-14,200,13,bought?tone('#6f8a5f'):tone('#d9b06a'));
+    U.tap('ExpShopTap'+i,x,y,210,54,()=>{const r=store.buyWeekly(g.id);ctx.tell(r,r.ok?'兑换 '+r.name:'');});
   });
 }
 

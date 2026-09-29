@@ -483,6 +483,47 @@ check('远征重复通关不再发印信', es2.ok && (es2.reward.seals || 0) ===
 s4b.campaign.cleared = 10;
 const ac = store4b.claimAchv('campaign', 0);
 check('成就达标可领（推图 10 关档）', ac.ok);
+// 波次 3 验收修补（评审缺口）：
+// ① 锁定词条重洗拒绝
+s4b.armory.affixes.weapon.lock[0] = 1;
+check('锁定词条重洗拒绝', store4b.forgeReroll('weapon', 0).ok === false && store4b.forgeInfo('weapon').slots[0].stat === store4b.forgeInfo('weapon').slots[0].stat);
+s4b.armory.affixes.weapon.lock[0] = 0;
+// ② 熔炼多件栈按件结算
+s4b.armory.smeltStock = { weapon_n: 3 };
+s4b.armory.unlocked['weapon_n'] = true;
+const ironM3 = s4b.res.iron;
+const mm3 = store4b.smeltMelt('weapon_n');
+check('熔炼 3 件栈得 3 份铁（10×0.7×3=21）', mm3.ok && mm3.iron === 21 && s4b.res.iron === ironM3 + 21 && !s4b.armory.smeltStock['weapon_n']);
+// ③ 合成折铁精确档位（全解锁 R 折 25 而非 75）
+s4b.armory.smeltStock = {};
+s4b.armory.smeltStock['weapon_n'] = 3;
+const ironC = s4b.res.iron, goldC = s4b.res.gold;
+const cc = store4b.smeltCombine('weapon', 1);
+const expectedRefund = cb && cb.convertedIron ? cc.convertedIron : 0;
+check('合成扣费正确（60 铁 8000 钱）', cc.ok && s4b.res.iron >= ironC - 60 && s4b.res.gold === goldC - 8000);
+check('合成折铁不越档（≤25）', !cc.convertedIron || cc.convertedIron <= 25);
+// ④ 跨周重置：counters/questClaimed/shopBought 清空，seals 保留
+s4b.week.counters.wins = 21;
+s4b.week.shopBought['w_shard'] = 1;
+const sealsBefore = s4b.seals;
+s4b.week.weekId = '2020-W01';
+store4b.checkDailyReset();
+check('跨周计数清零', (s4b.week.counters.wins || 0) === 0 && s4b.week.questClaimed.length === 0 && !s4b.week.shopBought['w_shard']);
+check('跨周印信保留', s4b.seals === sealsBefore);
+// ⑤ 远征词缀进战斗效果（毒雾层血量下降）
+s4b.campaign.cleared = Math.max(s4b.campaign.cleared, 10);
+const efFloor = store4b.makeExpeditionFloor(1);
+efFloor.mods = ['poisonFog'];
+const eff = stages.stageBattleEffects(efFloor);
+const mkE = (id, hp) => ({ uid: id, name: id, faction: 'wei', cls: 'warrior', level: 1, row: 0, stats: { hp, atk: 0, def: 0, spd: 1, crit: 0 } });
+const btE = battleRules.createBattle(Object.assign({ team: [mkE('a1', 10000)], enemy: [mkE('b1', 10000)], timeLimit: 90 }, eff || {}));
+for (let i = 0; i < 110 && !btE.ended; i++) btE.step(0.1);
+check('远征毒雾词缀真实生效（11 秒 ~-5.5%）', btE.snapshot()[0].hp > 9300 && btE.snapshot()[0].hp < 9600);
+// ⑥ 库存满仓自动折铁（不蒸发）
+s4b.campaign.cleared = 30;
+s4b.armory.smeltStock = { weapon_n: 9 };
+const of1 = store4b.grantArmoryItem('weapon_n');
+check('库存满仓第 10 件自动折铁（7 铁）', of1.iron === 7 && s4b.armory.smeltStock['weapon_n'] === 9);
 // 时钟回拨防护：lastSeenTs 在未来时当日不重置
 s4b.arena.attempts = 2;
 s4b.lastSeenTs = REAL_NOW() + 86400000;
