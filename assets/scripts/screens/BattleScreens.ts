@@ -24,11 +24,12 @@ function battleTitle(ctx: ScreenContext) {
     const stage=stages.makeStageEnemies(ctx.battleIndex);
     return `第 ${ctx.battleIndex} 关 · ${stage.name}`;
   }
+  if(ctx.battleMode==='expedition')return '远征 · 第 '+ctx.battleIndex+' 层';
   return ({tower:'群英塔',training:'连续练兵',arena:'演武场'} as Record<string,string>)[ctx.battleMode] || '战斗';
 }
 
 function returnPage(ctx: ScreenContext) {
-  return ctx.battleMode==='arena'?'arena':ctx.battleMode==='tower'?'tower':'campaign';
+  return ctx.battleMode==='arena'?'arena':ctx.battleMode==='tower'?'tower':ctx.battleMode==='expedition'?'expedition':'campaign';
 }
 
 function drawFighter(U: CocosUi, unit: any, index: number) {

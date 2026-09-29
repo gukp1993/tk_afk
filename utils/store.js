@@ -49,6 +49,10 @@ function defaultState() {
     buyLog: { day: '', buys: {} },
     settings: { speed: 1 },
     return: { lastGrantTs: Date.now() },
+    codex: { claimed: [] },
+    achv: { claimed: {} },
+    seals: 0,
+    week: null,
     lastSeenTs: Date.now()
   };
 }
@@ -264,6 +268,117 @@ function applyRewardToRaw(raw, r) {
   }
 }
 
+// ---------- 远征周系统 ----------
+// ISO 周重置（寄生在日重置的回拨防护内，零新计时器）；周任务=现有行为聚合计数，印信兑换禁精铁/招募令直发
+function checkWeeklyReset(today) {
+  const weekKey = F.isoWeekKey();
+  if (state.week && state.week.weekId === weekKey) return;
+  state.week = {
+    weekId: weekKey,
+    counters: {},
+    questClaimed: [],
+    activeClaimed: [],
+    sealsEarned: 0,
+    shopBought: {},
+    trial: { best: 0, chestClaimed: false }
+  };
+}
+function bumpWeek(key, n) {
+  if (!state.week || !state.week.counters) return;
+  state.week.counters[key] = (state.week.counters[key] || 0) + (n || 1);
+}
+function weekInfo() {
+  checkDailyReset();
+  const w = state.week;
+  const quests = C.WEEKLY.quests.map(q => {
+    const prog = w.counters[q.key] || 0;
+    const idx = C.WEEKLY.quests.indexOf(q);
+    return { key: q.key, label: q.label, prog: Math.min(prog, q.target), target: q.target,
+      reward: q.reward, claimed: w.questClaimed.indexOf(idx) >= 0,
+      claimable: prog >= q.target && w.questClaimed.indexOf(idx) < 0, idx };
+  });
+  const sealsEarned = w.sealsEarned || 0;
+  const active = C.WEEKLY.activeTiers.map((t, i) => ({
+    need: t.need, reward: t.reward, claimed: w.activeClaimed.indexOf(i) >= 0,
+    claimable: sealsEarned >= t.need && w.activeClaimed.indexOf(i) < 0
+  }));
+  const trial = w.trial || { best: 0, chestClaimed: false };
+  return { weekId: w.weekId, quests, active, sealsEarned, seals: state.seals || 0, trial,
+    canClaim: quests.some(q => q.claimable) || active.some(a => a.claimable) };
+}
+function claimWeekQuest(idx) {
+  return withSavedMutation(() => {
+    weekInfo();
+    const q = C.WEEKLY.quests[idx];
+    if (!q) return { ok: false, msg: '周任务不存在' };
+    const w = state.week;
+    if (w.questClaimed.indexOf(idx) >= 0) return { ok: false, msg: '已领取' };
+    if ((w.counters[q.key] || 0) < q.target) return { ok: false, msg: '周任务未完成' };
+    w.questClaimed.push(idx);
+    applyReward(q.reward);
+    state.seals = (state.seals || 0) + (q.reward.seals || 0);
+    w.sealsEarned = (w.sealsEarned || 0) + (q.reward.seals || 0);
+    return { ok: true, label: q.label, seals: q.reward.seals || 0 };
+  });
+}
+function claimWeekActive(tier) {
+  return withSavedMutation(() => {
+    weekInfo();
+    const t = C.WEEKLY.activeTiers[tier];
+    if (!t) return { ok: false, msg: '档位不存在' };
+    const w = state.week;
+    if (w.activeClaimed.indexOf(tier) >= 0) return { ok: false, msg: '已领取' };
+    if ((w.sealsEarned || 0) < t.need) return { ok: false, msg: '周活跃不足' };
+    w.activeClaimed.push(tier);
+    applyReward(t.reward);
+    state.seals = (state.seals || 0) + (t.reward.seals || 0);
+    w.sealsEarned = (w.sealsEarned || 0) + (t.reward.seals || 0);
+    return { ok: true, seals: t.reward.seals || 0 };
+  });
+}
+function buyWeekly(id) {
+  return withSavedMutation(() => {
+    weekInfo();
+    const good = C.WEEKLY.shop.find(g => g.id === id);
+    if (!good) return { ok: false, msg: '兑换项不存在' };
+    const w = state.week;
+    if (good.weekly > 0 && (w.shopBought[id] || 0) >= good.weekly) return { ok: false, msg: '本周已兑换' };
+    if ((state.seals || 0) < good.seals) return { ok: false, msg: '远征印信不足' };
+    state.seals -= good.seals;
+    w.shopBought[id] = (w.shopBought[id] || 0) + 1;
+    applyReward(good.give);
+    return { ok: true, name: good.name };
+  });
+}
+// 远征三层挑战：敌人=塔生成器锚定主线进度 + 当周词缀 + 层数倍率
+function makeExpeditionFloor(floor) {
+  weekInfo();
+  const best = state.week.trial.best || 0;
+  const anchor = Math.max(10, Math.min(C.FIRST_STAGE_END, state.campaign.cleared || 0));
+  const base = require('./stages').makeTowerEnemies(anchor + floor);
+  const scaleMul = C.WEEKLY.trialFloors[floor - 1] || 1;
+  base.units.forEach(u => { u.scale = (u.scale || 1) * scaleMul; });
+  let h = 2166136261;
+  for (const ch of String(state.week.weekId)) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); }
+  const modId = C.CAMPAIGN_MODS.pool[(h >>> 0) % C.CAMPAIGN_MODS.pool.length];
+  base.mods = [modId];
+  base.name = '远征 · 第' + floor + '层 · ' + (C.CAMPAIGN_MODS.meta[modId].name);
+  base.expedition = { floor };
+  return base;
+}
+function winExpedition(floor) {
+  const w = state.week;
+  const reward = { floor, seals: 0, first: false };
+  if (floor === (w.trial.best || 0) + 1) {
+    reward.first = true;
+    w.trial.best = floor;
+    reward.seals = C.WEEKLY.trialSeals[floor - 1] || 0;
+    state.seals = (state.seals || 0) + reward.seals;
+    w.sealsEarned = (w.sealsEarned || 0) + reward.seals;
+  }
+  return reward;
+}
+
 // 回归补给：断签 ≥2 天且距上次 ≥7 天；每日上线玩家结构性拿不到
 function checkReturnGrant() {
   const now = Date.now();
@@ -337,7 +452,7 @@ function normalizeState(s) {
   s.player = s.player || { level: 1, exp: 0 };
   s.player.level = Math.max(1, Math.min(C.MAX_LEVEL, Math.floor(s.player.level || 1)));
   s.player.exp = s.player.level >= C.MAX_LEVEL ? 0 : Math.max(0, Math.floor(s.player.exp || 0));
-  s.res = s.res || {}; ['gold', 'gem', 'scroll', 'token', 'shard', 'iron', 'univSsr'].forEach(k => { if (!Number.isFinite(s.res[k])) s.res[k] = 0; s.res[k] = Math.max(0, Math.floor(s.res[k])); });
+  s.res = s.res || {}; ['gold', 'gem', 'scroll', 'token', 'shard', 'iron', 'univSsr', 'univSr'].forEach(k => { if (!Number.isFinite(s.res[k])) s.res[k] = 0; s.res[k] = Math.max(0, Math.floor(s.res[k])); });
   if (!s.armory) s.armory = createArmory();
   const defaults = createArmory();
   s.armory.unlocked = s.armory.unlocked || defaults.unlocked;
@@ -381,6 +496,13 @@ function normalizeState(s) {
   if (!Array.isArray(s.roamer.ids)) s.roamer.ids = [];
   s.roamer.bought = s.roamer.bought || {};
   s.return = s.return || { lastGrantTs: 0 };
+  s.codex = s.codex || { claimed: [] };
+  if (!Array.isArray(s.codex.claimed)) s.codex.claimed = [];
+  s.achv = s.achv || { claimed: {} };
+  s.achv.claimed = s.achv.claimed || {};
+  if (typeof s.seals !== 'number') s.seals = 0;
+  s.res.univSr = Math.max(0, Math.floor(Number(s.res.univSr) || 0));
+  if (!Number.isFinite(s.res.univSr)) s.res.univSr = 0;
   s.return.lastGrantTs = Math.max(0, Math.floor(Number(s.return.lastGrantTs) || 0));
   s.returnPending = s.returnPending || null;
   s.lastSeenTs = Math.max(0, Math.floor(Number(s.lastSeenTs) || 0));
@@ -455,6 +577,7 @@ function checkDailyReset() {
     state.arena.attempts = C.ARENA.DAILY;
   }
   if (!state.bounty || state.bounty.day !== today) refreshBounties(today);
+  checkWeeklyReset(today);
   if (!state.roamer || state.roamer.day !== today) refreshRoamer(today);
   if (state.fast.day !== today) state.fast = { day: today, count: 0 };
   if (state.buyLog.day !== today) state.buyLog = { day: today, buys: {} };
@@ -1128,7 +1251,10 @@ function claimIdleInternal(double) {
   state.idle.gem = Math.max(0, (state.idle.gem || 0) - gem);
   state.gemDay.claimedGem = Math.min(C.GEM_IDLE.dailyCap, (state.gemDay.claimedGem || 0) + gem);
   const changed = !!(g || s || iron || gem);
-  if (changed) bumpQuest('q_idle1', 1);
+  if (changed) {
+    bumpQuest('q_idle1', 1);
+    if (state.week && state.week.idleDay !== F.todayStr()) { state.week.idleDay = F.todayStr(); bumpWeek('idle', 1); }
+  }
   return { ok: true, gold: g, exp: 0, scroll: s, iron, gem, gemClaimed: gem, double: !!double, changed, gemDay: gemQuotaInfo() };
 }
 function claimIdle(double) {
@@ -1267,7 +1393,67 @@ function doSummonMutation(type) {
   // 每 10 抽赠 1 张定向券
   if (state.summon.total % C.SUMMON_TICKET.perPulls === 0) state.summon.ticketStock = (state.summon.ticketStock || 0) + 1;
   bumpQuest('q_summon1', 1);
+  bumpWeek('summons', count);
   return { ok: true, results, pitySinceSsr: pity.sinceSsr, focusUsed, focusHit };
+}
+// ---------- 图鉴章节收集奖励 ----------
+function codexInfo() {
+  const A = require('./achievements');
+  const claimed = state.codex.claimed || [];
+  const prog = A.codexProgress(state);
+  const list = C.CODEX_REWARDS.map(r => {
+    const p = prog.find(x => x.key === r.key);
+    return { key: r.key, name: r.name, have: p ? p.have : 0, need: p ? p.need : 0,
+      done: !!(p && p.done), claimed: claimed.indexOf(r.key) >= 0,
+      claimable: !!(p && p.done && claimed.indexOf(r.key) < 0) };
+  });
+  return { list, claimable: list.some(x => x.claimable) };
+}
+function claimCodex(key) {
+  return withSavedMutation(() => {
+    const r = C.CODEX_REWARDS.find(x => x.key === key);
+    if (!r) return { ok: false, msg: '收集奖励不存在' };
+    if ((state.codex.claimed || []).indexOf(key) >= 0) return { ok: false, msg: '已领取' };
+    const p = require('./achievements').codexProgress(state).find(x => x.key === key);
+    if (!p || !p.done) return { ok: false, msg: '尚未集齐' };
+    state.codex.claimed = state.codex.claimed || [];
+    state.codex.claimed.push(key);
+    applyReward(r.reward);
+    if (r.srShards) state.qualityShards[3] = (state.qualityShards[3] || 0) + r.srShards;
+    if (r.univSr) state.res.univSr = (state.res.univSr || 0) + r.univSr;
+    return { ok: true, name: r.name };
+  });
+}
+function useUniversalSr(heroId) {
+  return withSavedMutation(() => {
+    if ((state.res.univSr || 0) <= 0) return { ok: false, msg: '没有万能 SR 卡' };
+    const def = H.getHero(heroId);
+    if (!def || def.rarity !== 3) return { ok: false, msg: '请选择 SR 武将' };
+    const own = state.roster[heroId];
+    if (own && own.star >= C.RARITIES[3].maxStar) return { ok: false, msg: '该武将已满星' };
+    state.res.univSr -= 1;
+    const received = addHeroCard(heroId);
+    return { ok: true, heroId, ...received };
+  });
+}
+// ---------- 主公成就 ----------
+function achvInfo() {
+  return require('./achievements').achvInfo(state);
+}
+function claimAchv(axis, tier) {
+  return withSavedMutation(() => {
+    const info = achvInfo();
+    const ax = info.axes.find(a => a.key === axis);
+    if (!ax) return { ok: false, msg: '成就轴不存在' };
+    const t = ax.tiers.find(x => x.tier === tier);
+    if (!t) return { ok: false, msg: '档位不存在' };
+    if (t.claimed) return { ok: false, msg: '已领取' };
+    if (!t.claimable) return { ok: false, msg: '进度未达标' };
+    state.achv.claimed = state.achv.claimed || {};
+    state.achv.claimed[axis + '-' + tier] = 1;
+    applyReward(t.reward);
+    return { ok: true, name: ax.name + ' 第' + (tier + 1) + '档' };
+  });
 }
 // ---------- 阵图（账号级三选一）----------
 function motifPieces(m) {
@@ -1550,6 +1736,7 @@ function winCampaign(stageIdx, result) {
     reward.dailyChest = { gold: C.DAILY_ELITE_CHEST.gold, pick };
   }
   state.campaign.cleared = stageIdx;
+  bumpWeek('stages', 1);
   const calc = campaignFirstReward(stageIdx);
   reward.base = calc.base; reward.chapter = calc.chapter; reward.milestones = calc.milestones;
   reward.randomDrop = calc.randomDrop;
@@ -1644,6 +1831,7 @@ function winTower(floor) {
   const reward = { gem: 0, scroll: 0, shard: 0, iron: 0 };
   if (first) {
     state.tower.best = floor;
+    bumpWeek('tower', 1);
     reward.gem = 30 + floor * 2;
     reward.iron = Math.floor(2 + floor / 3); // 塔是精铁副产线（60 层约 780，不动 30 天主口径）
     if (floor % 5 === 0) reward.scroll = 1;
@@ -1659,6 +1847,7 @@ function arenaFight(win, diff, reserved) {
     delta = Math.round(14 + 8 * diff);
     tokens = C.ARENA.winTokens ? C.ARENA.winTokens(diff) : C.ARENA.WIN_TOKENS;
     state.arena.wins += 1;
+    bumpWeek('arenaWins', 1);
   } else {
     delta = -8;
     tokens = C.ARENA.LOSE_TOKENS;
@@ -1694,7 +1883,8 @@ function beginBattle(spec) {
   const id = 'b' + seq;
   const mode = spec.mode || 'campaign', index = spec.index || 0;
   const first = mode === 'campaign' ? index === state.campaign.cleared + 1
-    : mode === 'tower' ? index === state.tower.best + 1 : false;
+    : mode === 'tower' ? index === state.tower.best + 1
+    : mode === 'expedition' ? index === ((state.week && state.week.trial.best) || 0) + 1 : false;
   state.battle.pending = {
     id, mode, index,
     referenceLevel: Math.max(1, Math.floor(spec.referenceLevel || state.player.level)),
@@ -1774,10 +1964,12 @@ function settleBattle(battleId, outcome) {
       }
     } else if (pending.mode === 'tower') {
       if (win) reward = winTower(pending.index);
+    } else if (pending.mode === 'expedition') {
+      if (win) reward = winExpedition(pending.index);
     } else if (pending.mode === 'arena') {
       reward = arenaFight(win, pending.diff, true);
     }
-    if (win) { bumpQuest('q_battle1', 1); bumpQuest('q_win3', 1); }
+    if (win) { bumpQuest('q_battle1', 1); bumpQuest('q_win3', 1); bumpWeek('wins', 1); }
     if (pending.mode === 'tower') bumpQuest('q_tower1', 1);
     if (pending.mode === 'training' && win) state.daily.trainingWins = (state.daily.trainingWins || 0) + 1;
     const xp = battleXP(pending, win);
@@ -1894,6 +2086,7 @@ function dispatchBounty(idx, heroId) {
     const busy = state.bounty.list.some(x => x && x.heroId === heroId && !x.claimed);
     if (busy) return { ok: false, msg: '该武将已在悬赏途中' };
     b.heroId = heroId; b.dispatchedAt = Date.now();
+    bumpWeek('bounty', 1);
     return { ok: true, idx, heroId, name: b.name };
   });
 }
@@ -2068,6 +2261,9 @@ function applyReward(r) {
   if (r.shard) state.res.shard += r.shard;
   if (r.iron) state.res.iron += Math.floor(r.iron);
   if (r.univSsr) state.res.univSsr = (state.res.univSsr || 0) + Math.floor(r.univSsr);
+  if (r.univSr) state.res.univSr = (state.res.univSr || 0) + Math.floor(r.univSr);
+  if (r.seals) state.seals = (state.seals || 0) + Math.floor(r.seals);
+  if (r.title) state.titles = state.titles || []; if (r.title && state.titles.indexOf(r.title) < 0) state.titles.push(r.title);
   if (r.srPick) addChoiceVoucher('sr', r.srPick);
   if (r.ssrPick) addChoiceVoucher('ssr', r.ssrPick);
 }
@@ -2096,6 +2292,7 @@ module.exports = {
   exchangeQualityShard, qualityShardInfo,
   getFormationCalc, setFormationSlot, applyFormation, formationFactionBonus, teamPower, playerUnits, enemyUnits, activeBonds, bondMods,
   getArmoryBonuses, getArmoryState, armoryUnlock, armorySelect, armoryUpgrade, armoryUpgradeToNode, armoryClaimBox, grantArmoryItem, applyArmoryRecommendations, forgeInfo, forgeReroll, forgeSetDir, forgeToggleLock, forgeGateOpen, motifInfo, motifActivate, smeltInfo, smeltMelt, smeltCombine,
+  codexInfo, claimCodex, useUniversalSr, achvInfo, claimAchv, weekInfo, claimWeekQuest, claimWeekActive, buyWeekly, makeExpeditionFloor, bumpWeek,
   addEquip, equipInventory, equipTo, unequip, enhanceEquip, fodderPickIds, salvageEquip, salvageBatch, isEquipped,
   migrateSaveV1, migrateSaveV2, migrateSaveV3, migrateSaveV4, migrateSaveV5, migrateSaveV6, normalizeState,
   idlePending, idleTick, gemQuotaInfo, claimIdle, claimIdleInternal, fastReward, fastRewardMutation, fastRewardAdMutation, adReward,

@@ -499,6 +499,43 @@ export function forgeView(ctx: ScreenContext) {
   }
 }
 
+export function codexView(ctx: ScreenContext) {
+  const U=ctx.ui,info=store.codexInfo();
+  ctx.title('图 鉴 收 集');
+  U.text('CodexBack','‹ 返回',-291,484,130,22,gold);
+  U.tap('CodexBackTap',-291,484,136,52,()=>ctx.go('bag'));
+  U.text('CodexGuide','集齐各阵营图鉴领取厚礼；全 SR 送万能 SR 卡',0,443,640,18,dim);
+  info.list.forEach((r:any,i:number)=>{
+    const y=375-i*88;
+    U.panel('CodexRow'+i,0,y,640,78,r.claimed?tone('#26301f'):r.claimable?tone('#3a2c17'):ink,8,r.claimable?gold:border);
+    U.text('CodexName'+i,r.name,-180,y+16,340,21,r.claimable?gold:LIGHT);
+    U.text('CodexProg'+i,`${r.have}/${r.need}`,-180,y-16,340,17,dim);
+    U.button('CodexClaim'+i,r.claimed?'已领取':r.claimable?'领 取':`${r.have}/${r.need}`,230,y,150,50,()=>{
+      const res=store.claimCodex(r.key);
+      ctx.tell(res,res.ok?'已领取 '+r.name:'');
+    },r.claimable?gold:tone('#423022'));
+  });
+}
+
+export function achvView(ctx: ScreenContext) {
+  const U=ctx.ui,info=store.achvInfo();
+  ctx.title('主 公 成 就');
+  U.text('AchvBack','‹ 返回',-291,484,130,22,gold);
+  // 完整档位列表（滚动）
+  let flat:any[]=[];
+  info.axes.forEach(ax=>ax.tiers.forEach(t=>flat.push({axis:ax,name:ax.name,tier:t.tier,need:t.need,reward:t.reward,claimed:t.claimed,claimable:t.claimable,value:ax.value})));
+  flat=flat.filter(t=>t.claimable||!t.claimed);
+  U.scroll('AchvList',0,-60,680,830,Math.max(830,flat.length*72+20),V=>{
+    flat.slice(0,40).forEach((t,i)=>{
+      const y=Math.max(830,flat.length*72+20)/2-36-i*72;
+      V.panel('AchvRow'+i,0,y,656,64,t.claimable?tone('#3a2c17'):ink,7,t.claimable?gold:border);
+      V.text('AchvRowName'+i,`${t.name} · 第${t.tier+1}档（需 ${t.need}）`,-170,y,400,19,t.claimable?gold:LIGHT);
+      V.text('AchvRowReward'+i,Object.entries(t.reward).map(([k,n]:any)=>`${k==='title'?'称号':k==='frame'?'头像框':k==='gem'?'元宝':k==='shard'?'碎片':k==='token'?'演武令':k}`+'×'+n).join(' · '),-170,y-26,420,15,dim);
+      if(t.claimable)V.button('AchvGo'+i,'领 取',235,y,140,48,()=>{const r=store.claimAchv(t.axis,t.tier);ctx.tell(r,r.ok?'已领取 '+r.name:'');},gold);
+    });
+  });
+}
+
 export function armory(ctx: ScreenContext) {
     const s=store.getState(),U=ctx.ui;
     const recs:any[]=progression.getArmoryRecommendations(s,items);

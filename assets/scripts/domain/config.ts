@@ -296,6 +296,58 @@ const SMELT = {
   recipes: { 1: { need: 3, iron: 60, gold: 8000 }, 2: { need: 3, iron: 150, gold: 20000 } }
 };
 
+// 图鉴章节收集奖励（裁决版：全 SSR 不发卡改荣耀；全 SR 送 SR 万能卡仅喂未满星 SR）
+const CODEX_REWARDS = [
+  { key: 'shu-nr', name: '蜀·N+R 集齐', reward: { gem: 500, scroll: 10 } },
+  { key: 'wei-nr', name: '魏·N+R 集齐', reward: { gem: 500, scroll: 10 } },
+  { key: 'wu-nr', name: '吴·N+R 集齐', reward: { gem: 500, scroll: 10 } },
+  { key: 'qun-nr', name: '群·N+R 集齐', reward: { gem: 500, scroll: 10 } },
+  { key: 'shu-sr', name: '蜀·SR 集齐', reward: { scroll: 10 }, srShards: 5 },
+  { key: 'wei-sr', name: '魏·SR 集齐', reward: { scroll: 10 }, srShards: 5 },
+  { key: 'wu-sr', name: '吴·SR 集齐', reward: { scroll: 10 }, srShards: 5 },
+  { key: 'qun-sr', name: '群·SR 集齐', reward: { scroll: 10 }, srShards: 5 },
+  { key: 'all-sr', name: '全 SR 集齐', reward: {}, univSr: 1 },
+  { key: 'all-ssr', name: '全 SSR 集齐 · 收集天下', reward: { gem: 3000 }, title: '收集天下' }
+];
+
+// 主公成就（去元宝版）：五轴各 10 档，1~6 档铜钱/碎片/演武令，7~8 档加称号，9~10 档（60~90 天）才发元宝
+const ACHV_AXES = {
+  codex: { name: '图鉴', tiers: [10, 20, 30, 50, 70, 90, 105, 115, 119, 120] },
+  bonds: { name: '羁绊', tiers: [1, 2, 3, 4, 5, 6, 7, 8, 8, 8] },
+  campaign: { name: '推图', tiers: [10, 20, 40, 60, 80, 100, 110, 115, 118, 120] },
+  tower: { name: '登塔', tiers: [5, 10, 20, 30, 45, 60, 80, 100, 130, 160] },
+  arena: { name: '演武', tiers: [3, 8, 15, 25, 40, 60, 90, 130, 200, 300] }
+};
+const ACHV_REWARDS = [
+  { gold: 10000, shard: 5, token: 10 }, { gold: 15000, shard: 8, token: 10 }, { gold: 20000, shard: 10, token: 10 },
+  { gold: 30000, shard: 12, token: 10 }, { gold: 40000, shard: 14, token: 10 }, { gold: 50000, shard: 15, token: 10 },
+  { shard: 20, token: 30, title: 'name' }, { shard: 30, token: 30, title: 'name' },
+  { gem: 2000, title: 'name' }, { gem: 3000, frame: 1 }
+];
+
+// 远征周系统（合并 C-P5+D-P1）：ISO 周重置；周任务零新行为聚合；印信兑换禁精铁/招募令直发
+const WEEKLY = {
+  quests: [
+    { key: 'wins', target: 21, reward: { seals: 15 }, label: '本周任意战斗胜利 21 场' },
+    { key: 'stages', target: 30, reward: { seals: 15 }, label: '本周推图推进 30 关' },
+    { key: 'tower', target: 15, reward: { seals: 10 }, label: '本周群英塔登 15 层' },
+    { key: 'arenaWins', target: 5, reward: { seals: 10 }, label: '本周演武获胜 5 场' },
+    { key: 'bounty', target: 12, reward: { seals: 10 }, label: '本周派遣悬赏 12 单' },
+    { key: 'summons', target: 30, reward: { seals: 10 }, label: '本周召唤 30 次' },
+    { key: 'idle', target: 5, reward: { seals: 10 }, label: '本周领取挂机 5 天' }
+  ],
+  activeTiers: [{ need: 40, reward: { seals: 10 } }, { need: 70, reward: { seals: 15 } }, { need: 100, reward: { seals: 20 } }],
+  trialFloors: [1.0, 1.15, 1.3],
+  trialSeals: [15, 20, 35],
+  shop: [
+    { id: 'w_shard', name: '通用碎片 ×30', seals: 20, give: { shard: 30 }, weekly: 0 },
+    { id: 'w_token', name: '演武令 ×10', seals: 15, give: { token: 10 }, weekly: 0 },
+    { id: 'w_gem', name: '元宝 ×800', seals: 40, give: { gem: 800 }, weekly: 1 },
+    { id: 'w_ssr', name: 'SSR 自选券', seals: 90, give: { ssrPick: 1 }, weekly: 0 },
+    { id: 'w_title', name: '称号 · 远征名将', seals: 120, give: { title: '远征名将' }, weekly: 0 }
+  ]
+};
+
 // 回归补给（断签梯度）：lastSeenTs 间隔 ≥48h 触发，7 天窗口至多一次；每日上线玩家结构性拿不到
 const RETURN_GRANTS = [
   { minDays: 2, reward: { scroll: 3, gem: 300 }, label: '招募令 ×3 · 元宝 ×300' },
@@ -313,5 +365,6 @@ export {
   FAST_AD, FAST_PAID,
   GACHA, factionBonus, FORMATION_ROWS, BATTLE, ARENA, SEVEN_DAY, TRAINING_DAILY_CAP, BOUNTY, ROAMER_POOL, AD,
   FIRST_STAGE_END, CAMPAIGN_DIFFICULTY, CAMPAIGN_MILESTONES, ELITE_STAGE, STAR_RULES, CHAPTER_STAR_CHESTS, DAILY_ELITE_CHEST,
-  CAMPAIGN_MODS, BOSS_MODS, RETURN_GRANTS, SUMMON_TICKET, SUMMON_POINTS, FORGE, MOTIFS, MOTIF_COST, SMELT
+  CAMPAIGN_MODS, BOSS_MODS, RETURN_GRANTS, SUMMON_TICKET, SUMMON_POINTS, FORGE, MOTIFS, MOTIF_COST, SMELT,
+  CODEX_REWARDS, ACHV_AXES, ACHV_REWARDS, WEEKLY
 };

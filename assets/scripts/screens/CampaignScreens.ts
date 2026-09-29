@@ -306,7 +306,7 @@ export function bag(ctx: ScreenContext) {
     U.panel('BagArmoryTab',169,385,308,63,tone('#342518'),9,GOLD);
     U.text('BagArmoryText','军械图鉴',169,385,280,23,GOLD);
     U.tap('BagArmoryTap',169,385,308,63,()=>ctx.go('armory'));
-    const resources:[string,string,number,string,string,Page][]=[
+    const resources:any[]=[
       ['钱','铜钱',s.res.gold,'英雄升星与军械部位升星','去培养英雄','heroes'],
       ['铁','精铁',s.res.iron,'解锁军械图鉴、培养部位','去军械图鉴','armory'],
       ['宝','元宝',s.res.gem,'召唤英雄、购买集市物资','前往集市','shop'],
@@ -326,6 +326,18 @@ export function bag(ctx: ScreenContext) {
       U.tap('BagCardTap'+i,x,y,310,193,()=>ctx.go(page));
     });
     U.text('BagGuide','点击物资卡片，前往对应功能使用',0,-458,620,18,tone('#ad9977'));
+    [['典','图鉴收集 · 集齐阵营领厚礼','codex'],['勋','主公成就 · 五轴长线目标','achv'],['远','远征周 · 周任务与词缀挑战','expedition']].forEach(([glyph,label,page]:any,i:number)=>{
+      const y=-510+i*0-0+0;
+      const yy=-492-i*0;
+      const py=-492;
+      const rowY=py-i*0-i*0-0;
+      const yyFinal=-492;
+      U.panel('BagEntry'+i,0,-492,682,0+56,tone('#312218'),8,tone('#795b34'));
+      U.text('BagEntryGlyph'+i,String(glyph),-290,-492,44,30,GOLD);
+      U.text('BagEntryLabel'+i,String(label),-190,-492,420,19,LIGHT);
+      U.text('BagEntryGo'+i,'›',290,-492,40,19,GOLD);
+      U.tap('BagEntryTap'+i,0,-492,682,56,()=>ctx.go(page as Page));
+    });
   }
 
 function questCard(ctx: ScreenContext, V: ScreenContext['ui'], q: any, y: number, optional: boolean) {
@@ -631,6 +643,46 @@ export function storyView(ctx: ScreenContext) {
   }
 
 const SEVEN_DAY_CN = ['一', '二', '三', '四', '五', '六', '七'];
+
+export function expeditionView(ctx: ScreenContext) {
+  const U=ctx.ui,w=store.weekInfo(),st=store.getState();
+  ctx.title('远 征');
+  U.text('ExpBack','‹ 返回',-291,484,130,22,GOLD);
+  U.tap('ExpBackTap',-291,484,136,52,()=>ctx.go('journey'));
+  U.text('ExpWeek',`本周（${w.weekId}）· 印信 ${w.seals}`,0,443,640,20,GOLD);
+  // 三层词缀挑战
+  U.text('ExpTrialTitle','词缀挑战 · 每周一刷新，越层越险',0,404,640,18,LIGHT);
+  [1,2,3].forEach((f,i)=>{
+    const y=352-i*92;
+    const done=w.trial.best>=f,open=f===w.trial.best+1;
+    U.panel('ExpTrial'+i,0,y,640,80,done?tone('#26301f'):open?tone('#3a2c17'):tone('#171009'),8,open?GOLD:tone('#5a452a'));
+    U.text('ExpTrialName'+i,`第 ${f} 层（奖励 ${config.WEEKLY.trialSeals[i]} 印信）`,-170,y+14,360,21,open?GOLD:LIGHT);
+    U.text('ExpTrialState'+i,done?'已通关':open?'可挑战 ›':`先通第 ${f-1} 层`,210,y+14,180,18,open?GOLD:tone('#a6906c'));
+    if(open)U.tap('ExpTrialTap'+i,0,y,640,80,()=>ctx.startBattle('expedition',f));
+  });
+  // 周任务
+  U.text('ExpQuestTitle','周任务 · 印信主要来源',0,32,640,18,LIGHT);
+  w.quests.forEach((q:any,i:number)=>{
+    const y=-14-i*64;
+    U.panel('ExpQuest'+i,0,y,640,58,tone('#171009'),7,tone('#5a452a'));
+    U.text('ExpQuestLabel'+i,q.label,-160,y+10,420,18,LIGHT);
+    U.text('ExpQuestProg'+i,`${q.prog}/${q.target}`,150,y-16,150,15,tone('#a6906c'));
+    U.button('ExpQuestGo'+i,q.claimed?'已领':q.claimable?'+${q.reward.seals} 印':'未完成',235,y,150,46,()=>{
+      if(!q.claimable)return;
+      const r=store.claimWeekQuest(q.idx);
+      ctx.tell(r,r.ok?`已领取 ${r.seals} 印信`:'');
+    },q.claimable?GOLD:tone('#423022'));
+  });
+  // 印信兑换
+  U.text('ExpShopTitle','印信兑换',0,-412,640,18,LIGHT);
+  config.WEEKLY.shop.slice(0,3).forEach((g:any,i:number)=>{
+    const x=-224+i*224;
+    U.panel('ExpShopCard'+i,x,-458,216,66,g.weekly>0&&(st.week as any).shopBought[g.id]?tone('#171009'):tone('#3a2c17'),7,g.weekly>0&&(st.week as any).shopBought[g.id]?tone('#5a452a'):GOLD);
+    U.text('ExpShopName'+i,g.name,x,-444,206,16,LIGHT);
+    U.text('ExpShopCost'+i,`${g.seals} 印信`+((g.weekly>0&&(st.week as any).shopBought[g.id])?' · 已兑':''),x,-472,206,14,tone('#a6906c'));
+    U.tap('ExpShopTap'+i,x,-458,216,66,()=>{const r=store.buyWeekly(g.id);ctx.tell(r,r.ok?'兑换 '+r.name:'');});
+  });
+}
 
 let bountyPickIdx = -1;
 

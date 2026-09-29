@@ -443,6 +443,46 @@ const cb = store4b.smeltCombine('weapon', 1);
 check('三合一合成 R（扣 60 铁 8000 钱，折铁加回）', cb.ok && s4b.res.iron === ironBeforeCombine - 60 + (cb.convertedIron || 0) && s4b.res.gold === goldBeforeCombine - 8000);
 check('合成产物图鉴解锁或折铁', !!cb.itemId || !!cb.convertedIron);
 check('SR 不可合成', store4b.smeltCombine('weapon', 3).ok === false);
+// 波次 3d：图鉴奖励 / 主公成就 / 远征周
+const cx = store4b.codexInfo();
+check('图鉴进度 10 项', cx.list.length === 10 && cx.claimable === false);
+store4b.grantCard('liaohua'); // 已拥有
+check('图鉴claim未集齐拒绝', store4b.claimCodex('shu-nr').ok === false);
+// 成就：推图轴 cleared=0 → 第 1 档需 10 关不可领；塔轴首胜后可领
+const av = store4b.achvInfo();
+check('成就五轴', av.axes.length === 5 && av.axes.every(a => a.tiers.length === 10));
+check('成就未达标拒绝', store4b.claimAchv('campaign', 2).ok === false); // cleared=30 < 40
+// 远征周：周重置生成、任务进度、领取、印信、兑换
+const wk = store4b.weekInfo();
+check('周任务 7 条', wk.quests.length === 7);
+const wq = store4b.claimWeekQuest(0);
+check('周任务未完成拒绝', wq.ok === false);
+store4b.grantCard('guanyu'); // 干扰项：不影响计数
+s4b.week.counters.wins = 21;
+s4b.week.counters.stages = 30;
+const wq2 = store4b.claimWeekQuest(0);
+check('周任务领取得印信', wq2.ok && s4b.seals >= 15);
+const wq3 = store4b.claimWeekQuest(0);
+check('周任务重复领取拒绝', wq3.ok === false);
+s4b.seals += 100; // 充足印信用于兑换测试
+const ba = store4b.buyWeekly('w_shard');
+check('印信兑换碎片', ba.ok && s4b.res.shard >= 30);
+const bg = store4b.buyWeekly('w_gem');
+check('印信兑换元宝（周限 1 内）', bg.ok);
+// 远征挑战：首层首通得印信
+s4b.campaign.cleared = 30;
+const ef = store4b.makeExpeditionFloor(1);
+check('远征层带当周词缀', ef.mods.length === 1);
+const eb = store4b.beginBattle({ mode: 'expedition', index: 1, referenceLevel: 30 });
+const es = store4b.settleBattle(eb.id, { win: true, duration: 30, aliveCount: 5 });
+check('远征首通得印信 15', es.ok && es.reward.seals === 15 && s4b.week.trial.best === 1);
+const eb2 = store4b.beginBattle({ mode: 'expedition', index: 1, referenceLevel: 30 });
+const es2 = store4b.settleBattle(eb2.id, { win: true, duration: 30, aliveCount: 5 });
+check('远征重复通关不再发印信', es2.ok && (es2.reward.seals || 0) === 0);
+// 图鉴/成就模拟达标领取
+s4b.campaign.cleared = 10;
+const ac = store4b.claimAchv('campaign', 0);
+check('成就达标可领（推图 10 关档）', ac.ok);
 // 时钟回拨防护：lastSeenTs 在未来时当日不重置
 s4b.arena.attempts = 2;
 s4b.lastSeenTs = REAL_NOW() + 86400000;

@@ -293,6 +293,38 @@ function runSeed(seed) {
       ops++;
     }
     if (store.campaignStarChestInfo().claimable) store.claimStarChests();
+    // 远征三层挑战（败即停）+ 周任务/活跃全领 + 印信兑碎片与元宝
+    for (let f = 1; f <= 3; f++) {
+      if (store.getState().week.trial.best >= f) continue;
+      if (f > (store.getState().week.trial.best || 0) + 1) break;
+      const enemy = store.makeExpeditionFloor(f);
+      const begin = store.beginBattle({ mode: 'expedition', index: f, referenceLevel: enemy.units[0]?.level || 1 });
+      if (!begin.ok) break;
+      const fighting = battleRules.createBattle(Object.assign({
+        team: store.playerUnits(), enemy: store.enemyUnits(enemy.units), seed: (seed * 7079 + f * 104729) >>> 0
+      }, enemy.mods && enemy.mods.length ? stages.stageBattleEffects(enemy) || {} : {}));
+      let done = null;
+      for (let i = 0; i < 1400 && !done; i++) { const st = fighting.step(0.1); if (st.done) done = st; }
+      store.settleBattle(begin.id, { win: done ? done.winner === 'A' : false, duration: done ? done.time : 0, aliveCount: 5 });
+      ops++;
+      if (!(done && done.winner === 'A')) break;
+    }
+    const wk = store.weekInfo();
+    wk.quests.forEach(q => { if (q.claimable) store.claimWeekQuest(q.idx); });
+    store.weekInfo().active.forEach((a, i) => { if (a.claimable) store.claimWeekActive(i); });
+    store.buyWeekly('w_shard');
+    store.buyWeekly('w_gem');
+    ops++;
+    // 图鉴收集奖励全领 + 成就全领 + 万能卡用掉
+    store.codexInfo().list.forEach(r => { if (r.claimable) store.claimCodex(r.key); });
+    if ((store.getState().res.univSr || 0) > 0) {
+      const srTarget = H.HEROES.filter(h => h.rarity === 3)
+        .filter(h => store.getState().roster[h.id] && store.getState().roster[h.id].star < 4)
+        .sort((a, b) => (store.getState().roster[a.id]?.star || 0) - (store.getState().roster[b.id]?.star || 0))[0];
+      if (srTarget) store.useUniversalSr(srTarget.id);
+    }
+    const av = store.achvInfo();
+    av.axes.forEach(a => a.tiers.forEach(t => { if (t.claimable) store.claimAchv(a.key, t.tier); }));
     // 招贤值全领 + 万能卡喂最低星未满星 SSR
     const pts = store.summonPointsInfo();
     pts.list.forEach(t => { if (t.claimable) store.claimSummonPoints(t.tier); });
@@ -317,8 +349,9 @@ function runSeed(seed) {
   }
   const final = store.getState();
   const maxedSsr = H.HEROES.filter(h => h.rarity === 4 && final.roster[h.id] && final.roster[h.id].star >= 5).length;
+  const titles = (final.titles || []).length;
   return {
-    seed, cleared: final.campaign.cleared, maxedSsr, checkpoints, bossFailedDays, bossLosses, bossTimeouts, stageFailedDays,
+    seed, cleared: final.campaign.cleared, maxedSsr, titles, checkpoints, bossFailedDays, bossLosses, bossTimeouts, stageFailedDays,
     firstClearDay, firstMaxStarDay, timeouts, losses,
     gem: final.res.gem, iron: final.res.iron, scroll: final.res.scroll,
     roster: Object.keys(final.roster).length,
