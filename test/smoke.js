@@ -1039,6 +1039,19 @@ check('A06 旧档星级直接生效且幂等', JSON.stringify(b6a.nodes) === JSO
   && b6a.nodes.weapon.tier === 2 && b6a.nodes.armor.tier === 1 && b6a.nodes.helm.tier === 1
   && b6a.nodes.boots.tier === 0);
 
+// A07 词条追求信息层（裁决 D）：档位汇总徽标只读派生，不影响数值
+s.armory.affixes = {};
+check('A07 未锻造无徽标', Object.keys(store9.armoryAffixBadges()).length === 0);
+s.armory.affixes.weapon = { dir: 'atk', slots: [{ stat: 'critDmg', name: '暴伤', tier: 2, val: 0.14 }, { stat: 'vamp', name: '吸血', tier: 2, val: 0.05 }], pity: [0, 0], lock: [false, false] };
+s.armory.affixes.armor = { dir: 'def', slots: [{ stat: 'recvHeal', name: '受疗', tier: 1, val: 0.08 }, null], pity: [0, 0], lock: [false, false] };
+{
+  const badges = store9.armoryAffixBadges();
+  check('A07 徽标档位（双紫毕业/缺位有待洗练）', badges.weapon && badges.weapon.label === '词条毕业' && badges.weapon.purple === 2
+    && badges.armor && badges.armor.label === '有待洗练' && badges.armor.filled === 1);
+  const bA = store9.getArmoryBonuses();
+  check('A07 徽标只读不影响加成', JSON.stringify(bA.nodes) === JSON.stringify(b6a.nodes));
+}
+
 // ============ 演武赛季（2026-09-30 裁决 A）：软重置/周段位奖/榜单 ============
 section = 'arenaSeason';
 const storeAS = freshStore(); storeAS.load();

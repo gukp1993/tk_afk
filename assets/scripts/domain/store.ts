@@ -1134,8 +1134,27 @@ function armoryUpgradeToNode(slot) {
 function forgeGateOpen() {
   return IT.ARMORY_SLOTS.every(sl => (state.armory.slotStars[sl.id] || 0) >= 5);
 }
-function forgeInfo(slot) {
-  const open = forgeGateOpen();
+// 词条追求信息层（2026-09-30 研讨会裁决 D，只展示不数值）：六槽词条档位汇总徽标。
+// 紫=毕业档；两紫=词条毕业、紫蓝=接近毕业、单紫=初见紫、双蓝=良好、其余=有待洗练。
+function armoryAffixBadges() {
+  const out = {};
+  (IT.ARMORY_SLOTS || []).forEach(s => {
+    const fx = (state.armory.affixes || {})[s.id];
+    if (!fx || !fx.dir) return;
+    const filled = (fx.slots || []).filter(Boolean);
+    if (!filled.length) return;
+    const purple = filled.filter(a => a.tier === 2).length;
+    const blue = filled.filter(a => a.tier === 1).length;
+    const label = purple === 2 ? '词条毕业'
+      : (purple === 1 && blue === 1) ? '接近毕业'
+      : purple === 1 ? '初见紫'
+      : blue === 2 ? '良好' : '有待洗练';
+    out[s.id] = { purple, blue, filled: filled.length, label };
+  });
+  return out;
+}
+
+function forgeInfo(slot) {  const open = forgeGateOpen();
   const def = IT.ARMORY_SLOTS.find(x => x.id === slot);
   if (!def) return { ok: false, msg: '部位不存在' };
   const fx = (state.armory.affixes || {})[slot];
@@ -2593,7 +2612,7 @@ export {
   ascend, ascendPreview, foodPoints, dismiss, resetHero, convertCards, setCardsLocked, addChoiceVoucher, useChoiceVoucher, firstWinChoice, claimFirstWinChoice,
   exchangeQualityShard, qualityShardInfo,
   getFormationCalc, setFormationSlot, applyFormation, formationFactionBonus, teamPower, playerUnits, enemyUnits, activeBonds, bondMods,
-  getArmoryBonuses, getArmoryState, armoryUnlock, armorySelect, armoryUpgrade, armoryUpgradeToNode, armoryClaimBox, grantArmoryItem, applyArmoryRecommendations, forgeInfo, forgeReroll, forgeSetDir, forgeToggleLock, forgeGateOpen, motifInfo, motifActivate, smeltInfo, smeltMelt, smeltCombine,
+  getArmoryBonuses, getArmoryState, armoryUnlock, armorySelect, armoryUpgrade, armoryUpgradeToNode, armoryClaimBox, grantArmoryItem, applyArmoryRecommendations, armoryAffixBadges, forgeInfo, forgeReroll, forgeSetDir, forgeToggleLock, forgeGateOpen, motifInfo, motifActivate, smeltInfo, smeltMelt, smeltCombine,
   codexInfo, claimCodex, useUniversalSr, achvInfo, claimAchv, weekInfo, claimWeekQuest, claimWeekActive, buyWeekly, makeExpeditionFloor, bumpWeek, beginHall, winHall, hallInfo, saveReplay, replaysInfo, awakenInfo, awakenHero, formationPresetsInfo, saveFormationPreset, applyFormationPreset, delFormationPreset, tacticInfo, tacticUpgrade,
   migrateSaveV1, migrateSaveV2, migrateSaveV3, migrateSaveV4, migrateSaveV5, migrateSaveV6, migrateSaveV7, normalizeState,
   idlePending, idleTick, gemQuotaInfo, claimIdle, claimIdleInternal, fastReward, fastRewardMutation, fastRewardAdMutation, adReward,

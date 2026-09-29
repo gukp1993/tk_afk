@@ -616,6 +616,12 @@ export function armory(ctx: ScreenContext) {
         V.panel('ArmorySlotCard'+i,x,y,324,cardH,panel,9,gold);
         V.text('ArmorySlotName'+i,slot.name,x-71,y+85,155,25,gold);
         V.text('ArmorySlotStar'+i,`★${s.armory.slotStars[slot.id]||0}`,x+115,y+85,62,21,gold);
+        {
+          // 词条追求信息层（裁决 D）：只展示档位汇总，不改数值
+          const badge=(store.armoryAffixBadges() as any)[slot.id];
+          if(badge)V.text('ArmorySlotFx'+i,badge.label,x+42,y+86,66,15,
+            badge.purple>=2?gold:badge.purple>=1?tone('#b57ce8'):dim);
+        }
         V.text('ArmorySlotItem'+i,selected?.name||'尚未选择军械',x,y+40,295,22,selected?tone(items.GRADES[selected.q].color):dim);
         if(selected){
           V.text('ArmorySlotStats'+i,`${items.GRADES[selected.q].name} · ${armoryStats(selected.basePct||selected.stats)}`,x,y+10,296,17,dim);
