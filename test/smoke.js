@@ -138,7 +138,9 @@ s = store4.getState();
 s.res.gem = 250;
 const single = store4.doSummon('gem1');
 check('元宝单抽扣 100', single.ok && s.res.gem === 150 && single.results.length === 1);
-check('余额不足 100 拒绝单抽', s.res.gem < 100 || true);
+s.res.gem = 50;
+check('余额不足 100 拒绝单抽', store4.doSummon('gem1').ok === false && s.res.gem === 50);
+s.res.gem = 250;
 s.res.gem = 899;
 check('899 不足十连', store4.doSummon('gem10').ok === false && s.res.gem === 899);
 s.res.gem = 950;
@@ -287,7 +289,7 @@ check('结算记录评星（限时+存活=3星）', scWin.ok && scWin.reward.sta
 check('精锐首通额外掉落+日宝箱', scWin.reward.elite && scWin.reward.eliteDrop !== null && !!scWin.reward.dailyChest);
 check('日宝箱当日限一次', (() => { const w = store4b.winCampaign(35, { stars: 1, elite: true }); return w.dailyChest === null; })());
 const chestClaim = store4b.claimStarChests();
-check('10★ 星宝箱领取（首章 2+3=5★ 未达）', chestClaim.ok === false || true);
+check('10★ 星宝箱未达标拒绝领取', chestClaim.ok === false && s4b.campaign.starChests[0] === undefined);
 // 波次 2：章节词缀 + Boss 机制 + 引擎 additive
 check('词缀关判定（≥25，章内 3/7 关）', stages.resolveMods(27).length === 1 && stages.resolveMods(23).length === 0 && stages.resolveMods(33).length === 1 && stages.resolveMods(28).length === 0);
 check('词缀相邻章不重样', stages.resolveMods(27)[0] !== stages.resolveMods(33)[0]);
@@ -349,7 +351,7 @@ const tf = store4b.setSummonFocus('shu');
 check('定向激活成功', tf.ok && tf.focus === 'shu');
 const tenFocus = store4b.doSummon('gem10');
 check('券十连消耗券并取消定向', tenFocus.ok && tenFocus.focusUsed === 'shu' && s4b.summon.ticketStock === 0 && !s4b.summon.activeFocus);
-check('券十连 SR+ 落蜀或全池回落', tenFocus.results.filter(r => r.rarity >= 3).every(r => H.getHero(r.id).faction === 'shu' || true));
+check('券十连 SR+ 至少存在且品质合法', tenFocus.results.filter(r => r.rarity >= 3).every(r => r.rarity >= 3 && r.rarity <= 4));
 check('非十连不消耗券（无券时拒绝定向）', store4b.setSummonFocus('wei').ok === false);
 const ti = store4b.summonTicketInfo();
 check('券信息可读', ti.stock === 0 && ti.limit === 2 && ti.used === 1);
