@@ -481,6 +481,10 @@ check('远征首通得印信 15', es.ok && es.reward.seals === 15 && s4b.week.tr
 const eb2 = store4b.beginBattle({ mode: 'expedition', index: 1, referenceLevel: 30 });
 const es2 = store4b.settleBattle(eb2.id, { win: true, duration: 30, aliveCount: 5 });
 check('远征重复通关不再发印信', es2.ok && (es2.reward.seals || 0) === 0);
+// 战报：客户端 saveReplay 环形缓冲（5 条裁剪）
+for (let i = 0; i < 7; i++) store4b.saveReplay({ v: 1, seat: i % 3, ts: i, stars: i % 4 });
+const rp = store4b.replaysInfo();
+check('战报环形裁剪至 5 条且最新在首', rp.list.length === 5 && rp.list[0].ts === 6 && rp.list[4].ts === 2);
 // 图鉴/成就模拟达标领取
 s4b.campaign.cleared = 10;
 const ac = store4b.claimAchv('campaign', 0);
@@ -545,8 +549,6 @@ s4b.hall.honor = 99;
 const ht = store4b.winHall(1, stages.hallWeeklyLineups(F.isoWeekKey())[1], 1);
 check('荣耀过 100 自动授称号', ht.honor > 0 && s4b.hall.titlesClaimed.indexOf('常胜将军') >= 0 && (s4b.titles || []).indexOf('常胜将军') >= 0);
 // 回放决定论
-const repH = store4b.replaysInfo();
-check('回放缓冲有记录', repH.list.length >= 1);
 // 波次 5：觉醒（满 5★ SSR 长线，荣耀+碎片门控）
 store4b.grantCard('zhaoyun');
 s4b.roster.zhaoyun.star = 4;

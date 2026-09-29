@@ -400,17 +400,19 @@ function beginHall(seat) {
 function winHall(seat, lineup, stars) {
   const w = state.week;
   const reward = { seat, lineup: lineup.name, stars, honor: 0, gem: 0, shard: 0, token: 0,
-    firstKill: false, firstThreeStar: false, weeklyClear: false };
+    firstKill: false, firstThreeStar: false, weeklyClear: false, firstKillHonor: 0, threeStarHonor: 0 };
   const key = w.weekId + ':' + lineup.id;
   if (!state.hall.kills[key]) {
     state.hall.kills[key] = 1;
     reward.firstKill = true;
+    reward.firstKillHonor = C.HALL.firstKill.honor;
     reward.honor += C.HALL.firstKill.honor;
     reward.gem += C.HALL.firstKill.gem;
   }
   if (stars >= 3 && !state.hall.threeClaimed[key]) {
     state.hall.threeClaimed[key] = 1;
     reward.firstThreeStar = true;
+    reward.threeStarHonor = C.HALL.firstThreeStar.honor;
     reward.honor += C.HALL.firstThreeStar.honor;
     reward.shard += C.HALL.firstThreeStar.shard;
   }
@@ -445,7 +447,7 @@ function hallInfo() {
   const seats = lineups.map((l, seat) => {
     const key = state.week.weekId + ':' + l.id;
     return { seat, id: l.id, name: l.name, faction: l.faction, members: l.members,
-      trait: l.trait ? (C.CAMPAIGN_MODS && '') || traitDesc(l.trait) : '',
+      trait: l.trait ? traitDesc(l.trait) : '',
       killed: !!state.hall.kills[key], stars: state.hall.stars[key] || 0 };
   });
   const allKilled = seats.every(x => x.killed);
@@ -2115,15 +2117,11 @@ function settleBattle(battleId, outcome) {
     } else if (pending.mode === 'expedition') {
       if (win) reward = winExpedition(pending.index);
     } else if (pending.mode === 'hall') {
-      saveReplay({ v: 1, mode: 'hall', seat: pending.index, ts: Date.now(), win, stars: 0, duration: Math.round((outcome.duration || 0) * 10) / 10 });
-      reward = { seat: pending.index, stars: 0, hallReward: null };
+      reward = { seat: pending.index, lineupId: pending.hallLineup ? pending.hallLineup.id : null, stars: 0, hallReward: null };
       if (win) {
         const st = __domain_stages;
         const stars = st.hallStars(win, outcome.duration || 0, Number(outcome.aliveCount) || 0);
-        state.hall.stars = state.hall.stars || {};
-        state.hall.stars['cur' + pending.index] = stars;
         reward.stars = stars;
-        if (state.replays && state.replays.length) state.replays[state.replays.length - 1].stars = stars;
         reward.hallReward = winHall(pending.index, pending.hallLineup || { name: '阵容' }, stars);
       }
     } else if (pending.mode === 'arena') {

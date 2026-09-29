@@ -656,7 +656,7 @@ export function hallView(ctx: ScreenContext) {
   U.tap('HallBackTap',-291,484,136,52,()=>ctx.go('journey'));
   U.text('HallWeek',`本周名阵容 · 荣耀 ${hi.honor}`,-160,443,420,20,GOLD);
   hi.titles.forEach((t:any,i:number)=>{
-    U.text('HallTitle'+i,(t.owned?'「':'')+t.title+(t.owned?'」':'')+' '+t.honor+'荣耀',120,443,400,17,t.owned?GOLD:tone('#a6906c'));
+    U.text('HallTitle'+i,(t.owned?'「':'')+t.title+(t.owned?'」':'')+' '+t.honor+'荣耀',-140+i*210,443,205,17,t.owned?GOLD:tone('#a6906c'));
   });
   hi.seats.forEach((x:any,i:number)=>{
     const y=340-i*118;
@@ -665,7 +665,7 @@ export function hallView(ctx: ScreenContext) {
     U.panel('HallSeat'+i,0,y,640,104,x.killed?tone('#26301f'):tone('#312218'),9,x.killed?tone('#6f8a5f'):tone('#a17b40'));
     U.text('HallSeatName'+i,['一席','二席','三席'][x.seat]+' · '+x.name,-170,y+22,420,24,GOLD);
     U.text('HallSeatMembers'+i,names,-170,y-10,420,16,LIGHT);
-    if(x.trait)U.text('HallSeatTrait'+i,'阵容特质：'+x.trait,-170,y-34,420,14,tone('#d9b06a'));
+    if(x.trait)U.text('HallSeatTrait'+i,'主将特质：'+x.trait,-170,y-34,420,14,tone('#d9b06a'));
     if(x.killed){
       U.text('HallState'+i,`已胜 ★${x.stars} · 重复挑战可刷评星`,180,y+24,340,17,tone('#6f8a5f'));
     } else {
@@ -696,7 +696,7 @@ export function expeditionView(ctx: ScreenContext) {
     const y=-14-i*56;
     U.panel('ExpQuest'+i,0,y,640,58,tone('#171009'),7,tone('#5a452a'));
     U.text('ExpQuestLabel'+i,q.label,-160,y+10,420,18,LIGHT);
-    U.text('ExpQuestProg'+i,`${q.prog}/${q.target}`,150,y-16,150,15,tone('#a6906c'));
+    U.text('ExpQuestProg'+i,`${q.prog}/${q.target}`,70,y-16,110,15,tone('#a6906c'));
     U.button('ExpQuestGo'+i,q.claimed?'已领':q.claimable?'领印信':'未完成',235,y,150,46,()=>{
       if(!q.claimable)return;
       const r=store.claimWeekQuest(q.idx);

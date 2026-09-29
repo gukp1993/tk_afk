@@ -25,7 +25,7 @@ function battleTitle(ctx: ScreenContext) {
     return `第 ${ctx.battleIndex} 关 · ${stage.name}`;
   }
   if(ctx.battleMode==='expedition')return '远征 · 第 '+ctx.battleIndex+' 层';
-  if(ctx.battleMode==='hall'){const hi=(stages as any).hallWeeklyLineups?null:null;return '名人堂 · '+((store as any).hallInfo().seats[ctx.battleIndex]||{}).name;}
+  if(ctx.battleMode==='hall')return '名人堂挑战';
   return ({tower:'群英塔',training:'连续练兵',arena:'演武场'} as Record<string,string>)[ctx.battleMode] || '战斗';
 }
 
@@ -133,8 +133,8 @@ export function resultView(ctx: ScreenContext) {
     if(!r?.win) lines=[defeatDiag(ctx,r),'名人堂挑战不限次数'];
     else {
       const parts:string[]=[];
-      if(hr.firstKill)parts.push('首杀荣耀 +'+hr.honor);
-      if(hr.firstThreeStar)parts.push('三星 +'+(hr.honor?hr.honor-20:10)+' 荣耀 · 碎片 +'+(hr.shard||0));
+      if(hr.firstKill)parts.push('首杀荣耀 +'+(hr.firstKillHonor||0));
+      if(hr.firstThreeStar)parts.push('三星评价 +'+(hr.threeStarHonor||0)+' 荣耀 · 碎片 +'+(hr.shard||0));
       if(hr.weeklyClear)parts.push('周全胜！演武令 +'+hr.token);
       lines=[parts.join(' · ')||'挑战成功（重复挑战不发奖）','名人堂荣耀 '+((store as any).hallInfo().honor)];
       if(hr.title)lines.push('获得称号：'+hr.title);

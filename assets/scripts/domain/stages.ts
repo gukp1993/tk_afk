@@ -46,7 +46,7 @@ function makeHallEnemies(lineup, playerPower, seat) {
     const scale = i === 0 ? 1.05 : 0.95;
     return {
       hero: h, level: lv, star,
-      scale: (base ? 1 : 1) * scale,
+      scale,
       extraPassive: i === 0 && lineup.trait ? Object.assign({}, lineup.trait) : null,
       isBoss: false, row: i <= 2 ? 0 : 1
     };
