@@ -13,6 +13,17 @@ function axisProgress(axis, state) {
     case 'campaign': return Math.min(C.FIRST_STAGE_END, (state.campaign && state.campaign.cleared) || 0);
     case 'tower': return (state.tower && state.tower.best) || 0;
     case 'arena': return (state.arena && state.arena.wins) || 0;
+    case 'hallKills': return (state.hall && state.hall.killsTotal) || 0;
+    case 'tacticLv': {
+      let sum = 0;
+      Object.values(state.roster || {}).forEach((r) => { sum += (r.tacticLv || 0); });
+      return sum;
+    }
+    case 'awaken': {
+      let sum = 0;
+      Object.values(state.roster || {}).forEach((r) => { sum += (r.awaken || 0); });
+      return sum;
+    }
     default: return 0;
   }
 }

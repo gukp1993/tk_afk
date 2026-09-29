@@ -377,6 +377,14 @@ const ACHV_AXES = {
   tower: { name: '登塔', tiers: [5, 10, 20, 30, 45, 60, 80, 100, 130, 160] },
   arena: { name: '演武', tiers: [3, 8, 15, 25, 40, 60, 90, 130, 200, 300] }
 };
+// 名人堂/兵法/觉醒三轴扩展（评审 R2 裁决：独立轻量奖励表，全表禁 shard4/精铁/招募令直发）
+const HALL_ACHV = { name: '名人堂', tiers: [3, 9, 18, 30, 45, 63, 84, 108, 135, 165],
+  rewards: [{gold:10000,shard:5},{gold:15000,shard:8},{gold:20000,shard:10},{gold:30000,shard:12},{gold:40000,shard:14},{gold:50000,shard:15},{shard:20,token:30,title:'名人堂·名家'},{shard:30,token:30,title:'名人堂·豪杰'},{gem:2000,title:'名人堂·传奇'},{gem:3000,frame:1}] };
+const TACTIC_ACHV = { name: '兵法', tiers: [1, 3, 6, 10, 15, 22, 30, 42, 60, 80],
+  rewards: [{gold:10000,shard:5},{gold:15000,shard:8},{gold:20000,shard:10},{gold:30000,shard:12},{gold:40000,shard:14},{gold:50000,shard:15},{shard:20,token:30,title:'兵法·研习者'},{shard:30,token:30,title:'兵法·大师'},{gem:2000,title:'兵法·宗师'},{gem:3000,frame:1}] };
+const AWAKEN_ACHV = { name: '觉醒', tiers: [1, 2, 4, 6, 9, 12, 16, 22, 30, 40],
+  rewards: [{gold:10000,shard:5},{gold:15000,shard:8},{gold:20000,shard:10},{gold:30000,shard:12},{gold:40000,shard:14},{gold:50000,shard:15},{shard:20,token:30,title:'觉醒·开窍'},{shard:30,token:30,title:'觉醒·通达'},{gem:2000,title:'觉醒·化境'},{gem:3000,frame:1}] };
+
 const ACHV_REWARDS = [
   { gold: 10000, shard: 5, token: 10 }, { gold: 15000, shard: 8, token: 10 }, { gold: 20000, shard: 10, token: 10 },
   { gold: 30000, shard: 12, token: 10 }, { gold: 40000, shard: 14, token: 10 }, { gold: 50000, shard: 15, token: 10 },
@@ -425,5 +433,5 @@ module.exports = {
   GACHA, factionBonus, FORMATION_ROWS, BATTLE, ARENA, SEVEN_DAY, TRAINING_DAILY_CAP, BOUNTY, ROAMER_POOL, AD,
   FIRST_STAGE_END, CAMPAIGN_DIFFICULTY, CAMPAIGN_MILESTONES, ELITE_STAGE, STAR_RULES, CHAPTER_STAR_CHESTS, DAILY_ELITE_CHEST,
   CAMPAIGN_MODS, BOSS_MODS, RETURN_GRANTS, SUMMON_TICKET, SUMMON_POINTS, FORGE, MOTIFS, MOTIF_COST, SMELT,
-  CODEX_REWARDS, ACHV_AXES, ACHV_REWARDS, WEEKLY, HALL, AWAKEN, FORMATION_PRESETS_MAX, TACTIC, BATTLE_TACTICS
+  CODEX_REWARDS, ACHV_AXES, ACHV_REWARDS, WEEKLY, HALL, AWAKEN, FORMATION_PRESETS_MAX, TACTIC, BATTLE_TACTICS, HALL_ACHV, TACTIC_ACHV, AWAKEN_ACHV
 };
