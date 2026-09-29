@@ -129,7 +129,7 @@ export class CocosBootstrap extends Component implements ScreenContext {
       campaign: () => campaignScreens.campaign(this), stagePreview: () => campaignScreens.stagePreview(this), home: () => campaignScreens.home(this), journey: () => campaignScreens.journey(this),
       heroes: () => heroScreens.heroes(this), heroDetail: () => heroScreens.heroDetail(this), summon: () => heroScreens.summon(this), summonResults: () => heroScreens.summonResults(this), bag: () => campaignScreens.bag(this),
       armory: () => heroScreens.armory(this), armoryCatalog: () => heroScreens.armoryCatalog(this), armoryBox: () => heroScreens.armoryBox(this), shop: () => campaignScreens.shop(this), formation: () => campaignScreens.formation(this), formationPick: () => campaignScreens.formationPick(this), quests: () => campaignScreens.quests(this),
-      tower: () => campaignScreens.tower(this), arena: () => campaignScreens.arena(this), story: () => campaignScreens.storyView(this), sevenDay: () => campaignScreens.sevenDayView(this), bounty: () => campaignScreens.bountyView(this),
+      tower: () => campaignScreens.tower(this), arena: () => campaignScreens.arena(this), story: () => campaignScreens.storyView(this), sevenDay: () => campaignScreens.sevenDayView(this), bounty: () => campaignScreens.bountyView(this), forge: () => heroScreens.forgeView(this),
       battle: () => battleScreens.battleView(this), result: () => battleScreens.resultView(this), autoSummary: () => battleScreens.autoSummary(this, this.autoSession.summary), ad: () => this.adView()
     };
     render[page]();

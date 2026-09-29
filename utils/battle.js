@@ -191,7 +191,7 @@ function createBattle(cfg) {
   }
   function healHp(u, amount) {
     if (!u.alive || amount <= 0) return;
-    const scaled = amount * healScaleOf(u.side);
+    const scaled = amount * healScaleOf(u.side) * (1 + (u.passive.recvHeal || 0));
     const real = Math.min(u.maxHp - u.hp, Math.floor(scaled));
     if (real > 0) {
       u.hp += real;

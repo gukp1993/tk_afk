@@ -1,6 +1,6 @@
 import { CocosUi } from '../ui/CocosUi';
 
-export type Page = 'campaign'|'stagePreview'|'home'|'journey'|'heroes'|'heroDetail'|'summon'|'summonResults'|'bag'|'armory'|'armoryCatalog'|'armoryBox'|'shop'|'formation'|'formationPick'|'tower'|'arena'|'quests'|'sevenDay'|'bounty'|'story'|'battle'|'result'|'autoSummary'|'ad';
+export type Page = 'campaign'|'stagePreview'|'home'|'journey'|'heroes'|'heroDetail'|'summon'|'summonResults'|'bag'|'armory'|'armoryCatalog'|'armoryBox'|'shop'|'formation'|'formationPick'|'tower'|'arena'|'quests'|'sevenDay'|'bounty'|'forge'|'story'|'battle'|'result'|'autoSummary'|'ad';
 
 /** Navigation and transient interaction state shared by native Cocos screen renderers. */
 export interface ScreenContext {

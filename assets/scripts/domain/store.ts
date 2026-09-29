@@ -68,7 +68,7 @@ function createArmory() {
     const starter = IT.CATALOG.find(x => x.slot === s.id && x.q === 0);
     unlocked[starter.id] = true; selected[s.id] = starter.id; slotStars[s.id] = 0;
   });
-  return { schema: 1, unlocked, selected, slotStars, seen: {}, claimedMilestones: {}, boxes: { 1: 0, 2: 0, 3: 0 } };
+  return { schema: 1, unlocked, selected, slotStars, seen: {}, claimedMilestones: {}, boxes: { 1: 0, 2: 0, 3: 0 }, affixes: {}, freeRerolls: C.FORGE.freeRerolls };
 }
 
 // 旧档 v1（tier 1-6 / enh 0-12）→ v2（q 品质 1-4 / stars 星级 / faction 阵营）
@@ -355,6 +355,8 @@ function normalizeState(s) {
   s.armory.seen = s.armory.seen || {};
   s.armory.claimedMilestones = s.armory.claimedMilestones || {};
   s.armory.boxes = s.armory.boxes || { 1: 0, 2: 0, 3: 0 };
+  s.armory.affixes = s.armory.affixes || {};
+  s.armory.freeRerolls = s.armory.freeRerolls == null ? C.FORGE.freeRerolls : Math.max(0, Math.floor(s.armory.freeRerolls));
   [1,2,3].forEach(q => { s.armory.boxes[q] = Math.max(0, Math.floor(Number(s.armory.boxes[q]) || 0)); });
   IT.ARMORY_SLOTS.forEach(slot => {
     const starter = IT.CATALOG.find(x => x.slot === slot.id && x.q === 0);
@@ -561,6 +563,11 @@ function calcHero(id) {
   if (bonus.startShield) passive.armoryStartShield = bonus.startShield;
   if (bonus.startEnergy) passive.armoryStartEnergy = bonus.startEnergy;
   if (bonus.directDR) passive.armoryDirectDR = bonus.directDR;
+  if (bonus.critDmg) passive.critDmg = (passive.critDmg || 0) + bonus.critDmg;
+  if (bonus.energyGain) passive.energyGain = (passive.energyGain || 0) + bonus.energyGain;
+  if (bonus.vamp) passive.vamp = (passive.vamp || 0) + bonus.vamp;
+  if (bonus.thorns) passive.thorns = (passive.thorns || 0) + bonus.thorns;
+  if (bonus.recvHeal) passive.recvHeal = bonus.recvHeal;
   return {
     id, name: def.name, surname: def.name.slice(0, 1), title: def.title, quote: def.quote,
     faction: def.faction, cls: def.cls,
@@ -572,7 +579,8 @@ function calcHero(id) {
 function getArmoryBonuses() {
   const empty = { hp: 0, atk: 0, def: 0, heal: 0, startShield: 0, startEnergy: 0, directDR: 0, spdPct: 0, nodes: {} };
   if (!state || !state.armory) return empty;
-  const out = { hp: 0, atk: 0, def: 0, heal: 0, startShield: 0, startEnergy: 0, directDR: 0, spdPct: 0, nodes: {} };
+  const out = { hp: 0, atk: 0, def: 0, heal: 0, startShield: 0, startEnergy: 0, directDR: 0, spdPct: 0, nodes: {},
+    critDmg: 0, energyGain: 0, vamp: 0, thorns: 0, recvHeal: 0 };
   IT.ARMORY_SLOTS.forEach(slot => {
     const id = state.armory.selected[slot.id], item = IT.CATALOG.find(x => x.id === id);
     if (!item || !state.armory.unlocked[id]) return;
@@ -595,11 +603,20 @@ function getArmoryBonuses() {
     else if (node.stat === 'startShield') out.startShield += node.current;
     else if (node.stat === 'startEnergy') out.startEnergy += node.current;
   });
+  // 锻造词条（六槽 5★ 后开启；方向互斥由 forgeSetDir 结构保证）
+  Object.keys(state.armory.affixes || {}).forEach(slot => {
+    const fx = state.armory.affixes[slot];
+    if (!fx) return;
+    fx.slots.forEach(a => {
+      if (!a) return;
+      out[a.stat] = (out[a.stat] || 0) + a.val;
+    });
+  });
   return out;
 }
 function getArmoryState() {
   const a = state.armory;
-  return { unlocked: Object.assign({}, a.unlocked), selected: Object.assign({}, a.selected), slotStars: Object.assign({}, a.slotStars), boxes: Object.assign({}, a.boxes), seen: Object.assign({}, a.seen), claimedMilestones: Object.assign({}, a.claimedMilestones), total: IT.CATALOG.length, unlockedCount: Object.keys(a.unlocked).filter(id => a.unlocked[id]).length, bonuses: getArmoryBonuses() };
+  return { unlocked: Object.assign({}, a.unlocked), selected: Object.assign({}, a.selected), slotStars: Object.assign({}, a.slotStars), boxes: Object.assign({}, a.boxes), seen: Object.assign({}, a.seen), claimedMilestones: Object.assign({}, a.claimedMilestones), total: IT.CATALOG.length, unlockedCount: Object.keys(a.unlocked).filter(id => a.unlocked[id]).length, bonuses: getArmoryBonuses(), forgeOpen: forgeGateOpen() };
 }
 function armoryUnlock(itemId) {
   return withSavedMutation(() => {
@@ -683,6 +700,88 @@ function armoryUpgradeToNode(slot) {
       node: { label: nodeAfter.label, from: nodeBefore.current, to: nodeAfter.current,
         unlocked: nodeBefore.tier === 0, enhanced: nodeBefore.tier === 1 },
       before, bonuses: getArmoryBonuses() };
+  });
+}
+// ---------- 锻造台 ----------
+// 账号级门禁：六槽全部 5★ 后开启；词条值并入 getArmoryBonuses 单一出口。
+function forgeGateOpen() {
+  return IT.ARMORY_SLOTS.every(sl => (state.armory.slotStars[sl.id] || 0) >= 5);
+}
+function forgeInfo(slot) {
+  const open = forgeGateOpen();
+  const def = IT.ARMORY_SLOTS.find(x => x.id === slot);
+  if (!def) return { ok: false, msg: '部位不存在' };
+  const fx = (state.armory.affixes || {})[slot];
+  const pools = C.FORGE.pools[slot];
+  return {
+    ok: true, slot, open,
+    dir: fx ? fx.dir : null,
+    slots: fx ? fx.slots : [null, null],
+    pity: fx ? fx.pity : [0, 0],
+    lock: fx ? fx.lock : [false, false],
+    pools,
+    freeRerolls: state.armory.freeRerolls == null ? C.FORGE.freeRerolls : state.armory.freeRerolls
+  };
+}
+function forgeReroll(slot, idx) {
+  return withSavedMutation(() => {
+    if (!forgeGateOpen()) return { ok: false, msg: '锻造台尚未开启（六槽全部 5★ 后开启）' };
+    if (idx !== 0 && idx !== 1) return { ok: false, msg: '词条位无效' };
+    const fx = (state.armory.affixes || {})[slot];
+    if (!fx || !fx.dir) return { ok: false, msg: '请先选择攻/守方向' };
+    const cost = { gold: C.FORGE.reroll.gold, iron: C.FORGE.reroll.iron };
+    if (fx.lock[1 - idx]) { cost.gold *= 2; cost.iron *= 2; } // 另一条已锁定：费用 ×2
+    const freeLeft = state.armory.freeRerolls == null ? C.FORGE.freeRerolls : state.armory.freeRerolls;
+    if (freeLeft <= 0) {
+      if (state.res.gold < cost.gold) return { ok: false, msg: '铜钱不足，还差 ' + (cost.gold - state.res.gold) };
+      if (state.res.iron < cost.iron) return { ok: false, msg: '精铁不足，还差 ' + (cost.iron - state.res.iron) };
+      state.res.gold -= cost.gold;
+      state.res.iron -= cost.iron;
+    } else {
+      state.armory.freeRerolls = freeLeft - 1;
+    }
+    // 50/50 定词条（另一词条位已占用的词条不重复出），再定档位；保底：连续 5 次未紫第 6 次必紫
+    const pool = C.FORGE.pools[slot][idx === 0 ? fx.dir : (fx.dir === 'atk' ? 'def' : 'atk')].filter(a => {
+      const other = fx.slots[1 - idx];
+      return !(other && other.stat === a.stat);
+    });
+    const affix = pool[Math.floor(Math.random() * pool.length)];
+    let tier;
+    if (fx.pity[idx] >= C.FORGE.pity - 1) {
+      tier = 2;
+    } else {
+      const r = Math.random();
+      tier = r < C.FORGE.tiers.weights[2] ? 2 : r < C.FORGE.tiers.weights[2] + C.FORGE.tiers.weights[1] ? 1 : 0;
+    }
+    fx.pity[idx] = tier === 2 ? 0 : fx.pity[idx] + 1;
+    fx.slots[idx] = { stat: affix.stat, name: affix.name, tier, val: affix.tiers[tier] };
+    return { ok: true, slot, idx, affix: fx.slots[idx], pity: fx.pity[idx], freeUsed: freeLeft > 0 };
+  });
+}
+function forgeSetDir(slot, dir) {
+  return withSavedMutation(() => {
+    if (!forgeGateOpen()) return { ok: false, msg: '锻造台尚未开启' };
+    if (!['atk', 'def'].includes(dir)) return { ok: false, msg: '方向无效' };
+    state.armory.affixes = state.armory.affixes || {};
+    const prev = state.armory.affixes[slot];
+    if (prev && prev.dir === dir) return { ok: true, changed: false };
+    // 改向：第一词条位清空重选，第二位（另一池）同步作废；保底计数保留
+    state.armory.affixes[slot] = {
+      dir,
+      slots: [null, null],
+      pity: prev ? prev.pity : [0, 0],
+      lock: [false, false]
+    };
+    return { ok: true, dir, changed: true };
+  });
+}
+function forgeToggleLock(slot, idx) {
+  return withSavedMutation(() => {
+    if (!forgeGateOpen()) return { ok: false, msg: '锻造台尚未开启' };
+    const fx = (state.armory.affixes || {})[slot];
+    if (!fx || !fx.slots[idx]) return { ok: false, msg: '该词条位还没有词条' };
+    fx.lock[idx] = !fx.lock[idx];
+    return { ok: true, lock: fx.lock[idx] };
   });
 }
 function armoryClaimBox(q, itemId) {
@@ -1876,7 +1975,7 @@ export {
   levelUp, ascend, ascendPreview, foodPoints, dismiss, resetHero, convertCards, setCardsLocked, addChoiceVoucher, useChoiceVoucher, firstWinChoice, claimFirstWinChoice,
   exchangeQualityShard, qualityShardInfo,
   getFormationCalc, setFormationSlot, applyFormation, formationFactionBonus, teamPower, playerUnits, enemyUnits, activeBonds, bondMods,
-  getArmoryBonuses, getArmoryState, armoryUnlock, armorySelect, armoryUpgrade, armoryUpgradeToNode, armoryClaimBox, grantArmoryItem, applyArmoryRecommendations,
+  getArmoryBonuses, getArmoryState, armoryUnlock, armorySelect, armoryUpgrade, armoryUpgradeToNode, armoryClaimBox, grantArmoryItem, applyArmoryRecommendations, forgeInfo, forgeReroll, forgeSetDir, forgeToggleLock, forgeGateOpen,
   addEquip, equipInventory, equipTo, unequip, enhanceEquip, fodderPickIds, salvageEquip, salvageBatch, isEquipped,
   migrateSaveV1, migrateSaveV2, migrateSaveV3, migrateSaveV4, migrateSaveV5, migrateSaveV6, normalizeState,
   idlePending, idleTick, gemQuotaInfo, claimIdle, claimIdleInternal, fastReward, fastRewardMutation, fastRewardAdMutation, adReward,

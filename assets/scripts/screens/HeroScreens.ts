@@ -429,6 +429,57 @@ export function summonResults(ctx: ScreenContext) {
     U.tap('DrawRosterTap',169,-478,298,62,()=>ctx.go('heroes'));
   }
 
+const FORGE_TIERS = ['白', '蓝', '紫'];
+
+export function forgeView(ctx: ScreenContext) {
+  const U=ctx.ui,s=store.getState();
+  const slot=ctx.selectedArmorySlot||'weapon';
+  const info=store.forgeInfo(slot);
+  ctx.title('锻 造 台');
+  U.text('ForgeBack','‹ 返回',-291,484,130,22,gold);
+  U.tap('ForgeBackTap',-291,484,136,52,()=>ctx.go('armory'));
+  if(!info.open){
+    const stars=items.ARMORY_SLOTS.filter((sl:any)=>s.armory.slotStars[sl.id]>=5).length;
+    U.text('ForgeClosed',`锻造台尚未开启 · 六槽全部 5★ 后开启（${stars}/6）`,0,250,640,22,dim);
+    return;
+  }
+  items.ARMORY_SLOTS.forEach((sl:any,i:number)=>{
+    const x=-252+i*101,active=sl.id===slot;
+    U.panel('ForgeSlot'+i,x,398,95,54,active?tone('#45321b'):ink,7,active?gold:border);
+    U.text('ForgeSlotName'+i,sl.name,x,398,88,20,active?gold:LIGHT);
+    U.tap('ForgeSlotTap'+i,x,398,95,54,()=>{ctx.selectedArmorySlot=sl.id;ctx.show('forge');});
+  });
+  U.text('ForgeFree',`免费洗练剩余 ${info.freeRerolls} 次`,200,443,260,17,dim);
+  // 方向
+  U.text('ForgeDirTitle','第一词条方向（另一词条自动取对方池）',0,340,640,18,dim);
+  [['atk','攻 系','poolAtk'],['def','守 系','poolDef']].forEach(([dir,label],i)=>{
+    const x=i===0?-160:160,active=info.dir===dir;
+    U.panel('ForgeDir'+i,x,282,300,64,active?tone('#45321b'):ink,9,active?gold:border);
+    U.text('ForgeDirTxt'+i,String(label)+(active?' · 已选':''),x,282,290,24,active?gold:LIGHT);
+    U.tap('ForgeDirTap'+i,x,282,300,64,()=>{const r=store.forgeSetDir(slot,dir as string);ctx.tell(r,r.ok&&r.changed?'已选方向（原词条作废重洗）':'');});
+  });
+  // 两词条位
+  if(info.dir){
+    [0,1].forEach(idx=>{
+      const y=idx===0?128:8;
+      const a=info.slots[idx],lock=info.lock[idx],pity=info.pity[idx];
+      U.panel('ForgeAffix'+idx,0,y,682,110,a?tone('#312218'):ink,9,a&&a.tier===2?gold:border);
+      if(!a){
+        U.text('ForgeAffixName'+idx,`词条位 ${idx+1} · 未洗练`,-180,y+18,340,22,dim);
+        U.button('ForgeRoll'+idx,'洗 练',230,y,180,58,()=>{const r=store.forgeReroll(slot,idx);ctx.tell(r,r.ok?`洗出 ${r.affix.name} ${Math.round(r.affix.val*1000)/10}%（${FORGE_TIERS[r.affix.tier]}）`:'');},gold);
+      } else {
+        U.text('ForgeAffixName'+idx,`${a.name} ${Math.round(a.val*1000)/10}%（${FORGE_TIERS[a.tier]}）`,-180,y+22,400,24,a.tier===2?gold:LIGHT);
+        U.text('ForgePity'+idx,`保底 ${pity}/6`,-180,y-18,300,16,dim);
+        U.button('ForgeLock'+idx,lock?'已锁定':'未锁定',60,y,130,50,()=>{const r=store.forgeToggleLock(slot,idx);ctx.tell(r,r.ok?(r.lock?'已锁定':'已解锁'):'');},lock?gold:tone('#423022'));
+        U.button('ForgeRoll'+idx,'重 洗',235,y,180,58,()=>{const r=store.forgeReroll(slot,idx);ctx.tell(r,r.ok?`洗出 ${r.affix.name} ${Math.round(r.affix.val*1000)/10}%（${FORGE_TIERS[r.affix.tier]}）`:'');},gold);
+      }
+    });
+    U.text('ForgeCost','重洗消耗 铜钱 12000 + 精铁 25（另一条锁定时 ×2）',0,-70,640,16,dim);
+  } else {
+    U.text('ForgeNoDir','先选择攻/守方向，开启词条位',0,80,640,20,dim);
+  }
+}
+
 export function armory(ctx: ScreenContext) {
     const s=store.getState(),U=ctx.ui;
     const recs:any[]=progression.getArmoryRecommendations(s,items);
@@ -442,7 +493,7 @@ export function armory(ctx: ScreenContext) {
     U.text('ArmoryCoinsText',`铜钱 ${fmt.fmtNum(s.res.gold)}`,175,409,310,19,gold);
     chip(U,'ArmoryOverviewTab','部位养成',-171,345,334,true,()=>ctx.show('armory'));
     chip(U,'ArmoryCatalogTab',`装备图鉴  ${unlocked}/${items.CATALOG.length}`,171,345,334,false,()=>ctx.go('armoryCatalog'));
-    U.text('ArmoryIntro','一套军械，全体英雄同时生效',0,279,620,20,dim);
+    U.text('ArmoryIntro','',0,279,620,20,dim);
     if(recs.length){
       U.panel('ArmoryRecommend',0,220,610,49,tone('#d9a94e'),7,gold);
       U.text('ArmoryRecommendText',`免费启用推荐 · ${recs.length} 个部位`,0,220,586,20,ink);
@@ -475,6 +526,12 @@ export function armory(ctx: ScreenContext) {
       V.text('ArmoryTotalTitle','全军属性与战术效果',-171,summaryY+26,316,22,gold);
       V.text('ArmoryTotalStats',armoryStats(bonus),0,summaryY-19,643,18,dim);
       V.text('ArmoryHelp','重复获得的军械会转为精铁；部位升星后，全体英雄共同受益。',0,summaryY-77,660,18,dim);
+      if((store.getArmoryState() as any).forgeOpen){
+        V.button('ForgeEntry','锻造台已开启 · 词条洗练 ›',0,summaryY-134,660,52,()=>ctx.go('forge'),gold);
+      } else {
+        const fstars=items.ARMORY_SLOTS.filter((sl:any)=>s.armory.slotStars[sl.id]>=5).length;
+        V.text('ForgeEntryText',`锻造台 · 六槽全部 5★ 后开启（${fstars}/6）`,0,summaryY-134,660,18,dim);
+      }
     });
   }
 

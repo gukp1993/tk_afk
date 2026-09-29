@@ -246,6 +246,31 @@ const SUMMON_POINTS = [
   { need: 2500, reward: { univSsr: 1 }, label: '万能 SSR 卡 ×1' }
 ];
 
+// 锻造台（评审团裁决版）：六槽全部 5★ 后开启（gate 在事务内校验，锚数学封闭）。
+// 每槽 2 词条位：第一词条位玩家在攻/守两池二选一，第二位自动取另一池（任何部位不可能双攻或双守）。
+// 洗练档位 白 58%/蓝 30%/紫 12%，值=档位表；每槽位独立 6 次保底紫；锁定免费，洗另一条费用 ×2。
+const FORGE = {
+  reroll: { gold: 12000, iron: 25 },
+  freeRerolls: 3,
+  pity: 6,
+  tiers: { weights: [0.58, 0.30, 0.12] },
+  // 每槽攻/守两池：tiers=[白,蓝,紫]
+  pools: {
+    weapon: { atk: [{ stat: 'critDmg', name: '暴伤', tiers: [0.06, 0.10, 0.14] }, { stat: 'energyGain', name: '怒气获取', tiers: [0.04, 0.07, 0.10] }],
+              def: [{ stat: 'vamp', name: '吸血', tiers: [0.02, 0.035, 0.05] }, { stat: 'thorns', name: '反弹', tiers: [0.06, 0.10, 0.15] }] },
+    armor:  { atk: [{ stat: 'thorns', name: '反弹', tiers: [0.06, 0.10, 0.15] }, { stat: 'energyGain', name: '怒气获取', tiers: [0.04, 0.07, 0.10] }],
+              def: [{ stat: 'recvHeal', name: '受疗', tiers: [0.05, 0.08, 0.12] }, { stat: 'directDR', name: '直接减伤', tiers: [0.01, 0.015, 0.02] }] },
+    helm:   { atk: [{ stat: 'critDmg', name: '暴伤', tiers: [0.06, 0.10, 0.14] }, { stat: 'vamp', name: '吸血', tiers: [0.02, 0.035, 0.05] }],
+              def: [{ stat: 'directDR', name: '直接减伤', tiers: [0.01, 0.015, 0.02] }, { stat: 'recvHeal', name: '受疗', tiers: [0.05, 0.08, 0.12] }] },
+    boots:  { atk: [{ stat: 'energyGain', name: '怒气获取', tiers: [0.04, 0.07, 0.10] }, { stat: 'critDmg', name: '暴伤', tiers: [0.06, 0.10, 0.14] }],
+              def: [{ stat: 'recvHeal', name: '受疗', tiers: [0.05, 0.08, 0.12] }, { stat: 'thorns', name: '反弹', tiers: [0.06, 0.10, 0.15] }] },
+    jade:   { atk: [{ stat: 'energyGain', name: '怒气获取', tiers: [0.04, 0.07, 0.10] }, { stat: 'critDmg', name: '暴伤', tiers: [0.06, 0.10, 0.14] }],
+              def: [{ stat: 'recvHeal', name: '受疗', tiers: [0.05, 0.08, 0.12] }, { stat: 'vamp', name: '吸血', tiers: [0.02, 0.035, 0.05] }] },
+    seal:   { atk: [{ stat: 'critDmg', name: '暴伤', tiers: [0.06, 0.10, 0.14] }, { stat: 'vamp', name: '吸血', tiers: [0.02, 0.035, 0.05] }],
+              def: [{ stat: 'directDR', name: '直接减伤', tiers: [0.01, 0.015, 0.02] }, { stat: 'thorns', name: '反弹', tiers: [0.06, 0.10, 0.15] }] }
+  }
+};
+
 // 回归补给（断签梯度）：lastSeenTs 间隔 ≥48h 触发，7 天窗口至多一次；每日上线玩家结构性拿不到
 const RETURN_GRANTS = [
   { minDays: 2, reward: { scroll: 3, gem: 300 }, label: '招募令 ×3 · 元宝 ×300' },
@@ -263,5 +288,5 @@ module.exports = {
   FAST_AD, FAST_PAID,
   GACHA, factionBonus, FORMATION_ROWS, BATTLE, ARENA, SEVEN_DAY, TRAINING_DAILY_CAP, BOUNTY, ROAMER_POOL, AD,
   FIRST_STAGE_END, CAMPAIGN_DIFFICULTY, CAMPAIGN_MILESTONES, ELITE_STAGE, STAR_RULES, CHAPTER_STAR_CHESTS, DAILY_ELITE_CHEST,
-  CAMPAIGN_MODS, BOSS_MODS, RETURN_GRANTS, SUMMON_TICKET, SUMMON_POINTS
+  CAMPAIGN_MODS, BOSS_MODS, RETURN_GRANTS, SUMMON_TICKET, SUMMON_POINTS, FORGE
 };

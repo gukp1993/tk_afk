@@ -371,6 +371,55 @@ s4b.res.univSsr = 1;
 s4b.roster.guanyu.star = 5;
 check('万能卡拒绝满星目标', store4b.useUniversalSsr('guanyu').ok === false && s4b.res.univSsr === 1);
 check('万能卡拒绝非 SSR', store4b.useUniversalSsr('liaohua').ok === false);
+// 波次 3b：锻造台
+check('锻造门禁：六槽未满 5★ 全拒绝', store4b.forgeGateOpen() === false && store4b.forgeReroll('weapon', 0).ok === false && store4b.forgeSetDir('weapon', 'atk').ok === false);
+IT.ARMORY_SLOTS.forEach(sl => { s4b.armory.slotStars[sl.id] = 5; });
+check('锻造门禁：六槽全 5★ 开启', store4b.forgeGateOpen() === true);
+const fd = store4b.forgeSetDir('weapon', 'atk');
+check('选向成功', fd.ok && store4b.forgeInfo('weapon').dir === 'atk');
+const fr1 = store4b.forgeReroll('weapon', 0);
+check('首次洗练出词条（免费）', fr1.ok && !!fr1.affix && s4b.res.gold === Math.floor(s4b.res.gold));
+const wf1 = store4b.forgeInfo('weapon');
+check('词条值在攻池白档范围', wf1.slots[0] && ((wf1.slots[0].stat === 'critDmg' && [0.06, 0.1, 0.14].includes(wf1.slots[0].val)) || (wf1.slots[0].stat === 'energyGain' && [0.04, 0.07, 0.1].includes(wf1.slots[0].val))));
+const fr2 = store4b.forgeReroll('weapon', 1);
+check('第二词条位取守池', fr2.ok && ['vamp', 'thorns'].includes(fr2.affix.stat));
+const fr3 = store4b.forgeReroll('weapon', 0);
+check('第三洗练仍免费', fr3.ok && fr3.freeUsed === true);
+const goldBeforeForge = s4b.res.gold, ironBeforeForge = s4b.res.iron;
+const fr4 = store4b.forgeReroll('weapon', 0);
+check('免费用完后扣费 12000+25', fr4.ok && s4b.res.gold === goldBeforeForge - 12000 && s4b.res.iron === ironBeforeForge - 25);
+store4b.forgeToggleLock('weapon', 1);
+const goldLocked = s4b.res.gold, ironLocked = s4b.res.iron;
+store4b.forgeReroll('weapon', 0);
+check('对侧锁定费用 ×2', s4b.res.gold === goldLocked - 24000 && s4b.res.iron === ironLocked - 50);
+// 保底：连续 5 次白后第 6 次必紫（种子 0.99 恒出白）
+Math.random = () => 0.99;
+s4b.res.gold = 10000000; s4b.res.iron = 100000;
+s4b.armory.affixes.weapon.pity[0] = 0;
+let lastPity = 0;
+for (let i = 0; i < 6; i++) { const r = store4b.forgeReroll('weapon', 0); lastPity = r.ok ? r.pity : lastPity; }
+check('6 次保底出紫（pity 归零）', lastPity === 0 && store4b.forgeInfo('weapon').slots[0].tier === 2);
+Math.random = REAL_RANDOM;
+// 词条并入全军加成
+const fb = store4b.getArmoryBonuses();
+const wfSlots = store4b.forgeInfo('weapon').slots;
+  const expectedCrit = wfSlots.filter(a => a && a.stat === 'critDmg').reduce((sum, a) => sum + a.val, 0);
+  check('词条并入 bonuses（critDmg=词条和）', fb.critDmg === expectedCrit);
+// recvHeal 战斗通道：受疗 +12% 的单位治疗多 12%
+{
+  const mkH = (id, hp, atk, recv) => ({ uid: id, name: id, faction: 'wei', cls: 'support', level: 1, row: 0,
+    stats: { hp, atk, def: 0, spd: 1, crit: 0 }, passive: Object.assign({ firstEnergy: 100 }, recv ? { recvHeal: recv } : {}),
+    ult: { name: 't', effects: [{ t: 'heal', tgt: 'allAllies', mult: 2 }] } });
+  const mkBt = (recv) => {
+    const a = mkH('a1', 5000, 100, recv); a.startHpPct = 0.5;
+    const b = mkH('b1', 5000, 0);
+    const bt = battleRules.createBattle({ team: [a], enemy: [b], timeLimit: 5 });
+    for (let i = 0; i < 30 && !bt.ended; i++) bt.step(0.1);
+    return bt.snapshot()[0].hp;
+  };
+  const baseHp = mkBt(0), buffHp = mkBt(0.12);
+  check('recvHeal 受疗 +12% 生效', buffHp > baseHp && Math.round((buffHp - baseHp)) <= 30);
+}
 // 时钟回拨防护：lastSeenTs 在未来时当日不重置
 s4b.arena.attempts = 2;
 s4b.lastSeenTs = REAL_NOW() + 86400000;
