@@ -804,13 +804,6 @@ function armoryClaimBoxInternal(q, itemId) {
   state.armory.boxes[q] -= 1; state.armory.unlocked[item.id] = true; state.armory.seen[item.id] = true;
   return { ok:true, itemId:item.id };
 }
-function grantArmoryItem(itemId) {
-  const item = IT.CATALOG.find(x => x.id === itemId);
-  if (!item) return { ok:false, msg:'军械奖励无效' };
-  if (state.armory.unlocked[item.id]) { const iron=IT.GRADES[item.q].duplicate; state.res.iron += iron; return { ok:true, duplicate:true, iron, itemId }; }
-  state.armory.unlocked[item.id] = true; state.armory.seen[item.id] = true;
-  return { ok:true, duplicate:false, itemId };
-}
 function rollArmoryDrop(cleared) {
   const available = IT.GRADES.filter(g => g.q === 0 || cleared >= g.unlockStage);
   const total = available.reduce((sum,g) => sum + IT.DROP_QUALITY_WEIGHTS[g.q], 0);
