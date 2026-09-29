@@ -570,6 +570,10 @@ export function achvView(ctx: ScreenContext) {
   let flat:any[]=[];
   info.axes.forEach(ax=>ax.tiers.forEach(t=>flat.push({axis:ax,name:ax.name,tier:t.tier,need:t.need,reward:t.reward,claimed:t.claimed,claimable:t.claimable,value:ax.value})));
   flat=flat.filter(t=>t.claimable||!t.claimed);
+  flat.sort((a:any,b:any)=>{
+    if(a.claimable!==b.claimable)return b.claimable?1:-1;
+    return (b.value/b.need)-(a.value/a.need);
+  });
   U.scroll('AchvList',0,-60,680,830,Math.max(830,flat.length*72+20),V=>{
     flat.forEach((t,i)=>{
       const y=Math.max(830,flat.length*72+20)/2-36-i*72;
