@@ -133,6 +133,13 @@ const SEVEN_DAY = [
 // 练兵经验每日上限（场数）：前 N 场全额，之后 0，切断"无限练兵=免费等级"
 const TRAINING_DAILY_CAP = 20;
 
+// 战前排兵战术（裁决 B）：主线/群英塔开战前三选一，可选可不选（不选=无修正）。
+const BATTLE_TACTICS = [
+  { id: 'assault', name: '全军突袭', mods: { atkPct: 0.10, defPct: -0.05 } },
+  { id: 'phalanx', name: '坚守阵地', mods: { defPct: 0.10, atkPct: -0.05 } },
+  { id: 'guerrilla', name: '游斗袭扰', mods: { spdPct: 0.05, hpPct: -0.04 } }
+];
+
 // 悬赏派遣：每日刷新 4 单，派闲置武将出征，时辰到领赏（编外武将就业 + 次日回访钩子）。
 // 刻意不含精铁：可重复的精铁来源会砸穿"六槽约 30 天满星"日历锚，精铁副产线只留给群英塔。
 // gold 随主线进度最高翻倍（铜钱本就富余，作爽点数字）；gem/scroll 固定。
@@ -418,5 +425,5 @@ module.exports = {
   GACHA, factionBonus, FORMATION_ROWS, BATTLE, ARENA, SEVEN_DAY, TRAINING_DAILY_CAP, BOUNTY, ROAMER_POOL, AD,
   FIRST_STAGE_END, CAMPAIGN_DIFFICULTY, CAMPAIGN_MILESTONES, ELITE_STAGE, STAR_RULES, CHAPTER_STAR_CHESTS, DAILY_ELITE_CHEST,
   CAMPAIGN_MODS, BOSS_MODS, RETURN_GRANTS, SUMMON_TICKET, SUMMON_POINTS, FORGE, MOTIFS, MOTIF_COST, SMELT,
-  CODEX_REWARDS, ACHV_AXES, ACHV_REWARDS, WEEKLY, HALL, AWAKEN, FORMATION_PRESETS_MAX, TACTIC
+  CODEX_REWARDS, ACHV_AXES, ACHV_REWARDS, WEEKLY, HALL, AWAKEN, FORMATION_PRESETS_MAX, TACTIC, BATTLE_TACTICS
 };

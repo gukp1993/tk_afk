@@ -338,10 +338,10 @@ export class CocosBootstrap extends Component implements ScreenContext {
     let effects=null;
     if(mode==='campaign') effects=stages.stageBattleEffects(stages.makeStageEnemies(index));
     else if(mode==='expedition') effects=stages.stageBattleEffects(enemy);
-    this.fighting=battleRules.createBattle(Object.assign({team:store.playerUnits(),enemy:store.enemyUnits(enemy.units),seed:Date.now()},effects||{}));
+    this.fighting=battleRules.createBattle(Object.assign({team:store.playerUnits(undefined),enemy:store.enemyUnits(enemy.units),seed:Date.now()},effects||{}));
     if(mode==='hall'){
       this.lastReplaySpec={ v:1, mode:'hall', seat:index, lineupId:_hallLineup.id, lineupName:_hallLineup.name, seed:Date.now(), timeLimit:config.BATTLE.TIME_LIMIT,
-        team:store.playerUnits().map((u:any)=>({uid:u.uid,name:u.name,faction:u.faction,cls:u.cls,level:u.level,row:u.row,stats:u.stats,ult:u.ult,passive:u.passive,isBoss:false})),
+        team:store.playerUnits(undefined).map((u:any)=>({uid:u.uid,name:u.name,faction:u.faction,cls:u.cls,level:u.level,row:u.row,stats:u.stats,ult:u.ult,passive:u.passive,isBoss:false})),
         enemy:enemy.units.map((u:any)=>{const e2=store.enemyUnits([u])[0];return {uid:e2.uid,name:e2.name,faction:e2.faction,cls:e2.cls,level:e2.level,row:e2.row,stats:e2.stats,ult:e2.ult,passive:e2.passive,isBoss:!!e2.isBoss};}),
         effects:effects||null };
     }

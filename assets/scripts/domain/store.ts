@@ -1301,13 +1301,26 @@ function bondMods() {
   });
   return out;
 }
-// 生成战斗用双方单元
-function playerUnits() {
+// 生成战斗用双方单元（tacticId 可选：战前排兵战术乘区，不传=无修正）
+function playerUnits(tacticId) {
   const calc = getFormationCalc();
   const extra = bondMods();
+  const tactic = tacticId ? (C.BATTLE_TACTICS || []).find(t => t.id === tacticId) : null;
+  const tm = tactic ? tactic.mods : null;
   return calc.map((x, i) => {
     if (!x) return null;
-    const u = buildUnit(x, 'A' + i, i <= 2 ? 0 : 1);
+    let stats = x.stats;
+    if (tm) {
+      stats = {
+        hp: Math.max(1, Math.floor(x.stats.hp * (1 + (tm.hpPct || 0)))),
+        atk: Math.max(1, Math.floor(x.stats.atk * (1 + (tm.atkPct || 0)))),
+        def: Math.max(1, Math.floor(x.stats.def * (1 + (tm.defPct || 0)))),
+        spd: Math.max(0.1, x.stats.spd * (1 + (tm.spdPct || 0))),
+        crit: x.stats.crit
+      };
+    }
+    const src = tm ? Object.assign({}, x, { stats }) : x;
+    const u = buildUnit(src, 'A' + i, i <= 2 ? 0 : 1);
     if (Object.keys(extra).length) u.passive = Object.assign({}, u.passive, extra);
     return u;
   }).filter(Boolean);

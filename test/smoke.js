@@ -778,6 +778,20 @@ delete s4b.formationPresets;
 let loadOk = true;
 try { store4b.checkDailyReset(); store4b.formationPresetsInfo(); } catch (e) { loadOk = false; }
 check('旧档无字段不炸', loadOk);
+// 战前排兵战术（裁决 B）
+check('战术 3 条定义', C.BATTLE_TACTICS && C.BATTLE_TACTICS.length === 3);
+check('战术 id 唯一', new Set(C.BATTLE_TACTICS.map(t => t.id)).size === 3);
+// 不传 tacticId 时 playerUnits 输出与无战术一致（锚零漂移机检）
+const noTactic = store4b.playerUnits();
+const withTactic = store4b.playerUnits('assault');
+check('无战术时 playerUnits 正常', noTactic.length > 0);
+check('突袭战术攻击提升', withTactic[0].stats.atk > noTactic[0].stats.atk);
+const phalanxUnits = store4b.playerUnits('phalanx');
+check('坚守防御提升', phalanxUnits[0].stats.def > noTactic[0].stats.def);
+check('坚守攻击下降', phalanxUnits[0].stats.atk < noTactic[0].stats.atk);
+const guerrillaUnits = store4b.playerUnits('guerrilla');
+check('游斗速度提升', guerrillaUnits[0].stats.spd >= noTactic[0].stats.spd);
+check('无效 tacticId 回退无修正', store4b.playerUnits('nonexistent')[0].stats.atk === noTactic[0].stats.atk);
 // 时钟回拨防护：lastSeenTs 在未来时当日不重置
 s4b.arena.attempts = 2;
 s4b.lastSeenTs = REAL_NOW() + 86400000;
