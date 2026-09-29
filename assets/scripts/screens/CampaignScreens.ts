@@ -8,6 +8,7 @@ import * as items from '../domain/items';
 import * as config from '../domain/config';
 import * as progression from '../domain/progression';
 import * as fmt from '../domain/fmt';
+import { firstTimeOverlay } from './TutorialOverlay';
 import { recommendFormation } from '../domain/formation';
 import { campaignMap, campaignFlag, campaignCamp, cityMap, CITY_BUILDINGS } from '../ui/Scenery';
 
@@ -772,6 +773,7 @@ export function hallView(ctx: ScreenContext) {
         V.button('HallReplayGo'+i,'回 放',225,y,150,40,()=>ctx.startReplay(r),GOLD);
       });
     });
+    firstTimeOverlay(ctx,'hall');
   }
 }
 
@@ -829,6 +831,7 @@ export function expeditionView(ctx: ScreenContext) {
     U.text('ExpShopCost'+i,`${g.seals} 印信`+(bought?' · 已兑':''),x,y-14,200,13,bought?tone('#6f8a5f'):tone('#d9b06a'));
     U.tap('ExpShopTap'+i,x,y,210,54,()=>{const r=store.buyWeekly(g.id);ctx.tell(r,r.ok?'兑换 '+r.name:'');});
   });
+  firstTimeOverlay(ctx,'expedition');
 }
 
 let bountyPickIdx = -1;
@@ -871,6 +874,7 @@ export function bountyView(ctx: ScreenContext) {
       U.text('BountyAct'+i,'已完成 · 已领赏',150,y-38,360,18,tone('#6f8a5f'));
     }
   });
+  firstTimeOverlay(ctx,'bounty');
   if(bountyPickIdx>=0){
     const pickIdx=bountyPickIdx;
     U.rect('BountyPickShade',0,0,720,1280,new Color(12,10,8,190));

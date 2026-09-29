@@ -7,6 +7,7 @@ import * as items from '../domain/items';
 import * as config from '../domain/config';
 import * as fmt from '../domain/fmt';
 import * as progression from '../domain/progression';
+import { firstTimeOverlay } from './TutorialOverlay';
 import { AutoSummary } from '../services/AutoBattleSession';
 
 const GOLD=tone('#e3ba70'), PAPER=tone('#f0dfbd'), DIM=tone('#a69776');
@@ -220,6 +221,7 @@ export function resultView(ctx: ScreenContext) {
     if(ctx.battleMode==='campaign'&&!r?.win){
       // 卡关处方单（研讨会二 P1）：归因 + 按资源可完成度生成的处方按钮（rx 已在行文案前计算）
       if(rx){
+        firstTimeOverlay(ctx,'rx');
         U.text('ResultHint',rx.attribution.text,0,-116,540,16,DIM);
         (rx.items as any[]).forEach((p:any,i:number)=>{
           U.button(i===0?'ResultGrowth':'ResultNext',p.text,-139+i*278,-228,232,53,()=>ctx.go(p.page as any),tone('#4c6e57'));

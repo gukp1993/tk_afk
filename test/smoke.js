@@ -1302,4 +1302,19 @@ const storeP2 = freshStore(); storeP2.load();
   global.wx._map.delete(SAVE_KEY);
 }
 
+
+// 新手首见浮层（研讨会四 P1）：新档首见/标记后不再弹/老档缺省已见
+{
+  const storeTB = freshStore(); storeTB.load();
+  const sTB = storeTB.getState();
+  check('TB1 新档未见（forge 待弹）', storeTB.tutorialSeen('forge') === false);
+  storeTB.markTutorialSeen('forge');
+  check('TB2 标记后已见', storeTB.tutorialSeen('forge') === true && Object.keys(sTB.tutorial.seen).length === 1);
+  // 老档（删 tutorial 字段）缺省已见
+  global.wx._map.set(SAVE_KEY, { v: 8, createdAt: 1, name: '主公', res: { gold: 1 }, roster: {} });
+  const storeTB2 = freshStore(); storeTB2.load();
+  check('TB3 老档缺 tutorial 字段视为已见（防浮层雨）', storeTB2.tutorialSeen('forge') === true && storeTB2.tutorialSeen('hall') === true && storeTB2.tutorialSeen('rx') === true);
+  global.wx._map.delete(SAVE_KEY);
+}
+
 console.log('\nsmoke: ' + passed + ' passed, ' + failed + ' failed');process.exit(failed ? 1 : 0);

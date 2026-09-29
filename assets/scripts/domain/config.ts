@@ -124,6 +124,18 @@ const DEFEAT_RX = { enabled: true, maxItems: 2 };
 const REPLAYS = { max: 20, arenaHighDiff: 1.2,
   capture: { hall: true, campaignFirst: true, towerMilestone: true, arenaHigh: true } };
 
+// 新手首见浮层（2026-09-30 研讨会四 P1）：每场景首次进入弹一次图文说明。
+// 老档（无 tutorial 字段）视为全部已见，防浮层雨；TUTORIAL_OFF=true 全局关闭。
+const TUTORIAL_OFF = false;
+const TUTORIALS = {
+  forge: { title: '锻造台 · 词条洗练', lines: ['六槽全部 5★ 后开启', '先选攻/守方向，再洗练两条词条', '白→蓝→紫三档，5 次未出紫必出紫', '锁定词条可保底洗另一条（费用翻倍）'] },
+  drill: { title: '校场操练 · 编外将价值', lines: ['仅 N/R 品质可操练，消耗铜钱', '每级 +4% 该将悬赏派遣加成', '满级 +20%，与阵营加成叠加封顶 +40%', '不影响战斗数值——后期铜钱正好用在这'] },
+  hall: { title: '名人堂 · 每周三席', lines: ['本周三套名阵容，挑战获取荣耀', '首杀 +20 荣耀，三星再 +10 与碎片', '三席全胜有周奖；荣耀解锁觉醒与称号', '下方战报可回放最近对局'] },
+  bounty: { title: '悬赏派遣 · 编外将就业', lines: ['每日 4 单，派 1 将出征按时领赏', '派同阵营将该单铜钱元宝 +20%', '操练过的 N/R 将加成更高（封顶 +40%）', '到时未领也不亏——跨日自动补发'] },
+  expedition: { title: '远征 · 周循环中心', lines: ['无限层挑战：难度与印信随层数上涨', '周任务 7 条+活跃宝箱，印信主要来源', '印信商店可换 SSR 自选券与限定称号', '每周一刷新词缀与任务'] },
+  rx: { title: '卡关处方单', lines: ['败北不再只给一句提示', '按失败原因给出 2 条「现在就能做」的强化', '点处方按钮直达对应养成页', '做完再战——大多数卡关差的就是一步'] }
+};
+
 // 14 日第二周目标树（2026-09-30 研讨会三方案 2）：第 8~14 天一次性里程碑（非每日清单）。
 // 条件绑定既有模式；无时限——达成后随时可领（追赶友好，无需漏领补偿）。
 // 毕业奖避开 SSR 券与大额元宝，护 SSR P50 口径与抽卡锚。
@@ -485,7 +497,7 @@ export {
   MAX_LEVEL, PLAYER_LEVEL, BATTLE_XP, AUTO_BATTLE, FOOD_VALUE, DUPE_GOLD,
   goldCost, expCost, idleRates, IDLE_CAP_HOURS, GEM_IDLE, ARMORY_IRON_PER_HOUR,
   FAST_AD, FAST_PAID,
-  GACHA, factionBonus, FORMATION_ROWS, BATTLE, ARENA, DEFEAT_RX, REPLAYS, DRILL, SEVEN_DAY, FOURTEEN_DAY, TRAINING_DAILY_CAP, BOUNTY, ROAMER_POOL, AD,
+  GACHA, factionBonus, FORMATION_ROWS, BATTLE, ARENA, DEFEAT_RX, REPLAYS, DRILL, SEVEN_DAY, FOURTEEN_DAY, TUTORIAL_OFF, TUTORIALS, TRAINING_DAILY_CAP, BOUNTY, ROAMER_POOL, AD,
   FIRST_STAGE_END, CAMPAIGN_DIFFICULTY, CAMPAIGN_MILESTONES, ELITE_STAGE, STAR_RULES, CHAPTER_STAR_CHESTS, DAILY_ELITE_CHEST,
   CAMPAIGN_MODS, BOSS_MODS, RETURN_GRANTS, SUMMON_TICKET, SUMMON_POINTS, FORGE, MOTIFS, MOTIF_COST, SMELT,
   CODEX_REWARDS, ACHV_AXES, ACHV_REWARDS, WEEKLY, HALL, AWAKEN, FORMATION_PRESETS_MAX, TACTIC, BATTLE_TACTICS, TACTIC_SR, HALL_ACHV, TACTIC_ACHV, AWAKEN_ACHV

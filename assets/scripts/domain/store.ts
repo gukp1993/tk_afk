@@ -52,6 +52,7 @@ function defaultState() {
     res: { gold: 100000, gem: 1888, scroll: 12, token: 20, shard: 0, iron: 60, univSsr: 0, soul: 0 },
     sevenDay: { start: F.todayStr(), claimed: [] },
     fourteenDay: { claimed: [] },
+    tutorial: { seen: {} },
     bounty: { day: '', list: [] },
     roamer: { day: '', ids: [], bought: {} },
     vouchers: { sr: 0, ssr: 0 },
@@ -2567,6 +2568,22 @@ function dayDiffStr(fromStr, toStr) {
   const p = s => { const a = String(s).split('-').map(Number); return new Date(a[0], (a[1] || 1) - 1, a[2] || 1).getTime(); };
   return Math.round((p(toStr) - p(fromStr)) / 86400000);
 }
+// 新手首见浮层（研讨会四 P1）：老档（无 tutorial 字段）一律视为已见；新档按 seen 键标记
+function tutorialSeen(key) {
+  if (C.TUTORIAL_OFF) return true;
+  if (!state.tutorial || !state.tutorial.seen) return true; // 旧档缺省已见
+  return !!state.tutorial.seen[key];
+}
+function markTutorialSeen(key) {
+  return withSavedMutation(() => {
+    state.tutorial = state.tutorial || { seen: {} };
+    state.tutorial.seen = state.tutorial.seen || {};
+    if (state.tutorial.seen[key]) return { ok: true, changed: false };
+    state.tutorial.seen[key] = 1;
+    return { ok: true, changed: true };
+  });
+}
+
 // 14 日第二周目标（研讨会三方案 2）：第 8~14 天一次性里程碑，条件绑定既有进度。
 // 无时限：开服天数到位 + 条件达成即可领（追赶友好）；演武条件用当前赛季积分。
 function fourteenDayInfo() {
@@ -2750,7 +2767,7 @@ export {
   winCampaign, campaignRewardPreview, winTower, arenaFight, arenaSeasonInfo, arenaBoardInfo, summonGapInfo, beginBattle, settleBattle, campaignStarChestInfo, claimStarChests,
   markStorySeen, isStorySeen, retroGrants, dismissRetroGrants, dismissReturnPending,
   questList, claimQuest, activePoints, claimActiveChest, claimAllDailyRewards, claimFreeRewards, bumpQuest, applyReward,
-  sevenDayInfo, claimSevenDay, fourteenDayInfo, claimFourteenDay, bountyInfo, bountyPayout, dispatchBounty, claimBounty, roamerInfo, buyRoamer, takeBountyGrantsNotice,
+  sevenDayInfo, claimSevenDay, fourteenDayInfo, claimFourteenDay, tutorialSeen, markTutorialSeen, bountyInfo, bountyPayout, dispatchBounty, claimBounty, roamerInfo, buyRoamer, takeBountyGrantsNotice,
   interruptBattle, setAutoBattleSpeed,
   buyGood, CURRENCY_NAME,
   adCount, adBump

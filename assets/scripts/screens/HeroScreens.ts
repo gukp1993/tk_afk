@@ -7,6 +7,7 @@ import * as items from '../domain/items';
 import * as config from '../domain/config';
 import * as fmt from '../domain/fmt';
 import * as progression from '../domain/progression';
+import { firstTimeOverlay } from './TutorialOverlay';
 
 const ink=tone('#171009'), panel=tone('#2e2113'), border=tone('#5a452a');
 const gold=tone('#f0cf8a'), paper=tone('#e9d8b4'), dim=tone('#a6906c');
@@ -318,6 +319,7 @@ export function heroDetail(ctx: ScreenContext) {
     }
     if(ctx.heroDetailOrigin==='heroes')V.button('ReturnHeroes','返回群英录',0,next-40,350,72,()=>ctx.back('heroes'),palette.paperDark);
   });
+  if(h.rarity<=2)firstTimeOverlay(ctx,'drill');
   U.panel('DetailActionBackground',0,-579,720,122,new Color(7,27,24,245),0,gold);
   U.panel('FormationAction',0,-568,538,82,new Color(25,87,65,255),11,gold);
   U.text('FormationActionText','调整编队',0,-568,506,34,gold);
@@ -518,6 +520,7 @@ export function forgeView(ctx: ScreenContext) {
     const stars=items.ARMORY_SLOTS.filter((sl:any)=>s.armory.slotStars[sl.id]>=5).length;
     U.text('ForgeClosed',`锻造台尚未开启 · 六槽全部 5★ 后开启（${stars}/6）`,0,250,640,22,dim);
     return;
+    firstTimeOverlay(ctx,'forge');
   }
   items.ARMORY_SLOTS.forEach((sl:any,i:number)=>{
     const x=-252+i*101,active=sl.id===slot;
