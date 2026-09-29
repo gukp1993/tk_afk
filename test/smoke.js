@@ -464,7 +464,7 @@ store4b.grantCard('liaohua'); // 已拥有
 check('图鉴claim未集齐拒绝', store4b.claimCodex('shu-nr').ok === false);
 // 成就：推图轴 cleared=0 → 第 1 档需 10 关不可领；塔轴首胜后可领
 const av = store4b.achvInfo();
-check('成就五轴', av.axes.length === 5 && av.axes.every(a => a.tiers.length === 10));
+check('成就九轴（五基础+名人堂/兵法/觉醒/操练）', av.axes.length === 9 && av.axes.every(a => a.tiers.length === 10));
 check('成就未达标拒绝', store4b.claimAchv('campaign', 2).ok === false); // cleared=30 < 40
 // 远征周：周重置生成、任务进度、领取、印信、兑换
 const wk = store4b.weekInfo();
@@ -1351,6 +1351,25 @@ const storeP2 = freshStore(); storeP2.load();
   sDG.dungeon.day = '2000-01-01';
   storeDG.checkDailyReset();
   check('DG9 跨日次数重置最佳层保留', sDG.dungeon.runs === 0 && sDG.dungeon.bestGold === 1);
+}
+
+
+// 成就九轴（研讨会四搭车）：扩展三轴接线 + 操练轴派生与领取
+{
+  const storeA9 = freshStore(); storeA9.load();
+  const sA9 = storeA9.getState();
+  const axes = storeA9.achvInfo().axes;
+  check('A9-1 九轴齐（五基础+名人堂/兵法/觉醒/操练）', axes.length === 9
+    && ['hallKills','tacticLv','awaken','drill'].every(k => axes.some(a => a.key === k)));
+  sA9.roster.liaohua.drill = 5; sA9.roster.mengda.drill = 3;
+  sA9.hall.killsTotal = 3;
+  const info = storeA9.achvInfo();
+  const drill = info.axes.find(a => a.key === 'drill');
+  const hall = info.axes.find(a => a.key === 'hallKills');
+  check('A9-2 操练进度求和+首档可领', drill.value === 8 && drill.tiers[0].claimable && drill.tiers[1].claimable === false);
+  check('A9-3 名人堂轴接通（killsTotal 进度）', hall.value === 3 && hall.tiers[0].claimable);
+  const c = storeA9.claimAchv('drill', 0);
+  check('A9-4 操练档领取入账', c.ok && sA9.res.gold >= 10000);
 }
 
 console.log('\nsmoke: ' + passed + ' passed, ' + failed + ' failed');process.exit(failed ? 1 : 0);

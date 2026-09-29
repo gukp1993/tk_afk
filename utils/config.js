@@ -455,6 +455,8 @@ const HALL_ACHV = { name: '名人堂', tiers: [3, 9, 18, 30, 45, 63, 84, 108, 13
   rewards: [{gold:10000,shard:5},{gold:15000,shard:8},{gold:20000,shard:10},{gold:30000,shard:12},{gold:40000,shard:14},{gold:50000,shard:15},{shard:20,token:30,title:'名人堂·名家'},{shard:30,token:30,title:'名人堂·豪杰'},{gem:2000,title:'名人堂·传奇'},{gem:3000,frame:1}] };
 const TACTIC_ACHV = { name: '兵法', tiers: [1, 3, 6, 10, 15, 22, 30, 42, 60, 80],
   rewards: [{gold:10000,shard:5},{gold:15000,shard:8},{gold:20000,shard:10},{gold:30000,shard:12},{gold:40000,shard:14},{gold:50000,shard:15},{shard:20,token:30,title:'兵法·研习者'},{shard:30,token:30,title:'兵法·大师'},{gem:2000,title:'兵法·宗师'},{gem:3000,frame:1}] };
+const DRILL_ACHV = { name: '操练', tiers: [5, 20, 45, 80, 130, 190, 260, 330, 380, 400],
+  rewards: [{gold:10000,shard:5},{gold:15000,shard:8},{gold:20000,shard:10},{gold:30000,shard:12},{gold:40000,shard:14},{gold:50000,shard:15},{shard:20,token:30,title:'操练·什长'},{shard:30,token:30,title:'操练·都伯'},{gem:2000,title:'操练·校尉'},{gem:3000,frame:1}] };
 const AWAKEN_ACHV = { name: '觉醒', tiers: [1, 2, 4, 6, 9, 12, 16, 22, 30, 40],
   rewards: [{gold:10000,shard:5},{gold:15000,shard:8},{gold:20000,shard:10},{gold:30000,shard:12},{gold:40000,shard:14},{gold:50000,shard:15},{shard:20,token:30,title:'觉醒·开窍'},{shard:30,token:30,title:'觉醒·通达'},{gem:2000,title:'觉醒·化境'},{gem:3000,frame:1}] };
 
@@ -507,5 +509,5 @@ module.exports = {
   GACHA, factionBonus, FORMATION_ROWS, BATTLE, ARENA, DEFEAT_RX, REPLAYS, DRILL, SEVEN_DAY, FOURTEEN_DAY, DUNGEON, TUTORIAL_OFF, TUTORIALS, TRAINING_DAILY_CAP, BOUNTY, ROAMER_POOL, AD,
   FIRST_STAGE_END, CAMPAIGN_DIFFICULTY, CAMPAIGN_MILESTONES, ELITE_STAGE, STAR_RULES, CHAPTER_STAR_CHESTS, DAILY_ELITE_CHEST,
   CAMPAIGN_MODS, BOSS_MODS, RETURN_GRANTS, SUMMON_TICKET, SUMMON_POINTS, FORGE, MOTIFS, MOTIF_COST, SMELT,
-  CODEX_REWARDS, ACHV_AXES, ACHV_REWARDS, WEEKLY, HALL, AWAKEN, FORMATION_PRESETS_MAX, TACTIC, BATTLE_TACTICS, TACTIC_SR, HALL_ACHV, TACTIC_ACHV, AWAKEN_ACHV
+  CODEX_REWARDS, ACHV_AXES, ACHV_REWARDS, WEEKLY, HALL, AWAKEN, FORMATION_PRESETS_MAX, TACTIC, BATTLE_TACTICS, TACTIC_SR, HALL_ACHV, TACTIC_ACHV, AWAKEN_ACHV, DRILL_ACHV
 };

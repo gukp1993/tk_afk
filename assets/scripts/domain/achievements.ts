@@ -28,11 +28,23 @@ function axisProgress(axis, state) {
       Object.values(state.roster || {}).forEach((r) => { sum += (r.awaken || 0); });
       return sum;
     }
+    case 'drill': {
+      let sum = 0;
+      Object.values(state.roster || {}).forEach((r) => { sum += (r.drill || 0); });
+      return sum;
+    }
     default: return 0;
   }
 }
 
-// 五轴成就总览：tiers 达标即 claimable（一次性）
+// 成就总览（九轴）：五基础轴（统一奖励表）+ 名人堂/兵法/觉醒/操练扩展轴（各自奖励表）。
+// 扩展轴此前只导出未接线（2026-09-30 发现并修复）；tiers 达标即 claimable（一次性）。
+const EXTENDED_AXES = [
+  { key: 'hallKills', def: () => C.HALL_ACHV },
+  { key: 'tacticLv', def: () => C.TACTIC_ACHV },
+  { key: 'awaken', def: () => C.AWAKEN_ACHV },
+  { key: 'drill', def: () => C.DRILL_ACHV }
+];
 function achvInfo(state) {
   const claimed = (state.achv && state.achv.claimed) || {};
   const axes = Object.keys(C.ACHV_AXES).map(key => {
@@ -44,6 +56,17 @@ function achvInfo(state) {
       claimable: !claimed[key + '-' + i] && value >= need
     }));
     return { key, name: def.name, value, tiers };
+  });
+  EXTENDED_AXES.forEach(({ key, def }) => {
+    const d = def();
+    if (!d) return;
+    const value = axisProgress(key, state);
+    const tiers = d.tiers.map((need, i) => ({
+      tier: i, need, reward: d.rewards[i],
+      claimed: !!claimed[key + '-' + i],
+      claimable: !claimed[key + '-' + i] && value >= need
+    }));
+    axes.push({ key, name: d.name, value, tiers });
   });
   return { axes, claimable: axes.some(a => a.tiers.some(t => t.claimable)) };
 }
