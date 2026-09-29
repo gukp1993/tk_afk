@@ -127,13 +127,14 @@ export function refreshBattleView(ctx: ScreenContext) {
 }
 
 // 败北诊断：取终局快照里存活敌方的最高血量占比，给一条可执行提示（我方被团灭时同样带血量信息）
-function defeatDiag(ctx: ScreenContext, r: any): string {
+function defeatDiag(ctx: ScreenContext, r: any, brief=false): string {
   const foes=(ctx.lastBattleSnapshot||[]).filter((u:any)=>u.side==='B'&&u.alive)
     .sort((a:any,b:any)=>(b.hp/b.maxHp)-(a.hp/a.maxHp));
   const top=foes[0];
   const topPct=top?Math.round(top.hp/top.maxHp*100):null;
   const timedOut=(r?.duration||0)>=config.BATTLE.TIME_LIMIT;
-  if(topPct===null)return '我方全灭 · 尝试克制阵营或升级军械';
+  if(topPct===null)return brief?'我方全灭 · 敌阵完好':'我方全灭 · 尝试克制阵营或升级军械';
+  if(brief)return `${top.name} 仍剩 ${topPct}% 血`;
   if(topPct<=15)return `${top.name}只剩 ${topPct}% 血 · 再强化一轮即可过关`;
   if(timedOut)return `${top.name}仍剩 ${topPct}% 血 · 输出不足，试试克制阵营（魏→蜀→吴→群→魏）或升级军械`;
   return `我方被击败 · ${top.name}仍剩 ${topPct}% 血 · 试试克制阵营或调整布阵`;
@@ -146,6 +147,15 @@ export function resultView(ctx: ScreenContext) {
   U.panel('ResultPanel',0,-12,572,512,tone('#271b13'),16,GOLD);
   U.text('ResultTitle',(r&&r.replay?'【回放】':'')+(r?.win?'凯  旋':'败  北'),0,174,514,56,r?.win?GOLD:DIM);
   const reward=r?.reward||{};
+  // 处方单提前计算（败北行是否用 brief 诊断取决于处方是否激活）
+  let rx:any=null;
+  if(!ctx.auto&&ctx.battleMode==='campaign'&&r&&!r.win&&!r.replay&&config.DEFEAT_RX.enabled){
+    const enemyFactions=(stages.makeStageEnemies(ctx.battleIndex).units||[]).map((u:any)=>u.hero&&u.hero.faction);
+    rx=progression.buildDefeatPrescriptions(store.getState(),{
+      questList:store.questList,idlePending:store.idlePending,bountyInfo:store.bountyInfo,summonPityInfo:store.summonPityInfo
+    },{duration:r.duration||0,snapshot:ctx.lastBattleSnapshot||[],enemyFactions});
+  }
+  let diagBrief=!!rx;
   let lines: string[]=[];
   if(r&&r.replay) lines=[`复盘 · ${r.replayName||'对局回放'}`,`用时 ${Math.round((r.duration||0)*10)/10} 秒`];
   else if(!r?.ok) lines=[r?.msg||'结算失败'];
@@ -172,7 +182,7 @@ export function resultView(ctx: ScreenContext) {
         `首通经验 +${r.gainedXP||0}`];
     } else lines=[`铜钱 +${fmt.fmtNum(reward.gold||0)} · 经验 +${r.gainedXP||0}`,'重复挑战不重复发放首通奖励'];
   }
-  else lines=['普通奖励需凯旋后方可领取',defeatDiag(ctx,r)];
+  else lines=['普通奖励需凯旋后方可领取',defeatDiag(ctx,r,diagBrief)];
   lines.slice(0,3).forEach((line,i)=>U.text(`ResultLine${i}`,line,0,99-i*40,515,22,PAPER));
   // 名将首通特写（战报中心 P3）：击败每章第 10 关名将的一次性文案，回放态不显示
   if(r?.win&&!r.replay&&ctx.battleMode==='campaign'&&reward.first&&stages.makeStageEnemies(ctx.battleIndex).isBoss){
@@ -200,11 +210,7 @@ export function resultView(ctx: ScreenContext) {
   U.button('ResultRetry','再战',139,-165,232,59,()=>ctx.battleMode==='arena'?ctx.startArenaBattle(ctx.battleDiff,ctx.battleArenaSeed):ctx.startBattle(ctx.battleMode,ctx.battleIndex,ctx.battleDiff),tone('#3a2b20'));
   if(!ctx.auto){
     if(ctx.battleMode==='campaign'&&!r?.win){
-      // 卡关处方单（研讨会二 P1）：归因 + 按资源可完成度生成的处方按钮
-      const enemyFactions=(stages.makeStageEnemies(ctx.battleIndex).units||[]).map((u:any)=>u.hero&&u.hero.faction);
-      const rx=progression.buildDefeatPrescriptions(store.getState(),{
-        questList:store.questList,idlePending:store.idlePending,bountyInfo:store.bountyInfo,summonPityInfo:store.summonPityInfo
-      },{duration:r?.duration||0,snapshot:ctx.lastBattleSnapshot||[],enemyFactions});
+      // 卡关处方单（研讨会二 P1）：归因 + 按资源可完成度生成的处方按钮（rx 已在行文案前计算）
       if(rx){
         U.text('ResultHint',rx.attribution.text,0,-116,540,16,DIM);
         (rx.items as any[]).forEach((p:any,i:number)=>{
