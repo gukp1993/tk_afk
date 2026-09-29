@@ -740,6 +740,32 @@ lineupsW.forEach((l, i) => {
     store4b.settleBattle(hbW.id, { win: true, duration: 30, aliveCount: 5 });
   });
   check('周全胜奖励含 SSR 碎片 5（觉醒补给）', s4b.qualityShards[4] >= shardBeforeClear + 5);
+// 波次 7：阵型模板
+check('模板初始为空', store4b.formationPresetsInfo().count === 0);
+const ps1 = store4b.saveFormationPreset(1, '推图阵');
+check('保存模板', ps1.ok && store4b.formationPresetsInfo().count === 1);
+const ps2 = store4b.saveFormationPreset(2, '竞技阵');
+check('第二模板', ps2.ok && store4b.formationPresetsInfo().count === 2);
+const ps3 = store4b.saveFormationPreset(3, '第三套');
+const ps4 = store4b.saveFormationPreset(4, '第四套拒绝');
+check('第 4 套拒绝', ps4.ok === false && store4b.formationPresetsInfo().count === 3);
+check('覆盖已有位允许', store4b.saveFormationPreset(3, '覆盖后').ok === true);
+// 应用：playerUnits 顺序与模板一致
+s4b.formation = ['liaohua', 'mengda', 'liubei', 'guanyu', 'zhangfei'];
+store4b.saveFormationPreset(1, '反转阵');
+s4b.formation = ['zhangfei', 'guanyu', 'liaohua', 'liubei', 'mengda'];
+const ap1 = store4b.applyFormationPreset(1);
+check('应用模板改变编队', ap1.ok && s4b.formation[0] === 'liaohua' && s4b.formation[4] === 'zhangfei');
+const unitsOrder = store4b.playerUnits().map(u => u.heroId);
+check('playerUnits 顺序与模板一致', unitsOrder[0] === 'liaohua' && unitsOrder[4] === 'zhangfei');
+const pd = store4b.delFormationPreset(1);
+check('删除模板', pd.ok && store4b.formationPresetsInfo().count === 2);
+check('删除后应用拒绝', store4b.applyFormationPreset(1).ok === false);
+// 旧档无 formationPresets 字段不炸
+delete s4b.formationPresets;
+let loadOk = true;
+try { store4b.checkDailyReset(); store4b.formationPresetsInfo(); } catch (e) { loadOk = false; }
+check('旧档无字段不炸', loadOk);
 // 时钟回拨防护：lastSeenTs 在未来时当日不重置
 s4b.arena.attempts = 2;
 s4b.lastSeenTs = REAL_NOW() + 86400000;

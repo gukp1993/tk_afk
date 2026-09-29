@@ -6,6 +6,7 @@ import * as __domain_items from './items';
 import * as __domain_fmt from './fmt';
 import * as __domain_platform from './platform';
 import * as __domain_battle from './battle';
+import * as __domain_formation from './formation';
 import * as __domain_stages from './stages';
 import * as __domain_achievements from './achievements';
 // 游戏状态管理：存档、武将养成、挂机、招募、任务、商店、演武
@@ -65,6 +66,7 @@ function defaultState() {
     week: null,
     hall: { kills: {}, stars: {}, threeClaimed: {}, weeklyClearWeek: '', honor: 0, titlesClaimed: [] },
     replays: [],
+    formationPresets: {},
     lastSeenTs: Date.now()
   };
 }
@@ -421,6 +423,39 @@ function tacticUpgrade(heroId) {
     return { ok: true, heroId, level: info.next.level, name: info.name, soul: state.res.soul };
   });
 }
+// ---------- 阵型模板 ----------
+// 上限 3 套（config.FORMATION_PRESETS_MAX）；应用走 applyFormation 复用全部校验；零奖励零战力通道。
+function formationPresetsInfo() {
+  const presets = state.formationPresets || {};
+  const keys = Object.keys(presets).sort();
+  return { max: C.FORMATION_PRESETS_MAX, count: keys.length,
+    list: keys.map(k => ({ key: k, name: presets[k].name, slots: presets[k].slots.slice() })) };
+}
+function saveFormationPreset(key, name) {
+  return withSavedMutation(() => {
+    const presets = state.formationPresets = state.formationPresets || {};
+    if (!presets[key] && Object.keys(presets).length >= C.FORMATION_PRESETS_MAX) return { ok: false, msg: '模板位已满（3 套），请先删除' };
+    presets[key] = { name: String(name || '').slice(0, 6) || ('阵型' + key), slots: state.formation.slice() };
+    return { ok: true, key, name: presets[key].name };
+  });
+}
+function applyFormationPreset(key) {
+  return withSavedMutation(() => {
+    const p = (state.formationPresets || {})[key];
+    if (!p) return { ok: false, msg: '模板不存在' };
+    const r = __domain_formation.validatePreset(p.slots, Object.keys(state.roster));
+    if (!r.ok) return r;
+    state.formation = p.slots.slice();
+    return { ok: true, name: p.name, formation: state.formation.slice() };
+  });
+}
+function delFormationPreset(key) {
+  return withSavedMutation(() => {
+    if (!(state.formationPresets || {})[key]) return { ok: false, msg: '模板不存在' };
+    delete state.formationPresets[key];
+    return { ok: true };
+  });
+}
 // ---------- 演武名人堂 ----------
 // 每周轮换 3 席名阵容；首杀一次性奖励、首三星一次性、周全胜一次性；重复挑战只刷评星。
 function beginHall(seat) {
@@ -676,6 +711,11 @@ function normalizeState(s) {
   s.hall.titlesClaimed = s.hall.titlesClaimed || [];
   if (!Array.isArray(s.replays)) s.replays = [];
   s.replays = s.replays.slice(-((C.HALL && C.HALL.replayCap) || 5));
+  s.formationPresets = s.formationPresets || {};
+  Object.keys(s.formationPresets).forEach(k => {
+    const p = s.formationPresets[k];
+    if (!p || !Array.isArray(p.slots) || p.slots.length !== 5) delete s.formationPresets[k];
+  });
   if (typeof s.seals !== 'number') s.seals = 0;
   s.res.univSr = Math.max(0, Math.floor(Number(s.res.univSr) || 0));
   if (!Number.isFinite(s.res.univSr)) s.res.univSr = 0;
@@ -2510,7 +2550,7 @@ export {
   exchangeQualityShard, qualityShardInfo,
   getFormationCalc, setFormationSlot, applyFormation, formationFactionBonus, teamPower, playerUnits, enemyUnits, activeBonds, bondMods,
   getArmoryBonuses, getArmoryState, armoryUnlock, armorySelect, armoryUpgrade, armoryUpgradeToNode, armoryClaimBox, grantArmoryItem, applyArmoryRecommendations, forgeInfo, forgeReroll, forgeSetDir, forgeToggleLock, forgeGateOpen, motifInfo, motifActivate, smeltInfo, smeltMelt, smeltCombine,
-  codexInfo, claimCodex, useUniversalSr, achvInfo, claimAchv, weekInfo, claimWeekQuest, claimWeekActive, buyWeekly, makeExpeditionFloor, bumpWeek, beginHall, winHall, hallInfo, saveReplay, replaysInfo, awakenInfo, awakenHero, tacticInfo, tacticUpgrade,
+  codexInfo, claimCodex, useUniversalSr, achvInfo, claimAchv, weekInfo, claimWeekQuest, claimWeekActive, buyWeekly, makeExpeditionFloor, bumpWeek, beginHall, winHall, hallInfo, saveReplay, replaysInfo, awakenInfo, awakenHero, formationPresetsInfo, saveFormationPreset, applyFormationPreset, delFormationPreset, tacticInfo, tacticUpgrade,
   addEquip, equipInventory, equipTo, unequip, enhanceEquip, fodderPickIds, salvageEquip, salvageBatch, isEquipped,
   migrateSaveV1, migrateSaveV2, migrateSaveV3, migrateSaveV4, migrateSaveV5, migrateSaveV6, normalizeState,
   idlePending, idleTick, gemQuotaInfo, claimIdle, claimIdleInternal, fastReward, fastRewardMutation, fastRewardAdMutation, adReward,

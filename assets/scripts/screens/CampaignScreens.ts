@@ -498,6 +498,24 @@ export function formation(ctx: ScreenContext) {
   });
   U.text('FormationHelp1','点击已上阵武将可更换；阵营克制：魏→蜀→吴→群→魏',0,44,650,18,tone('#ad9977'));
   U.text('FormationHelp2','克制方伤害 +25%',0,22,600,18,tone('#ad9977'));
+  U.text('FormationTarget','索敌：同排按 1→3 号位承伤 · 神射直取后排 · 军师随机',0,0,650,16,tone('#8a9a7a'));
+  const pi=store.formationPresetsInfo();
+  U.panel('PresetPanel',0,-258,682,56,tone('#2e2113'),8,tone('#795b34'));
+  U.text('PresetTitle','阵型模板',-280,-258,120,20,GOLD);
+  pi.list.forEach((pm:any,i:number)=>{
+    const x=-130+i*160;
+    U.panel('PresetChip'+i,x,-258,150,42,tone('#312218'),6,tone('#795b34'));
+    U.text('PresetName'+i,pm.name,x,-258,140,17,LIGHT);
+    U.tap('PresetTap'+i,x,-258,150,42,()=>ctx.tell(store.applyFormationPreset(pm.key),'已启用模板：'+pm.name));
+    U.text('PresetDel'+i,'×',x+62,-272,20,14,tone('#bb614c'));
+    U.tap('PresetDelTap'+i,x+62,-272,24,20,()=>{const r=store.delFormationPreset(pm.key);ctx.tell(r,r.ok?'模板已删除':'');});
+  });
+  if(pi.count<pi.max){
+    const sx=-130+pi.count*160;
+    U.panel('PresetSave',sx,-258,150,42,tone('#39291a'),6,GOLD);
+    U.text('PresetSaveTxt'+pi.count,'保存当前',sx,-258,140,17,GOLD);
+    U.tap('PresetSaveTap'+pi.count,sx,-258,150,42,()=>ctx.confirm('保存阵型模板','保存当前五人编队为模板（含站位），可在日后一键启用',()=>{const r=store.saveFormationPreset('p'+(pi.count+1),'阵型'+(pi.count+1));ctx.tell(r,r.ok?'模板已保存':'');}));
+  }
   const bondsNow=store.activeBonds(),allBonds=heroes.BONDS||[],mods=store.bondMods();
   U.panel('BondsPanel',0,-258,682,436,tone('#342518'),11,GOLD);
   U.text('BondsTitle',`三国羁绊 · 已激活 ${bondsNow.length}/${allBonds.length}`,-160,-70,400,24,GOLD);

@@ -28,4 +28,13 @@ function recommendFormation(roster) {
   while (ids.length < 5) ids.push(null);
   return ids;
 }
-export { recommendFormation };
+// 阵型模板校验：5 槽、查重、查未拥有（行位自由，索敌由 slot 顺序决定）
+function validatePreset(slots, rosterIds) {
+  const owned = new Set(rosterIds || []);
+  if (!Array.isArray(slots) || slots.length !== 5) return { ok: false, msg: '阵容数据无效' };
+  const used = slots.filter(Boolean);
+  if (used.some(id => !owned.has(id))) return { ok: false, msg: '含未拥有武将' };
+  if (new Set(used).size !== used.length) return { ok: false, msg: '武将重复' };
+  return { ok: true };
+}
+export { recommendFormation, validatePreset };
