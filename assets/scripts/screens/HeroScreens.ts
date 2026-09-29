@@ -180,6 +180,9 @@ export function heroes(ctx: ScreenContext) {
     }
   }
 
+// 兵法 perLevel 数值键的中文显示名（ult* 为必杀技乘区，其余为该将自身被动增量）
+const TACTIC_KEY_NAMES:Record<string,string>={ultDmg:'必杀伤害',ultHeal:'必杀治疗',ultShield:'必杀护盾',ultDot:'必杀持续伤害',ultDebuff:'必杀削弱',atk:'攻击',hp:'生命',crit:'暴击率',critDmg:'暴击伤害',dmgReduce:'受伤降低',thorns:'反弹伤害',vamp:'吸血'};
+
 export function heroDetail(ctx: ScreenContext) {
   const def:any=heroData.getHero(ctx.selectedHeroId), own:any=store.getOwned(ctx.selectedHeroId);
   if(!def||!own){ctx.notice='没有找到该武将或尚未拥有';ctx.back(ctx.heroDetailOrigin||'heroes');return;}
@@ -189,7 +192,8 @@ export function heroDetail(ctx: ScreenContext) {
   const cls=(config.CLASSES as any)[h.cls]?.name||'武将', formed=s.formation.includes(h.id);
   const hasVoucher=(s.vouchers[h.rarity===4?'ssr':'sr']||0)>0&&h.rarity>=3;
   const awakenShown=h.rarity===4&&own.star>=5;
-  const contentH=1160+(own.cards>0?110:0)+(hasVoucher?115:0)+(ctx.heroDetailOrigin==='heroes'?90:0)+(awakenShown?130:0);
+  const tacticShown=h.rarity===4&&own.star>=5;
+  const contentH=1160+(own.cards>0?110:0)+(hasVoucher?115:0)+(ctx.heroDetailOrigin==='heroes'?90:0)+(awakenShown?130:0)+(tacticShown?130:0);
   const top=contentH/2, pct=(v:number)=>fmt.fmtPct(v);
   U.rect('DetailBackdrop',0,0,720,1280,tone('#122a22'));
   U.panel('DetailHeader',0,587,720,96,new Color(9,28,25,245),0,gold);
@@ -267,6 +271,28 @@ export function heroDetail(ctx: ScreenContext) {
         V.text('AwakenMax',`已达觉醒上限 · ${h.name} 已臻化境`,0,ay-14,600,19,tone('#d9b06a'));
       }
       next=ay-64;
+    }
+    if(tacticShown){
+      const tc=store.tacticInfo(h.id) as any;
+      if(tc&&tc.ok){
+        const ty=next-64;
+        const tactEffect=(level:number)=>Object.keys(tc.perLevel||{}).map((k:string)=>`${TACTIC_KEY_NAMES[k]||k} +${pct((tc.perLevel[k]||0)*level)}`).join(' · ')||'无';
+        V.panel('TacticPanel',0,ty,666,108,new Color(24,36,48,242),8,gold);
+        V.text('TacticTitle',`兵法 · ${tc.name} ${tc.level}/${tc.max} 级`,-170,ty+28,440,22,gold);
+        if(tc.next){
+          const can=tc.next.can;
+          V.text('TacticCost',`下一级：将魂 ${tc.next.soul} + 铜钱 ${fmt.fmtNum(tc.next.gold)} · 余额 ${tc.soul}`,-170,ty-10,430,17,dim);
+          V.button('TacticGo',can?'研 习':'材料不足',225,ty,180,54,()=>{const r:any=store.tacticUpgrade(h.id);ctx.tell(r,r.ok?`${h.name} 兵法「${r.name}」研习至 ${r.level} 级`:'');},can?palette.gold:palette.paperDark);
+          if(!can)V.text('TacticLack',!tc.unlocked?'需先满 5 星':((s.res.soul||0)<tc.next.soul)?'将魂不足（满星后重复获得同名 SSR 转化）':'铜钱不足',-170,ty-38,430,15,tone('#bb614c'));
+        } else {
+          V.text('TacticMax',`已达兵法上限 · 「${tc.name}」大成`,0,ty-14,600,19,tone('#d9b06a'));
+        }
+        V.tap('TacticInfoTap',0,ty,666,108,()=>heroInfoModal(ctx,'兵法 · '+tc.name,[tc.desc,
+          '当前（'+tc.level+' 级）：'+(tc.level>0?tactEffect(tc.level):'未研习'),
+          tc.next?('下一级（'+tc.next.level+' 级）：'+tactEffect(tc.next.level)):'已达上限',
+          '将魂余额：'+tc.soul+'（满星 SSR 重复卡每张转 1 魂）']));
+        next=ty-64;
+      }
     }
     if(ctx.heroDetailOrigin==='heroes')V.button('ReturnHeroes','返回群英录',0,next-40,350,72,()=>ctx.back('heroes'),palette.paperDark);
   });
@@ -417,7 +443,7 @@ export function summonResults(ctx: ScreenContext) {
     U.tap('DrawBackTap',-254,609,205,45,()=>ctx.back('summon'));
     U.panel('DrawResultFrame',0,-10,690,1060,panel,13,gold);
     U.text('DrawHeading',`召唤结果 · ${ctx.lastSummon.length} 名英雄`,0,469,630,33,gold);
-    U.text('DrawSubheading','新英雄直接入队 · 重复武将自动升星 · 满星后 N/R 转铜钱、SR/SSR 转品质碎片',0,425,630,18,dim);
+    U.text('DrawSubheading','新英雄直接入队 · 重复武将自动升星 · 满星后 N/R 转铜钱、SR 转碎片、SSR 转将魂',0,425,630,18,dim);
     ctx.lastSummon.forEach((result: any, i: number) => {
       const hero = heroData.getHero(result.id);
       if (!hero) return;
@@ -433,6 +459,7 @@ export function summonResults(ctx: ScreenContext) {
       U.text('DrawName'+i,hero.name,x,single?y-78:y-35,single?290:180,single?30:23,paper);
       U.text('DrawRarity'+i,rarity,x,single?y-120:y-63,single?210:154,20,accent);
       U.text('DrawStatus'+i,result.isNew?'NEW':result.autoStar?`★${result.fromStar}→${result.star}`
+        :result.soulGain?`将魂 +1 · 余额 ${result.soul||0}`
         :result.shardGain?`品质碎片 +1 · ${result.qualityShards||0}/10`
         :result.goldGain?`转化为铜钱 +${fmt.fmtNum(result.goldGain)}`
         :`留存 ×${result.cards||1}`,x,single?y-157:y-83,single?235:162,17,dim);

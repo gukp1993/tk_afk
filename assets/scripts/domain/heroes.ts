@@ -34,7 +34,8 @@ const HEROES = [
       { t: 'heal', tgt: 'allAllies', mult: 1.5 },
       { t: 'buff', stat: 'atk', pct: 0.12, dur: 8, tgt: 'allAllies' }
     ]},
-    passive: { name: '汉室正统', desc: '中山靖王之后，我方全体防御+8%。', mods: { auraDef: 0.08 } }
+    passive: { name: '汉室正统', desc: '中山靖王之后，我方全体防御+8%。', mods: { auraDef: 0.08 } },
+    tactic: { name: '仁德真言', desc: '专属兵法·仁德真言：仁德布世治疗量 +5%/级，自身生命 +2%/级。', perLevel: { ultHeal: 0.05, hp: 0.02 } }
   },
   {
     id: 'guanyu', name: '关羽', title: '武圣', faction: 'shu', cls: 'warrior', rarity: 4,
@@ -44,7 +45,8 @@ const HEROES = [
       { t: 'dmg', tgt: 'frontRow', mult: 2.5 },
       { t: 'dot', kind: 'bleed', mult: 0.4, dur: 6, tgt: 'frontRow' }
     ]},
-    passive: { name: '武圣威严', desc: '斩颜良诛文丑，威震华夏：自身攻击+15%，生命+10%。', mods: { atk: 0.15, hp: 0.10 } }
+    passive: { name: '武圣威严', desc: '斩颜良诛文丑，威震华夏：自身攻击+15%，生命+10%。', mods: { atk: 0.15, hp: 0.10 } },
+    tactic: { name: '青龙武经', desc: '专属兵法·青龙武经：青龙偃月斩伤害 +6%/级，自身攻击 +1%/级。', perLevel: { ultDmg: 0.06, atk: 0.01 } }
   },
   {
     id: 'zhangfei', name: '张飞', title: '万人敌', faction: 'shu', cls: 'tank', rarity: 4,
@@ -54,7 +56,8 @@ const HEROES = [
       { t: 'dmg', tgt: 'frontRow', mult: 2.0 },
       { t: 'cc', kind: 'stun', dur: 3, tgt: 'frontRow' }
     ]},
-    passive: { name: '万人敌', desc: '据水断桥，曹军莫敢近：自身生命+18%，反弹10%所受伤害。', mods: { hp: 0.18, thorns: 0.10 } }
+    passive: { name: '万人敌', desc: '据水断桥，曹军莫敢近：自身生命+18%，反弹10%所受伤害。', mods: { hp: 0.18, thorns: 0.10 } },
+    tactic: { name: '燕人虎威', desc: '专属兵法·燕人虎威：当阳断喝伤害 +5%/级，反弹伤害 +2%/级。', perLevel: { ultDmg: 0.05, thorns: 0.02 } }
   },
   {
     id: 'zhaoyun', name: '赵云', title: '常山赵子龙', faction: 'shu', cls: 'warrior', rarity: 4,
@@ -63,7 +66,8 @@ const HEROES = [
     ult: { name: '七进七出', desc: '长坂坡单骑救主：对随机敌人连续突刺4次，每段造成85%攻击伤害。', effects: [
       { t: 'dmg', tgt: 'randEach', mult: 0.85, hits: 4 }
     ]},
-    passive: { name: '龙胆', desc: '一身是胆，浑身解数：自身暴击+15%，且每场战斗可免疫一次致命伤害。', mods: { crit: 0.15, cheatDeath: 1 } }
+    passive: { name: '龙胆', desc: '一身是胆，浑身解数：自身暴击+15%，且每场战斗可免疫一次致命伤害。', mods: { crit: 0.15, cheatDeath: 1 } },
+    tactic: { name: '龙胆神威', desc: '专属兵法·龙胆神威：七进七出伤害 +5.5%/级，自身暴击 +1.2%/级。', perLevel: { ultDmg: 0.055, crit: 0.012 } }
   },
   {
     id: 'zhugeliang', name: '诸葛亮', title: '卧龙', faction: 'shu', cls: 'mage', rarity: 4,
@@ -73,7 +77,8 @@ const HEROES = [
       { t: 'dmg', tgt: 'allEnemies', mult: 1.8 },
       { t: 'dot', kind: 'burn', mult: 0.35, dur: 8, tgt: 'allEnemies' }
     ]},
-    passive: { name: '神机', desc: '未出茅庐已知三分天下：我方全体攻击+6%，自身怒气获取提升20%。', mods: { auraAtk: 0.06, energyGain: 0.2 } }
+    passive: { name: '神机', desc: '未出茅庐已知三分天下：我方全体攻击+6%，自身怒气获取提升20%。', mods: { auraAtk: 0.06, energyGain: 0.2 } },
+    tactic: { name: '八阵遁甲', desc: '专属兵法·八阵遁甲：八阵图伤害 +4%/级，灼烧伤害 +5%/级。', perLevel: { ultDmg: 0.04, ultDot: 0.05 } }
   },
   {
     id: 'huangzhong', name: '黄忠', title: '老当益壮', faction: 'shu', cls: 'archer', rarity: 4,
@@ -82,7 +87,8 @@ const HEROES = [
     ult: { name: '百步穿杨', desc: '定军山一箭定乾坤：对生命最低的敌军造成300%攻击伤害。', effects: [
       { t: 'dmg', tgt: 'lowestEnemy', mult: 3.0 }
     ]},
-    passive: { name: '烈弓', desc: '能开二石之弓，百发百中：自身暴击率+10%，暴击伤害+40%。', mods: { crit: 0.10, critDmg: 0.4 } }
+    passive: { name: '烈弓', desc: '能开二石之弓，百发百中：自身暴击率+10%，暴击伤害+40%。', mods: { crit: 0.10, critDmg: 0.4 } },
+    tactic: { name: '烈弓神射', desc: '专属兵法·烈弓神射：百步穿杨伤害 +5%/级，暴击伤害 +5%/级。', perLevel: { ultDmg: 0.05, critDmg: 0.05 } }
   },
   {
     id: 'machao', name: '马超', title: '锦马超', faction: 'shu', cls: 'warrior', rarity: 3,
@@ -331,7 +337,8 @@ const HEROES = [
       { t: 'dmg', tgt: 'allEnemies', mult: 1.7 },
       { t: 'buff', stat: 'atk', pct: 0.15, dur: 10, tgt: 'allAllies' }
     ]},
-    passive: { name: '奸雄之略', desc: '治世之能臣，乱世之奸雄：我方全体攻击+8%，自身暴击率+10%。', mods: { auraAtk: 0.08, crit: 0.10 } }
+    passive: { name: '奸雄之略', desc: '治世之能臣，乱世之奸雄：我方全体攻击+8%，自身暴击率+10%。', mods: { auraAtk: 0.08, crit: 0.10 } },
+    tactic: { name: '奸雄霸略', desc: '专属兵法·奸雄霸略：乱世号令伤害 +5.5%/级，自身暴击 +1.2%/级。', perLevel: { ultDmg: 0.055, crit: 0.012 } }
   },
   {
     id: 'simayi', name: '司马懿', title: '冢虎', faction: 'wei', cls: 'mage', rarity: 4,
@@ -341,7 +348,8 @@ const HEROES = [
       { t: 'dmg', tgt: 'allEnemies', mult: 1.6 },
       { t: 'cc', kind: 'freeze', dur: 2, tgt: 'rand2' }
     ]},
-    passive: { name: '忍略', desc: '十年磨剑，一朝亮剑：自身攻击+12%，受到伤害降低8%。', mods: { atk: 0.12, dmgReduce: 0.08 } }
+    passive: { name: '忍略', desc: '十年磨剑，一朝亮剑：自身攻击+12%，受到伤害降低8%。', mods: { atk: 0.12, dmgReduce: 0.08 } },
+    tactic: { name: '冢虎韬略', desc: '专属兵法·冢虎韬略：鹰视狼顾伤害 +6%/级，自身受伤降低 +1.2%/级。', perLevel: { ultDmg: 0.06, dmgReduce: 0.012 } }
   },
   {
     id: 'dianwei', name: '典韦', title: '古之恶来', faction: 'wei', cls: 'tank', rarity: 4,
@@ -351,7 +359,8 @@ const HEROES = [
       { t: 'dmg', tgt: 'single', mult: 2.9 },
       { t: 'shield', tgt: 'self', mult: 1.2 }
     ]},
-    passive: { name: '逐虎过涧', desc: '单手擎旗，逐虎过涧：自身生命+15%，反弹12%所受伤害。', mods: { hp: 0.15, thorns: 0.12 } }
+    passive: { name: '逐虎过涧', desc: '单手擎旗，逐虎过涧：自身生命+15%，反弹12%所受伤害。', mods: { hp: 0.15, thorns: 0.12 } },
+    tactic: { name: '古之恶来', desc: '专属兵法·古之恶来：恶来死战伤害 +4.5%/级，护盾量 +4%/级。', perLevel: { ultDmg: 0.045, ultShield: 0.04 } }
   },
   {
     id: 'guojia', name: '郭嘉', title: '鬼才', faction: 'wei', cls: 'mage', rarity: 3,
@@ -370,7 +379,8 @@ const HEROES = [
     ult: { name: '威震逍遥', desc: '八百破十万，江东小儿不敢夜啼：对单体造成280%攻击伤害，若目标生命低于35%，伤害提升至1.8倍。', effects: [
       { t: 'dmg', tgt: 'single', mult: 2.8, execute: 0.35 }
     ]},
-    passive: { name: '突袭', desc: '兵贵神速，一战破敌：自身攻击+10%，击杀敌人后额外获得20点怒气。', mods: { atk: 0.10, rageOnKill: 20 } }
+    passive: { name: '突袭', desc: '兵贵神速，一战破敌：自身攻击+10%，击杀敌人后额外获得20点怒气。', mods: { atk: 0.10, rageOnKill: 20 } },
+    tactic: { name: '止啼锐锋', desc: '专属兵法·止啼锐锋：威震逍遥伤害 +6%/级，自身攻击 +1.2%/级。', perLevel: { ultDmg: 0.06, atk: 0.012 } }
   },
   {
     id: 'xuchu', name: '许褚', title: '虎痴', faction: 'wei', cls: 'tank', rarity: 3,
@@ -673,7 +683,8 @@ const HEROES = [
       { t: 'dmg', tgt: 'allEnemies', mult: 2.0 },
       { t: 'dot', kind: 'burn', mult: 0.4, dur: 6, tgt: 'allEnemies' }
     ]},
-    passive: { name: '儒将风流', desc: '曲有误，周郎顾：自身暴击率+12%，攻击+8%。', mods: { crit: 0.12, atk: 0.08 } }
+    passive: { name: '儒将风流', desc: '曲有误，周郎顾：自身暴击率+12%，攻击+8%。', mods: { crit: 0.12, atk: 0.08 } },
+    tactic: { name: '赤壁火经', desc: '专属兵法·赤壁火经：赤壁炎劫伤害 +4.5%/级，灼烧伤害 +4%/级。', perLevel: { ultDmg: 0.045, ultDot: 0.04 } }
   },
   {
     id: 'sunce', name: '孙策', title: '小霸王', faction: 'wu', cls: 'warrior', rarity: 4,
@@ -683,7 +694,8 @@ const HEROES = [
       { t: 'dmg', tgt: 'single', mult: 2.8 },
       { t: 'debuff', stat: 'def', pct: 0.25, dur: 6, tgt: 'single' }
     ]},
-    passive: { name: '江东小霸王', desc: '扫平江东六郡，所向披靡：自身攻击+12%，击杀敌人后额外获得15点怒气。', mods: { atk: 0.12, rageOnKill: 15 } }
+    passive: { name: '江东小霸王', desc: '扫平江东六郡，所向披靡：自身攻击+12%，击杀敌人后额外获得15点怒气。', mods: { atk: 0.12, rageOnKill: 15 } },
+    tactic: { name: '霸王烈志', desc: '专属兵法·霸王烈志：霸王卸甲伤害 +6%/级，破防效果 +2%/级。', perLevel: { ultDmg: 0.06, ultDebuff: 0.02 } }
   },
   {
     id: 'luxun', name: '陆逊', title: '儒生雄才', faction: 'wu', cls: 'mage', rarity: 4,
@@ -693,7 +705,8 @@ const HEROES = [
       { t: 'dmg', tgt: 'backRow', mult: 2.3 },
       { t: 'dot', kind: 'burn', mult: 0.35, dur: 6, tgt: 'backRow' }
     ]},
-    passive: { name: '沉稳', desc: '忍辱负重，静待战机：自身受到伤害降低10%。', mods: { dmgReduce: 0.10 } }
+    passive: { name: '沉稳', desc: '忍辱负重，静待战机：自身受到伤害降低10%。', mods: { dmgReduce: 0.10 } },
+    tactic: { name: '连营火策', desc: '专属兵法·连营火策：火烧连营伤害 +4%/级，灼烧伤害 +5%/级。', perLevel: { ultDmg: 0.04, ultDot: 0.05 } }
   },
   {
     id: 'lvmeng', name: '吕蒙', title: '白衣渡江', faction: 'wu', cls: 'warrior', rarity: 3,
@@ -937,7 +950,8 @@ const HEROES = [
       { t: 'dmg', tgt: 'single', mult: 3.2 },
       { t: 'cc', kind: 'stun', dur: 2, tgt: 'single' }
     ]},
-    passive: { name: '无双', desc: '三英战吕布，全身而退：自身攻击+18%，并带有10%吸血。', mods: { atk: 0.18, vamp: 0.10 } }
+    passive: { name: '无双', desc: '三英战吕布，全身而退：自身攻击+18%，并带有10%吸血。', mods: { atk: 0.18, vamp: 0.10 } },
+    tactic: { name: '无双连斩', desc: '专属兵法·无双连斩：方天画戟伤害 +6%/级，吸血 +1%/级。', perLevel: { ultDmg: 0.06, vamp: 0.01 } }
   },
   {
     id: 'diaochan', name: '貂蝉', title: '闭月', faction: 'qun', cls: 'support', rarity: 4,
@@ -947,7 +961,8 @@ const HEROES = [
       { t: 'dmg', tgt: 'allEnemies', mult: 1.4 },
       { t: 'debuff', stat: 'atk', pct: 0.2, dur: 8, tgt: 'allEnemies' }
     ]},
-    passive: { name: '惊鸿舞', desc: '歌舞倾城，乱敌军心：我方全体攻速+6%，自身生命+8%。', mods: { auraSpd: 0.06, hp: 0.08 } }
+    passive: { name: '惊鸿舞', desc: '歌舞倾城，乱敌军心：我方全体攻速+6%，自身生命+8%。', mods: { auraSpd: 0.06, hp: 0.08 } },
+    tactic: { name: '连环心计', desc: '专属兵法·连环心计：倾国倾城伤害 +5.5%/级，削弱攻击 +1.5%/级。', perLevel: { ultDmg: 0.055, ultDebuff: 0.015 } }
   },
   {
     id: 'dongzhuo', name: '董卓', title: '魔王', faction: 'qun', cls: 'tank', rarity: 4,
@@ -957,7 +972,8 @@ const HEROES = [
       { t: 'shield', tgt: 'self', mult: 2.2 },
       { t: 'dmg', tgt: 'frontRow', mult: 1.2 }
     ]},
-    passive: { name: '暴虐', desc: '倒行逆施，恶贯满盈：自身生命+20%，反弹10%所受伤害。', mods: { hp: 0.20, thorns: 0.10 } }
+    passive: { name: '暴虐', desc: '倒行逆施，恶贯满盈：自身生命+20%，反弹10%所受伤害。', mods: { hp: 0.20, thorns: 0.10 } },
+    tactic: { name: '魔君威压', desc: '专属兵法·魔君威压：酒池烈焰护盾 +5%/级，反弹伤害 +1.5%/级。', perLevel: { ultShield: 0.05, thorns: 0.015 } }
   },
   {
     id: 'huatuo', name: '华佗', title: '神医', faction: 'qun', cls: 'support', rarity: 3,
@@ -1223,6 +1239,42 @@ function heroPower(h, lv, star) {
   return Math.floor((s.hp / 6 + s.atk * 2.2 + s.def * 1.5) * (1 + 0.05 * star));
 }
 
+// ---------- 专属兵法（裁决 C 方向余量）----------
+// SSR 满 5★ 解锁的独有被动长线（与觉醒并列），1~5 级，将魂+铜钱升级（费用见 config.TACTIC）。
+// perLevel 数值键分两类：
+//  · ultDmg/ultHeal/ultShield/ultDot/ultDebuff —— 按 (1+每级增量×级) 乘入 ult.effects 对应效果
+//    （dmg/heal/hot/shield/dot 乘 mult，debuff 乘 pct），返回新的 ult 副本，不改原定义；
+//  · 其余键 —— 加算进该武将自身 passive.mods（atk/hp/crit/critDmg/dmgReduce/thorns/vamp 等）。
+// 红线：不设 auraAtk/auraDef/auraSpd/ultBuff 等全军增益键，兵法只增强该武将自身，防推图曲线被叠加破坏。
+const TACTIC_ULT_KEYS = ['ultDmg', 'ultHeal', 'ultShield', 'ultDot', 'ultDebuff'];
+const TACTIC_MAX_LV = 5;
+// 兵法对被动 mods 的增量（不含 ult 键），供 calcHero 合并进 passive。
+function tacticPassive(def, lv) {
+  const out = {};
+  if (!def || !def.tactic || !(lv > 0)) return out;
+  Object.keys(def.tactic.perLevel).forEach(k => {
+    if (TACTIC_ULT_KEYS.indexOf(k) < 0) out[k] = (out[k] || 0) + def.tactic.perLevel[k] * lv;
+  });
+  return out;
+}
+// 兵法加成后的必杀技（lv=0 或无兵法时原样返回定义对象，零拷贝）。
+function tacticUlt(def, lv) {
+  if (!def || !def.tactic || !(lv > 0) || !def.ult || !Array.isArray(def.ult.effects)) return def ? def.ult : null;
+  const per = def.tactic.perLevel, f = {};
+  let changed = false;
+  TACTIC_ULT_KEYS.forEach(k => { f[k] = 1 + (per[k] || 0) * lv; if (f[k] !== 1) changed = true; });
+  if (!changed) return def.ult;
+  return Object.assign({}, def.ult, { effects: def.ult.effects.map(fx => {
+    const g = Object.assign({}, fx);
+    if (fx.t === 'dmg' && f.ultDmg !== 1) g.mult = fx.mult * f.ultDmg;
+    else if ((fx.t === 'heal' || fx.t === 'hot') && f.ultHeal !== 1) g.mult = fx.mult * f.ultHeal;
+    else if (fx.t === 'shield' && f.ultShield !== 1) g.mult = fx.mult * f.ultShield;
+    else if (fx.t === 'dot' && f.ultDot !== 1) g.mult = fx.mult * f.ultDot;
+    else if (fx.t === 'debuff' && f.ultDebuff !== 1) g.pct = fx.pct * f.ultDebuff;
+    return g;
+  }) });
+}
+
 // 三国羁绊：编队同时上阵指定武将时全军生效的固定加成（mods 语义与 passive.mods 一致）。
 // 目标：给图鉴收集与编队选择一个长线目标，全部为 SSR/SR 组合。
 const BONDS = [
@@ -1236,4 +1288,4 @@ const BONDS = [
   { id: 'feijiang', name: '飞将奉先', heroes: ['lvbu', 'diaochan'], mods: { atk: 0.10 }, desc: '人中吕布，马中赤兔，貂蝉在侧：全军攻击+10%。' }
 ];
 
-export { HEROES, GROWTH, getHero, heroName, heroStats, heroStatsStar, heroPower, BONDS };
+export { HEROES, GROWTH, getHero, heroName, heroStats, heroStatsStar, heroPower, BONDS, TACTIC_ULT_KEYS, TACTIC_MAX_LV, tacticPassive, tacticUlt };

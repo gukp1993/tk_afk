@@ -33,7 +33,7 @@ function defaultState() {
   return {
     v: 7, createdAt: Date.now(), name: '主公',
     player: { level: 1, exp: 0 },
-    res: { gold: 100000, gem: 1888, scroll: 12, token: 20, shard: 0, iron: 60 },
+    res: { gold: 100000, gem: 1888, scroll: 12, token: 20, shard: 0, iron: 60, soul: 0 },
     roster,
     formation: ['zhangfei', 'guanyu', 'liaohua', 'liubei', 'mengda'],
     campaign: { cleared: 0, storySeen: {}, milestones: {}, retroGrants: null, retroGrantsSeen: false, stars: {}, starChests: {} },
@@ -47,7 +47,7 @@ function defaultState() {
     qualityShards: { 1: 0, 2: 0, 3: 0, 4: 0 },
     daily: { day: '', quests: {}, claimed: [], active: [] },
     summon: { total: 0, pity: { sinceSsr: 0 }, ticketStock: 2, ticketWeek: { week: '', used: 0 }, pointClaims: [], activeFocus: null },
-    res: { gold: 100000, gem: 1888, scroll: 12, token: 20, shard: 0, iron: 60, univSsr: 0 },
+    res: { gold: 100000, gem: 1888, scroll: 12, token: 20, shard: 0, iron: 60, univSsr: 0, soul: 0 },
     sevenDay: { start: F.todayStr(), claimed: [] },
     bounty: { day: '', list: [] },
     roamer: { day: '', ids: [], bought: {} },
@@ -392,6 +392,35 @@ function awakenHero(heroId) {
     return { ok: true, heroId, level: info.next.level, mult: info.next.level * C.AWAKEN.multPerLevel };
   });
 }
+// ---------- 专属兵法（满 5★ SSR 长线：将魂+铜钱，只加成该武将自身）----------
+function tacticInfo(heroId) {
+  const own = state.roster[heroId];
+  const def = H.getHero(heroId);
+  if (!own || !def || def.rarity !== 4 || !def.tactic) return { ok: false, msg: '该武将没有专属兵法' };
+  const star = own.star || 0, lv = own.tacticLv || 0;
+  const unlocked = star >= C.RARITIES[4].maxStar;
+  const next = lv < C.TACTIC.max ? {
+    level: lv + 1, soul: C.TACTIC.soul[lv], gold: C.TACTIC.gold[lv],
+    can: unlocked && (state.res.soul || 0) >= C.TACTIC.soul[lv] && state.res.gold >= C.TACTIC.gold[lv]
+  } : null;
+  return { ok: true, heroId, name: def.tactic.name, desc: def.tactic.desc, perLevel: def.tactic.perLevel,
+    star, level: lv, max: C.TACTIC.max, unlocked, soul: state.res.soul || 0,
+    ultNow: H.tacticUlt(def, lv), passiveNow: H.tacticPassive(def, lv), next };
+}
+function tacticUpgrade(heroId) {
+  return withSavedMutation(() => {
+    const info = tacticInfo(heroId);
+    if (!info.ok) return info;
+    if (!info.unlocked) return { ok: false, msg: '需先达到 5★ 才能研习兵法' };
+    if (!info.next) return { ok: false, msg: '已达兵法上限' };
+    if ((state.res.soul || 0) < info.next.soul) return { ok: false, msg: '将魂不足，还差 ' + (info.next.soul - (state.res.soul || 0)) + '（满星后重复获得同名 SSR 转化）' };
+    if (state.res.gold < info.next.gold) return { ok: false, msg: '铜钱不足，还差 ' + (info.next.gold - state.res.gold) };
+    state.res.soul -= info.next.soul;
+    state.res.gold -= info.next.gold;
+    state.roster[heroId].tacticLv = info.next.level;
+    return { ok: true, heroId, level: info.next.level, name: info.name, soul: state.res.soul };
+  });
+}
 // ---------- 演武名人堂 ----------
 // 每周轮换 3 席名阵容；首杀一次性奖励、首三星一次性、周全胜一次性；重复挑战只刷评星。
 function beginHall(seat) {
@@ -589,7 +618,7 @@ function normalizeState(s) {
   s.player = s.player || { level: 1, exp: 0 };
   s.player.level = Math.max(1, Math.min(C.MAX_LEVEL, Math.floor(s.player.level || 1)));
   s.player.exp = s.player.level >= C.MAX_LEVEL ? 0 : Math.max(0, Math.floor(s.player.exp || 0));
-  s.res = s.res || {}; ['gold', 'gem', 'scroll', 'token', 'shard', 'iron', 'univSsr', 'univSr'].forEach(k => { if (!Number.isFinite(s.res[k])) s.res[k] = 0; s.res[k] = Math.max(0, Math.floor(s.res[k])); });
+  s.res = s.res || {}; ['gold', 'gem', 'scroll', 'token', 'shard', 'iron', 'univSsr', 'univSr', 'soul'].forEach(k => { if (!Number.isFinite(s.res[k])) s.res[k] = 0; s.res[k] = Math.max(0, Math.floor(s.res[k])); });
   if (!s.armory) s.armory = createArmory();
   const defaults = createArmory();
   s.armory.unlocked = s.armory.unlocked || defaults.unlocked;
@@ -679,6 +708,8 @@ function normalizeState(s) {
     if (!Number.isFinite(h.star)) h.star = 0;
     if (!Number.isFinite(h.cards)) h.cards = 0;
     h.awaken = Math.max(0, Math.min(C.AWAKEN.max, Math.floor(Number(h.awaken) || 0)));
+    // 专属兵法等级：v7 后增字段，旧档缺省 0，不升存档版本号
+    h.tacticLv = Math.max(0, Math.min(C.TACTIC.max, Math.floor(Number(h.tacticLv) || 0)));
   });
   if (s.battle.pending) {
     s.battle.lastSettled = { id: s.battle.pending.id, outcome: 'interrupted', gainedXP: 0, reward: null };
@@ -751,13 +782,19 @@ function addHeroCard(id) {
     return { id, isNew: false, autoStar: true, fromStar, star: own.star, maxStar, cards: own.cards || 0, before, after,
       powerDelta: after.power - before.power, statDelta: { hp: after.hp - before.hp, atk: after.atk - before.atk, def: after.def - before.def } };
   }
-  // 满星后抽到同名卡：N/R 直接转铜钱（碎片对 N/R 无实用出口），SR/SSR 转对应品质碎片
-  // （旧档已存同名卡原样保留）。
+  // 满星后抽到同名卡：N/R 直接转铜钱（碎片对 N/R 无实用出口），SR 转对应品质碎片，
+  // 满星 SSR 转 1「将魂」（专属兵法升级材料；SSR 品质碎片仍可由图鉴奖励等其他渠道获得）。
+  // 旧档已存同名卡原样保留。
   if (def.rarity <= 2) {
     const goldGain = (C.DUPE_GOLD && C.DUPE_GOLD[def.rarity]) || 0;
     state.res.gold += goldGain;
     return { id, isNew: false, autoStar: false, fromStar, star: own.star, maxStar, cards: own.cards || 0,
       goldGain, overflow: true };
+  }
+  if (def.rarity === 4) {
+    state.res.soul = (state.res.soul || 0) + 1;
+    return { id, isNew: false, autoStar: false, fromStar, star: own.star, maxStar, cards: own.cards || 0,
+      soulGain: 1, soul: state.res.soul, overflow: true };
   }
   state.qualityShards[def.rarity] = (state.qualityShards[def.rarity] || 0) + 1;
   return { id, isNew: false, autoStar: false, fromStar, star: own.star, maxStar, cards: own.cards || 0,
@@ -821,6 +858,9 @@ function calcHero(id) {
   const stats = { hp: Math.floor(base.hp * awakenMult * (1 + bonus.hp)), atk: Math.floor(base.atk * awakenMult * (1 + bonus.atk)), def: Math.floor(base.def * awakenMult * (1 + bonus.def)), spd: Math.round(base.spd * (1 + (bonus.spdPct || 0)) * 1000) / 1000, crit: base.crit };
   const power = H.heroPower(def, lv, star) + Math.floor((stats.hp - base.hp) / 6 + (stats.atk - base.atk) * 2.2 + (stats.def - base.def) * 1.5);
   const passive = Object.assign({}, def.passive.mods || {});
+  // 兵法被动增量为加算（不能 Object.assign 覆盖基础被动）
+  const tacticMods = H.tacticPassive(def, own.tacticLv || 0);
+  Object.keys(tacticMods).forEach(k => { passive[k] = (passive[k] || 0) + tacticMods[k]; });
   if (bonus.heal) passive.armoryHeal = bonus.heal;
   if (bonus.startShield) passive.armoryStartShield = bonus.startShield;
   if (bonus.startEnergy) passive.armoryStartEnergy = bonus.startEnergy;
@@ -833,7 +873,8 @@ function calcHero(id) {
   return {
     id, name: def.name, surname: def.name.slice(0, 1), title: def.title, quote: def.quote,
     faction: def.faction, cls: def.cls,
-    rarity: def.rarity, level: lv, realLevel: lv, star, cards: own.cards, ult: def.ult,
+    rarity: def.rarity, level: lv, realLevel: lv, star, cards: own.cards, tacticLv: own.tacticLv || 0,
+    ult: H.tacticUlt(def, own.tacticLv || 0),
     passive, passiveDef: def.passive, stats, power, cap: levelCap(id),
     armory: bonus
   };
@@ -2464,7 +2505,7 @@ export {
   exchangeQualityShard, qualityShardInfo,
   getFormationCalc, setFormationSlot, applyFormation, formationFactionBonus, teamPower, playerUnits, enemyUnits, activeBonds, bondMods,
   getArmoryBonuses, getArmoryState, armoryUnlock, armorySelect, armoryUpgrade, armoryUpgradeToNode, armoryClaimBox, grantArmoryItem, applyArmoryRecommendations, forgeInfo, forgeReroll, forgeSetDir, forgeToggleLock, forgeGateOpen, motifInfo, motifActivate, smeltInfo, smeltMelt, smeltCombine,
-  codexInfo, claimCodex, useUniversalSr, achvInfo, claimAchv, weekInfo, claimWeekQuest, claimWeekActive, buyWeekly, makeExpeditionFloor, bumpWeek, beginHall, winHall, hallInfo, saveReplay, replaysInfo, awakenInfo, awakenHero,
+  codexInfo, claimCodex, useUniversalSr, achvInfo, claimAchv, weekInfo, claimWeekQuest, claimWeekActive, buyWeekly, makeExpeditionFloor, bumpWeek, beginHall, winHall, hallInfo, saveReplay, replaysInfo, awakenInfo, awakenHero, tacticInfo, tacticUpgrade,
   addEquip, equipInventory, equipTo, unequip, enhanceEquip, fodderPickIds, salvageEquip, salvageBatch, isEquipped,
   migrateSaveV1, migrateSaveV2, migrateSaveV3, migrateSaveV4, migrateSaveV5, migrateSaveV6, normalizeState,
   idlePending, idleTick, gemQuotaInfo, claimIdle, claimIdleInternal, fastReward, fastRewardMutation, fastRewardAdMutation, adReward,

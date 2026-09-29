@@ -590,6 +590,62 @@ const aw3 = store4b.awakenHero('guanyu');
 check('觉醒至 3 级（上限）', aw3.ok && s4b.roster.guanyu.awaken === 3);
 check('觉醒上限后 next 为空', store4b.awakenInfo('guanyu').next === null);
 check('觉醒扣荣耀称号不回收', s4b.hall.titlesClaimed.indexOf('常胜将军') >= 0);
+// ---------- 波次 6：专属兵法（满 5★ SSR 长线：将魂+铜钱，只加成该武将自身） ----------
+head('S4c 专属兵法');
+const ssrDefs = H.HEROES.filter(h => h.rarity === 4);
+check('16 只 SSR 均有专属兵法', ssrDefs.length === 16 && ssrDefs.every(h => h.tactic && h.tactic.name && h.tactic.desc && h.tactic.perLevel));
+check('兵法红线：无全军增益键（aura/ultBuff 禁用）', ssrDefs.every(h =>
+  Object.keys(h.tactic.perLevel).every(k => ['auraAtk', 'auraDef', 'auraSpd', 'ultBuff'].indexOf(k) < 0)));
+check('兵法费用表：将魂 2/3/4/5/6 + 铜钱 2~6 万', C.TACTIC.max === 5 && C.TACTIC.soul.join() === '2,3,4,5,6'
+  && C.TACTIC.gold.join() === '20000,30000,40000,50000,60000');
+check('兵法需 5★（4★ 赵云拒绝）', store4b.tacticUpgrade('zhaoyun').ok === false && store4b.tacticInfo('zhaoyun').unlocked === false);
+check('非 SSR 无兵法', store4b.tacticInfo('liaohua').ok === false && store4b.tacticUpgrade('liaohua').ok === false);
+// 将魂转化：满星 SSR 重复卡 → 1 将魂（不再进品质碎片）；SR 满星重复卡仍转品质碎片
+const soulT0 = s4b.res.soul || 0, shard4T0 = s4b.qualityShards[4] || 0;
+const dupeSsr = store4b.grantCard('guanyu');
+check('满星 SSR 重复卡转将魂 1', dupeSsr.soulGain === 1 && s4b.res.soul === soulT0 + 1 && s4b.qualityShards[4] === shard4T0 && !dupeSsr.shardGain);
+s4b.roster.machao = { id: 'machao', star: 5, cards: 0, lockedCards: false, equip: {} };
+const shard3T0 = s4b.qualityShards[3] || 0;
+const dupeSr = store4b.grantCard('machao');
+check('SR 满星重复卡仍转品质碎片', dupeSr.shardGain === 1 && s4b.qualityShards[3] === shard3T0 + 1 && !dupeSr.soulGain);
+// 兵法信息与逐级消耗
+const ti0 = store4b.tacticInfo('guanyu');
+check('兵法信息：5★ 解锁 · 下一级将魂 2 + 铜钱 2 万', ti0.ok && ti0.unlocked && ti0.level === 0 && ti0.next && ti0.next.soul === 2 && ti0.next.gold === 20000);
+// 门禁消耗校验：将魂/铜钱不足零扣款零升级
+s4b.res.soul = 1; s4b.res.gold = 1000000;
+const tuNoSoul = store4b.tacticUpgrade('guanyu');
+check('将魂不足拒绝且零扣款', tuNoSoul.ok === false && s4b.res.soul === 1 && s4b.res.gold === 1000000 && (s4b.roster.guanyu.tacticLv || 0) === 0);
+s4b.res.soul = 10; s4b.res.gold = 19999;
+const tuNoGold = store4b.tacticUpgrade('guanyu');
+check('铜钱不足拒绝且零扣款', tuNoGold.ok === false && s4b.res.soul === 10 && s4b.res.gold === 19999 && (s4b.roster.guanyu.tacticLv || 0) === 0);
+s4b.res.gold = 20000;
+const tu1 = store4b.tacticUpgrade('guanyu');
+check('兵法 1 级消耗将魂 2 + 铜钱 2 万', tu1.ok && s4b.roster.guanyu.tacticLv === 1 && s4b.res.soul === 8 && s4b.res.gold === 0);
+// 逐级数值：必杀倍率按 (1+增量×级) 乘入（关羽 2.5 → ×1.06 / ×1.30）
+const ultDmgMult = calc => calc.ult.effects.find(e => e.t === 'dmg').mult;
+const m1 = ultDmgMult(store4b.calcHero('guanyu'));
+s4b.roster.guanyu.tacticLv = 5;
+const m5 = ultDmgMult(store4b.calcHero('guanyu'));
+check('逐级数值：必杀伤害 1 级 ×1.06', Math.abs(m1 - 2.5 * 1.06) < 1e-9);
+check('逐级数值：必杀伤害 5 级 ×1.30', Math.abs(m5 - 2.5 * 1.3) < 1e-9);
+// 被动注入：关羽攻击 0.15+0.01×5=0.20；吕布吸血 0.10+0.01×5=0.15；他人不受影响
+check('兵法被动注入自身（关羽攻击 +5%）', Math.abs(store4b.calcHero('guanyu').passive.atk - 0.20) < 1e-9);
+s4b.roster.lvbu = s4b.roster.lvbu || { id: 'lvbu', star: 5, cards: 0, lockedCards: false, equip: {} };
+s4b.roster.lvbu.tacticLv = 5;
+check('兵法被动注入自身（吕布吸血 +5%）', Math.abs(store4b.calcHero('lvbu').passive.vamp - 0.15) < 1e-9);
+// 兵法只加成自身：吕布兵法等级变化不改变张飞面板（军械词条是全军通道，兵法必须不是）
+const zfWithTactic = store4b.calcHero('zhangfei').passive.vamp || 0;
+s4b.roster.lvbu.tacticLv = 0;
+const zfNoTactic = store4b.calcHero('zhangfei').passive.vamp || 0;
+s4b.roster.lvbu.tacticLv = 5;
+check('兵法只加成自身：张飞面板不随吕布兵法变化', zfWithTactic === zfNoTactic);
+// 上限：5 级后 next 为空且拒绝升级
+const tiMax = store4b.tacticInfo('guanyu');
+check('兵法上限 5 级：next 为空且拒绝升级', tiMax.level === 5 && tiMax.next === null && store4b.tacticUpgrade('guanyu').ok === false);
+// normalize 兜底：tacticLv 夹紧 0~5、res.soul 缺省 0（不升存档版本号）
+const rawT = { v: 7, roster: { guanyu: { star: 5, tacticLv: 9 }, liaohua: {} }, res: { gold: 1 } };
+store4b.normalizeState(rawT);
+check('normalize 兜底：tacticLv 夹紧、将魂缺省 0', rawT.v === 7 && rawT.roster.guanyu.tacticLv === 5 && rawT.roster.liaohua.tacticLv === 0 && rawT.res.soul === 0);
 // 时钟回拨防护：lastSeenTs 在未来时当日不重置
 s4b.arena.attempts = 2;
 s4b.lastSeenTs = REAL_NOW() + 86400000;

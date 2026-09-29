@@ -302,6 +302,15 @@ const AWAKEN = {
   shards: [10, 20, 30]
 };
 
+// 专属兵法（裁决 C 方向余量）：满 5★ SSR 专属被动长线，1~5 级，只加成该武将自身。
+// 将魂来源：满星 SSR 重复卡每张转 1 将魂（addHeroCard 满星 SSR 分支）；品质碎片仍由其他渠道获得。
+// 每级费用：将魂 2/3/4/5/6 + 铜钱 2万/3万/4万/5万/6万；逐级增量见 utils/heroes.js 各 SSR 的 tactic.perLevel。
+const TACTIC = {
+  max: 5,
+  soul: [2, 3, 4, 5, 6],
+  gold: [20000, 30000, 40000, 50000, 60000]
+};
+
 // 演武名人堂（裁决 D）：9 席名阵容，每周按周 ID 哈希轮换 3 席；不限次挑战，重复只刷评星不发资源。
 // 奖励纪律：无精铁、无招募令、无每胜元宝（一次性首杀元宝 50 除外）——锚保护同悬赏/商人。
 const HALL = {
@@ -405,5 +414,5 @@ module.exports = {
   GACHA, factionBonus, FORMATION_ROWS, BATTLE, ARENA, SEVEN_DAY, TRAINING_DAILY_CAP, BOUNTY, ROAMER_POOL, AD,
   FIRST_STAGE_END, CAMPAIGN_DIFFICULTY, CAMPAIGN_MILESTONES, ELITE_STAGE, STAR_RULES, CHAPTER_STAR_CHESTS, DAILY_ELITE_CHEST,
   CAMPAIGN_MODS, BOSS_MODS, RETURN_GRANTS, SUMMON_TICKET, SUMMON_POINTS, FORGE, MOTIFS, MOTIF_COST, SMELT,
-  CODEX_REWARDS, ACHV_AXES, ACHV_REWARDS, WEEKLY, HALL, AWAKEN
+  CODEX_REWARDS, ACHV_AXES, ACHV_REWARDS, WEEKLY, HALL, AWAKEN, TACTIC
 };
