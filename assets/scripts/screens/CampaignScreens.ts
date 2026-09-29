@@ -384,6 +384,7 @@ export function weekBossView(ctx: ScreenContext) {
   });
   U.text('WbHint','伤害 = 全队对魔王输出占其血量比例；魔王强度随主公等级',0,-260,640,16,tone('#7a6c52'));
   U.button('WbBackBtn','返 回',0,-500,295,52,()=>ctx.back('journey'),palette.paperDark);
+  firstTimeOverlay(ctx,'weekboss');
 }
 
 // 军屯双本（研讨会四 P2）：每日 2 次，双轨 10 层顺序解锁
@@ -423,6 +424,7 @@ export function dungeonView(ctx: ScreenContext) {
   });
   U.text('DungeonRule','层数每日不重置；敌方等级随主公等级与层数缩放，战力不足先回主线发育',0,-470,640,16,tone('#7a6c52'));
   U.button('DungeonBackBtn','返 回',0,-510,295,52,()=>ctx.back('journey'),palette.paperDark);
+  firstTimeOverlay(ctx,'dungeon');
 }
 
 export function bag(ctx: ScreenContext) {
