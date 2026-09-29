@@ -718,16 +718,18 @@ export function expeditionView(ctx: ScreenContext) {
   U.text('ExpBack','‹ 返回',-291,484,130,22,GOLD);
   U.tap('ExpBackTap',-291,484,136,52,()=>ctx.go('journey'));
   U.text('ExpWeek',`本周（${w.weekId}）· 印信 ${w.seals}`,0,443,640,20,GOLD);
-  // 三层词缀挑战
-  U.text('ExpTrialTitle','词缀挑战 · 每周一刷新，越层越险',0,404,640,18,LIGHT);
-  [1,2,3].forEach((f,i)=>{
-    const y=352-i*92;
-    const done=w.trial.best>=f,open=f===w.trial.best+1;
-    U.panel('ExpTrial'+i,0,y,640,80,done?tone('#26301f'):open?tone('#3a2c17'):tone('#171009'),8,open?GOLD:tone('#5a452a'));
-    U.text('ExpTrialName'+i,`第 ${f} 层（奖励 ${config.WEEKLY.trialSeals[i]} 印信）`,-170,y+14,360,21,open?GOLD:LIGHT);
-    U.text('ExpTrialState'+i,done?'已通关':open?'可挑战 ›':`先通第 ${f-1} 层`,210,y+14,180,18,open?GOLD:tone('#a6906c'));
-    if(open)U.tap('ExpTrialTap'+i,0,y,640,80,()=>ctx.startBattle('expedition',f));
-  });
+  // 无限层词缀挑战
+  U.text('ExpTrialTitle','远征无限层 · 每周一刷新词缀，难度无上限',0,404,640,18,LIGHT);
+  var bestFloor=(w.trial as any).best||0;
+  var nextFloor=bestFloor+1;
+  U.panel('ExpTrialCard',0,340,640,80,tone('#3a2c17'),8,GOLD);
+  U.text('ExpTrialLabel','下一层 · 第 '+nextFloor+' 层',0,356,640,22,GOLD);
+  U.text('ExpTrialBest','已通 '+bestFloor+' 层',0,322,640,18,LIGHT);
+  var msList=(config.WEEKLY.trial as any).milestones||[];
+  var reached=msList.filter(function(m){return bestFloor>=m.floor;}).length;
+  U.text('ExpTrialMs','里程碑 '+reached+'/'+msList.length,0,296,640,15,tone('#d9b06a'));
+  U.button('ExpTrialGo','挑 战 第 '+nextFloor+' 层',0,258,500,58,function(){ctx.startBattle('expedition',nextFloor);},GOLD);
+  // 周任务
   // 周任务
   U.text('ExpQuestTitle','周任务 · 印信主要来源',0,32,640,18,LIGHT);
   w.quests.forEach((q:any,i:number)=>{

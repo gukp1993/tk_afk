@@ -409,8 +409,9 @@ const WEEKLY = {
     { key: 'idle', target: 5, reward: { seals: 10 }, label: '本周领取挂机 5 天' }
   ],
   activeTiers: [{ need: 40, reward: { seals: 10 } }, { need: 70, reward: { seals: 15 } }, { need: 100, reward: { seals: 20 } }],
-  trialFloors: [1.0, 1.15, 1.3],
-  trialSeals: [15, 20, 35],
+  // 远征无限层：难度与印信按层数递增，milestones 一次性奖励
+  trial: { scaleBase: 1.0, scaleStep: 0.12, scaleCap: 2.6, sealBase: 15, sealStep: 5, sealFloor: 10,
+    milestones: [{ floor: 5, seals: 30 }, { floor: 10, seals: 50 }, { floor: 20, seals: 80 }, { floor: 30, seals: 120 }] },
   shop: [
     { id: 'w_shard', name: '通用碎片 ×30', seals: 20, give: { shard: 30 }, weekly: 0 },
     { id: 'w_token', name: '演武令 ×10', seals: 15, give: { token: 10 }, weekly: 0 },

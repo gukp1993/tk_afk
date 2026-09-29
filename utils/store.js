@@ -560,13 +560,13 @@ function replaysInfo() {
   return { list: (state.replays || []).slice().reverse() };
 }
 
-// 远征三层挑战：敌人=塔生成器锚定主线进度 + 当周词缀 + 层数倍率
+// 远征无限层：敌人=塔生成器锚定主线进度 + 当周词缀 + 层数递增倍率（无上限）
 function makeExpeditionFloor(floor) {
   weekInfo();
-  const best = state.week.trial.best || 0;
   const anchor = Math.max(10, Math.min(C.FIRST_STAGE_END, state.campaign.cleared || 0));
   const base = require('./stages').makeTowerEnemies(anchor + floor);
-  const scaleMul = C.WEEKLY.trialFloors[floor - 1] || 1;
+  const trial = C.WEEKLY.trial;
+  const scaleMul = Math.min(trial.scaleBase + trial.scaleStep * (floor - 1), trial.scaleCap);
   base.units.forEach(u => { u.scale = (u.scale || 1) * scaleMul; });
   let h = 2166136261;
   for (const ch of String(state.week.weekId)) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); }
@@ -585,13 +585,24 @@ function makeExpeditionFloor(floor) {
 }
 function winExpedition(floor) {
   const w = state.week;
-  const reward = { floor, seals: 0, first: false };
+  const trial = C.WEEKLY.trial;
+  const reward = { floor, seals: 0, first: false, milestoneSeals: 0 };
   if (floor === (w.trial.best || 0) + 1) {
     reward.first = true;
     w.trial.best = floor;
-    reward.seals = C.WEEKLY.trialSeals[floor - 1] || 0;
+    reward.seals = Math.max(trial.sealFloor, trial.sealBase + trial.sealStep * (floor - 1));
     state.seals = (state.seals || 0) + reward.seals;
     w.sealsEarned = (w.sealsEarned || 0) + reward.seals;
+    // 里程碑一次性奖励
+    w.trial.milestoneClaimed = w.trial.milestoneClaimed || [];
+    (trial.milestones || []).forEach(m => {
+      if (floor >= m.floor && w.trial.milestoneClaimed.indexOf(m.floor) < 0) {
+        w.trial.milestoneClaimed.push(m.floor);
+        state.seals = (state.seals || 0) + m.seals;
+        w.sealsEarned = (w.sealsEarned || 0) + m.seals;
+        reward.milestoneSeals = (reward.milestoneSeals || 0) + m.seals;
+      }
+    });
   }
   return reward;
 }
