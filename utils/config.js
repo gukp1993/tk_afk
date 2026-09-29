@@ -206,12 +206,16 @@ const CAMPAIGN_DIFFICULTY = {
   }
 };
 // 一期固定里程碑（在普通首通与章末奖励之外，只发一次；旧档通关后补发一次）。
+// 140/150/160 为二期（13~16 章）里程碑：同样一次性、旧档通关补发，不碰精铁/招募令红线。
 const CAMPAIGN_MILESTONES = {
   40:  { ssrPick: 1, label: 'SSR 武将自选券 ×1' },
   90:  { armoryBox: 3, label: 'SSR 军械自选箱 ×1' },
   100: { ssrPick: 1, label: 'SSR 武将自选券 ×1' },
   110: { armoryBox: 3, label: 'SSR 军械自选箱 ×1' },
-  120: { scroll: 10, label: '招募令 ×10 · 第一期主线完成' }
+  120: { scroll: 10, label: '招募令 ×10 · 第一期主线完成' },
+  140: { gem: 888, label: '元宝 ×888 · 群英梦影完成' },
+  150: { armoryBox: 3, label: 'SSR 军械自选箱 ×1' },
+  160: { ssrPick: 1, label: 'SSR 武将自选券 ×1 · 二期主线完成' }
 };
 
 // 会话段落化（评审团波次 1）：每章第 5 关为精锐关（第 3/7 关预留给词缀、第 10 关名将）。
@@ -252,7 +256,9 @@ const BOSS_MODS = {
   90:  { name: '白衣绞杀', desc: '吕蒙的攻击附带 15% 吸血', passive: { vamp: 0.15 } },
   100: { name: '书生拜将', desc: '陆逊开场即有 50 怒气', passive: { firstEnergy: 50 } },
   110: { name: '七擒七纵', desc: '孟获倒地后会以 30% 血量再起一次', passive: { cheatRevivePct: 0.3 } },
-  120: { name: '群英梦影', desc: '吕布免疫控制，且倒地后会以 30% 血量再起', passive: { ccImmune: 1, cheatRevivePct: 0.3 } }
+  120: { name: '群英梦影', desc: '吕布免疫控制，且倒地后会以 30% 血量再起', passive: { ccImmune: 1, cheatRevivePct: 0.3 } },
+  150: { name: '神威天将', desc: '马超免疫控制，且开场获得 25% 护盾', passive: { ccImmune: 1, armoryStartShield: 0.25 } },
+  160: { name: '天命所归', desc: '吕布免疫控制，且受到的伤害降低 12%', passive: { ccImmune: 1, dmgReduce: 0.12 } }
 };
 // 定向招募券（评审团裁决版）：每 10 抽赠 1 张、每周限用 2 张；券激活下一组十连，
 // 该十连 SR 以上 70% 落所选阵营（阵营内均匀，无该品质回落全池）。概率/定价/硬保底全部不动。

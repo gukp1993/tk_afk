@@ -18,7 +18,8 @@ const STAGES_PER_CH = 10;
 // 词缀关：每章第 3/7 关（章内 index 2/6），≥minStage 启用；ch 序轮换保证相邻章不重样
 function resolveMods(globalStage) {
   const n = Math.floor(Number(globalStage) || 0);
-  if (n < CAMPAIGN_MODS.minStage || n > FIRST_STAGE_END) return [];
+  // 二期（13~16 章）同样启用词缀轮转；超过剧情表（乱世循环）不设词缀。
+  if (n < CAMPAIGN_MODS.minStage || n > CHAPTERS.length * STAGES_PER_CH) return [];
   const inCh = (n - 1) % 10;
   if (inCh !== 2 && inCh !== 6) return [];
   const chIdx = Math.floor((n - 1) / 10);
@@ -203,12 +204,12 @@ function stageBattleEffects(stageObj) {
   }
   return Object.keys(cfgFrag).length ? cfgFrag : null;
 }
-// 为词缀关构建援军单元（chapterFoes 为本章 foes 池，取第 6/7 名）
+// 为词缀关构建援军单元（chapterFoes 为本章 foes 池，取第 6/7 名）；无效 id 跳过防崩
 function buildReinforceUnits(globalStage, chapterFoes, lv, star, baseScale) {
   const H2 = __domain_heroes;
-  const picks = [chapterFoes[5 % chapterFoes.length], chapterFoes[6 % chapterFoes.length]];
-  return picks.map((id, i) => {
-    const h = H2.getHero(id);
+  const picks = [chapterFoes[5 % chapterFoes.length], chapterFoes[6 % chapterFoes.length]]
+    .map(id => H2.getHero(id)).filter(Boolean);
+  return picks.map((h, i) => {
     const base = H2.heroStatsStar(h, lv, star);
     const scale = baseScale * 0.75;
     return {

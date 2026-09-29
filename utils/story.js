@@ -448,10 +448,73 @@ const CHAPTERS = [
         ],
         foes: ['lvbu', 'caocao', 'sunce', 'zhugeliang', 'simayi'] }
     ]
+  },
+  {
+    id: 'ch15', name: '乱世再临', subtitle: '梦醒 · 烽烟又起',
+    intro: '梦醒之后，天下并未太平。黄巾余烬复燃，四方贼寇并起，边地狼烟再度席卷中原。',
+    finale: '草原之主授首，边患暂平。然狼烟未熄，真正的天命之争才刚开场。',
+    stages: [
+      { name: '黄巾复起', narration: '黄巾余烬复燃，张角残部再举妖旗，中原烽烟又起。',
+        foes: ['zhangjiao', 'yuji', 'jiling', 'gongsunzan', 'yangxiu'] },
+      { name: '白波余寇', narration: '白波贼众啸聚山谷，劫掠州郡，其势复张。',
+        foes: ['yuanshu', 'chengong', 'jiling', 'liru', 'yuji'] },
+      { name: '黑山匪众', narration: '黑山军依险为巢，飞燕出入太行，官军莫能制。',
+        foes: ['dongzhuo', 'liru', 'huaxiong', 'gaoshun', 'caohong'] },
+      { name: '西凉叛军', narration: '西凉铁骑叛乱再起，尘头蔽日，兵锋直指长安。',
+        foes: ['pangde', 'caozhen', 'caohong', 'xiahouyuan', 'haozhao'] },
+      { name: '南匈奴犯边', narration: '南匈奴部众南渡犯边，袁氏余党借虏势再起波澜。',
+        foes: ['yuanshao', 'wenchou', 'yanliang', 'machao', 'pangde'] },
+      { name: '山越啸聚', narration: '山越部族啸聚山林，江东六县为之震动。',
+        foes: ['panzhang', 'zhuran', 'xusheng', 'dingfeng', 'zhoutai'] },
+      { name: '武陵蛮乱', narration: '武陵蛮王反叛，蛮兵象阵北上，荆南告急。',
+        foes: ['menghuo', 'zhurong', 'dingfeng', 'panzhang', 'zhuran'] },
+      { name: '羌胡扣关', narration: '羌胡铁骑扣关而入，凉州烽火连天。',
+        foes: ['machao', 'pangde', 'caozhen', 'xiahouyuan', 'haozhao'] },
+      { name: '乌桓踏塞', narration: '乌桓铁骑踏塞而入，袁氏残党与之勾结，幽州危急。',
+        foes: ['yuanshao', 'yuanshu', 'wenchou', 'yanliang', 'gongsunzan'] },
+      { name: '草原之主', narration: '草原之主亲率王庭精骑南下，决战塞外——大汉的旗帜不容践踏！',
+        dialogue: [
+          { who: 'machao', text: '西凉铁骑，天下无双！今日便让尔等见识塞外雄风！' },
+          { who: 'zhaoyun', text: '贼寇犯边，寸土不让！枪出如龙，破敌于阵前！' }
+        ],
+        foes: ['machao', 'pangde', 'yuji', 'zhangjiao', 'dongzhuo'] }
+    ]
+  },
+  {
+    id: 'ch16', name: '天命之战', subtitle: '群雄逐鹿 · 终章',
+    intro: '异族既平，群雄再聚。五路大军同时发难，逐鹿天下——天命之战，全面爆发。',
+    finale: '五路皆平，天命归于仁德。三国的传奇，将由主公亲手续写。',
+    stages: [
+      { name: '北路·并州狼骑', narration: '并州狼骑自北路南下，飞将吕布一马当先，铁蹄所至寸草不生。',
+        foes: ['lvbu', 'zhangliao', 'gaoshun', 'liru', 'chengong'] },
+      { name: '东路·江东猛火', narration: '江东猛火顺流而起，小霸王孙策亲率水陆军直扑中路。',
+        foes: ['sunce', 'zhouyu', 'ganning', 'taishici', 'huanggai'] },
+      { name: '西路·西凉铁壁', narration: '西凉铁壁横亘西路，锦马超据险而守，一夫当关。',
+        foes: ['machao', 'pangde', 'xiahouyuan', 'caozhen', 'haozhao'] },
+      { name: '南路·南蛮象阵', narration: '南蛮象阵自南路压来，地动山摇，蛮王孟获卷土重来。',
+        foes: ['menghuo', 'zhurong', 'zhuran', 'dingfeng', 'panzhang'] },
+      { name: '中路·中原霸主', narration: '中原霸主亲率虎豹之师坐镇中路，霸王之业，在此一举。',
+        foes: ['caocao', 'simayi', 'xuchu', 'yuejin', 'guojia'] },
+      { name: '官渡再举', narration: '官渡旧战场再燃烽火，四世三公的家底倾巢而出。',
+        foes: ['yuanshao', 'wenchou', 'yanliang', 'xuyou', 'zhanghe'] },
+      { name: '赤壁再燃', narration: '赤壁江面再起东风，火攻之计更胜当年。',
+        foes: ['zhouyu', 'luxun', 'lvmeng', 'huanggai', 'ganning'] },
+      { name: '五丈原对峙', narration: '五丈原上秋风又起，卧龙与冢虎的宿命对决再续。',
+        foes: ['zhugeliang', 'pangtong', 'jiangwei', 'weiyan', 'simayi'] },
+      { name: '虎牢关破', narration: '虎牢关最终告破，人中美吕、马中赤兔，最后一舞。',
+        foes: ['lvbu', 'huaxiong', 'dongzhuo', 'diaochan', 'liru'] },
+      { name: '天命所归', narration: '群英集结，天命之战最终章——胜者执掌天下，败者湮没于尘！',
+        dialogue: [
+          { who: 'lvbu', text: '天命？我吕布的命，从来只由自己执掌！' },
+          { who: 'liubei', text: '天命归于仁德！众将听令——随我终结这场乱世！' },
+          { who: 'guanyu', text: '云长在此，青龙偃月，为天下苍生而战！' }
+        ],
+        foes: ['lvbu', 'zhugeliang', 'simayi', 'zhouyu', 'guanyu'] }
+    ]
   }
 ];
 
-// 全局关卡序号（1 起）→ 剧情配置；超出本表（>120 关）返回 null，调用方走循环乱世兜底
+// 全局关卡序号（1 起）→ 剧情配置；超出本表（>160 关）返回 null，调用方走循环乱世兜底
 function getStoryStage(globalStage) {
   if (globalStage < 1 || globalStage > CHAPTERS.length * 10) return null;
   const chIdx = Math.floor((globalStage - 1) / 10);

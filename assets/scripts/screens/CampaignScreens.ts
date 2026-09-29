@@ -53,9 +53,9 @@ export function campaign(ctx: ScreenContext) {
   const current=points[stage-segmentStart];
   if(current){const x=current[0]*720/375-360,y=420-current[1]*660/440;
     U.panel('CurrentStage',x+18,y-24,176,32,tone('#3c6255'),5);
-    U.text('CurrentStageText',`当前 · 第 ${stage} 关${stage>config.FIRST_STAGE_END?' · 循环':''}`,x+18,y-24,165,17,LIGHT);
+    U.text('CurrentStageText',`当前 · 第 ${stage} 关${stage>stages.CHAPTERS.length*stages.STAGES_PER_CH?' · 循环':''}`,x+18,y-24,165,17,LIGHT);
   }
-  U.text('MilestoneHint','主线里程碑：40/100 自选券 · 90/110 自选箱 · 120 完成',0,404,560,15,INK);
+  U.text('MilestoneHint','主线里程碑：40/100 自选券 · 90/110/150 自选箱 · 120/140/160 完成礼',0,404,560,15,INK);
   const sd=store.sevenDayInfo();
   if(!sd.allDone){
     const claimable=sd.canClaim;
@@ -113,7 +113,12 @@ export function campaign(ctx: ScreenContext) {
   U.tap('TrainingTap',288,-480,103,86,()=>ctx.startAuto('training'));
   U.rect('GoalStrip',0,-536,720,24,tone('#344438'));
   const firstDone=Math.min(s.campaign.cleared,config.FIRST_STAGE_END);
-  U.text('GoalHint',firstDone>=config.FIRST_STAGE_END?'第一期主线完成 120/120 · 循环乱世继续开放':`第一期主线 ${firstDone}/${config.FIRST_STAGE_END} · 通关越多，挂机收益越高`,-151,-536,400,16,LIGHT);
+  const storyEnd=stages.CHAPTERS.length*stages.STAGES_PER_CH;
+  const goalText=firstDone<config.FIRST_STAGE_END
+    ?`第一期主线 ${firstDone}/${config.FIRST_STAGE_END} · 通关越多，挂机收益越高`
+    :s.campaign.cleared>=storyEnd?`主线全通 ${storyEnd}/${storyEnd} · 循环乱世继续开放`
+    :`二期征途 ${s.campaign.cleared}/${storyEnd} · 通关越多，挂机收益越高`;
+  U.text('GoalHint',goalText,-151,-536,400,16,LIGHT);
   U.text('IdleMore','双倍 / 快收',278,-536,147,16,GOLD);
   U.tap('GoalTap',-150,-536,405,24,()=>ctx.go('stagePreview'));
   U.tap('IdleMoreTap',278,-536,147,24,()=>ctx.idleClaimChoice());
@@ -163,7 +168,7 @@ export function stagePreview(ctx: ScreenContext) {
   U.tap('StageShadeTap',0,0,720,1280,()=>ctx.back('campaign'));
   U.panel('StagePanel',0,0,658,782,tone('#251b14'),13,tone('#9b793f'));
   U.tap('StagePanelBlock',0,0,658,782,()=>{});
-  U.text('StageHeading',`第 ${stage} 关${stage>config.FIRST_STAGE_END?'（循环乱世）':''} · ${enemy.story?.stage?.name||enemy.name||'两军对阵'}`,0,343,600,30,GOLD);
+  U.text('StageHeading',`第 ${stage} 关${stage>stages.CHAPTERS.length*stages.STAGES_PER_CH?'（循环乱世）':''} · ${enemy.story?.stage?.name||enemy.name||'两军对阵'}`,0,343,600,30,GOLD);
   U.text('StageEnemyTitle',enemy.isBoss?'名将镇守 · 首通奖励':'敌阵与首通奖励',-155,289,311,21,GOLD);
   enemy.units.slice(0,5).forEach((unit:any,i:number)=>{
     const fName=(config.FACTIONS as any)[unit.hero.faction]?.name||'';

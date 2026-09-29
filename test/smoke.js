@@ -1070,5 +1070,45 @@ const brief = PB.buildWeeklyBriefing(sAS3, stages.hallWeeklyLineups(F.isoWeekKey
 check('AS11 周报聚合派生', brief.questsTotal === 7 && brief.questsDone >= 1 && brief.hallTotal === 3
   && typeof brief.arenaPoints === 'number' && typeof brief.seals === 'number');
 
-console.log('\nsmoke: ' + passed + ' passed, ' + failed + ' failed');
-process.exit(failed ? 1 : 0);
+// ============ 二期主线 15~16 章（2026-09-30 C 批） ============
+section = 'campaignPhase2';
+check('P2-1 章节数 16 与章名', stages.CHAPTERS.length === 16 && stages.chapterOf(141).ch.name === '乱世再临' && stages.chapterOf(160).ch.name === '天命之战');
+check('P2-2 15~16 章敌阵全部有效', (() => { for (let n = 141; n <= 160; n++) { const e = stages.makeStageEnemies(n); if (!e.units.length || e.units.some(u => !u.hero)) return false; } return true; })());
+check('P2-3 二期词缀关（143/147）与循环关（161）', stages.makeStageEnemies(143).mods.length === 1 && stages.makeStageEnemies(147).mods.length === 1 && stages.makeStageEnemies(161).mods.length === 0);
+check('P2-4 Boss 机制（150 神威天将 / 160 天命所归）', stages.makeStageEnemies(150).bossMod && stages.makeStageEnemies(150).bossMod.passive.ccImmune === 1
+  && stages.makeStageEnemies(160).bossMod && stages.makeStageEnemies(160).bossMod.passive.dmgReduce === 0.12);
+check('P2-5 二期里程碑可预览（140 元宝/160 自选券）', store9.campaignRewardPreview(140).toString && JSON.stringify(C.CAMPAIGN_MILESTONES[140]).indexOf('gem') >= 0 && JSON.stringify(C.CAMPAIGN_MILESTONES[160]).indexOf('ssrPick') >= 0);
+// V7 迁移：cleared=155 的旧档，V6 链先补发一期 5 档、V7 追加二期 140/150（幂等靠 milestones 标记）
+const storeP2 = freshStore(); storeP2.load();
+{
+  const raw = JSON.parse(JSON.stringify(global.wx._map.get(SAVE_KEY) || {}));
+  raw.campaign = { cleared: 155, storySeen: {}, milestones: {} };
+  raw.v = 7;
+  const migrated = storeP2.migrateSaveV7(storeP2.migrateSaveV6(raw));
+  const m1 = !!migrated.campaign.milestones[140] && !!migrated.campaign.milestones[150] && !migrated.campaign.milestones[160]
+    && Array.isArray(migrated.campaign.retroGrants) && migrated.campaign.retroGrants.length === 7;
+  const again = storeP2.migrateSaveV7(migrated);
+  const m2 = Array.isArray(again.campaign.retroGrants) && again.campaign.retroGrants.length === 7
+    && again.campaign.milestones[140] === 1 && again.v === 8;
+  check('P2-6 V6+V7 补发一期 5 档+二期 2 档、幂等不重发', m1 && m2);
+}
+
+// 远征援军词缀层回归：塔单位带 hero 对象而非 heroId，援军池必须解析出真将（2026-09-30 P1 修复）
+{
+  const towerUnits = stages.makeTowerEnemies(50).units;
+  const ids = towerUnits.map(u => (u.hero && u.hero.id) || u.heroId);
+  const rus = stages.buildReinforceUnits(0, ids, 50, 1, 1);
+  const okDirect = ids.every(id => !!id) && rus.length === 2
+    && rus.every(r => r.heroId && r.name && r.stats && r.stats.hp > 0);
+  const storeRX = freshStore(); storeRX.load();
+  const sRX = storeRX.getState();
+  sRX.campaign.cleared = Math.max(sRX.campaign.cleared, 40);
+  let okFloors = true;
+  for (let fl = 1; fl <= 30; fl++) {
+    const floor = storeRX.makeExpeditionFloor(fl);
+    if (floor.reinforceUnits) floor.reinforceUnits.forEach(r => { if (!r.heroId || !r.name || !(r.stats.hp > 0)) okFloors = false; });
+  }
+  check('P2-7 远征援军单位真实有效（hero 对象取 id）', okDirect && okFloors);
+}
+
+console.log('\nsmoke: ' + passed + ' passed, ' + failed + ' failed');process.exit(failed ? 1 : 0);

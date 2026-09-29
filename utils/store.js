@@ -254,6 +254,30 @@ function migrateSaveV6(raw) {
   raw.migrations.economyV1 = { applied: true, retroGrants: grants.length };
   return raw;
 }
+
+// v7→v8：二期里程碑补发（2026-09-30 二期 15~16 章上线）。140/150/160 为二期里程碑，
+// 已通关对应关卡的旧档补发一次；追加到待读补发列表而非覆盖（V6 同载可能刚写过）。
+const RETRO2_MILESTONE_STAGES = [140, 150, 160];
+function migrateSaveV7(raw) {
+  raw.v = 8;
+  raw.campaign = raw.campaign || { cleared: 0, storySeen: {} };
+  raw.campaign.milestones = raw.campaign.milestones || {};
+  const grants = [];
+  RETRO2_MILESTONE_STAGES.forEach(stage => {
+    if ((raw.campaign.cleared || 0) < stage || raw.campaign.milestones[stage]) return;
+    const reward = C.CAMPAIGN_MILESTONES[stage];
+    if (!reward) return;
+    applyRewardToRaw(raw, reward);
+    raw.campaign.milestones[stage] = 1;
+    grants.push({ stage, label: reward.label || '里程碑奖励' });
+  });
+  if (grants.length) {
+    const prev = Array.isArray(raw.campaign.retroGrants) ? raw.campaign.retroGrants : [];
+    raw.campaign.retroGrants = prev.concat(grants);
+    raw.campaign.retroGrantsSeen = false;
+  }
+  return raw;
+}
 // 迁移期直接对裸存档发奖（尚未进入 normalize 的 state 形态）。
 function applyRewardToRaw(raw, r) {
   if (!r || typeof r !== 'object') return;
@@ -584,7 +608,8 @@ function makeExpeditionFloor(floor) {
   if (modId === 'gale') base.units.forEach(u => { u.extraPassive = Object.assign({}, u.extraPassive, { firstEnergy: 40, spd: 0.10 }); });
   if (modId === 'reinforce') {
     const lv = base.units[0].level, star = base.units[0].star, sc = (base.units[0].scale || 1);
-    base.reinforceUnits = require('./stages').buildReinforceUnits(0, base.units.map(u => u.heroId), lv, star, sc);
+    // 塔生成器单位带 hero 对象而非 heroId；从 hero 取 id（援军周修复，2026-09-30 60 天仿真暴露）
+    base.reinforceUnits = require('./stages').buildReinforceUnits(0, base.units.map(u => (u.hero && u.hero.id) || u.heroId), lv, star, sc);
   }
   base.name = '远征 · 第' + floor + '层 · ' + (C.CAMPAIGN_MODS.meta[modId].name);
   base.expedition = { floor };
@@ -640,7 +665,7 @@ function load() {
   const raw = rawGet(SAVE_KEY);
   if (raw && raw.v === 1) {
     rawSet(SAVE_KEY + '.backup.v3', JSON.parse(JSON.stringify(raw)));
-    state = migrateSaveV6(migrateSaveV5(migrateSaveV4(migrateSaveV3(migrateSaveV2(migrateSaveV1(raw))))));
+    state = migrateSaveV7(migrateSaveV6(migrateSaveV5(migrateSaveV4(migrateSaveV3(migrateSaveV2(migrateSaveV1(raw)))))));
     save();
   } else if (raw && raw.v === 2) {
     rawSet(SAVE_KEY + '.backup.v3', JSON.parse(JSON.stringify(raw)));
@@ -1865,7 +1890,9 @@ function campaignFirstReward(stageIdx) {
       : { gem: CHAPTER_CHEST.gem, scroll: 1 + CHAPTER_CHEST.scroll, label: '章末宝箱' };
   }
   const milestones = [];
-  if (inFirst) {
+  // 二期里程碑（140/150/160）不设一期门槛；legacy 军械箱与首章 SR 券仍限一期。
+  const storyEnd = require('./stages').CHAPTERS.length * 10;
+  if (stageIdx <= storyEnd) {
     const ms = C.CAMPAIGN_MILESTONES[stageIdx];
     if (ms && !state.campaign.milestones[stageIdx]) {
       milestones.push({ stage: stageIdx, kind: 'milestone', reward: ms, label: ms.label || '里程碑奖励' });
@@ -2537,7 +2564,7 @@ module.exports = {
   getFormationCalc, setFormationSlot, applyFormation, formationFactionBonus, teamPower, playerUnits, enemyUnits, activeBonds, bondMods,
   getArmoryBonuses, getArmoryState, armoryUnlock, armorySelect, armoryUpgrade, armoryUpgradeToNode, armoryClaimBox, grantArmoryItem, applyArmoryRecommendations, forgeInfo, forgeReroll, forgeSetDir, forgeToggleLock, forgeGateOpen, motifInfo, motifActivate, smeltInfo, smeltMelt, smeltCombine,
   codexInfo, claimCodex, useUniversalSr, achvInfo, claimAchv, weekInfo, claimWeekQuest, claimWeekActive, buyWeekly, makeExpeditionFloor, bumpWeek, beginHall, winHall, hallInfo, saveReplay, replaysInfo, awakenInfo, awakenHero, formationPresetsInfo, saveFormationPreset, applyFormationPreset, delFormationPreset, tacticInfo, tacticUpgrade,
-  migrateSaveV1, migrateSaveV2, migrateSaveV3, migrateSaveV4, migrateSaveV5, migrateSaveV6, normalizeState,
+  migrateSaveV1, migrateSaveV2, migrateSaveV3, migrateSaveV4, migrateSaveV5, migrateSaveV6, migrateSaveV7, normalizeState,
   idlePending, idleTick, gemQuotaInfo, claimIdle, claimIdleInternal, fastReward, fastRewardMutation, fastRewardAdMutation, adReward,
   doSummon, rollRarity, pickHeroOfRarity, summonPityInfo, setSummonFocus, summonTicketInfo, summonPointsInfo, claimSummonPoints, useUniversalSsr,
   winCampaign, campaignRewardPreview, winTower, arenaFight, arenaSeasonInfo, arenaBoardInfo, beginBattle, settleBattle, campaignStarChestInfo, claimStarChests,
