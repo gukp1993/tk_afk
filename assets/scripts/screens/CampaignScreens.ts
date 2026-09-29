@@ -684,7 +684,7 @@ export function hallView(ctx: ScreenContext) {
   U.tap('HallBackTap',-291,484,136,52,()=>ctx.go('journey'));
   U.text('HallWeek',`本周名阵容 · 荣耀 ${hi.honor}`,-160,443,420,20,GOLD);
   hi.titles.forEach((t:any,i:number)=>{
-    U.text('HallTitle'+i,(t.owned?'「':'')+t.title+(t.owned?'」':'')+' '+t.honor+'荣耀',-140+i*210,443,205,17,t.owned?GOLD:tone('#a6906c'));
+    U.text('HallTitle'+i,(t.owned?'「':'')+t.title+(t.owned?'」':'')+' '+t.honor+'荣耀',-140+i*210,415,205,17,t.owned?GOLD:tone('#a6906c'));
   });
   hi.seats.forEach((x:any,i:number)=>{
     const y=340-i*118;

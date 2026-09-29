@@ -391,7 +391,7 @@ const ACHV_REWARDS = [
   { gold: 10000, shard: 5, token: 10 }, { gold: 15000, shard: 8, token: 10 }, { gold: 20000, shard: 10, token: 10 },
   { gold: 30000, shard: 12, token: 10 }, { gold: 40000, shard: 14, token: 10 }, { gold: 50000, shard: 15, token: 10 },
   { shard: 20, token: 30, title: '名家', shard4: 15 }, { shard: 30, token: 30, title: '豪杰', shard4: 15 },
-  { gem: 2000, title: 'name' }, { gem: 3000, frame: 1 }
+  { gem: 2000, title: '传奇' }, { gem: 3000, frame: 1 }
 ];
 
 // 远征周系统（合并 C-P5+D-P1）：ISO 周重置；周任务零新行为聚合；印信兑换禁精铁/招募令直发
