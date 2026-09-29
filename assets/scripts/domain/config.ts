@@ -516,7 +516,7 @@ const WEEKLY = {
     { id: 'w_shard', name: '通用碎片 ×30', seals: 20, give: { shard: 30 }, weekly: 0 },
     { id: 'w_token', name: '演武令 ×10', seals: 15, give: { token: 10 }, weekly: 0 },
     { id: 'w_gem', name: '元宝 ×800', seals: 40, give: { gem: 800 }, weekly: 1 },
-    { id: 'w_ssr', name: 'SSR 自选券', seals: 90, give: { ssrPick: 1 }, weekly: 0 },
+    { id: 'w_ssr', name: 'SSR 自选券', seals: 90, give: { ssrPick: 1 }, weekly: 1 },
     { id: 'w_title', name: '称号 · 远征名将', seals: 120, give: { title: '远征名将' }, weekly: 0 }
   ]
 };

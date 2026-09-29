@@ -1451,4 +1451,16 @@ const storeP2 = freshStore(); storeP2.load();
   check('DIAG2 快照无副作用', JSON.stringify(sDG2) === before);
 }
 
+
+// w_ssr 周限购（总账体检 2026-09-30 裁决：SSR 自选券补 weekly:1，砍 2/3 印信 SSR 注入）
+{
+  const storeWS = freshStore(); storeWS.load();
+  const sWS = storeWS.getState();
+  sWS.seals = 500;
+  const buy1 = storeWS.buyWeekly('w_ssr');
+  const buy2 = storeWS.buyWeekly('w_ssr');
+  check('WS1 w_ssr 首购成功/周限购 1 拒绝第二', buy1.ok && buy2.ok === false && /已兑|限购|次数/.test(buy2.msg));
+  check('WS2 自选券入 vouchers 且印信扣 90', (sWS.vouchers && sWS.vouchers.ssr) >= 1 && sWS.seals === 500 - 90);
+}
+
 console.log('\nsmoke: ' + passed + ' passed, ' + failed + ' failed');process.exit(failed ? 1 : 0);
