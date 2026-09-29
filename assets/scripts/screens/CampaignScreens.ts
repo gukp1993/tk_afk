@@ -57,6 +57,12 @@ export function campaign(ctx: ScreenContext) {
   }
   U.text('MilestoneHint','主线里程碑：40/100 自选券 · 90/110/150 自选箱 · 120/140/160 完成礼',0,404,560,15,INK);
   const sd=store.sevenDayInfo();
+  const fdBanner=store.fourteenDayInfo();
+  if(sd.allDone&&!fdBanner.allDone){
+    U.panel('FourteenBanner',-60,372,500,44,fdBanner.canClaim?tone('#3a2c17'):tone('#2b2118'),7,fdBanner.canClaim?GOLD:tone('#6b5837'));
+    U.text('FourteenBannerText',fdBanner.canClaim?'第二周目标 · 有奖励可领 ›':`第二周目标 · 第 ${fdBanner.ageDays} 天 ›`,-60,372,470,18,fdBanner.canClaim?GOLD:LIGHT);
+    U.tap('FourteenBannerTap',-60,372,500,44,()=>ctx.go('sevenDay'));
+  }
   if(!sd.allDone){
     const claimable=sd.canClaim;
     U.panel('SevenDayBanner',-60,372,500,44,claimable?tone('#3a2c17'):tone('#2b2118'),7,claimable?GOLD:tone('#6b5837'));
@@ -912,6 +918,19 @@ export function sevenDayView(ctx: ScreenContext) {
     if(d.claimable)U.tap('SevenDayTap'+i,0,y,640,102,()=>{
       const r=store.claimSevenDay(d.day);
       ctx.tell(r,r.ok?`已领取：${d.label}`:'');
+    });
+  });
+  // 第二周目标（研讨会三方案 2）：第 8~14 天一次性里程碑，达成后随时可领
+  const fd=store.fourteenDayInfo();
+  U.text('FourteenTitle','第二周目标 · 第 8~14 天（达成后随时可领）',0,-388,640,18,GOLD);
+  fd.list.forEach((d:any,i:number)=>{
+    const x=i%2===0?-165:165, y=-430-Math.floor(i/2)*56;
+    U.panel('Fourteen'+i,x,y,312,48,d.claimed?tone('#26301f'):d.claimable?tone('#3a2c17'):tone('#2b2118'),8,d.claimable?GOLD:tone('#6b5837'));
+    U.text('FourteenCond'+i,`第 ${d.day} 天 · ${d.cond}`,x,y+9,286,15,d.claimed?tone('#6f8a5f'):d.claimable?GOLD:d.locked?tone('#a99778'):LIGHT);
+    U.text('FourteenState'+i,d.claimed?'已领取':d.claimable?`${d.label} ›`:d.locked?`第 ${d.day} 天解锁`:d.met?'已达成 · 待天数解锁':d.label,x,y-13,286,13,d.claimable?GOLD:tone('#a99778'));
+    if(d.claimable)U.tap('FourteenTap'+i,x,y,312,48,()=>{
+      const r=store.claimFourteenDay(d.day);
+      ctx.tell(r,r.ok?'已领取：'+r.label:'');
     });
   });
 }

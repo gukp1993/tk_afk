@@ -39,6 +39,7 @@ function defaultState() {
     summon: { total: 0, pity: { sinceSsr: 0 }, ticketStock: 2, ticketWeek: { week: '', used: 0 }, pointClaims: [], activeFocus: null },
     res: { gold: 100000, gem: 1888, scroll: 12, token: 20, shard: 0, iron: 60, univSsr: 0, soul: 0 },
     sevenDay: { start: F.todayStr(), claimed: [] },
+    fourteenDay: { claimed: [] },
     bounty: { day: '', list: [] },
     roamer: { day: '', ids: [], bought: {} },
     vouchers: { sr: 0, ssr: 0 },
@@ -777,6 +778,10 @@ function normalizeState(s) {
   s.sevenDay = s.sevenDay || { start: F.todayStr(), claimed: [] };
   if (!Array.isArray(s.sevenDay.claimed)) s.sevenDay.claimed = [];
   s.sevenDay.claimed = s.sevenDay.claimed.map(n => Math.floor(Number(n) || 0)).filter(n => n >= 1 && n <= 7);
+  // 14 日第二周目标（研讨会三方案 2）：旧档缺省空、领取记录钳位
+  s.fourteenDay = s.fourteenDay || { claimed: [] };
+  if (!Array.isArray(s.fourteenDay.claimed)) s.fourteenDay.claimed = [];
+  s.fourteenDay.claimed = s.fourteenDay.claimed.map(n => Math.floor(Number(n) || 0)).filter(n => C.FOURTEEN_DAY.some(d => d.day === n));
   if (!/^\d{4}-\d{2}-\d{2}$/.test(s.sevenDay.start || '')) s.sevenDay.start = F.todayStr();
   s.bounty = s.bounty || { day: '', list: [] };
   if (!Array.isArray(s.bounty.list)) s.bounty.list = [];
@@ -2550,6 +2555,40 @@ function dayDiffStr(fromStr, toStr) {
   const p = s => { const a = String(s).split('-').map(Number); return new Date(a[0], (a[1] || 1) - 1, a[2] || 1).getTime(); };
   return Math.round((p(toStr) - p(fromStr)) / 86400000);
 }
+// 14 日第二周目标（研讨会三方案 2）：第 8~14 天一次性里程碑，条件绑定既有进度。
+// 无时限：开服天数到位 + 条件达成即可领（追赶友好）；演武条件用当前赛季积分。
+function fourteenDayInfo() {
+  checkDailyReset();
+  const ageDays = Math.floor((Date.now() - (state.createdAt || Date.now())) / 86400000) + 1;
+  const claimed = (state.fourteenDay && state.fourteenDay.claimed) || [];
+  const met = (kind, need) => kind === 'campaign' ? (state.campaign.cleared || 0) >= need
+    : kind === 'arena' ? (state.arena.points || 0) >= need
+    : kind === 'tower' ? (state.tower.best || 0) >= need : false;
+  const list = (C.FOURTEEN_DAY || []).map(d => {
+    const isMet = met(d.kind, d.need);
+    return { day: d.day, cond: d.cond, label: d.label, reward: d.reward, met: isMet,
+      claimed: claimed.indexOf(d.day) >= 0,
+      claimable: ageDays >= d.day && isMet && claimed.indexOf(d.day) < 0,
+      locked: ageDays < d.day };
+  });
+  return { ageDays, list, allDone: list.length > 0 && list.every(x => x.claimed),
+    canClaim: list.some(x => x.claimable) };
+}
+function claimFourteenDay(day) {
+  return withSavedMutation(() => {
+    const info = fourteenDayInfo();
+    const d = info.list.find(x => x.day === day);
+    if (!d) return { ok: false, msg: '目标不存在' };
+    if (d.claimed) return { ok: false, msg: '已领取' };
+    if (info.ageDays < day) return { ok: false, msg: `第 ${day} 天解锁` };
+    if (!d.met) return { ok: false, msg: '条件未达成' };
+    state.fourteenDay = state.fourteenDay || { claimed: [] };
+    state.fourteenDay.claimed.push(day);
+    applyReward(d.reward);
+    return { ok: true, reward: d.reward, label: d.label };
+  });
+}
+
 function sevenDayInfo() {
   checkDailyReset();
   const diff = dayDiffStr(state.sevenDay.start, F.todayStr());
@@ -2699,7 +2738,7 @@ module.exports = {
   winCampaign, campaignRewardPreview, winTower, arenaFight, arenaSeasonInfo, arenaBoardInfo, summonGapInfo, beginBattle, settleBattle, campaignStarChestInfo, claimStarChests,
   markStorySeen, isStorySeen, retroGrants, dismissRetroGrants, dismissReturnPending,
   questList, claimQuest, activePoints, claimActiveChest, claimAllDailyRewards, claimFreeRewards, bumpQuest, applyReward,
-  sevenDayInfo, claimSevenDay, bountyInfo, bountyPayout, dispatchBounty, claimBounty, roamerInfo, buyRoamer, takeBountyGrantsNotice,
+  sevenDayInfo, claimSevenDay, fourteenDayInfo, claimFourteenDay, bountyInfo, bountyPayout, dispatchBounty, claimBounty, roamerInfo, buyRoamer, takeBountyGrantsNotice,
   interruptBattle, setAutoBattleSpeed,
   buyGood, CURRENCY_NAME,
   adCount, adBump

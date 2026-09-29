@@ -124,6 +124,16 @@ const DEFEAT_RX = { enabled: true, maxItems: 2 };
 const REPLAYS = { max: 20, arenaHighDiff: 1.2,
   capture: { hall: true, campaignFirst: true, towerMilestone: true, arenaHigh: true } };
 
+// 14 日第二周目标树（2026-09-30 研讨会三方案 2）：第 8~14 天一次性里程碑（非每日清单）。
+// 条件绑定既有模式；无时限——达成后随时可领（追赶友好，无需漏领补偿）。
+// 毕业奖避开 SSR 券与大额元宝，护 SSR P50 口径与抽卡锚。
+const FOURTEEN_DAY = [
+  { day: 8, kind: 'campaign', need: 35, cond: '推图 35 关', reward: { scroll: 5 }, label: '招募令 ×5' },
+  { day: 10, kind: 'arena', need: 1000, cond: '演武都尉', reward: { gem: 300 }, label: '元宝 ×300' },
+  { day: 12, kind: 'tower', need: 20, cond: '群英塔 20 层', reward: { shard: 30 }, label: '通用碎片 ×30' },
+  { day: 14, kind: 'campaign', need: 60, cond: '推图 60 关', reward: { shard: 50, scroll: 10, gem: 200 }, label: '碎片50 令10 宝200' }
+];
+
 // N/R 校场操练（2026-09-30 研讨会三方案 1）：铜钱排水渠。N/R 武将操练升级，
 // 每级 +4% 该将悬赏派遣加成（5 级 +20%），与阵营加成叠加、总封顶 40%；不碰战斗数值。
 const DRILL = { maxLevel: 5, pctPerLevel: 0.04, totalCap: 0.4,
@@ -475,7 +485,7 @@ export {
   MAX_LEVEL, PLAYER_LEVEL, BATTLE_XP, AUTO_BATTLE, FOOD_VALUE, DUPE_GOLD,
   goldCost, expCost, idleRates, IDLE_CAP_HOURS, GEM_IDLE, ARMORY_IRON_PER_HOUR,
   FAST_AD, FAST_PAID,
-  GACHA, factionBonus, FORMATION_ROWS, BATTLE, ARENA, DEFEAT_RX, REPLAYS, DRILL, SEVEN_DAY, TRAINING_DAILY_CAP, BOUNTY, ROAMER_POOL, AD,
+  GACHA, factionBonus, FORMATION_ROWS, BATTLE, ARENA, DEFEAT_RX, REPLAYS, DRILL, SEVEN_DAY, FOURTEEN_DAY, TRAINING_DAILY_CAP, BOUNTY, ROAMER_POOL, AD,
   FIRST_STAGE_END, CAMPAIGN_DIFFICULTY, CAMPAIGN_MILESTONES, ELITE_STAGE, STAR_RULES, CHAPTER_STAR_CHESTS, DAILY_ELITE_CHEST,
   CAMPAIGN_MODS, BOSS_MODS, RETURN_GRANTS, SUMMON_TICKET, SUMMON_POINTS, FORGE, MOTIFS, MOTIF_COST, SMELT,
   CODEX_REWARDS, ACHV_AXES, ACHV_REWARDS, WEEKLY, HALL, AWAKEN, FORMATION_PRESETS_MAX, TACTIC, BATTLE_TACTICS, TACTIC_SR, HALL_ACHV, TACTIC_ACHV, AWAKEN_ACHV

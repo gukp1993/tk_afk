@@ -1267,4 +1267,39 @@ const storeP2 = freshStore(); storeP2.load();
   check('DR8 s_gold 卫生修复（5 元宝限 1）', (() => { const g = IT.SHOP_GOODS.find(x => x.id === 's_gold'); return g.price === 5 && g.limit === 1; })());
 }
 
+
+// 14 日第二周目标树（研讨会三方案 2）：天数门/条件门/无时限追赶/领取
+{
+  global.wx._map.delete(SAVE_KEY); // 测试卫生：防前置块遗留存档
+  const storeFD = freshStore(); storeFD.load();
+  const sFD = storeFD.getState();
+  const f0 = storeFD.fourteenDayInfo();
+  check('F1 新档第 1 天：全部 locked 且不可领', f0.ageDays === 1 && f0.list.every(x => x.locked) && !f0.canClaim);
+  // 模拟开服第 10 天 + 条件全达成
+  sFD.createdAt = Date.now() - 9 * 86400000;
+  sFD.campaign.cleared = 60; sFD.arena.points = 1000; sFD.tower.best = 20;
+  console.log('  [f-debug] daily=' + JSON.stringify(sFD.daily).slice(0,60) + ' keys=' + Object.keys(sFD).length + ' createdAt=' + new Date(sFD.createdAt).toISOString());
+  const f1 = storeFD.fourteenDayInfo();
+  check('F2 第 10 天：8/10 可领、12/14 locked', f1.ageDays === 10 && f1.list[0].claimable && f1.list[1].claimable
+    && f1.list[2].locked && f1.list[3].locked);
+  const c1 = storeFD.claimFourteenDay(8);
+  check('F3 领取第 8 天奖（招募令+5）', c1.ok && sFD.res.scroll === c1.reward.scroll + sFD.res.scroll - c1.reward.scroll && sFD.fourteenDay.claimed.indexOf(8) >= 0);
+  const scrollAfter = sFD.res.scroll;
+  check('F4 重复领取拒绝', storeFD.claimFourteenDay(8).ok === false && sFD.res.scroll === scrollAfter);
+  // 无时限追赶：第 8 天条件在第 20 天仍可领
+  sFD.createdAt = Date.now() - 19 * 86400000;
+  sFD.fourteenDay.claimed = [];
+  const f2 = storeFD.fourteenDayInfo();
+  check('F5 第 20 天回看：早解锁档仍可领（无时限追赶）', f2.ageDays === 20 && f2.list[0].claimable && f2.list[1].claimable && f2.list[2].claimable && f2.list[3].claimable);
+  // 条件未达成不可领
+  sFD.campaign.cleared = 10;
+  const f3 = storeFD.fourteenDayInfo();
+  check('F6 条件未达成拒绝（推图 60 档）', storeFD.claimFourteenDay(14).ok === false && f3.list[3].met === false);
+  // 旧档缺 fourteenDay 字段
+  global.wx._map.set(SAVE_KEY, { v: 8, createdAt: 1, name: '主公', res: { gold: 1 }, roster: {} });
+  const storeFD2 = freshStore(); storeFD2.load();
+  check('F7 旧档缺字段兜底', Array.isArray(storeFD2.getState().fourteenDay.claimed));
+  global.wx._map.delete(SAVE_KEY);
+}
+
 console.log('\nsmoke: ' + passed + ' passed, ' + failed + ' failed');process.exit(failed ? 1 : 0);
