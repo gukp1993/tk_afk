@@ -672,6 +672,16 @@ export function hallView(ctx: ScreenContext) {
       U.button('HallFight'+i,'挑 战',230,y+14,170,52,()=>ctx.startBattle('hall',x.seat),palette.red);
     }
   });
+  const rp=store.replaysInfo();
+  if(rp.list.length){
+    U.text('HallReplayTitle','战报 · 最近 5 场',0,-40,640,18,GOLD);
+    rp.list.slice(0,5).forEach((r:any,i:number)=>{
+      const y=-92-i*58;
+      U.panel('HallReplay'+i,0,y,640,50,tone('#171009'),6,tone('#5a452a'));
+      U.text('HallReplayTxt'+i,`第 ${(r.seat||0)+1} 席 · ${r.win?'胜':'负'}${r.stars?' ★'+r.stars:''} · ${Math.round((r.duration||0)*10)/10} 秒`,-150,y,480,17,LIGHT);
+      U.button('HallReplayGo'+i,'回 放',225,y,150,40,()=>ctx.startReplay(r),GOLD);
+    });
+  }
 }
 
 export function expeditionView(ctx: ScreenContext) {

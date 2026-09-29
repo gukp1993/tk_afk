@@ -120,7 +120,7 @@ export function resultView(ctx: ScreenContext) {
   drawField(U,ctx,ctx.lastBattleSnapshot||[]);
   U.rect('ResultDim',0,0,720,1280,new Color(0,0,0,185));
   U.panel('ResultPanel',0,-12,572,512,tone('#271b13'),16,GOLD);
-  U.text('ResultTitle',r?.win?'凯  旋':'败  北',0,174,514,56,r?.win?GOLD:DIM);
+  U.text('ResultTitle',(r&&r.replay?'【回放】':'')+(r?.win?'凯  旋':'败  北'),0,174,514,56,r?.win?GOLD:DIM);
   const reward=r?.reward||{};
   let lines: string[]=[];
   if(!r?.ok) lines=[r?.msg||'结算失败'];

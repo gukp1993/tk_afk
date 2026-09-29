@@ -41,4 +41,5 @@ export interface ScreenContext {
   stopAuto(afterBattle?: boolean): void;
   skipBattle(): void;
   summonDraw(type: string): void;
+  startReplay(record: any): void;
 }

@@ -256,7 +256,27 @@ export class CocosBootstrap extends Component implements ScreenContext {
     this.tell({ok:false,msg:'战斗仍在进行，请稍后再试'},'');
   }
   private lastReplaySpec: any = null;
+  public replaying = false;
+  public startReplay(record: any) {
+    if (this.fighting || this.auto) return this.tell({ ok: false, msg: '已有战斗进行中' }, '');
+    const rec = record || {};
+    if (rec.v !== 1) return this.tell({ ok: false, msg: '战报版本过期，无法回放' }, '');
+    this.replaying = true;
+    this.battleMode = 'hall';
+    this.battleIndex = rec.seat || 0;
+    this.battleId = 'replay';
+    this.fighting = battleRules.createBattle({ seed: rec.seed, timeLimit: rec.timeLimit, team: rec.team, enemy: rec.enemy, env: rec.effects && rec.effects.env || null, reinforce: rec.effects && rec.effects.reinforce || null, healScale: rec.effects && rec.effects.healScale || null });
+    this.go('battle');
+  }
   private finishBattle(win: boolean) {
+    if (this.replaying) {
+      const duration=this.fighting?.result()?.duration || 0;
+      const snapshot=this.fighting?.snapshot() || [];
+      this.outcome={ win, replay:true, duration, aliveCount:snapshot.filter((u:any)=>u.side==='A'&&u.alive).length };
+      this.fighting=null; this.replaying=false;
+      this.show('result');
+      return;
+    }
     const duration=this.fighting?.result()?.duration || 0;
     this.lastBattleSnapshot=this.fighting?.snapshot() || [];
     const aliveCount=this.lastBattleSnapshot.filter((u:any)=>u.side==='A'&&u.alive).length;
@@ -320,7 +340,7 @@ export class CocosBootstrap extends Component implements ScreenContext {
     else if(mode==='expedition') effects=stages.stageBattleEffects(enemy);
     this.fighting=battleRules.createBattle(Object.assign({team:store.playerUnits(),enemy:store.enemyUnits(enemy.units),seed:Date.now()},effects||{}));
     if(mode==='hall'){
-      this.lastReplaySpec={ v:1, mode:'hall', seat:index, seed:Date.now(), timeLimit:config.BATTLE.TIME_LIMIT,
+      this.lastReplaySpec={ v:1, mode:'hall', seat:index, lineupId:_hallLineup.id, lineupName:_hallLineup.name, seed:Date.now(), timeLimit:config.BATTLE.TIME_LIMIT,
         team:store.playerUnits().map((u:any)=>({uid:u.uid,name:u.name,faction:u.faction,cls:u.cls,level:u.level,row:u.row,stats:u.stats,ult:u.ult,passive:u.passive,isBoss:false})),
         enemy:enemy.units.map((u:any)=>{const e2=store.enemyUnits([u])[0];return {uid:e2.uid,name:e2.name,faction:e2.faction,cls:e2.cls,level:e2.level,row:e2.row,stats:e2.stats,ult:e2.ult,passive:e2.passive,isBoss:!!e2.isBoss};}),
         effects:effects||null };
