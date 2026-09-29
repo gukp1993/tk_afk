@@ -351,6 +351,7 @@ function normalizeState(s) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(s.sevenDay.start || '')) s.sevenDay.start = F.todayStr();
   s.bounty = s.bounty || { day: '', list: [] };
   if (!Array.isArray(s.bounty.list)) s.bounty.list = [];
+  s.bounty.unreadGrants = s.bounty.unreadGrants === null ? null : (s.bounty.unreadGrants || null);
   s.roamer = s.roamer || { day: '', ids: [], bought: {} };
   if (!Array.isArray(s.roamer.ids)) s.roamer.ids = [];
   s.roamer.bought = s.roamer.bought || {};
@@ -1442,11 +1443,16 @@ function refreshBounties(today) {
   const old = state.bounty && Array.isArray(state.bounty.list) ? state.bounty.list : [];
   const now = Date.now();
   const carried = [];
+  const settled = [];
   old.forEach(b => {
     if (!b || !b.heroId || b.claimed) return;
-    if (now - b.dispatchedAt >= b.hours * 3600000) applyReward(b.reward);
+    if (now - b.dispatchedAt >= b.hours * 3600000) { applyReward(b.reward); settled.push(b.name); }
     else carried.push(b);
   });
+  if (settled.length) {
+    state.bounty.unreadGrants = [today, (state.bounty.unreadGrants && state.bounty.unreadGrants[0]) || today,
+      settled.length].slice(0, 3);
+  }
   const list = carried.slice();
   // 前 3 单从池中不重复抽取，最后一单加权放回（池仅 3 种，允许 1 张重复）
   const pool = C.BOUNTY.pool;
@@ -1477,6 +1483,13 @@ function bountyInfo() {
   return { day: state.bounty.day, list, busyHeroIds: busy,
     canClaim: list.some(b => b.state === 'done'),
     idleCount: list.filter(b => b.state === 'open').length };
+}
+// 玩法页宽卡一次性读取离线结算提示（读后清除）
+function takeBountyGrantsNotice() {
+  checkDailyReset();
+  const g = state.bounty && state.bounty.unreadGrants;
+  if (g && g[0]) { state.bounty.unreadGrants = null; return g[2] || 0; }
+  return 0;
 }
 function dispatchBounty(idx, heroId) {
   return withSavedMutation(() => {
@@ -1697,7 +1710,7 @@ export {
   winCampaign, campaignRewardPreview, winTower, arenaFight, beginBattle, settleBattle,
   markStorySeen, isStorySeen, retroGrants, dismissRetroGrants,
   questList, claimQuest, activePoints, claimActiveChest, claimAllDailyRewards, claimFreeRewards, bumpQuest, applyReward,
-  sevenDayInfo, claimSevenDay, bountyInfo, dispatchBounty, claimBounty, roamerInfo, buyRoamer,
+  sevenDayInfo, claimSevenDay, bountyInfo, dispatchBounty, claimBounty, roamerInfo, buyRoamer, takeBountyGrantsNotice,
   interruptBattle, setAutoBattleSpeed,
   buyGood, CURRENCY_NAME,
   adCount, adBump

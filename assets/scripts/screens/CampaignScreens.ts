@@ -260,7 +260,8 @@ export function journey(ctx: ScreenContext) {
     U.text('JourneyBountyGlyph','赏',-272,-60,59,49,GOLD);
     U.text('JourneyBountyName','悬赏派遣',-150,-60,180,28,LIGHT);
     U.text('JourneyBountyDesc','派武将出征，到时领赏 · 每日 4 单',-10,-95,430,18,tone('#ad9977'));
-    U.text('JourneyBountyStat',bt.canClaim?`有赏可领 · 待派遣 ${bt.idleCount}`:bt.idleCount>0?`待派遣 ${bt.idleCount} 单`:bt.list.some((b:any)=>b.state==='running')?'出征途中 · 静候归来':'今日已完成',-10,-58,430,19,GOLD);
+    const unread=store.takeBountyGrantsNotice();
+    U.text('JourneyBountyStat',unread?`离线悬赏结算 · 奖励已入账 ›`:bt.canClaim?`有赏可领 · 待派遣 ${bt.idleCount}`:bt.idleCount>0?`待派遣 ${bt.idleCount} 单`:bt.list.some((b:any)=>b.state==='running')?'出征途中 · 静候归来':'今日已完成',-10,-58,430,19,unread?GOLD:GOLD);
     U.tap('JourneyBountyTap',0,-75,682,130,()=>ctx.go('bounty'));
     U.text('JourneyVersion','「挂机定三国」放置卡牌 · v2.0.0',0,-168,580,18,tone('#ad9977'));
     U.text('JourneyGuide','挑战群英塔获取资源，在演武场切磋阵容',0,-196,620,18,tone('#ad9977'));
@@ -461,7 +462,8 @@ export function formation(ctx: ScreenContext) {
     const active=bondsNow.some((x:any)=>x.id===b.id);
     U.text('BondName'+i,(active?'● ':'○ ')+b.name,-232,y,170,19,active?GOLD:tone('#a99778'));
     U.text('BondMembers'+i,b.heroes.map((hid:string)=>heroes.getHero(hid)?.name||hid).join('·'),-70,y,330,17,LIGHT);
-    U.text('BondState'+i,active?'已激活':'未集齐',225,y,120,17,active?GOLD:tone('#a99778'));
+    const missing=(b.heroes||[]).filter((hid:string)=>!s.roster[hid]);
+    U.text('BondState'+i,active?'已激活':missing.length?`缺 ${missing.map((hid:string)=>heroes.getHero(hid)?.name||hid).join('')}`:'未上阵',225,y,150,17,active?GOLD:tone('#a99778'));
   });
   if(formationRecommended){
     const recommended=formationRecommended;
