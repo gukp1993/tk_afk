@@ -147,7 +147,8 @@ export function resultView(ctx: ScreenContext) {
   U.text('ResultTitle',(r&&r.replay?'【回放】':'')+(r?.win?'凯  旋':'败  北'),0,174,514,56,r?.win?GOLD:DIM);
   const reward=r?.reward||{};
   let lines: string[]=[];
-  if(!r?.ok) lines=[r?.msg||'结算失败'];
+  if(r&&r.replay) lines=[`复盘 · ${r.replayName||'对局回放'}`,`用时 ${Math.round((r.duration||0)*10)/10} 秒`];
+  else if(!r?.ok) lines=[r?.msg||'结算失败'];
   else if(ctx.battleMode==='arena') lines=r?.win?[`演武积分 ${reward.delta>=0?'+':''}${reward.delta||0} · 演武令 +${reward.tokens||0}`,
       ...(reward.rankUp?[`首达 ${reward.rankUp.name}！元宝 +${reward.rankUp.gem} · 精铁 +${reward.rankUp.iron}`]:[])]
     :[defeatDiag(ctx,r),`演武积分 ${reward.delta||0} · 演武令 +${reward.tokens||0}`];
@@ -173,6 +174,12 @@ export function resultView(ctx: ScreenContext) {
   }
   else lines=['普通奖励需凯旋后方可领取',defeatDiag(ctx,r)];
   lines.slice(0,3).forEach((line,i)=>U.text(`ResultLine${i}`,line,0,99-i*40,515,22,PAPER));
+  // 名将首通特写（战报中心 P3）：击败每章第 10 关名将的一次性文案，回放态不显示
+  if(r?.win&&!r.replay&&ctx.battleMode==='campaign'&&reward.first&&stages.makeStageEnemies(ctx.battleIndex).isBoss){
+    const bossName=stages.makeStageEnemies(ctx.battleIndex).units[0]?.hero?.name||'名将';
+    const FLAVOR=[`${bossName}阵前授首 · 此关首破，威名入册`,`一战破${bossName} · 鼓角暂歇，前路已开`,`阵斩${bossName} · 首功记于麾下，三军喝彩`,`${bossName}授首 · 千军让道，此捷入青史`,`攻陷${bossName}大纛 · 关隘既克，声震此方`];
+    U.text('ResultGlory',FLAVOR[ctx.battleIndex%FLAVOR.length],0,130,514,18,GOLD);
+  }
   const msLabels=(reward.milestones||[]).map((m:any)=>m.label);
   if(r?.win&&reward.finale)U.text('ResultFinale','第一期主线完成 · 主线 120/120',0,14,500,24,GOLD);
   else if(r?.win&&msLabels.length){

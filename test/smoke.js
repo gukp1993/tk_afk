@@ -493,10 +493,10 @@ check('远征首通得印信 15', es.ok && es.reward.seals === 15 && s4b.week.tr
 const eb2 = store4b.beginBattle({ mode: 'expedition', index: 1, referenceLevel: 30 });
 const es2 = store4b.settleBattle(eb2.id, { win: true, duration: 30, aliveCount: 5 });
 check('远征重复通关不再发印信', es2.ok && (es2.reward.seals || 0) === 0);
-// 战报：客户端 saveReplay 环形缓冲（5 条裁剪）
+// 战报：客户端 saveReplay 环形缓冲（20 条上限，同 tier 按 ts 淘汰最旧；无 mode 旧记录按名人堂 tier1）
 for (let i = 0; i < 7; i++) store4b.saveReplay({ v: 1, seat: i % 3, ts: i, stars: i % 4 });
 const rp = store4b.replaysInfo();
-check('战报环形裁剪至 5 条且最新在首', rp.list.length === 5 && rp.list[0].ts === 6 && rp.list[4].ts === 2);
+check('战报环形缓冲 7 条全留且最新在首', rp.list.length === 7 && rp.list[0].ts === 6 && rp.list[6].ts === 0);
 // 图鉴/成就模拟达标领取
 s4b.campaign.cleared = 10;
 const ac = store4b.claimAchv('campaign', 0);
@@ -1204,6 +1204,41 @@ const storeP2 = freshStore(); storeP2.load();
   const rOff = PB.buildDefeatPrescriptions(sRX, api, { duration: 60, snapshot: [] });
   C.DEFEAT_RX.enabled = enabledBak;
   check('RX6 旋钮关闭返回 null', rOff === null);
+}
+
+
+// 战报中心（研讨会二 P3）：tier 淘汰/旧档兼容/捕获字段/存储大小
+{
+  const storeRP = freshStore(); storeRP.load();
+  const sRP = storeRP.getState();
+  const mkRec = (mode, ts, extra) => Object.assign({ v: 1, mode, ts, seed: 123, timeLimit: 90, win: true, duration: 10, name: mode + '-rec' }, extra || {});
+  for (let i = 0; i < 20; i++) storeRP.saveReplay(mkRec('arena', 1000 + i, { diff: 1.35, index: 0 }));
+  storeRP.saveReplay(mkRec('campaign', 9999, { index: 47, first: true }));
+  check('RP1 tier 淘汰：首通在列且总数 20（最旧演武被挤）', sRP.replays.length === 20
+    && sRP.replays.some(r => r.mode === 'campaign' && r.first) && !sRP.replays.some(r => r.ts === 1000));
+  for (let i = 0; i < 20; i++) storeRP.saveReplay(mkRec('campaign', 5000 + i, { index: 50 + i, first: true }));
+  check('RP2 同 tier 溢出按 ts 淘汰最旧首通', sRP.replays.length === 20
+    && !sRP.replays.some(r => r.ts === 5000) && sRP.replays.some(r => r.ts === 5019));
+  // 旧档兼容：无 mode/index/name 记录 → load+normalize 补默认
+  global.wx._map.set(SAVE_KEY, { v: 8, createdAt: 1, name: '主公', res: { gold: 1 }, roster: {},
+    replays: [{ v: 1, seed: 7, timeLimit: 90, ts: 1, win: true, seat: 2, lineupName: '飞将无双' }] });
+  const storeLG = freshStore(); storeLG.load();
+  const lg0 = storeLG.getState().replays[0];
+  check('RP3 旧档记录补默认字段', lg0.mode === 'hall' && lg0.index === 2 && lg0.name === '飞将无双');
+  global.wx._map.delete(SAVE_KEY);
+  // 战役首通 record（词缀援军）可重建战斗
+  const st2 = require('../utils/stages');
+  const e43 = st2.makeStageEnemies(43);
+  const rec43 = { v: 1, mode: 'campaign', index: 43, first: true, name: e43.name, seed: 4242, timeLimit: 90, win: true, duration: 33, ts: 5,
+    team: [{ uid: 'a0', name: '关羽', faction: 'shu', cls: 'warrior', level: 50, row: 0, stats: { hp: 9000, atk: 500, def: 200, spd: 1, crit: 0.05 }, ult: { name: '青龙偃月', desc: '', damage: 2.2 }, passive: {}, isBoss: false }],
+    enemy: e43.units.map(u => ({ uid: u.hero.id, name: u.hero.name, faction: u.hero.faction, cls: u.hero.cls, level: u.level, row: u.row, stats: { hp: 500, atk: 5, def: 2, spd: 1, crit: 0 }, ult: { name: 'x', desc: '', damage: 1 }, passive: {}, isBoss: false })),
+    effects: st2.stageBattleEffects(e43) || null };
+  const rebuilt = battleRules.createBattle({ seed: rec43.seed, timeLimit: rec43.timeLimit, team: rec43.team, enemy: rec43.enemy, env: rec43.effects && rec43.effects.env || null, reinforce: rec43.effects && rec43.effects.reinforce || null, healScale: rec43.effects && rec43.effects.healScale || null });
+  for (let i = 0; i < 400 && !rebuilt.ended; i++) rebuilt.step(0.1);
+  check('RP4 词缀援军战报可重建至终局', rebuilt.ended && rebuilt.result().duration > 0);
+  // 存储大小：20 条混合战报后整包 <120KB
+  for (let i = 0; i < 20; i++) storeRP.saveReplay(mkRec(['campaign', 'tower', 'arena', 'hall'][i % 4], 2000 + i, { index: i, first: i % 2 === 0, diff: 1.35 }));
+  check('RP5 20 条战报整包 <120KB', JSON.stringify(storeRP.getState()).length < 120 * 1024);
 }
 
 console.log('\nsmoke: ' + passed + ' passed, ' + failed + ' failed');process.exit(failed ? 1 : 0);

@@ -581,11 +581,31 @@ function traitDesc(trait) {
   const map = { firstEnergy: '先手怒气', armoryStartShield: '开场护盾', ccImmune: '免控', energyGain: '怒气获取提升', thorns: '反弹', hp: '生命增强' };
   return Object.keys(trait).map(k => map[k] || k).join('·');
 }
+// 战报 tier（越小越保留）：0=战役首通挑战(含名将) 1=名人堂 2=塔里程碑 3=演武高危 4=其余
+function replayTier(r) {
+  if (!r) return 4;
+  if (r.mode === 'campaign' && r.first) return 0;
+  if (r.mode === 'hall' || !r.mode) return 1;
+  if (r.mode === 'tower' && (r.index || 0) % 5 === 0) return 2;
+  if (r.mode === 'arena' && (r.diff || 0) > ((C.REPLAYS && C.REPLAYS.arenaHighDiff) || 1.2)) return 3;
+  return 4;
+}
 function saveReplay(record) {
-  if (!Array.isArray(state.replays)) state.replays = [];
-  state.replays.push(record);
-  const cap = (C.HALL && C.HALL.replayCap) || 5;
-  if (state.replays.length > cap) state.replays = state.replays.slice(-cap);
+  return withSavedMutation(() => {
+    if (!Array.isArray(state.replays)) state.replays = [];
+    state.replays.push(record);
+    const max = (C.REPLAYS && C.REPLAYS.max) || 20;
+    while (state.replays.length > max) {
+      // 淘汰：tier 最大者中 ts 最小（同分保最旧），确定性
+      let worst = 0;
+      for (let i = 1; i < state.replays.length; i++) {
+        const a = state.replays[i], b = state.replays[worst];
+        if (replayTier(a) > replayTier(b) || (replayTier(a) === replayTier(b) && (a.ts || 0) < (b.ts || 0))) worst = i;
+      }
+      state.replays.splice(worst, 1);
+    }
+    return { ok: true, count: state.replays.length };
+  });
 }
 function replaysInfo() {
   return { list: (state.replays || []).slice().reverse() };
@@ -775,7 +795,15 @@ function normalizeState(s) {
   s.hall.kills = s.hall.kills || {}; s.hall.stars = s.hall.stars || {}; s.hall.threeClaimed = s.hall.threeClaimed || {};
   s.hall.titlesClaimed = s.hall.titlesClaimed || [];
   if (!Array.isArray(s.replays)) s.replays = [];
-  s.replays = s.replays.slice(-((C.HALL && C.HALL.replayCap) || 5));
+  s.replays = s.replays.slice(-((C.REPLAYS && C.REPLAYS.max) || 20));
+  // 旧档名人堂记录补默认字段（mode/index/name），startReplay 与战报列表可直读
+  s.replays.forEach(r => {
+    if (!r) return;
+    if (!r.mode) r.mode = 'hall';
+    if (r.index == null) r.index = r.seat != null ? r.seat : 0;
+    if (!r.name) r.name = r.lineupName || '名人堂对局';
+    if (r.ts == null) r.ts = 0;
+  });
   if (!s.formationPresets || typeof s.formationPresets !== 'object' || Array.isArray(s.formationPresets)) s.formationPresets = {};
   Object.keys(s.formationPresets).forEach(k => {
     const p = s.formationPresets[k];

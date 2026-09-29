@@ -322,13 +322,15 @@ export function journey(ctx: ScreenContext) {
     U.tap('JourneyHallTap',0,-188,682,84,()=>ctx.go('hall'));
     // 本周必做聚合卡（2026-09-30 裁决 B）：一眼看全周任务/名人堂/演武赛季，点击进远征周页
     const wk=progression.buildWeeklyBriefing(s,hi.seats);
-    U.panel('JourneyWeekly',0,-280,682,84,(wk.questsDone<wk.questsTotal)?tone('#312218'):tone('#26301f'),10,(wk.questsDone<wk.questsTotal)?tone('#a17b40'):tone('#6f8a5f'));
-    U.text('JourneyWeeklyGlyph','周',-272,-265,59,49,GOLD);
-    U.text('JourneyWeeklyName','本周必做',-158,-265,180,26,LIGHT);
-    U.text('JourneyWeeklyStat',`任务 ${wk.questsDone}/${wk.questsTotal} · 演武 ${wk.arenaRank}`,120,-264,280,18,GOLD);
-    U.text('JourneyWeeklyDesc','周任务与活跃宝箱在远征页领取',-58,-300,430,17,tone('#ad9977'));
-    U.tap('JourneyWeeklyTap',0,-280,682,84,()=>ctx.go('expedition'));
-    U.text('JourneyVersion','「挂机定三国」放置卡牌 · v2.0.0',0,-350,580,16,tone('#ad9977'));
+    U.panel('JourneyWeekly',0,-290,682,104,(wk.questsDone<wk.questsTotal)?tone('#312218'):tone('#26301f'),10,(wk.questsDone<wk.questsTotal)?tone('#a17b40'):tone('#6f8a5f'));
+    U.text('JourneyWeeklyGlyph','周',-272,-270,59,49,GOLD);
+    U.text('JourneyWeeklyName','本周必做',-158,-270,180,26,LIGHT);
+    U.text('JourneyWeeklyStat',`任务 ${wk.questsDone}/${wk.questsTotal} · 演武 ${wk.arenaRank}`,120,-269,280,18,GOLD);
+    U.text('JourneyWeeklyDesc','周任务与活跃宝箱在远征页领取',-58,-305,430,17,tone('#ad9977'));
+    U.text('JourneyWeeklyReplay','战报 · 最近对局 ›',-58,-330,300,17,GOLD);
+    U.tap('JourneyWeeklyReplayTap',110,-330,240,34,()=>ctx.go('hall'));
+    U.tap('JourneyWeeklyTap',0,-290,682,70,()=>ctx.go('expedition'));
+    U.text('JourneyVersion','「挂机定三国」放置卡牌 · v2.0.0',0,-364,580,16,tone('#ad9977'));
   }
 
 export function bag(ctx: ScreenContext) {
@@ -750,12 +752,18 @@ export function hallView(ctx: ScreenContext) {
   });
   const rp=store.replaysInfo();
   if(rp.list.length){
-    U.text('HallReplayTitle','战报 · 最近 5 场',0,-40,640,18,GOLD);
-    rp.list.slice(0,5).forEach((r:any,i:number)=>{
-      const y=-92-i*58;
-      U.panel('HallReplay'+i,0,y,640,50,tone('#171009'),6,tone('#5a452a'));
-      U.text('HallReplayTxt'+i,`第 ${(r.seat||0)+1} 席 · ${r.win?'胜':'负'}${r.stars?' ★'+r.stars:''} · ${Math.round((r.duration||0)*10)/10} 秒`,-150,y,480,17,LIGHT);
-      U.button('HallReplayGo'+i,'回 放',225,y,150,40,()=>ctx.startReplay(r),GOLD);
+    U.text('HallReplayTitle',`战报 · 最近 ${rp.list.length} 场（滚动）`,0,-40,640,18,GOLD);
+    U.scroll('HallReplayList',0,-284,652,440,rp.list.length*58+16,(V)=>{
+      rp.list.forEach((r:any,i:number)=>{
+        const y=(rp.list.length*58+16)/2-29-i*58;
+        const label=r.mode==='campaign'?`${r.name}${r.first?' · 首通':''}${r.stars?' ★'+r.stars:''}`
+          :r.mode==='tower'?`群英塔 第 ${(r.index||0)} 层${r.win?' ✓':''}`
+          :r.mode==='arena'?'演武 · 凶险切磋'
+          :`名人堂 · ${r.name||`第 ${((r.seat||0)+1)} 席`}${r.stars?' ★'+r.stars:''}`;
+        V.panel('HallReplay'+i,0,y,640,50,tone('#171009'),6,tone('#5a452a'));
+        V.text('HallReplayTxt'+i,`${r.win?'胜':'负'} · ${label} · ${Math.round((r.duration||0)*10)/10} 秒`,-140,y,460,17,LIGHT);
+        V.button('HallReplayGo'+i,'回 放',225,y,150,40,()=>ctx.startReplay(r),GOLD);
+      });
     });
   }
 }

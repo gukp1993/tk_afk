@@ -289,9 +289,10 @@ export class CocosBootstrap extends Component implements ScreenContext {
     const rec = record || {};
     if (rec.v !== 1) return this.tell({ ok: false, msg: '战报版本过期，无法回放' }, '');
     this.replaying = true;
-    this.battleMode = 'hall';
-    this.battleIndex = rec.seat || 0;
+    this.battleMode = rec.mode || 'hall';
+    this.battleIndex = rec.index != null ? rec.index : (rec.seat || 0);
     this.battleId = 'replay';
+    (this as any).replayName = rec.name || rec.lineupName || '对局回放';
     this.fighting = battleRules.createBattle({ seed: rec.seed, timeLimit: rec.timeLimit, team: rec.team, enemy: rec.enemy, env: rec.effects && rec.effects.env || null, reinforce: rec.effects && rec.effects.reinforce || null, healScale: rec.effects && rec.effects.healScale || null });
     this.go('battle');
   }
@@ -299,7 +300,7 @@ export class CocosBootstrap extends Component implements ScreenContext {
     if (this.replaying) {
       const duration=this.fighting?.result()?.duration || 0;
       const snapshot=this.fighting?.snapshot() || [];
-      this.outcome={ win, replay:true, duration, aliveCount:snapshot.filter((u:any)=>u.side==='A'&&u.alive).length };
+      this.outcome={ win, replay:true, replayName:(this as any).replayName||'对局回放', duration, aliveCount:snapshot.filter((u:any)=>u.side==='A'&&u.alive).length };
       this.fighting=null; this.replaying=false;
       this.show('result');
       return;
@@ -309,8 +310,9 @@ export class CocosBootstrap extends Component implements ScreenContext {
     const aliveCount=this.lastBattleSnapshot.filter((u:any)=>u.side==='A'&&u.alive).length;
     const battleStats=this.fighting?.result()?.stats||null;
     const settled=store.settleBattle(this.battleId,{win,duration,aliveCount});
-    if(this.battleMode==='hall'&&this.lastReplaySpec){
-      const stars=settled.reward&&settled.reward.hallStars||0;
+    if(this.lastReplaySpec){
+      // 战报中心：名人堂带 hallStars；战役带评星（首通挑战），其余模式 stars 置 0
+      const stars=this.battleMode==='hall'?(settled.reward&&settled.reward.hallStars||0):(settled.reward&&settled.reward.stars||0);
       store.saveReplay(Object.assign({},this.lastReplaySpec,{ts:Date.now(),win,stars,duration}));
       this.lastReplaySpec=null;
     }
@@ -366,16 +368,30 @@ export class CocosBootstrap extends Component implements ScreenContext {
     let effects=null;
     if(mode==='campaign') effects=stages.stageBattleEffects(stages.makeStageEnemies(index));
     else if(mode==='expedition') effects=stages.stageBattleEffects(enemy);
-    this.fighting=battleRules.createBattle(Object.assign({team:store.playerUnits(this.armedTactic),enemy:store.enemyUnits(enemy.units),seed:Date.now()},effects||{}));
+    const battleSeed=Date.now();
+    this.fighting=battleRules.createBattle(Object.assign({team:store.playerUnits(this.armedTactic),enemy:store.enemyUnits(enemy.units),seed:battleSeed},effects||{}));
     // 每场重置弹字计数（试玩 P2：跨场保留旧计数会抑制新一场的伤害数字）
     (this as any)._popupCount = 0;
     this.combatPopupDisplay = [];
     this.lastUltDisplay = '';
-    if(mode==='hall'){
-      this.lastReplaySpec={ v:1, mode:'hall', seat:index, lineupId:_hallLineup.id, lineupName:_hallLineup.name, seed:Date.now(), timeLimit:config.BATTLE.TIME_LIMIT,
+    // 战报捕获（战报中心 P3）：battleSeed 与 createBattle 同源（修复回放 RNG 漂移）
+    {
+      const cap=config.REPLAYS.capture;
+      const specBase={ v:1 as const, seed:battleSeed, timeLimit:config.BATTLE.TIME_LIMIT,
         team:store.playerUnits((this as any).armedTactic).map((u:any)=>({uid:u.uid,name:u.name,faction:u.faction,cls:u.cls,level:u.level,row:u.row,stats:u.stats,ult:u.ult,passive:u.passive,isBoss:false})),
         enemy:enemy.units.map((u:any)=>{const e2=store.enemyUnits([u])[0];return {uid:e2.uid,name:e2.name,faction:e2.faction,cls:e2.cls,level:e2.level,row:e2.row,stats:e2.stats,ult:e2.ult,passive:e2.passive,isBoss:!!e2.isBoss};}),
         effects:effects||null };
+      if(mode==='hall'&&cap.hall){
+        this.lastReplaySpec=Object.assign(specBase,{mode:'hall',seat:index,lineupId:_hallLineup.id,lineupName:_hallLineup.name,name:_hallLineup.name});
+      } else if(mode==='campaign'&&cap.campaignFirst&&started.first){
+        this.lastReplaySpec=Object.assign(specBase,{mode:'campaign',index,first:true,name:enemy.name||`第 ${index} 关`});
+      } else if(mode==='tower'&&cap.towerMilestone&&started.first&&index%5===0){
+        this.lastReplaySpec=Object.assign(specBase,{mode:'tower',index,name:`群英塔 · 第 ${index} 层`});
+      } else if(mode==='arena'&&cap.arenaHigh&&diff>((config.REPLAYS.arenaHighDiff))){
+        this.lastReplaySpec=Object.assign(specBase,{mode:'arena',index,diff,name:'演武 · 凶险切磋'});
+      } else {
+        this.lastReplaySpec=null;
+      }
     }
     this.lastBattleSnapshot=[];
     if(fromAuto) this.autoAction(this.autoSession.battleStarted(true,started.id));

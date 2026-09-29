@@ -115,6 +115,12 @@ const BATTLE = {
 // enabled=false 时败北页回退旧提示与旧两按钮（推荐布阵/升级军械）。
 const DEFEAT_RX = { enabled: true, maxItems: 2 };
 
+// 战报中心（2026-09-30 研讨会二 P3）：全模式战报环形 20 条，按 tier 淘汰（越小越保留）：
+// 0=战役首通挑战(含名将) 1=名人堂 2=塔里程碑 3=演武高危 4=其余。
+// capture.* 四开关置 false 即关闭对应捕获；全 false 回到仅名人堂行为（旧数据仍兼容展示）。
+const REPLAYS = { max: 20, arenaHighDiff: 1.2,
+  capture: { hall: true, campaignFirst: true, towerMilestone: true, arenaHigh: true } };
+
 // 演武场：每日 5 次；令牌按对手难度分档（胜），败给 1；段位首次达成发一次性奖励。
 // 赛季（2026-09-30 研讨会裁决 A）：每周一软重置，新周积分=上周×WEEK_CARRY；
 // 周段位奖按本周达到的最高段位一次性发放（偏将及以上），只发铜钱/演武令/元宝/印信——禁精铁与招募令直发。
@@ -362,7 +368,7 @@ const HALL = {
   firstThreeStar: { honor: 10, shard: 5 },
   weeklyClear: { token: 10, honor: 10, shard4: 5 }, // SSR 碎片：觉醒线补给
   titles: [{ honor: 100, title: '常胜将军' }, { honor: 300, title: '武圣传说' }],
-  replayCap: 5,
+  replayCap: 5, // 已由 REPLAYS.max(20) 接管，保留字段仅供旧档迁移参考
   pool: [
     { id: 'wuhu', name: '五虎上将', faction: 'shu', trait: null,
       members: ['guanyu', 'zhangfei', 'zhaoyun', 'machao', 'huangzhong'] },
@@ -461,7 +467,7 @@ module.exports = {
   MAX_LEVEL, PLAYER_LEVEL, BATTLE_XP, AUTO_BATTLE, FOOD_VALUE, DUPE_GOLD,
   goldCost, expCost, idleRates, IDLE_CAP_HOURS, GEM_IDLE, ARMORY_IRON_PER_HOUR,
   FAST_AD, FAST_PAID,
-  GACHA, factionBonus, FORMATION_ROWS, BATTLE, ARENA, DEFEAT_RX, SEVEN_DAY, TRAINING_DAILY_CAP, BOUNTY, ROAMER_POOL, AD,
+  GACHA, factionBonus, FORMATION_ROWS, BATTLE, ARENA, DEFEAT_RX, REPLAYS, SEVEN_DAY, TRAINING_DAILY_CAP, BOUNTY, ROAMER_POOL, AD,
   FIRST_STAGE_END, CAMPAIGN_DIFFICULTY, CAMPAIGN_MILESTONES, ELITE_STAGE, STAR_RULES, CHAPTER_STAR_CHESTS, DAILY_ELITE_CHEST,
   CAMPAIGN_MODS, BOSS_MODS, RETURN_GRANTS, SUMMON_TICKET, SUMMON_POINTS, FORGE, MOTIFS, MOTIF_COST, SMELT,
   CODEX_REWARDS, ACHV_AXES, ACHV_REWARDS, WEEKLY, HALL, AWAKEN, FORMATION_PRESETS_MAX, TACTIC, BATTLE_TACTICS, TACTIC_SR, HALL_ACHV, TACTIC_ACHV, AWAKEN_ACHV
