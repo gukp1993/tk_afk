@@ -174,7 +174,7 @@ export function stagePreview(ctx: ScreenContext) {
   U.tap('StageShadeTap',0,0,720,1280,()=>ctx.back('campaign'));
   U.panel('StagePanel',0,0,658,782,tone('#251b14'),13,tone('#9b793f'));
   U.tap('StagePanelBlock',0,0,658,782,()=>{});
-  U.text('StageHeading',`第 ${stage} 关${stage>stages.CHAPTERS.length*stages.STAGES_PER_CH?'（循环乱世）':''} · ${enemy.story?.stage?.name||enemy.name||'两军对阵'}`,0,343,600,30,GOLD);
+  U.text('StageHeading',`第 ${stage} 关${stage>stages.CHAPTERS.length*stages.STAGES_PER_CH?'（循环乱世）':''}${enemy.elite?' · 精锐':enemy.mods&&enemy.mods.length?' · 机制':''} · ${enemy.story?.stage?.name||enemy.name||'两军对阵'}`,0,343,600,30,GOLD);
   U.text('StageEnemyTitle',enemy.isBoss?'名将镇守 · 首通奖励':'敌阵与首通奖励',-155,289,311,21,GOLD);
   enemy.units.slice(0,5).forEach((unit:any,i:number)=>{
     const fName=(config.FACTIONS as any)[unit.hero.faction]?.name||'';
@@ -185,9 +185,9 @@ export function stagePreview(ctx: ScreenContext) {
   const domFaction=Object.keys(fCount).sort((a:string,b:string)=>fCount[b]-fCount[a])[0];
   if(enemy.mods&&enemy.mods.length){
     const modNames=enemy.mods.map((m:any)=>(config.CAMPAIGN_MODS.meta as any)[m]).filter(Boolean);
-    U.text('StageModsHint',`机制：${modNames.map((m:any)=>m.name+' — '+m.desc).join('；')}`,0,54,620,16,palette.red);
+    U.text('StageModsHint',`机制：${modNames.map((m:any)=>m.name+' — '+m.desc).join('；')}`,0,70,620,16,palette.red);
   } else if(enemy.bossMod){
-    U.text('StageModsHint',`敌方主将机制：${enemy.bossMod.name} — ${enemy.bossMod.desc}`,0,54,620,16,palette.red);
+    U.text('StageModsHint',`敌方主将机制：${enemy.bossMod.name} — ${enemy.bossMod.desc}`,0,70,620,16,palette.red);
   }
   if(fCount[domFaction]>=4){
     const counterKey=Object.keys(config.BEATS).find((k:any)=>(config.BEATS as any)[k]===domFaction);
@@ -195,7 +195,7 @@ export function stagePreview(ctx: ScreenContext) {
     // 光环显示按 ENEMY_FACTION_AURA 折算后的实际生效值，与战斗内一致
     const baseAura=config.factionBonus(fCount[domFaction]).atk;
     const realAura=Math.round(baseAura*(config as any).ENEMY_FACTION_AURA*1000)/10;
-    U.text('StageAuraHint',`敌军同阵营×${fCount[domFaction]}（光环生效 +${realAura}%）· ${counterName}阵营对其伤害+25%`,0,62,610,17,tone('#d9a94e'));
+    U.text('StageAuraHint',`敌军同阵营×${fCount[domFaction]}（光环生效 +${realAura}%）· ${counterName}阵营对其伤害+25%`,0,46,610,17,tone('#d9a94e'));
   }
   U.panel('StageRewardPanel',0,-45,616,165,tone('#302a1c'),7);
   if(reward.first){
@@ -317,7 +317,7 @@ export function journey(ctx: ScreenContext) {
     U.text('JourneyBountyName','悬赏派遣',-150,-60,180,28,LIGHT);
     U.text('JourneyBountyDesc','派武将出征，到时领赏 · 每日 4 单',-10,-95,430,18,tone('#ad9977'));
     const unread=store.takeBountyGrantsNotice();
-    U.text('JourneyBountyStat',unread?`离线悬赏结算 · 奖励已入账 ›`:bt.canClaim?`有赏可领 · 待派遣 ${bt.idleCount}`:bt.idleCount>0?`待派遣 ${bt.idleCount} 单`:bt.list.some((b:any)=>b.state==='running')?'出征途中 · 静候归来':'今日已完成',-10,-58,430,19,unread?GOLD:GOLD);
+    U.text('JourneyBountyStat',unread?`离线赏金×${unread} 已入账 ›`:bt.canClaim?'有赏可领 ›':bt.idleCount>0?`待派遣 ${bt.idleCount} 单`:bt.list.some((b:any)=>b.state==='running')?'出征途中':'今日已完成',30,-58,330,19,GOLD);
     U.tap('JourneyBountyTap',0,-75,682,130,()=>ctx.go('bounty'));
     const hi=store.hallInfo();
     U.panel('JourneyHall',0,-188,682,84,hi.seats.every((x:any)=>x.killed)?tone('#26301f'):tone('#312218'),10,hi.seats.every((x:any)=>x.killed)?tone('#6f8a5f'):tone('#a17b40'));
@@ -333,7 +333,7 @@ export function journey(ctx: ScreenContext) {
     U.text('JourneyWeeklyName','本周必做',-158,-270,180,26,LIGHT);
     U.text('JourneyWeeklyStat',`任务 ${wk.questsDone}/${wk.questsTotal} · 演武 ${wk.arenaRank}`,120,-269,280,18,GOLD);
     U.text('JourneyWeeklyDesc','周任务与活跃宝箱在远征页领取',-58,-305,430,17,tone('#ad9977'));
-    U.text('JourneyWeeklyReplay','战报 · 最近对局 ›',-58,-330,300,17,GOLD);
+    U.text('JourneyWeeklyReplay',`战报 · 最近 ${(store.replaysInfo().list as any[]).length} 场 ›`,-58,-330,300,17,GOLD);
     U.tap('JourneyWeeklyReplayTap',110,-330,240,34,()=>ctx.go('hall'));
     U.tap('JourneyWeeklyTap',0,-290,682,70,()=>ctx.go('expedition'));
     U.text('JourneyVersion','「挂机定三国」放置卡牌 · v2.0.0',0,-364,580,16,tone('#ad9977'));
@@ -694,7 +694,7 @@ export function arenaBoard(ctx: ScreenContext) {
       const x=-272+i*136;
       U.panel('BoardTier'+i,x,318,126,64,t.reached?tone('#4a3a17'):tone('#26201a'),8,t.reached?GOLD:tone('#4f4230'));
       U.text('BoardTierName'+i,t.name,x,334,116,18,t.reached?GOLD:tone('#ad9977'));
-      U.text('BoardTierReward'+i,Object.keys(t.bonus).map((k:string)=>`${(REWARD_NAME as any)[k]||k}×${fmt.fmtNum((t.bonus as any)[k])}`).join('·'),x,308,116,15,t.reached?LIGHT:tone('#7a6c52'));
+      U.text('BoardTierReward'+i,Object.keys(t.bonus).map((k:string)=>{const n=(t.bonus as any)[k];const nm=({gold:'铜',gem:'宝',token:'令',seals:'印'} as any)[k]||(REWARD_NAME as any)[k]||k;return `${nm}${n>=10000?(n/10000)+'万':n}`;}).join('·'),x,308,116,15,t.reached?LIGHT:tone('#7a6c52'));
     });
     U.scroll('ArenaBoardList',0,-100,682,720,board.rows.length*52+16,V=>{
       board.rows.forEach((r:any,i:number)=>{
@@ -762,7 +762,8 @@ export function hallView(ctx: ScreenContext) {
     U.scroll('HallReplayList',0,-284,652,440,rp.list.length*58+16,(V)=>{
       rp.list.forEach((r:any,i:number)=>{
         const y=(rp.list.length*58+16)/2-29-i*58;
-        const label=r.mode==='campaign'?`${r.name}${r.first?' · 首通':''}${r.stars?' ★'+r.stars:''}`
+        const shortName=(r.name||'').replace(/^第[一二三四五六七八九十百]+章 · /,'');
+        const label=r.mode==='campaign'?`${shortName}${r.first?' · 首通':''}${r.stars?' ★'+r.stars:''}`
           :r.mode==='tower'?`群英塔 第 ${(r.index||0)} 层${r.win?' ✓':''}`
           :r.mode==='arena'?'演武 · 凶险切磋'
           :`名人堂 · ${r.name||`第 ${((r.seat||0)+1)} 席`}${r.stars?' ★'+r.stars:''}`;
@@ -847,22 +848,25 @@ export function bountyView(ctx: ScreenContext) {
     U.text('BountyName'+i,b.name,-220,y+24,220,24,GOLD);
     U.text('BountyHours'+i,`${b.hours} 小时`,210,y+24,120,19,tone('#ad9977'));
     U.text('BountyReward'+i,reward,-160,y-14,420,18,LIGHT);
-    // 同阵营派遣加成（裁决 E）：派同阵营将该单铜钱元宝 +20%
-    if(b.wantFaction){
-      const fname=(config.FACTIONS as any)[b.wantFaction]?.name||'';
-      const pct=Math.round((b.bonusPct||0)*100);
-      U.text('BountyWant'+i,b.state==='open'?`征${fname}将 · +${pct}%`:b.bonusActive?`已生效 +${b.realizedPct||pct}%`:`非${fname}将 · 无阵营加成`,205,y-14,225,16,
-        b.state==='open'?GOLD:b.bonusActive?tone('#6f8a5f'):tone('#7a6c52'));
-    }
     const heroName=b.heroId?(heroes.getHero(b.heroId)?.name||b.heroId):'';
     if(b.state==='open'){
+      // 同阵营派遣加成（裁决 E）：徽标放奖励行下方左侧，远离右侧按钮（体验官二号 P1）
+      if(b.wantFaction){
+        const fname=(config.FACTIONS as any)[b.wantFaction]?.name||'';
+        const pct=Math.round((b.bonusPct||0)*100);
+        U.text('BountyWant'+i,`征${fname}将 · 该单 +${pct}%`,-160,y-40,260,16,GOLD);
+      }
       U.button('BountyAct'+i,'派 遣',240,y-38,150,52,()=>{bountyPickIdx=i;ctx.show('bounty');},palette.gold);
     }else if(b.state==='running'){
       const h=Math.floor(b.remainMs/3600000),m=Math.floor(b.remainMs%3600000/60000);
-      U.text('BountyAct'+i,`${heroName} · 归来还需 ${h}时${m}分`,150,y-38,360,18,tone('#ad9977'));
+      U.text('BountyAct'+i,`${heroName} · 归来还需 ${h}时${m}分`,110,y-38,340,18,tone('#ad9977'));
+      if(b.wantFaction){
+        const fname=(config.FACTIONS as any)[b.wantFaction]?.name||'';
+        U.text('BountyWant'+i,b.bonusActive?`已生效 +${b.realizedPct||20}%`:`非${fname}将`, -160,y-40,250,16,b.bonusActive?tone('#6f8a5f'):tone('#7a6c52'));
+      }
     }else if(b.state==='done'){
       U.button('BountyAct'+i,'领 赏',240,y-38,150,52,()=>ctx.tell(store.claimBounty(i),`已领赏：${b.name}`),palette.red);
-      U.text('BountyHero'+i,heroName,-220,y-38,220,17,tone('#ad9977'));
+      U.text('BountyHero'+i,`${heroName}${b.bonusActive&&b.realizedPct?` · 加成+${b.realizedPct}%`:''}`,-180,y-38,300,17,tone('#ad9977'));
     }else{
       U.text('BountyAct'+i,'已完成 · 已领赏',150,y-38,360,18,tone('#6f8a5f'));
     }

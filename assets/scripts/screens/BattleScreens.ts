@@ -159,9 +159,13 @@ export function resultView(ctx: ScreenContext) {
   let lines: string[]=[];
   if(r&&r.replay) lines=[`复盘 · ${r.replayName||'对局回放'}`,`用时 ${Math.round((r.duration||0)*10)/10} 秒`];
   else if(!r?.ok) lines=[r?.msg||'结算失败'];
-  else if(ctx.battleMode==='arena') lines=r?.win?[`演武积分 ${reward.delta>=0?'+':''}${reward.delta||0} · 演武令 +${reward.tokens||0}`,
+  else if(ctx.battleMode==='arena'){
+    const fmtBonus=(b:any)=>b?Object.keys(b).map((k:string)=>({gold:'铜钱',gem:'元宝',token:'演武令',seals:'印信'} as any)[k]?`${({gold:'铜钱',gem:'元宝',token:'演武令',seals:'印信'} as any)[k]}+${fmt.fmtNum((b as any)[k])}`:'').filter(Boolean).join('·'):'';
+    lines=r?.win?[`演武积分 ${reward.delta>=0?'+':''}${reward.delta||0} · 演武令 +${reward.tokens||0}`,
+      ...(reward.weekRankUp?[`周段位奖 ${reward.weekRankUp.name}：${fmtBonus(reward.weekRankUp)}`]:[]),
       ...(reward.rankUp?[`首达 ${reward.rankUp.name}！元宝 +${reward.rankUp.gem} · 精铁 +${reward.rankUp.iron}`]:[])]
     :[defeatDiag(ctx,r),`演武积分 ${reward.delta||0} · 演武令 +${reward.tokens||0}`];
+  }
   else if(ctx.battleMode==='tower') lines=r?.win?[`元宝 +${reward.gem||0} · 精铁 +${reward.iron||0} · 招募令 +${reward.scroll||0}`,`武将碎片 +${reward.shard||0}`]:[defeatDiag(ctx,r)];
   else if(ctx.battleMode==='hall'){
     const hr=reward.hallReward||{};
@@ -200,14 +204,18 @@ export function resultView(ctx: ScreenContext) {
     const dropName=reward.armory&&!reward.armory.duplicate
       ?(items.CATALOG.find((x:any)=>x.id===reward.armory.itemId)?.name||'随机军械'):null;
     U.text('ResultDrop',dropName?`掉落军械：${dropName}`
-      :reward.armory&&reward.armory.duplicate?`重复军械转化为精铁 +${reward.armory.iron}`
+      :reward.armory&&reward.armory.duplicate?(reward.armory.iron?`重复军械折算精铁 +${reward.armory.iron}`:'重复军械已入熔炉库存（可熔回/合成）')
       :'随机军械：本次未掉落（65% 概率）',0,-24,515,18,DIM);
   }
   if(r?.win&&reward.armoryBox)U.text('ResultBox',`${['','R','SR','SSR'][reward.armoryBox]||''}军械自选箱 ×1 · 待选择`,0,-58,480,19,GOLD);
   const starText=ctx.battleMode==='campaign'&&r?.win?`评星 ${'★'.repeat(Math.max(1,Math.min(3,r.stars||1)))} · `:'';
   U.text('ResultDuration',`${starText}用时 ${Math.round((r?.duration||0)*10)/10} 秒`,0,-96,470,19,DIM);
-  U.button('ResultBack','返回',-139,-165,232,59,()=>ctx.go(returnPage(ctx)),tone('#3a2b20'));
-  U.button('ResultRetry','再战',139,-165,232,59,()=>ctx.battleMode==='arena'?ctx.startArenaBattle(ctx.battleDiff,ctx.battleArenaSeed):ctx.startBattle(ctx.battleMode,ctx.battleIndex,ctx.battleDiff),tone('#3a2b20'));
+  if(r&&r.replay){
+    U.button('ResultCloseReplay','关闭回放',0,-165,478,59,()=>ctx.go('hall'),tone('#3a2b20'));
+  } else {
+    U.button('ResultBack','返回',-139,-165,232,59,()=>ctx.go(returnPage(ctx)),tone('#3a2b20'));
+    U.button('ResultRetry','再战',139,-165,232,59,()=>ctx.battleMode==='arena'?ctx.startArenaBattle(ctx.battleDiff,ctx.battleArenaSeed):ctx.startBattle(ctx.battleMode,ctx.battleIndex,ctx.battleDiff),tone('#3a2b20'));
+  }
   if(!ctx.auto){
     if(ctx.battleMode==='campaign'&&!r?.win){
       // 卡关处方单（研讨会二 P1）：归因 + 按资源可完成度生成的处方按钮（rx 已在行文案前计算）
