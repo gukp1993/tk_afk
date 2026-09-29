@@ -16,6 +16,21 @@
 
 ## 最近交接（新 → 旧）
 
+### 主公成就五轴→八轴扩展 · zcode · 已实施待验收
+
+时间：2026-09-29 13:10（Asia/Shanghai）；执行者：zcode；状态：已实施待验收。
+
+- 下一批选题讨论代理裁决 B（成就三轴扩展）胜出——名人堂/兵法/觉醒三条新轴，零战斗数值零锚风险。
+- 内容（config + achievements + UI 文案）：三轴各 10 档独立轻量奖励表（全表禁 shard4/精铁/招募令直发），
+  轴名/称号/头像框带轴名前缀；achievements.js axisProgress 新增 hallKills（hall.killsTotal 计数器）、
+  tacticLv（Σroster tacticLv）、awaken（Σroster awaken）三个派生 case。
+- 途中修复：兵法实施代理写入 achievements.js 的 (r:any) TS 注解导致 JS 语法错误——已修。
+- 验证：smoke 309 断言全过；TS/镜像检查过；微信构建 3332KB。
+- 待验收：真机成就页八轴滚动列表。
+- 下一步循环：兵法 UI 走查代理报告回来即修→后续批次按裁决书排序。
+
+### 波次 8 UI 接线（战前战术三选一） · zcode · 已实施待验收
+
 ### 波次 8 UI 接线（战前战术三选一） · zcode · 已实施待验收
 
 时间：2026-09-29 13:30（Asia/Shanghai）；执行者：zcode；状态：已实施待验收。
