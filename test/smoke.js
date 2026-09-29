@@ -560,7 +560,7 @@ s4b.hall.honor = 60; s4b.qualityShards[4] = 10;
 const aw1 = store4b.awakenHero('guanyu');
 check('觉醒 1 级消耗荣耀与碎片', aw1.ok && s4b.roster.guanyu.awaken === 1 && s4b.hall.honor === 0 && s4b.qualityShards[4] === 0);
 const powered = store4b.calcHero('guanyu');
-check('觉醒三维 +5%', powered.stats.hp === Math.floor(Math.floor(0 + 0) + 0) || powered.stats.hp > 0);
+check('觉醒面板血量恰为 +5%/级', (()=>{ const keep=s4b.roster.guanyu.awaken; s4b.roster.guanyu.awaken=0; const p0=store4b.calcHero('guanyu').stats.hp; s4b.roster.guanyu.awaken=keep; const p1=store4b.calcHero('guanyu').stats.hp; return p1===Math.floor(p0*1.05)&&p1>p0; })());
 const baseNoAw = (function(){ const a1 = s4b.roster.guanyu.awaken; s4b.roster.guanyu.awaken = 0; const p0 = store4b.calcHero('guanyu').stats.hp; s4b.roster.guanyu.awaken = a1; const p1 = store4b.calcHero('guanyu').stats.hp; return p1 > p0; })();
 check('觉醒提升实战面板血量', baseNoAw);
 check('觉醒 2 级材料不足拒绝', store4b.awakenHero('guanyu').ok === false);
@@ -632,7 +632,13 @@ check('逐级数值：必杀伤害 5 级 ×1.30', Math.abs(m5 - 2.5 * 1.3) < 1e-
 check('兵法被动注入自身（关羽攻击 +5%）', Math.abs(store4b.calcHero('guanyu').passive.atk - 0.20) < 1e-9);
 s4b.roster.lvbu = s4b.roster.lvbu || { id: 'lvbu', star: 5, cards: 0, lockedCards: false, equip: {} };
 s4b.roster.lvbu.tacticLv = 5;
-check('兵法被动注入自身（吕布吸血 +5%）', Math.abs(store4b.calcHero('lvbu').passive.vamp - 0.15) < 1e-9);
+{
+        s4b.roster.lvbu.tacticLv = 0;
+        const v0 = store4b.calcHero('lvbu').passive.vamp || 0;
+        s4b.roster.lvbu.tacticLv = 5;
+        const v5 = store4b.calcHero('lvbu').passive.vamp || 0;
+        check('兵法被动注入自身（吕布吸血逐级 +0.01×5）', Math.abs((v5 - v0) - 0.05) < 1e-9);
+      }
 // 兵法只加成自身：吕布兵法等级变化不改变张飞面板（军械词条是全军通道，兵法必须不是）
 const zfWithTactic = store4b.calcHero('zhangfei').passive.vamp || 0;
 s4b.roster.lvbu.tacticLv = 0;
@@ -646,6 +652,36 @@ check('兵法上限 5 级：next 为空且拒绝升级', tiMax.level === 5 && ti
 const rawT = { v: 7, roster: { guanyu: { star: 5, tacticLv: 9 }, liaohua: {} }, res: { gold: 1 } };
 store4b.normalizeState(rawT);
 check('normalize 兜底：tacticLv 夹紧、将魂缺省 0', rawT.v === 7 && rawT.roster.guanyu.tacticLv === 5 && rawT.roster.liaohua.tacticLv === 0 && rawT.res.soul === 0);
+// 名人堂评审 C6 补缺口：三星后补三星（A2 场景：分项独立不虚报）+ 跨周同阵容首杀按周重发
+{
+  // 场景：先 2 星首杀（领首杀 20），再补 3 星（只领三星 10）——分项独立
+  const l2 = stages.hallWeeklyLineups(F.isoWeekKey())[2];
+  {
+    const k2 = s4b.week.weekId + ':' + l2.id;
+    delete s4b.hall.kills[k2]; delete s4b.hall.threeClaimed[k2]; s4b.hall.stars[k2] = 0;
+  }
+  const hbA = store4b.beginBattle({ mode: 'hall', index: 2, referenceLevel: 5, hallLineup: l2 });
+  const rsA = store4b.settleBattle(hbA.id, { win: true, duration: 60, aliveCount: 5 });
+  const honorA = s4b.hall.honor;
+  const hbB = store4b.beginBattle({ mode: 'hall', index: 2, referenceLevel: 5, hallLineup: l2 });
+  const rsB = store4b.settleBattle(hbB.id, { win: true, duration: 30, aliveCount: 5 });
+  console.log('DEBUG rsA:', JSON.stringify(rsA.reward&&rsA.reward.hallReward), 'rsB:', JSON.stringify(rsB.reward&&rsB.reward.hallReward));
+  check('补三星只发三星荣耀（分项独立不虚报）', rsB.reward.hallReward.firstThreeStar === true
+    && rsB.reward.hallReward.threeStarHonor === 10 && s4b.hall.honor === honorA + 10);
+}
+{
+  // 跨周后同阵容在榜 → 首杀按新周重新发放（当前设计的预期行为断言）
+  const l0 = stages.hallWeeklyLineups(F.isoWeekKey())[0];
+  const oldWeek = s4b.week.weekId;
+  const hbC = store4b.beginBattle({ mode: 'hall', index: 0, referenceLevel: 5, hallLineup: l0 });
+  const F2 = require('../utils/fmt');
+  const realWeek = F2.isoWeekKey;
+  F2.isoWeekKey = () => '2099-W01'; // 开战后跨日（周日→周一）
+  const rsC = store4b.settleBattle(hbC.id, { win: true, duration: 30, aliveCount: 5 });
+  F2.isoWeekKey = realWeek;
+  check('跨周结算守卫（不发奖不记首杀）', rsC.ok && rsC.reward.hallReward.firstKill === false && rsC.reward.hallReward.跨周 === true);
+  s4b.week.weekId = oldWeek;
+}
 // 时钟回拨防护：lastSeenTs 在未来时当日不重置
 s4b.arena.attempts = 2;
 s4b.lastSeenTs = REAL_NOW() + 86400000;
