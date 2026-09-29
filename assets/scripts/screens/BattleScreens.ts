@@ -249,5 +249,18 @@ export function autoSummary(ctx: ScreenContext, summary: AutoSummary) {
   U.text('SummaryXP',`经验 +${summary.xp} · 精铁 +${summary.iron}`,0,4,530,19,PAPER);
   U.text('SummaryLevel',`主公 Lv.${summary.startLevel} → Lv.${summary.endLevel}`,0,-113,550,21,DIM);
   U.text('SummaryRecent',summary.recent.join(' · '),0,-169,550,18,DIM);
+  // 处方同源（处方单批次）：自动受阻时给「可立即完成」处方按钮
+  if(summary.reason==='recovery-exhausted'){
+    const enemyFactions=(stages.makeStageEnemies(ctx.battleIndex).units||[]).map((u:any)=>u.hero&&u.hero.faction);
+    const rx=progression.buildDefeatPrescriptions(store.getState(),{
+      questList:store.questList,idlePending:store.idlePending,bountyInfo:store.bountyInfo,summonPityInfo:store.summonPityInfo
+    },{duration:0,snapshot:ctx.lastBattleSnapshot||[],enemyFactions});
+    if(rx&&(rx.items as any[]).length){
+      U.text('SummaryRxTitle','受阻处方 · 照做后再战',0,-224,550,18,GOLD);
+      (rx.items as any[]).slice(0,2).forEach((p:any,i:number)=>{
+        U.button('SummaryRx'+i,p.text,0,-276-i*56,560,48,()=>ctx.go(p.page as any),tone('#4c6e57'));
+      });
+    }
+  }
   U.button('SummaryBack','返回战役',0,-405,430,78,()=>ctx.go('campaign'),tone('#b78b43'));
 }
