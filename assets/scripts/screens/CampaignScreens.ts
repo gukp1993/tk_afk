@@ -498,27 +498,25 @@ export function formation(ctx: ScreenContext) {
   });
   U.text('FormationHelp1','点击已上阵武将可更换；阵营克制：魏→蜀→吴→群→魏',0,44,650,18,tone('#ad9977'));
   U.text('FormationHelp2','克制方伤害 +25%',0,22,600,18,tone('#ad9977'));
-  U.text('FormationTarget','索敌：同排按 1→3 号位承伤 · 神射直取后排 · 军师随机',0,0,650,16,tone('#8a9a7a'));
+  U.text('FormationTarget','索敌：同排按 1→3 号位承伤 · 神射直取后排 · 军师随机',0,10,650,16,tone('#8a9a7a'));
   const pi=store.formationPresetsInfo();
-  if(pi.count||pi.list.length){
-    U.panel('PresetBand',0,-20,682,40,tone('#2e2113'),7,tone('#795b34'));
-    U.text('PresetBandTitle','模板',-310,-20,64,17,GOLD);
+    U.panel('PresetBand',0,-30,682,40,tone('#2e2113'),7,tone('#795b34'));
+    U.text('PresetBandTitle','模板',-306,-30,52,16,GOLD);
     pi.list.forEach((pm:any,i:number)=>{
-      const x=-234+i*160;
+      const x=-244+i*160;
       const active=s.formation.join()===pm.slots.join();
-      U.panel('PresetChip'+i,x,-20,146,30,active?tone('#45321b'):tone('#171009'),6,active?GOLD:tone('#5a452a'));
-      U.text('PresetChipTxt'+i,pm.name+(active?' ✓':''),x,-20,138,16,active?GOLD:LIGHT);
-      if(!active)U.tap('PresetTap'+i,x,-20,146,30,()=>ctx.tell(store.applyFormationPreset(pm.key),'已启用模板：'+pm.name));
+      U.panel('PresetChip'+i,x,-30,146,30,active?tone('#45321b'):tone('#171009'),6,active?GOLD:tone('#5a452a'));
+      U.text('PresetChipTxt'+i,pm.name+(active?' ✓':''),x,-30,138,16,active?GOLD:LIGHT);
+      if(!active)U.tap('PresetTap'+i,x,-30,146,30,()=>ctx.tell(store.applyFormationPreset(pm.key),'已启用模板：'+pm.name));
       U.text('PresetDelX'+i,'×',x+64,-27,16,13,tone('#bb614c'));
       U.tap('PresetDelTap'+i,x+55,-27,18,24,()=>ctx.confirm('删除模板','删除「'+pm.name+'」？不可恢复',()=>{const r=store.delFormationPreset(pm.key);ctx.tell(r,r.ok?'模板已删除':'');}));
     });
     if(pi.count<pi.max){
-      const sx=-234+pi.list.length*160;
-      U.panel('PresetSaveChip',sx,-20,146,30,tone('#39291a'),6,GOLD);
-      U.text('PresetSaveTxt','保存当前阵容',sx,-20,138,15,GOLD);
-      U.tap('PresetSaveTap',sx,-20,146,30,()=>ctx.confirm('保存阵型模板','把当前五人编队存为模板（含站位），日后一键启用',()=>{const r=store.saveFormationPreset('p'+(Date.now()%100000),'我的阵型');ctx.tell(r,r.ok?'模板已保存':'');}));
+      const sx=-244+pi.list.length*160;
+      U.panel('PresetSaveChip',sx,-30,146,30,tone('#39291a'),6,GOLD);
+      U.text('PresetSaveTxt','保存当前阵容',sx,-30,138,15,GOLD);
+      U.tap('PresetSaveTap',sx,-30,146,30,()=>ctx.confirm('保存阵型模板','把当前五人编队存为模板（含站位），日后一键启用',()=>{const r=store.saveFormationPreset('p'+(Date.now()%100000),'我的阵型');ctx.tell(r,r.ok?'模板已保存':'');}));
     }
-  }
   const bondsNow=store.activeBonds(),allBonds=heroes.BONDS||[],mods=store.bondMods();
   U.panel('BondsPanel',0,-258,682,436,tone('#342518'),11,GOLD);
   U.text('BondsTitle',`三国羁绊 · 已激活 ${bondsNow.length}/${allBonds.length}`,-160,-70,400,24,GOLD);
