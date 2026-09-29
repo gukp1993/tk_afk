@@ -255,9 +255,7 @@ check('商人不卖招募令折扣/精铁', rm1.goods.every(g => !g.give.iron &&
 const rmBuy = store4b.buyRoamer(rm1.goods[0].id);
 check('商人购买成功', rmBuy.ok);
 check('商人重复购买拒绝', store4b.buyRoamer(rm1.goods[0].id).ok === false);
-if (rm1.goods[0].give.armoryBox) {
-  check('商人军械箱入账', s4b.armory.boxes[rm1.goods[0].give.armoryBox] >= 1);
-}
+check('商人军械箱入账（若有）', !rm1.goods[0].give.armoryBox || s4b.armory.boxes[rm1.goods[0].give.armoryBox] >= 1);
 // 软保底：31 抽起每抽 +7% SSR 概率（确定性验证概率面而非随机面）
 Math.random = () => 0.065; // 固定随机：0.065 < 2%+7%=9%（第 31 抽起）但 > 2%（31 抽前）
 s4b.summon.pity.sinceSsr = 30;
