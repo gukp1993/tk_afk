@@ -296,6 +296,15 @@ const SMELT = {
   recipes: { 1: { need: 3, iron: 60, gold: 8000 }, 2: { need: 3, iron: 150, gold: 20000 } }
 };
 
+// 觉醒（裁决 C 精简版）：满 5★ SSR 专属长线；每级全军可感战力 +5% 三维，荣耀+SSR 碎片门控。
+// 30 天内玩家最多到 1~2 级（荣耀来自名人堂周全胜/称号），不影响任何 30 天锚。
+const AWAKEN = {
+  max: 3,
+  multPerLevel: 0.05,
+  honor: [60, 120, 200],
+  shards: [10, 20, 30]
+};
+
 // 演武名人堂（裁决 D）：9 席名阵容，每周按周 ID 哈希轮换 3 席；不限次挑战，重复只刷评星不发资源。
 // 奖励纪律：无精铁、无招募令、无每胜元宝（一次性首杀元宝 50 除外）——锚保护同悬赏/商人。
 const HALL = {
@@ -399,5 +408,5 @@ export {
   GACHA, factionBonus, FORMATION_ROWS, BATTLE, ARENA, SEVEN_DAY, TRAINING_DAILY_CAP, BOUNTY, ROAMER_POOL, AD,
   FIRST_STAGE_END, CAMPAIGN_DIFFICULTY, CAMPAIGN_MILESTONES, ELITE_STAGE, STAR_RULES, CHAPTER_STAR_CHESTS, DAILY_ELITE_CHEST,
   CAMPAIGN_MODS, BOSS_MODS, RETURN_GRANTS, SUMMON_TICKET, SUMMON_POINTS, FORGE, MOTIFS, MOTIF_COST, SMELT,
-  CODEX_REWARDS, ACHV_AXES, ACHV_REWARDS, WEEKLY, HALL
+  CODEX_REWARDS, ACHV_AXES, ACHV_REWARDS, WEEKLY, HALL, AWAKEN
 };

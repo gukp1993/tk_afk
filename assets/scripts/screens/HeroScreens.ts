@@ -188,7 +188,8 @@ export function heroDetail(ctx: ScreenContext) {
   const faction:Record<string,string>={wei:'魏',shu:'蜀',wu:'吴',qun:'群'};
   const cls=(config.CLASSES as any)[h.cls]?.name||'武将', formed=s.formation.includes(h.id);
   const hasVoucher=(s.vouchers[h.rarity===4?'ssr':'sr']||0)>0&&h.rarity>=3;
-  const contentH=1160+(own.cards>0?110:0)+(hasVoucher?115:0)+(ctx.heroDetailOrigin==='heroes'?90:0);
+  const awakenShown=h.rarity===4&&own.star>=5;
+  const contentH=1160+(own.cards>0?110:0)+(hasVoucher?115:0)+(ctx.heroDetailOrigin==='heroes'?90:0)+(awakenShown?130:0);
   const top=contentH/2, pct=(v:number)=>fmt.fmtPct(v);
   U.rect('DetailBackdrop',0,0,720,1280,tone('#122a22'));
   U.panel('DetailHeader',0,587,720,96,new Color(9,28,25,245),0,gold);
@@ -252,6 +253,21 @@ export function heroDetail(ctx: ScreenContext) {
     if(hasVoucher){V.button('UseVoucher','使用武将自选券',0,next-39,410,70,()=>ctx.confirm(
       '使用自选券','消耗对应品质自选券，获得 '+h.name+' 一张；重复获得按现有升星规则处理。',
       ()=>ctx.tell(store.useChoiceVoucher(h.rarity,h.id),'获得 '+h.name)),palette.gold);next-=104;}
+    if(h.rarity===4&&own.star>=5){
+      const aw=store.awakenInfo(h.id);
+      const ay=next-64;
+      V.panel('AwakenPanel',0,ay,666,108,new Color(46,32,20,242),8,gold);
+      V.text('AwakenTitle',`觉醒 · ${aw.level}/${aw.max} 级（三维 +${Math.round(aw.mult*100)}%）`,-170,ay+28,440,22,gold);
+      if(aw.next){
+        const can=aw.next.can;
+        V.text('AwakenCost',`下一级：荣耀 ${aw.next.honor} + SSR 碎片 ${aw.next.shards}`,-170,ay-10,430,17,dim);
+        V.button('AwakenGo',can?'觉 醒':'材料不足',225,ay,180,54,()=>{const r:any=store.awakenHero(h.id);ctx.tell(r,r.ok?`${h.name} 觉醒至 ${r.level} 级（三维 +${Math.round(r.mult*100)}%）`:'');},can?palette.gold:palette.paperDark);
+        if(!can)V.text('AwakenLack',own.star<5?'需先满 5 星':(store.getState().hall.honor<aw.next.honor)?'荣耀不足（名人堂获取）':'SSR 碎片不足',-170,ay-38,430,15,tone('#bb614c'));
+      } else {
+        V.text('AwakenMax',`已达觉醒上限 · ${h.name} 已臻化境`,0,ay-14,600,19,tone('#d9b06a'));
+      }
+      next=ay-64;
+    }
     if(ctx.heroDetailOrigin==='heroes')V.button('ReturnHeroes','返回群英录',0,next-40,350,72,()=>ctx.back('heroes'),palette.paperDark);
   });
   U.panel('DetailActionBackground',0,-579,720,122,new Color(7,27,24,245),0,gold);

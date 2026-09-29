@@ -351,6 +351,33 @@ function buyWeekly(id) {
     return { ok: true, name: good.name };
   });
 }
+// ---------- 觉醒（满 5★ SSR 长线）----------
+function awakenInfo(heroId) {
+  const own = state.roster[heroId];
+  const def = H.getHero(heroId);
+  if (!own || !def || def.rarity !== 4) return { ok: false, msg: '仅 SSR 武将可觉醒' };
+  const star = own.star || 0, lv = own.awaken || 0;
+  const maxed = star >= C.RARITIES[4].maxStar;
+  const next = lv < C.AWAKEN.max ? {
+    level: lv + 1, honor: C.AWAKEN.honor[lv], shards: C.AWAKEN.shards[lv],
+    can: maxed && state.hall.honor >= C.AWAKEN.honor[lv] && (state.qualityShards[4] || 0) >= C.AWAKEN.shards[lv]
+  } : null;
+  return { ok: true, heroId, star, level: lv, maxed, max: C.AWAKEN.max, mult: lv * C.AWAKEN.multPerLevel, next };
+}
+function awakenHero(heroId) {
+  return withSavedMutation(() => {
+    const info = awakenInfo(heroId);
+    if (!info.ok) return info;
+    if (!info.maxed) return { ok: false, msg: '需先达到 5★' };
+    if (!info.next) return { ok: false, msg: '已达觉醒上限' };
+    if (state.hall.honor < info.next.honor) return { ok: false, msg: '荣耀不足（名人堂获取），还差 ' + (info.next.honor - state.hall.honor) };
+    if ((state.qualityShards[4] || 0) < info.next.shards) return { ok: false, msg: 'SSR 品质碎片不足，还差 ' + (info.next.shards - (state.qualityShards[4] || 0)) };
+    state.hall.honor -= info.next.honor;
+    state.qualityShards[4] -= info.next.shards;
+    state.roster[heroId].awaken = info.next.level;
+    return { ok: true, heroId, level: info.next.level, mult: info.next.level * C.AWAKEN.multPerLevel };
+  });
+}
 // ---------- 演武名人堂 ----------
 // 每周轮换 3 席名阵容；首杀一次性奖励、首三星一次性、周全胜一次性；重复挑战只刷评星。
 function beginHall(seat) {
@@ -627,6 +654,7 @@ function normalizeState(s) {
     if (!h.equip) h.equip = { weapon: null, armor: null, helm: null, boots: null };
     if (!Number.isFinite(h.star)) h.star = 0;
     if (!Number.isFinite(h.cards)) h.cards = 0;
+    h.awaken = Math.max(0, Math.min(C.AWAKEN.max, Math.floor(Number(h.awaken) || 0)));
   });
   if (s.battle.pending) {
     s.battle.lastSettled = { id: s.battle.pending.id, outcome: 'interrupted', gainedXP: 0, reward: null };
@@ -764,8 +792,9 @@ function calcHero(id) {
   const lv = effectiveLevel(id);
   const star = own.star;
   const base = H.heroStatsStar(def, lv, star), bonus = getArmoryBonuses();
+  const awakenMult = 1 + (own.awaken || 0) * C.AWAKEN.multPerLevel;
   // 战靴速度节点对基础速度只乘一次（1+spdPct）；行动时的速度光环在战斗内另行叠加，不在此重复。
-  const stats = { hp: Math.floor(base.hp * (1 + bonus.hp)), atk: Math.floor(base.atk * (1 + bonus.atk)), def: Math.floor(base.def * (1 + bonus.def)), spd: Math.round(base.spd * (1 + (bonus.spdPct || 0)) * 1000) / 1000, crit: base.crit };
+  const stats = { hp: Math.floor(base.hp * awakenMult * (1 + bonus.hp)), atk: Math.floor(base.atk * awakenMult * (1 + bonus.atk)), def: Math.floor(base.def * awakenMult * (1 + bonus.def)), spd: Math.round(base.spd * (1 + (bonus.spdPct || 0)) * 1000) / 1000, crit: base.crit };
   const power = H.heroPower(def, lv, star) + Math.floor((stats.hp - base.hp) / 6 + (stats.atk - base.atk) * 2.2 + (stats.def - base.def) * 1.5);
   const passive = Object.assign({}, def.passive.mods || {});
   if (bonus.heal) passive.armoryHeal = bonus.heal;
@@ -2414,7 +2443,7 @@ module.exports = {
   exchangeQualityShard, qualityShardInfo,
   getFormationCalc, setFormationSlot, applyFormation, formationFactionBonus, teamPower, playerUnits, enemyUnits, activeBonds, bondMods,
   getArmoryBonuses, getArmoryState, armoryUnlock, armorySelect, armoryUpgrade, armoryUpgradeToNode, armoryClaimBox, grantArmoryItem, applyArmoryRecommendations, forgeInfo, forgeReroll, forgeSetDir, forgeToggleLock, forgeGateOpen, motifInfo, motifActivate, smeltInfo, smeltMelt, smeltCombine,
-  codexInfo, claimCodex, useUniversalSr, achvInfo, claimAchv, weekInfo, claimWeekQuest, claimWeekActive, buyWeekly, makeExpeditionFloor, bumpWeek, beginHall, winHall, hallInfo, saveReplay, replaysInfo,
+  codexInfo, claimCodex, useUniversalSr, achvInfo, claimAchv, weekInfo, claimWeekQuest, claimWeekActive, buyWeekly, makeExpeditionFloor, bumpWeek, beginHall, winHall, hallInfo, saveReplay, replaysInfo, awakenInfo, awakenHero,
   addEquip, equipInventory, equipTo, unequip, enhanceEquip, fodderPickIds, salvageEquip, salvageBatch, isEquipped,
   migrateSaveV1, migrateSaveV2, migrateSaveV3, migrateSaveV4, migrateSaveV5, migrateSaveV6, normalizeState,
   idlePending, idleTick, gemQuotaInfo, claimIdle, claimIdleInternal, fastReward, fastRewardMutation, fastRewardAdMutation, adReward,

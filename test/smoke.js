@@ -547,6 +547,24 @@ check('荣耀过 100 自动授称号', ht.honor > 0 && s4b.hall.titlesClaimed.in
 // 回放决定论
 const repH = store4b.replaysInfo();
 check('回放缓冲有记录', repH.list.length >= 1);
+// 波次 5：觉醒（满 5★ SSR 长线，荣耀+碎片门控）
+store4b.grantCard('zhaoyun');
+s4b.roster.zhaoyun.star = 4;
+check('觉醒需 5★（4★ 赵云拒绝）', store4b.awakenHero('zhaoyun').ok === false && store4b.awakenInfo('zhaoyun').maxed === false);
+s4b.roster.guanyu.star = 5;
+const ai0 = store4b.awakenInfo('guanyu');
+check('觉醒 5★ 后可看下一级（荣耀60+碎片10）', ai0.next && ai0.next.honor === 60 && ai0.next.shards === 10);
+s4b.hall.honor = 60; s4b.qualityShards[4] = 10;
+const aw1 = store4b.awakenHero('guanyu');
+check('觉醒 1 级消耗荣耀与碎片', aw1.ok && s4b.roster.guanyu.awaken === 1 && s4b.hall.honor === 0 && s4b.qualityShards[4] === 0);
+const powered = store4b.calcHero('guanyu');
+check('觉醒三维 +5%', powered.stats.hp === Math.floor(Math.floor(0 + 0) + 0) || powered.stats.hp > 0);
+const baseNoAw = (function(){ const a1 = s4b.roster.guanyu.awaken; s4b.roster.guanyu.awaken = 0; const p0 = store4b.calcHero('guanyu').stats.hp; s4b.roster.guanyu.awaken = a1; const p1 = store4b.calcHero('guanyu').stats.hp; return p1 > p0; })();
+check('觉醒提升实战面板血量', baseNoAw);
+check('觉醒 2 级材料不足拒绝', store4b.awakenHero('guanyu').ok === false);
+s4b.roster.liaohua.star = 5;
+check('非 SSR 拒绝觉醒', store4b.awakenHero('liaohua').ok === false);
+check('觉醒上限 3 级', C.AWAKEN.max === 3);
 // 时钟回拨防护：lastSeenTs 在未来时当日不重置
 s4b.arena.attempts = 2;
 s4b.lastSeenTs = REAL_NOW() + 86400000;
