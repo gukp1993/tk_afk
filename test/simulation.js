@@ -325,6 +325,21 @@ function runSeed(seed) {
     }
     const av = store.achvInfo();
     av.axes.forEach(a => a.tiers.forEach(t => { if (t.claimable) store.claimAchv(a.key, t.tier); }));
+    // 名人堂：本周三席各首杀一次
+    for (let seat = 0; seat < 3; seat++) {
+      const hf = store.beginHall(seat);
+      if (!hf.ok) break;
+      const key = store.getState().week.weekId + ':' + hf.lineup.id;
+      if (store.getState().hall.kills[key]) continue;
+      const he = stages.makeHallEnemies(hf.lineup, store.teamPower(), seat);
+      const begin = store.beginBattle({ mode: 'hall', index: seat, referenceLevel: he.units[0]?.level || 1, hallLineup: hf.lineup });
+      if (!begin.ok) break;
+      const fighting = battleRules.createBattle({ team: store.playerUnits(), enemy: store.enemyUnits(he.units), seed: (seed * 911 + seat * 31 + 7) >>> 0 });
+      let done = null;
+      for (let i = 0; i < 1400 && !done; i++) { const st2 = fighting.step(0.1); if (st2.done) done = st2; }
+      store.settleBattle(begin.id, { win: done ? done.winner === 'A' : false, duration: done ? done.time : 0, aliveCount: 5 });
+      ops++;
+    }
     // 招贤值全领 + 万能卡喂最低星未满星 SSR
     const pts = store.summonPointsInfo();
     pts.list.forEach(t => { if (t.claimable) store.claimSummonPoints(t.tier); });

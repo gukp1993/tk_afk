@@ -294,7 +294,16 @@ export function journey(ctx: ScreenContext) {
     const unread=store.takeBountyGrantsNotice();
     U.text('JourneyBountyStat',unread?`离线悬赏结算 · 奖励已入账 ›`:bt.canClaim?`有赏可领 · 待派遣 ${bt.idleCount}`:bt.idleCount>0?`待派遣 ${bt.idleCount} 单`:bt.list.some((b:any)=>b.state==='running')?'出征途中 · 静候归来':'今日已完成',-10,-58,430,19,unread?GOLD:GOLD);
     U.tap('JourneyBountyTap',0,-75,682,130,()=>ctx.go('bounty'));
-    U.text('JourneyVersion','「挂机定三国」放置卡牌 · v2.0.0',0,-168,580,18,tone('#ad9977'));
+    const hi=store.hallInfo();
+    U.panel('JourneyHall',0,-168,682,84,hi.seats.every((x:any)=>x.killed)?tone('#26301f'):tone('#312218'),10,hi.seats.every((x:any)=>x.killed)?tone('#6f8a5f'):tone('#a17b40'));
+    U.text('JourneyHallGlyph','堂',-272,-153,59,49,GOLD);
+    U.text('JourneyHallName','名人堂',-198,-153,180,26,LIGHT);
+    U.text('JourneyHallDesc','本周名阵容挑战 · 荣耀与称号',-58,-183,430,17,tone('#ad9977'));
+    U.text('JourneyHallStat',hi.seats.every((x:any)=>x.killed)?`本周全胜 · 荣耀 ${hi.honor}`:`已胜 ${hi.seats.filter((x:any)=>x.killed).length}/3 · 荣耀 ${hi.honor}`,-58,-153,430,18,GOLD);
+    U.tap('JourneyHallTap',0,-168,682,84,()=>ctx.go('hall'));
+    U.text('JourneyVersion','「挂机定三国」放置卡牌 · v2.0.0',0,-252,580,18,tone('#ad9977'));
+    U.text('JourneyGuide','挑战群英塔获取资源，在演武场切磋阵容',0,-280,620,18,tone('#ad9977'));
+    U.text('JourneyGuide2','装备培养与物资兑换也在这里。',0,-306,620,18,tone('#ad9977'));
     U.text('JourneyGuide','挑战群英塔获取资源，在演武场切磋阵容',0,-196,620,18,tone('#ad9977'));
     U.text('JourneyGuide2','装备培养与物资兑换也在这里。',0,-222,620,18,tone('#ad9977'));
   }
@@ -639,6 +648,31 @@ export function storyView(ctx: ScreenContext) {
   }
 
 const SEVEN_DAY_CN = ['一', '二', '三', '四', '五', '六', '七'];
+
+export function hallView(ctx: ScreenContext) {
+  const U=ctx.ui,hi=store.hallInfo(),st=store.getState();
+  ctx.title('名 人 堂');
+  U.text('HallBack','‹ 返回',-291,484,130,22,GOLD);
+  U.tap('HallBackTap',-291,484,136,52,()=>ctx.go('journey'));
+  U.text('HallWeek',`本周名阵容 · 荣耀 ${hi.honor}`,-160,443,420,20,GOLD);
+  hi.titles.forEach((t:any,i:number)=>{
+    U.text('HallTitle'+i,(t.owned?'「':'')+t.title+(t.owned?'」':'')+' '+t.honor+'荣耀',120,443,400,17,t.owned?GOLD:tone('#a6906c'));
+  });
+  hi.seats.forEach((x:any,i:number)=>{
+    const y=340-i*118;
+    const members=(heroes.HEROES as any);
+    const names=x.members.map((id:string)=>members.find((m:any)=>m.id===id)?.name||id).join('·');
+    U.panel('HallSeat'+i,0,y,640,104,x.killed?tone('#26301f'):tone('#312218'),9,x.killed?tone('#6f8a5f'):tone('#a17b40'));
+    U.text('HallSeatName'+i,['一席','二席','三席'][x.seat]+' · '+x.name,-170,y+22,420,24,GOLD);
+    U.text('HallSeatMembers'+i,names,-170,y-10,420,16,LIGHT);
+    if(x.trait)U.text('HallSeatTrait'+i,'阵容特质：'+x.trait,-170,y-34,420,14,tone('#d9b06a'));
+    if(x.killed){
+      U.text('HallState'+i,`已胜 ★${x.stars} · 重复挑战可刷评星`,180,y+24,340,17,tone('#6f8a5f'));
+    } else {
+      U.button('HallFight'+i,'挑 战',230,y+14,170,52,()=>ctx.startBattle('hall',x.seat),palette.red);
+    }
+  });
+}
 
 export function expeditionView(ctx: ScreenContext) {
   const U=ctx.ui,w=store.weekInfo(),st=store.getState();

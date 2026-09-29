@@ -526,6 +526,27 @@ s4b.campaign.cleared = 30;
 s4b.armory.smeltStock = { weapon_n: 9 };
 const of1 = store4b.grantArmoryItem('weapon_n');
 check('库存满仓第 10 件自动折铁（7 铁）', of1.iron === 7 && s4b.armory.smeltStock['weapon_n'] === 9);
+// 波次 4：演武名人堂
+check('名人堂 9 席成员 id 全部存在', C.HALL.pool.length === 9 && C.HALL.pool.every(l => l.members.every(id => !!H.getHero(id))));
+const hl = store4b.hallInfo();
+check('名人堂三席轮换（本周哈希确定性）', hl.seats.length === 3 && hl.seats.every(x => x.killed === false));
+const hf = store4b.beginHall(0);
+const he0 = stages.makeHallEnemies(hf.lineup, store4b.teamPower(), 0);
+const hb = store4b.beginBattle({ mode: 'hall', index: 0, referenceLevel: he0.units[0].level, hallLineup: hf.lineup });
+check('名人堂战斗可开', hb.ok);
+const gemH0 = s4b.res.gem;
+const hs0 = store4b.settleBattle(hb.id, { win: true, duration: 40, aliveCount: 5 });
+check('名人堂首杀：荣耀20+元宝50+三星追加', hs0.ok && hs0.reward.hallReward.firstKill === true && s4b.res.gem === gemH0 + 50 && s4b.hall.honor >= 20 && s4b.hall.stars[s4b.week.weekId + ':' + hf.lineup.id] === 3);
+const hs1 = store4b.beginBattle({ mode: 'hall', index: 0, referenceLevel: he0.units[0].level, hallLineup: hf.lineup });
+const hs1s = store4b.settleBattle(hs1.id, { win: true, duration: 40, aliveCount: 5 });
+check('重复挑战不再发奖', hs1s.ok && hs1s.reward.hallReward.firstKill === false && s4b.res.gem === gemH0 + 50);
+// 荣耀称号阈值
+s4b.hall.honor = 99;
+const ht = store4b.winHall(1, stages.hallWeeklyLineups(F.isoWeekKey())[1], 1);
+check('荣耀过 100 自动授称号', ht.honor > 0 && s4b.hall.titlesClaimed.indexOf('常胜将军') >= 0 && (s4b.titles || []).indexOf('常胜将军') >= 0);
+// 回放决定论
+const repH = store4b.replaysInfo();
+check('回放缓冲有记录', repH.list.length >= 1);
 // 时钟回拨防护：lastSeenTs 在未来时当日不重置
 s4b.arena.attempts = 2;
 s4b.lastSeenTs = REAL_NOW() + 86400000;

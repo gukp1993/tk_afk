@@ -63,6 +63,8 @@ function defaultState() {
     achv: { claimed: {} },
     seals: 0,
     week: null,
+    hall: { kills: {}, stars: {}, threeClaimed: {}, weeklyClearWeek: '', honor: 0, titlesClaimed: [] },
+    replays: [],
     lastSeenTs: Date.now()
   };
 }
@@ -359,6 +361,84 @@ function buyWeekly(id) {
     return { ok: true, name: good.name };
   });
 }
+// ---------- 演武名人堂 ----------
+// 每周轮换 3 席名阵容；首杀一次性奖励、首三星一次性、周全胜一次性；重复挑战只刷评星。
+function beginHall(seat) {
+  checkDailyReset();
+  const lineups = __domain_stages.hallWeeklyLineups(F.isoWeekKey());
+  const lineup = lineups[seat];
+  if (!lineup) return { ok: false, msg: '该席不存在' };
+  return { ok: true, lineup, seat };
+}
+function winHall(seat, lineup, stars) {
+  const w = state.week;
+  const reward = { seat, lineup: lineup.name, stars, honor: 0, gem: 0, shard: 0, token: 0,
+    firstKill: false, firstThreeStar: false, weeklyClear: false };
+  const key = w.weekId + ':' + lineup.id;
+  if (!state.hall.kills[key]) {
+    state.hall.kills[key] = 1;
+    reward.firstKill = true;
+    reward.honor += C.HALL.firstKill.honor;
+    reward.gem += C.HALL.firstKill.gem;
+  }
+  if (stars >= 3 && !state.hall.threeClaimed[key]) {
+    state.hall.threeClaimed[key] = 1;
+    reward.firstThreeStar = true;
+    reward.honor += C.HALL.firstThreeStar.honor;
+    reward.shard += C.HALL.firstThreeStar.shard;
+  }
+  state.hall.stars[key] = Math.max(state.hall.stars[key] || 0, stars);
+  // 周全胜：本周三席全胜（每周一次）
+  const lineups = __domain_stages.hallWeeklyLineups(w.weekId);
+  const allKilled = lineups.every(l => state.hall.kills[w.weekId + ':' + l.id]);
+  if (allKilled && w.weeklyClearWeek !== w.weekId) {
+    w.weeklyClearWeek = w.weekId;
+    reward.weeklyClear = true;
+    reward.token += C.HALL.weeklyClear.token;
+    reward.honor += C.HALL.weeklyClear.honor;
+  }
+  if (reward.honor) state.hall.honor += reward.honor;
+  if (reward.gem) state.res.gem += reward.gem;
+  if (reward.shard) state.res.shard += reward.shard;
+  if (reward.token) state.res.token += reward.token;
+  // 称号自动授予（只发一次）
+  (C.HALL.titles || []).forEach(t => {
+    if (state.hall.honor >= t.honor && state.hall.titlesClaimed.indexOf(t.title) < 0) {
+      state.hall.titlesClaimed.push(t.title);
+      state.titles = state.titles || [];
+      if (state.titles.indexOf(t.title) < 0) state.titles.push(t.title);
+      reward.title = t.title;
+    }
+  });
+  return reward;
+}
+function hallInfo() {
+  checkDailyReset();
+  const lineups = __domain_stages.hallWeeklyLineups(F.isoWeekKey());
+  const seats = lineups.map((l, seat) => {
+    const key = state.week.weekId + ':' + l.id;
+    return { seat, id: l.id, name: l.name, faction: l.faction, members: l.members,
+      trait: l.trait ? (C.CAMPAIGN_MODS && '') || traitDesc(l.trait) : '',
+      killed: !!state.hall.kills[key], stars: state.hall.stars[key] || 0 };
+  });
+  const allKilled = seats.every(x => x.killed);
+  return { seats, honor: state.hall.honor || 0, weeklyClear: state.week.weeklyClearWeek === state.week.weekId,
+    titles: (C.HALL.titles || []).map(t => ({ ...t, owned: state.hall.titlesClaimed.indexOf(t.title) >= 0 })) };
+}
+function traitDesc(trait) {
+  const map = { firstEnergy: '先手怒气', armoryStartShield: '开场护盾', ccImmune: '免控', energyGain: '怒气获取提升', thorns: '反弹', hp: '生命增强' };
+  return Object.keys(trait).map(k => map[k] || k).join('·');
+}
+function saveReplay(record) {
+  if (!Array.isArray(state.replays)) state.replays = [];
+  state.replays.push(record);
+  const cap = (C.HALL && C.HALL.replayCap) || 5;
+  if (state.replays.length > cap) state.replays = state.replays.slice(-cap);
+}
+function replaysInfo() {
+  return { list: (state.replays || []).slice().reverse() };
+}
+
 // 远征三层挑战：敌人=塔生成器锚定主线进度 + 当周词缀 + 层数倍率
 function makeExpeditionFloor(floor) {
   weekInfo();
@@ -516,6 +596,12 @@ function normalizeState(s) {
   if (!Array.isArray(s.codex.claimed)) s.codex.claimed = [];
   s.achv = s.achv || { claimed: {} };
   s.achv.claimed = s.achv.claimed || {};
+  s.hall = s.hall || { kills: {}, stars: {}, threeClaimed: {}, weeklyClearWeek: '', honor: 0, titlesClaimed: [] };
+  if (typeof s.hall.honor !== 'number') s.hall.honor = 0;
+  s.hall.kills = s.hall.kills || {}; s.hall.stars = s.hall.stars || {}; s.hall.threeClaimed = s.hall.threeClaimed || {};
+  s.hall.titlesClaimed = s.hall.titlesClaimed || [];
+  if (!Array.isArray(s.replays)) s.replays = [];
+  s.replays = s.replays.slice(-((C.HALL && C.HALL.replayCap) || 5));
   if (typeof s.seals !== 'number') s.seals = 0;
   s.res.univSr = Math.max(0, Math.floor(Number(s.res.univSr) || 0));
   if (!Number.isFinite(s.res.univSr)) s.res.univSr = 0;
@@ -1918,6 +2004,7 @@ function beginBattle(spec) {
     : mode === 'expedition' ? index === ((state.week && state.week.trial.best) || 0) + 1 : false;
   state.battle.pending = {
     id, mode, index,
+    hallLineup: spec.hallLineup || null,
     referenceLevel: Math.max(1, Math.floor(spec.referenceLevel || state.player.level)),
     levelAtStart: state.player.level, first,
     diff: spec.diff || 1, startedAt: Date.now()
@@ -1998,6 +2085,18 @@ function settleBattle(battleId, outcome) {
       if (win) reward = winTower(pending.index);
     } else if (pending.mode === 'expedition') {
       if (win) reward = winExpedition(pending.index);
+    } else if (pending.mode === 'hall') {
+      saveReplay({ v: 1, mode: 'hall', seat: pending.index, ts: Date.now(), win, stars: 0, duration: Math.round((outcome.duration || 0) * 10) / 10 });
+      reward = { seat: pending.index, stars: 0, hallReward: null };
+      if (win) {
+        const st = __domain_stages;
+        const stars = st.hallStars(win, outcome.duration || 0, Number(outcome.aliveCount) || 0);
+        state.hall.stars = state.hall.stars || {};
+        state.hall.stars['cur' + pending.index] = stars;
+        reward.stars = stars;
+        if (state.replays && state.replays.length) state.replays[state.replays.length - 1].stars = stars;
+        reward.hallReward = winHall(pending.index, pending.hallLineup || { name: '阵容' }, stars);
+      }
     } else if (pending.mode === 'arena') {
       reward = arenaFight(win, pending.diff, true);
     }
@@ -2325,7 +2424,7 @@ export {
   exchangeQualityShard, qualityShardInfo,
   getFormationCalc, setFormationSlot, applyFormation, formationFactionBonus, teamPower, playerUnits, enemyUnits, activeBonds, bondMods,
   getArmoryBonuses, getArmoryState, armoryUnlock, armorySelect, armoryUpgrade, armoryUpgradeToNode, armoryClaimBox, grantArmoryItem, applyArmoryRecommendations, forgeInfo, forgeReroll, forgeSetDir, forgeToggleLock, forgeGateOpen, motifInfo, motifActivate, smeltInfo, smeltMelt, smeltCombine,
-  codexInfo, claimCodex, useUniversalSr, achvInfo, claimAchv, weekInfo, claimWeekQuest, claimWeekActive, buyWeekly, makeExpeditionFloor, bumpWeek,
+  codexInfo, claimCodex, useUniversalSr, achvInfo, claimAchv, weekInfo, claimWeekQuest, claimWeekActive, buyWeekly, makeExpeditionFloor, bumpWeek, beginHall, winHall, hallInfo, saveReplay, replaysInfo,
   addEquip, equipInventory, equipTo, unequip, enhanceEquip, fodderPickIds, salvageEquip, salvageBatch, isEquipped,
   migrateSaveV1, migrateSaveV2, migrateSaveV3, migrateSaveV4, migrateSaveV5, migrateSaveV6, normalizeState,
   idlePending, idleTick, gemQuotaInfo, claimIdle, claimIdleInternal, fastReward, fastRewardMutation, fastRewardAdMutation, adReward,

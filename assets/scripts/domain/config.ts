@@ -296,6 +296,39 @@ const SMELT = {
   recipes: { 1: { need: 3, iron: 60, gold: 8000 }, 2: { need: 3, iron: 150, gold: 20000 } }
 };
 
+// 演武名人堂（裁决 D）：9 席名阵容，每周按周 ID 哈希轮换 3 席；不限次挑战，重复只刷评星不发资源。
+// 奖励纪律：无精铁、无招募令、无每胜元宝（一次性首杀元宝 50 除外）——锚保护同悬赏/商人。
+const HALL = {
+  weeklySeats: 3,
+  levelMult: [0.85, 1.0, 1.15],
+  star: { fast: 45, alive: 4 },
+  firstKill: { honor: 20, gem: 50 },
+  firstThreeStar: { honor: 10, shard: 5 },
+  weeklyClear: { token: 10, honor: 10 },
+  titles: [{ honor: 100, title: '常胜将军' }, { honor: 300, title: '武圣传说' }],
+  replayCap: 5,
+  pool: [
+    { id: 'wuhu', name: '五虎上将', faction: 'shu', trait: null,
+      members: ['guanyu', 'zhangfei', 'zhaoyun', 'machao', 'huangzhong'] },
+    { id: 'wolong', name: '卧龙凤雏', faction: 'shu', trait: { firstEnergy: 40 },
+      members: ['zhugeliang', 'pangtong', 'liubei', 'huatuo', 'zhaoyun'] },
+    { id: 'huwei', name: '虎卫铁壁', faction: 'wei', trait: { armoryStartShield: 0.25 },
+      members: ['caocao', 'simayi', 'zhangliao', 'dianwei', 'huaxiong'] },
+    { id: 'huoshao', name: '火烧连营', faction: 'wu', trait: null,
+      members: ['zhouyu', 'luxun', 'sunce', 'diaochan', 'dongzhuo'] },
+    { id: 'feijiang', name: '飞将无双', faction: 'qun', trait: { ccImmune: 1 },
+      members: ['lvbu', 'diaochan', 'zuoci', 'yuji', 'jiling'] },
+    { id: 'wuzi', name: '五子良将', faction: 'wei', trait: null,
+      members: ['zhangliao', 'zhanghe', 'xuhuang', 'yujin', 'yuejin'] },
+    { id: 'jiangdong', name: '江东十二臣', faction: 'wu', trait: { energyGain: 0.15 },
+      members: ['sunce', 'ganning', 'taishici', 'zhouyu', 'luxun'] },
+    { id: 'huxi', name: '虎痴恶来', faction: 'wei', trait: { thorns: 0.12 },
+      members: ['xuchu', 'dianwei', 'caocao', 'guojia', 'xunyu'] },
+    { id: 'nanyman', name: '南蛮象兵', faction: 'qun', trait: { hp: 0.15 },
+      members: ['menghuo', 'dongzhuo', 'huaxiong', 'jiling', 'yuji'] }
+  ]
+};
+
 // 图鉴章节收集奖励（裁决版：全 SSR 不发卡改荣耀；全 SR 送 SR 万能卡仅喂未满星 SR）
 const CODEX_REWARDS = [
   { key: 'shu-nr', name: '蜀·N+R 集齐', reward: { gem: 500, scroll: 10 } },
@@ -366,5 +399,5 @@ export {
   GACHA, factionBonus, FORMATION_ROWS, BATTLE, ARENA, SEVEN_DAY, TRAINING_DAILY_CAP, BOUNTY, ROAMER_POOL, AD,
   FIRST_STAGE_END, CAMPAIGN_DIFFICULTY, CAMPAIGN_MILESTONES, ELITE_STAGE, STAR_RULES, CHAPTER_STAR_CHESTS, DAILY_ELITE_CHEST,
   CAMPAIGN_MODS, BOSS_MODS, RETURN_GRANTS, SUMMON_TICKET, SUMMON_POINTS, FORGE, MOTIFS, MOTIF_COST, SMELT,
-  CODEX_REWARDS, ACHV_AXES, ACHV_REWARDS, WEEKLY
+  CODEX_REWARDS, ACHV_AXES, ACHV_REWARDS, WEEKLY, HALL
 };

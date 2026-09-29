@@ -2,7 +2,7 @@
 // 前 12 章 × 10 关走 utils/story.js 演义剧情表（名称/敌阵/对白/名将关）；
 // 超出剧情表的关卡进入循环乱世，用由 story 派生的兜底章节轮转生成（单一数据源，不维护第二份敌将表）。
 const { getHero } = require('./heroes');
-const { FIRST_STAGE_END, CAMPAIGN_DIFFICULTY, ELITE_STAGE, STAR_RULES, CAMPAIGN_MODS, BOSS_MODS } = require('./config');
+const { FIRST_STAGE_END, CAMPAIGN_DIFFICULTY, ELITE_STAGE, STAR_RULES, CAMPAIGN_MODS, BOSS_MODS, HALL } = require('./config');
 const story = require('./story');
 const F = require('./fmt');
 
@@ -26,6 +26,43 @@ function stageStars(win, duration, aliveCount, elite) {
   if ((Number(duration) || 0) <= (elite ? STAR_RULES.eliteFastSeconds : STAR_RULES.fastSeconds)) s += 1;
   if ((Number(aliveCount) || 0) >= STAR_RULES.aliveNeed) s += 1;
   return s;
+}
+// 名人堂：按玩家战力反推敌等级（复用演武公式），成员固定阵容可带特质被动
+function makeHallEnemies(lineup, playerPower, seat) {
+  const H2 = require('./heroes');
+  const targetPower = playerPower * HALL.levelMult[seat] || playerPower;
+  const lv = Math.max(1, Math.round(Math.pow(targetPower / 2600, 1 / 1.35)));
+  const star = Math.min(2, Math.floor(lv / 60));
+  const units = lineup.members.map((id, i) => {
+    const h = H2.getHero(id);
+    const base = H2.heroStatsStar(h, lv, star);
+    const scale = i === 0 ? 1.05 : 0.95;
+    return {
+      hero: h, level: lv, star,
+      scale: (base ? 1 : 1) * scale,
+      extraPassive: i === 0 && lineup.trait ? Object.assign({}, lineup.trait) : null,
+      isBoss: false, row: i <= 2 ? 0 : 1
+    };
+  });
+  // 敌方同阵营光环按 ENEMY_FACTION_AURA 同款折算（B 侧统一在 battle.js 处理，这里只给数据）
+  return {
+    name: '名人堂 · ' + lineup.name + '（' + ['一', '二', '三'][seat] + '席）',
+    units, isBoss: false, mods: [], hall: { lineupId: lineup.id, seat }
+  };
+}
+// 名人堂评星（比主线宽松：★2 ≤45 秒）
+function hallStars(win, duration, aliveCount) {
+  if (!win) return 0;
+  let st = 1;
+  if ((Number(duration) || 0) <= HALL.star.fast) st += 1;
+  if ((Number(aliveCount) || 0) >= HALL.star.alive) st += 1;
+  return st;
+}
+function hallWeeklyLineups(weekKey) {
+  let h = 2166136261;
+  for (const ch of String(weekKey)) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); }
+  const start = (h >>> 0) % HALL.pool.length;
+  return [0, 1, 2].map(i => HALL.pool[(start + i) % HALL.pool.length]);
 }
 function isEliteStage(globalStage) {
   const n = Math.floor(Number(globalStage) || 0);
@@ -175,4 +212,4 @@ function buildReinforceUnits(globalStage, chapterFoes, lv, star, baseScale) {
     };
   });
 }
-module.exports = { CHAPTERS, STAGES_PER_CH, stageScale, chapterOf, isEliteStage, stageStars, resolveMods, stageBattleEffects, buildReinforceUnits, makeStageEnemies, makeTowerEnemies, makeArenaEnemies, makePracticeEnemies };
+module.exports = { CHAPTERS, STAGES_PER_CH, stageScale, chapterOf, isEliteStage, stageStars, resolveMods, stageBattleEffects, buildReinforceUnits, makeHallEnemies, hallStars, hallWeeklyLineups, makeStageEnemies, makeTowerEnemies, makeArenaEnemies, makePracticeEnemies };

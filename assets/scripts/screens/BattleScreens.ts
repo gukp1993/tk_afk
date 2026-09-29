@@ -25,11 +25,12 @@ function battleTitle(ctx: ScreenContext) {
     return `第 ${ctx.battleIndex} 关 · ${stage.name}`;
   }
   if(ctx.battleMode==='expedition')return '远征 · 第 '+ctx.battleIndex+' 层';
+  if(ctx.battleMode==='hall'){const hi=(stages as any).hallWeeklyLineups?null:null;return '名人堂 · '+((store as any).hallInfo().seats[ctx.battleIndex]||{}).name;}
   return ({tower:'群英塔',training:'连续练兵',arena:'演武场'} as Record<string,string>)[ctx.battleMode] || '战斗';
 }
 
 function returnPage(ctx: ScreenContext) {
-  return ctx.battleMode==='arena'?'arena':ctx.battleMode==='tower'?'tower':ctx.battleMode==='expedition'?'expedition':'campaign';
+  return ctx.battleMode==='arena'?'arena':ctx.battleMode==='tower'?'tower':ctx.battleMode==='expedition'||ctx.battleMode==='hall'?'expedition':'campaign';
 }
 
 function drawFighter(U: CocosUi, unit: any, index: number) {
@@ -127,6 +128,18 @@ export function resultView(ctx: ScreenContext) {
       ...(reward.rankUp?[`首达 ${reward.rankUp.name}！元宝 +${reward.rankUp.gem} · 精铁 +${reward.rankUp.iron}`]:[])]
     :[defeatDiag(ctx,r),`演武积分 ${reward.delta||0} · 演武令 +${reward.tokens||0}`];
   else if(ctx.battleMode==='tower') lines=r?.win?[`元宝 +${reward.gem||0} · 精铁 +${reward.iron||0} · 招募令 +${reward.scroll||0}`,`武将碎片 +${reward.shard||0}`]:[defeatDiag(ctx,r)];
+  else if(ctx.battleMode==='hall'){
+    const hr=reward.hallReward||{};
+    if(!r?.win) lines=[defeatDiag(ctx,r),'名人堂挑战不限次数'];
+    else {
+      const parts:string[]=[];
+      if(hr.firstKill)parts.push('首杀荣耀 +'+hr.honor);
+      if(hr.firstThreeStar)parts.push('三星 +'+(hr.honor?hr.honor-20:10)+' 荣耀 · 碎片 +'+(hr.shard||0));
+      if(hr.weeklyClear)parts.push('周全胜！演武令 +'+hr.token);
+      lines=[parts.join(' · ')||'挑战成功（重复挑战不发奖）','名人堂荣耀 '+((store as any).hallInfo().honor)];
+      if(hr.title)lines.push('获得称号：'+hr.title);
+    }
+  }
   else if(ctx.battleMode==='training') lines=[`练兵经验 +${r.gainedXP||0}`];
   else if(r?.win){
     if(reward.first){

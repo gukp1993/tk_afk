@@ -129,7 +129,7 @@ export class CocosBootstrap extends Component implements ScreenContext {
       campaign: () => campaignScreens.campaign(this), stagePreview: () => campaignScreens.stagePreview(this), home: () => campaignScreens.home(this), journey: () => campaignScreens.journey(this),
       heroes: () => heroScreens.heroes(this), heroDetail: () => heroScreens.heroDetail(this), summon: () => heroScreens.summon(this), summonResults: () => heroScreens.summonResults(this), bag: () => campaignScreens.bag(this),
       armory: () => heroScreens.armory(this), armoryCatalog: () => heroScreens.armoryCatalog(this), armoryBox: () => heroScreens.armoryBox(this), shop: () => campaignScreens.shop(this), formation: () => campaignScreens.formation(this), formationPick: () => campaignScreens.formationPick(this), quests: () => campaignScreens.quests(this),
-      tower: () => campaignScreens.tower(this), arena: () => campaignScreens.arena(this), story: () => campaignScreens.storyView(this), sevenDay: () => campaignScreens.sevenDayView(this), bounty: () => campaignScreens.bountyView(this), forge: () => heroScreens.forgeView(this), codex: () => heroScreens.codexView(this), achv: () => heroScreens.achvView(this), expedition: () => campaignScreens.expeditionView(this),
+      tower: () => campaignScreens.tower(this), arena: () => campaignScreens.arena(this), story: () => campaignScreens.storyView(this), sevenDay: () => campaignScreens.sevenDayView(this), bounty: () => campaignScreens.bountyView(this), forge: () => heroScreens.forgeView(this), codex: () => heroScreens.codexView(this), achv: () => heroScreens.achvView(this), expedition: () => campaignScreens.expeditionView(this), hall: () => campaignScreens.hallView(this),
       battle: () => battleScreens.battleView(this), result: () => battleScreens.resultView(this), autoSummary: () => battleScreens.autoSummary(this, this.autoSession.summary), ad: () => this.adView()
     };
     render[page]();
@@ -255,11 +255,17 @@ export class CocosBootstrap extends Component implements ScreenContext {
     }
     this.tell({ok:false,msg:'战斗仍在进行，请稍后再试'},'');
   }
+  private lastReplaySpec: any = null;
   private finishBattle(win: boolean) {
     const duration=this.fighting?.result()?.duration || 0;
     this.lastBattleSnapshot=this.fighting?.snapshot() || [];
     const aliveCount=this.lastBattleSnapshot.filter((u:any)=>u.side==='A'&&u.alive).length;
     const settled=store.settleBattle(this.battleId,{win,duration,aliveCount});
+    if(this.battleMode==='hall'&&this.lastReplaySpec){
+      const stars=settled.reward&&settled.reward.hallStars||0;
+      store.saveReplay(Object.assign({},this.lastReplaySpec,{ts:Date.now(),win,stars,duration}));
+      this.lastReplaySpec=null;
+    }
     this.outcome={...settled,win,duration};
     this.fighting=null;
     this.show('result');
@@ -300,8 +306,8 @@ export class CocosBootstrap extends Component implements ScreenContext {
     }
     if(mode==='campaign'&&fromAuto&&!store.isStorySeen(index)){store.markStorySeen(index);store.save();}
     const effectiveArenaSeed=arenaSeed||Date.now();
-    const enemy=mode==='campaign'?stages.makeStageEnemies(index):mode==='tower'?stages.makeTowerEnemies(index):mode==='training'?stages.makePracticeEnemies(store.playerLevel(),Date.now()):mode==='expedition'?store.makeExpeditionFloor(index):stages.makeArenaEnemies(store.teamPower(),effectiveArenaSeed,diff);
-    const started=store.beginBattle({mode,index,diff,referenceLevel:enemy.units[0]?.level||store.playerLevel()});
+    const enemy=mode==='campaign'?stages.makeStageEnemies(index):mode==='tower'?stages.makeTowerEnemies(index):mode==='training'?stages.makePracticeEnemies(store.playerLevel(),Date.now()):mode==='expedition'?store.makeExpeditionFloor(index):mode==='hall'?stages.makeHallEnemies(store.beginHall(index).lineup,store.teamPower(),index):stages.makeArenaEnemies(store.teamPower(),effectiveArenaSeed,diff);
+    const started=store.beginBattle({mode,index,diff,referenceLevel:enemy.units[0]?.level||store.playerLevel(),hallLineup:mode==='hall'?store.beginHall(index).lineup:null});
     if(!started.ok){
       if(fromAuto) this.autoAction(this.autoSession.battleStarted(false,undefined,started.msg));
       return this.tell(started,'');
@@ -311,6 +317,12 @@ export class CocosBootstrap extends Component implements ScreenContext {
     if(mode==='campaign') effects=stages.stageBattleEffects(stages.makeStageEnemies(index));
     else if(mode==='expedition') effects=stages.stageBattleEffects(enemy);
     this.fighting=battleRules.createBattle(Object.assign({team:store.playerUnits(),enemy:store.enemyUnits(enemy.units),seed:Date.now()},effects||{}));
+    if(mode==='hall'){
+      this.lastReplaySpec={ v:1, mode:'hall', seat:index, seed:Date.now(), timeLimit:config.BATTLE.TIME_LIMIT,
+        team:store.playerUnits().map((u:any)=>({uid:u.uid,name:u.name,faction:u.faction,cls:u.cls,level:u.level,row:u.row,stats:u.stats,ult:u.ult,passive:u.passive,isBoss:false})),
+        enemy:enemy.units.map((u:any)=>{const e2=store.enemyUnits([u])[0];return {uid:e2.uid,name:e2.name,faction:e2.faction,cls:e2.cls,level:e2.level,row:e2.row,stats:e2.stats,ult:e2.ult,passive:e2.passive,isBoss:!!e2.isBoss};}),
+        effects:effects||null };
+    }
     this.lastBattleSnapshot=[];
     if(fromAuto) this.autoAction(this.autoSession.battleStarted(true,started.id));
     this.refreshTime=0;this.go('battle');
