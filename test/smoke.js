@@ -1170,4 +1170,40 @@ const storeP2 = freshStore(); storeP2.load();
     && g1.exchange && g1.exchange.kind === 'missing' && g1.shard === 24 && g1.pityLeft === 40);
 }
 
+// 卡关处方单（研讨会二 P1）：归因 + 处方排序 + 旋钮
+{
+  const storeRX = freshStore(); storeRX.load();
+  const sRX = storeRX.getState();
+  const api = { questList: storeRX.questList, idlePending: storeRX.idlePending, bountyInfo: storeRX.bountyInfo, summonPityInfo: storeRX.summonPityInfo };
+  const mk = (side, uid, hp, maxHp) => ({ side, uid, name: uid, hp, maxHp, alive: hp > 0 });
+  const rClose = PB.buildDefeatPrescriptions(sRX, api, { duration: 60, snapshot: [mk('A', 'a1', 100, 100), mk('B', 'b1', 8, 100)] });
+  check('RX1 差一口气归因', rClose && rClose.attribution.code === 'close' && /只剩 8% 血/.test(rClose.attribution.text));
+  const rOut = PB.buildDefeatPrescriptions(sRX, api, { duration: 92, snapshot: [mk('A', 'a1', 100, 100), mk('B', 'b1', 5000, 10000)] });
+  check('RX2 输出不足归因（超时+我方存活）', rOut.attribution.code === 'output');
+  const rDur = PB.buildDefeatPrescriptions(sRX, api, { duration: 30, snapshot: [mk('A', 'a1', 0, 100), mk('B', 'b1', 0, 100)] });
+  check('RX3 被击穿归因（我方全灭速败）', rDur.attribution.code === 'durability');
+  // P1 达标：armor 2★ + 资源足够 → 处方含军械升星且文本带星数
+  sRX.armory.slotStars = { weapon: 0, armor: 2, helm: 0, boots: 0, jade: 0, seal: 0 };
+  sRX.armory.boxes = { 1: 0, 2: 0, 3: 0 };
+  sRX.res.iron = 5000; sRX.res.gold = 500000;
+  sRX.daily = { day: '', quests: { q_win3: 3 }, claimed: [] };
+  const rItems = PB.buildDefeatPrescriptions(sRX, api, { duration: 60, snapshot: [mk('A', 'a1', 100, 100), mk('B', 'b1', 8000, 10000)] });
+  const keys = (rItems.items || []).map(x => x.key);
+  check('RX4 处方=零成本任务置顶 + tier 升序（tier1 按增益取优）', keys.indexOf('quest-q_win3') === 0 && keys.length === 2
+    && ['shard-4', 'armory-star'].indexOf(keys[1]) >= 0
+    && rItems.items.every((x, i, a) => i === 0 || a[i - 1].tier <= x.tier));
+  // 零资源 + 满星 + 缺字段：不崩、两次调用稳定、pity 兜底
+  sRX.res.iron = 0; sRX.res.gold = 0;
+  sRX.armory.slotStars = { weapon: 5, armor: 5, helm: 5, boots: 5, jade: 5, seal: 5 };
+  delete sRX.armory.boxes; delete sRX.daily;
+  const rz1 = PB.buildDefeatPrescriptions(sRX, api, { duration: 60, snapshot: [mk('A', 'a1', 100, 100), mk('B', 'b1', 8000, 10000)] });
+  const rz2 = PB.buildDefeatPrescriptions(sRX, api, { duration: 60, snapshot: [mk('A', 'a1', 100, 100), mk('B', 'b1', 8000, 10000)] });
+  check('RX5 零资源满星缺字段稳定不崩', rz1 && JSON.stringify(rz1) === JSON.stringify(rz2) && rz1.items.length >= 1);
+  // 旋钮关闭
+  const enabledBak = C.DEFEAT_RX.enabled; C.DEFEAT_RX.enabled = false;
+  const rOff = PB.buildDefeatPrescriptions(sRX, api, { duration: 60, snapshot: [] });
+  C.DEFEAT_RX.enabled = enabledBak;
+  check('RX6 旋钮关闭返回 null', rOff === null);
+}
+
 console.log('\nsmoke: ' + passed + ' passed, ' + failed + ' failed');process.exit(failed ? 1 : 0);

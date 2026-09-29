@@ -6,6 +6,7 @@ import * as stages from '../domain/stages';
 import * as items from '../domain/items';
 import * as config from '../domain/config';
 import * as fmt from '../domain/fmt';
+import * as progression from '../domain/progression';
 import { AutoSummary } from '../services/AutoBattleSession';
 
 const GOLD=tone('#e3ba70'), PAPER=tone('#f0dfbd'), DIM=tone('#a69776');
@@ -192,10 +193,22 @@ export function resultView(ctx: ScreenContext) {
   U.button('ResultRetry','再战',139,-165,232,59,()=>ctx.battleMode==='arena'?ctx.startArenaBattle(ctx.battleDiff,ctx.battleArenaSeed):ctx.startBattle(ctx.battleMode,ctx.battleIndex,ctx.battleDiff),tone('#3a2b20'));
   if(!ctx.auto){
     if(ctx.battleMode==='campaign'&&!r?.win){
-      const pity=store.summonPityInfo();
-      U.text('ResultHint',`卡关提示：SSR 保底 ${pity.sinceSsr}/${pity.ssrHard} 抽 · 换克制阵营或升级军械后再战`,0,-135,540,16,DIM);
-      U.button('ResultGrowth','推荐布阵',-139,-228,232,53,()=>ctx.go('formation'),tone('#4c6e57'));
-      U.button('ResultNext','升级军械',139,-228,232,53,()=>ctx.go('armory'),tone('#4c6e57'));
+      // 卡关处方单（研讨会二 P1）：归因 + 按资源可完成度生成的处方按钮
+      const enemyFactions=(stages.makeStageEnemies(ctx.battleIndex).units||[]).map((u:any)=>u.hero&&u.hero.faction);
+      const rx=progression.buildDefeatPrescriptions(store.getState(),{
+        questList:store.questList,idlePending:store.idlePending,bountyInfo:store.bountyInfo,summonPityInfo:store.summonPityInfo
+      },{duration:r?.duration||0,snapshot:ctx.lastBattleSnapshot||[],enemyFactions});
+      if(rx){
+        U.text('ResultHint',rx.attribution.text,0,-116,540,16,DIM);
+        (rx.items as any[]).forEach((p:any,i:number)=>{
+          U.button(i===0?'ResultGrowth':'ResultNext',p.text,-139+i*278,-228,232,53,()=>ctx.go(p.page as any),tone('#4c6e57'));
+        });
+      } else {
+        const pity=store.summonPityInfo();
+        U.text('ResultHint',`卡关提示：SSR 保底 ${pity.sinceSsr}/${pity.ssrHard} 抽 · 换克制阵营或升级军械后再战`,0,-116,540,16,DIM);
+        U.button('ResultGrowth','推荐布阵',-139,-228,232,53,()=>ctx.go('formation'),tone('#4c6e57'));
+        U.button('ResultNext','升级军械',139,-228,232,53,()=>ctx.go('armory'),tone('#4c6e57'));
+      }
     } else {
       if(r?.win)U.text('ResultDoneText','已 凯 旋',-139,-228,232,30,DIM);
       else U.button('ResultGrowth','查看武将',-139,-228,232,53,()=>ctx.go('heroes'),tone('#4c6e57'));

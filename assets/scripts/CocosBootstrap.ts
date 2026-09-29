@@ -307,13 +307,14 @@ export class CocosBootstrap extends Component implements ScreenContext {
     const duration=this.fighting?.result()?.duration || 0;
     this.lastBattleSnapshot=this.fighting?.snapshot() || [];
     const aliveCount=this.lastBattleSnapshot.filter((u:any)=>u.side==='A'&&u.alive).length;
+    const battleStats=this.fighting?.result()?.stats||null;
     const settled=store.settleBattle(this.battleId,{win,duration,aliveCount});
     if(this.battleMode==='hall'&&this.lastReplaySpec){
       const stars=settled.reward&&settled.reward.hallStars||0;
       store.saveReplay(Object.assign({},this.lastReplaySpec,{ts:Date.now(),win,stars,duration}));
       this.lastReplaySpec=null;
     }
-    this.outcome={...settled,win,duration};
+    this.outcome={...settled,win,duration,stats:battleStats};
     this.fighting=null;
     this.show('result');
     if(this.auto)this.autoAction(this.autoSession.settled(settled));

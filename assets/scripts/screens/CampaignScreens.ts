@@ -216,8 +216,10 @@ export function stagePreview(ctx: ScreenContext) {
     U.tap('StageTacticTap'+i,x,-284,186,46,()=>{(ctx as any).armedTactic=(ctx as any).armedTactic===t.id?null:t.id;ctx.show('stagePreview');});
   });
   const armedT=(config.BATTLE_TACTICS as any[]).find((t:any)=>t.id===(ctx as any).armedTactic);
-  const autoLbl=armedT?`自动出征 · 战术：${armedT.name}`:'自动出征';
-  U.button('StageAuto',autoLbl,0,-345,596,66,()=>ctx.startAuto('campaign'),tone('#3d6653'));
+  const autoLbl=armedT?`自动出征 · 战术：${armedT.name}`:'自动出征 · 连战';
+  U.button('StageAuto',autoLbl,152,-345,290,54,()=>ctx.startAuto('campaign'),tone('#3d6653'));
+  // 单场出战（2026-09-30 补）：唯一的手动首战入口，未读剧情会先插剧情页；败北可看处方单
+  U.button('StageOnce','出战一次',-152,-345,290,54,()=>ctx.startBattle('campaign',stage),palette.red);
   U.text('StageClose','×',302,345,43,28,GOLD);
   U.tap('StageCloseTap',302,345,44,44,()=>ctx.back('campaign'));
 }

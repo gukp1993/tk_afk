@@ -175,4 +175,102 @@ function buildWeeklyBriefing(state, hallLineups) {
   };
 }
 
-export { getNextGoal, getArmoryRecommendations, buildDailyBriefing, buildWeeklyBriefing };
+// 卡关处方单（2026-09-30 研讨会二 P1）：败北归因 + 按当前资源可立即完成的养成处方。
+// 全只读派生；api 传 store 的读取函数（questList/idlePending/bountyInfo/summonPityInfo），
+// input={duration,snapshot,enemyFactions}。回退旋钮 config.DEFEAT_RX.enabled=false 时返回 null。
+function buildDefeatPrescriptions(state, api, input) {
+  const rx = C.DEFEAT_RX || { enabled: true, maxItems: 2 };
+  if (!rx.enabled) return null;
+  const maxItems = rx.maxItems || 2;
+  const inp = input || {};
+  const duration = Number(inp.duration) || 0;
+  const snapshot = inp.snapshot || [];
+  const foes = snapshot.filter(u => u && u.side === 'B' && u.alive);
+  const alliesAlive = snapshot.filter(u => u && u.side === 'A' && u.alive).length;
+  const sorted = foes.slice().sort((a, b) => (b.hp / b.maxHp) - (a.hp / a.maxHp));
+  const top = sorted[0];
+  const topPct = top ? Math.round((top.hp / top.maxHp) * 100) : null;
+  const timeLimit = (C.BATTLE && C.BATTLE.TIME_LIMIT) || 90;
+  const timedOut = duration >= timeLimit;
+  let attribution;
+  if (topPct === null) attribution = { code: 'durability', text: '我方全灭 · 坦度不足，按处方补生存后再战' };
+  else if (topPct <= 15) attribution = { code: 'close', text: `${top.name} 只剩 ${topPct}% 血 · 差一口气，强化后即可过关` };
+  else if (timedOut && alliesAlive > 0) attribution = { code: 'output', text: '打满时限 · 输出不足，优先补攻击向养成' };
+  else if (!alliesAlive && duration < 45) attribution = { code: 'durability', text: '开局即被击穿 · 前排坦度不足，优先补防御' };
+  else attribution = { code: 'sustain', text: `${top.name} 仍剩 ${topPct}% 血 · 阵容强度不足，按处方提升后再战` };
+
+  const items = [];
+  const res = state.res || {};
+  const iron = res.iron || 0, gold = res.gold || 0;
+  // tier0 零成本即时项
+  const recs = getArmoryRecommendations(state, IT);
+  if (recs.length) items.push({ key: 'armory-free', tier: 0, gain: recs.length, cost: 0,
+    text: `启用推荐军械 ×${recs.length}`, page: 'armory' });
+  const boxes = (state.armory && state.armory.boxes) || {};
+  const boxQ = [3, 2, 1].find(q => (boxes[q] || 0) > 0);
+  if (boxQ) items.push({ key: 'armory-box', tier: 0, gain: boxQ, cost: 0,
+    text: `开启${(IT.GRADES[boxQ] || {}).name || ''}自选箱`, page: 'armoryBox' });
+  try {
+    (api.questList() || []).forEach(q => {
+      if (q.done && !q.claimed) items.push({ key: 'quest-' + q.id, tier: 0, gain: (q.reward && (q.reward.iron || 0) + (q.reward.gem || 0)) || 0, cost: 0,
+        text: `领取：${(q.name || '').slice(0, 9)}`, page: 'quests' });
+    });
+  } catch (e) { /* 旧档缺 daily 字段时跳过 */ }
+  try {
+    const idle = api.idlePending() || {};
+    if ((idle.gold || 0) > 0 || (idle.iron || 0) > 0) items.push({ key: 'idle-claim', tier: 0, gain: (idle.gold || 0) + (idle.iron || 0) * 40, cost: 0,
+      text: '领取挂机收益', page: 'campaign' });
+  } catch (e) { /* idlePending 带状态副作用，失败跳过 */ }
+  try {
+    if ((api.bountyInfo() || {}).canClaim) items.push({ key: 'bounty-claim', tier: 0, gain: 30, cost: 0,
+      text: '悬赏可领赏', page: 'bounty' });
+  } catch (e) { /* 同上 */ }
+  // tier1 付费可完成项：最廉军械升星 / 碎片兑卡
+  const slotStars = (state.armory && state.armory.slotStars) || {};
+  const starCandidates = [];
+  (IT.ARMORY_SLOTS || []).forEach((s, idx) => {
+    const star = slotStars[s.id] || 0;
+    if (star >= (IT.STAR_NEEDS || []).length) return;
+    const needIron = IT.STAR_NEEDS[star] || 0, needGold = IT.STAR_GOLD[star] || 0;
+    starCandidates.push({ key: 'armory-star', tier: 1, gain: -needIron, cost: needIron + needGold / 10,
+      affordable: iron >= needIron && gold >= needGold,
+      text: `${s.name}升 ${star + 1}★${iron >= needIron && gold >= needGold ? '' : '（铁不足）'}`, page: 'armory',
+      order: idx });
+  });
+  starCandidates.sort((a, b) => a.cost - b.cost || a.order - b.order);
+  if (starCandidates.length) items.push(starCandidates[0]);
+  const shards = state.qualityShards || {};
+  for (let q = 4; q >= 2; q--) {
+    if ((shards[q] || 0) < 10) continue;
+    const qName = (C.RARITIES[q] && C.RARITIES[q].name) || q;
+    items.push({ key: 'shard-' + q, tier: 1, gain: q * 10, cost: 0,
+      text: `碎片兑${qName}将（${shards[q]}/10）`, page: q === 4 ? 'shop' : 'heroes' });
+    break;
+  }
+  // tier2 换人克制：敌多数阵营 → roster 里可上的克制阵营将
+  const factions = (inp.enemyFactions || []).filter(Boolean);
+  if (factions.length) {
+    const count = {};
+    factions.forEach(f => { count[f] = (count[f] || 0) + 1; });
+    const dom = Object.keys(count).sort((a, b) => count[b] - count[a])[0];
+    const beats = Object.keys(C.BEATS || {}).find(k => (C.BEATS || {})[k] === dom);
+    const formation = Array.isArray(state.formation) ? state.formation : [];
+    const rosterHasBeats = beats && Object.keys(state.roster || {}).some(id => {
+      const h = H.getHero(id);
+      return h && h.faction === beats && formation.indexOf(id) < 0;
+    });
+    if (dom && beats && rosterHasBeats) items.push({ key: 'counter-' + beats, tier: 2, gain: count[dom], cost: 0,
+      text: `上阵${(C.FACTIONS[beats] || {}).name || ''}将克制`, page: 'formation' });
+  }
+  // 排序：tier asc → gain desc → cost asc → 原序；取前 maxItems
+  items.forEach((it, i) => { it.order = i; });
+  items.sort((a, b) => (a.tier - b.tier) || ((b.gain || 0) - (a.gain || 0)) || ((a.cost || 0) - (b.cost || 0)) || (a.order - b.order));
+  if (!items.length) {
+    const pity = api.summonPityInfo ? api.summonPityInfo() : {};
+    items.push({ key: 'pity', tier: 3, gain: 0, cost: 0,
+      text: `SSR 保底 ${(pity.sinceSsr || 0)}/${pity.ssrHard || 40} 抽`, page: 'summon' });
+  }
+  return { attribution, items: items.slice(0, maxItems) };
+}
+
+export { getNextGoal, getArmoryRecommendations, buildDailyBriefing, buildWeeklyBriefing, buildDefeatPrescriptions };
