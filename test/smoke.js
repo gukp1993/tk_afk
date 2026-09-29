@@ -420,6 +420,29 @@ const wfSlots = store4b.forgeInfo('weapon').slots;
   const baseHp = mkBt(0), buffHp = mkBt(0.12);
   check('recvHeal 受疗 +12% 生效', buffHp > baseHp && Math.round((buffHp - baseHp)) <= 30);
 }
+// 波次 3c：阵图 + 熔炉
+IT.ARMORY_SLOTS.forEach(sl => { s4b.armory.slotStars[sl.id] = 3; }); // 每槽 3★
+const ma = store4b.motifActivate('huxiao', false);
+check('阵图激活（250 精铁）', ma.ok && store4b.motifInfo().active === 'huxiao');
+check('阵图二件套生效（crit+2%，件数=4）', store4b.getArmoryBonuses().crit >= 0.02);
+check('阵图切换免费', store4b.motifActivate('panshi', false).ok && store4b.motifInfo().active === 'panshi');
+check('阵图四件套未达（3★×4=四件 → 生效 hp+3%）', store4b.getArmoryBonuses().hp >= 0.03);
+// 熔炉：25 关后重复件入库存
+s4b.campaign.cleared = 30;
+s4b.armory.unlocked['weapon_r'] = true; // 已解锁的重复件才走熔炉入库
+const dupBefore = s4b.res.iron;
+const dupItem = store4b.grantArmoryItem('weapon_r');
+check('重复 R 件入熔炉库存', dupItem.smelted === true && s4b.armory.smeltStock['weapon_r'] === 1 && s4b.res.iron === dupBefore);
+const melt = store4b.smeltMelt('weapon_r');
+check('熔回 70%（R=17 精铁）', melt.ok && melt.iron === 17 && !s4b.armory.smeltStock['weapon_r']);
+// 合成：3 件同槽 N → 1 件 R
+for (let i = 0; i < 3; i++) store4b.grantArmoryItem('weapon_n');
+const smeltStockN = s4b.armory.smeltStock['weapon_n'];
+const ironBeforeCombine = s4b.res.iron, goldBeforeCombine = s4b.res.gold;
+const cb = store4b.smeltCombine('weapon', 1);
+check('三合一合成 R（扣 60 铁 8000 钱，折铁加回）', cb.ok && s4b.res.iron === ironBeforeCombine - 60 + (cb.convertedIron || 0) && s4b.res.gold === goldBeforeCombine - 8000);
+check('合成产物图鉴解锁或折铁', !!cb.itemId || !!cb.convertedIron);
+check('SR 不可合成', store4b.smeltCombine('weapon', 3).ok === false);
 // 时钟回拨防护：lastSeenTs 在未来时当日不重置
 s4b.arena.attempts = 2;
 s4b.lastSeenTs = REAL_NOW() + 86400000;

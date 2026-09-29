@@ -475,6 +475,25 @@ export function forgeView(ctx: ScreenContext) {
       }
     });
     U.text('ForgeCost','重洗消耗 铜钱 12000 + 精铁 25（另一条锁定时 ×2）',0,-70,640,16,dim);
+    // 熔炉
+    const sm=store.smeltInfo();
+    U.panel('SmeltPanel',0,-160,682,150,panel,9,border);
+    U.text('SmeltTitle','熔炉 · 重复军械再利用',-240,-134,400,20,gold);
+    ['1','2'].forEach((qq,ri)=>{
+      const q=Number(qq),x=ri===0?-160:160;
+      const rn=q===1?'3 件同槽 N + 铁60 + 钱8000 → 随机 R':'3 件同槽 R + 铁150 + 钱20000 → 随机 SR';
+      U.button('SmeltCombine'+ri,rn,x,-92,310,44,()=>{const r=store.smeltCombine(q===1?'weapon':'armor',q);ctx.tell(r,r.ok?(r.name?'合成 '+r.name:'折精铁 +'+r.convertedIron):'');},gold);
+    });
+    if(!sm.stock.length){
+      U.text('SmeltEmpty','库存空 · 25 关后重复获得的军械存入此处（可熔回 70% 精铁）',0,-160,640,15,dim);
+    } else {
+      sm.stock.slice(0,3).forEach((it:any,i:number)=>{
+        const y=-196-i*44,x=0;
+        U.panel('SmeltItem'+i,x,y,640,40,ink,6,border);
+        U.text('SmeltItemName'+i,`${it.name} ×${it.count}`,-150,y,320,17,LIGHT);
+        U.button('SmeltMelt'+i,`熔回精铁 ${it.meltIron}`,230,y,150,36,()=>{const r=store.smeltMelt(it.id);ctx.tell(r,r.ok?`已熔炼 ${it.name}，精铁 +${r.iron}`:'');},gold);
+      });
+    }
   } else {
     U.text('ForgeNoDir','先选择攻/守方向，开启词条位',0,80,640,20,dim);
   }
@@ -526,7 +545,19 @@ export function armory(ctx: ScreenContext) {
       V.text('ArmoryTotalTitle','全军属性与战术效果',-171,summaryY+26,316,22,gold);
       V.text('ArmoryTotalStats',armoryStats(bonus),0,summaryY-19,643,18,dim);
       V.text('ArmoryHelp','重复获得的军械会转为精铁；部位升星后，全体英雄共同受益。',0,summaryY-77,660,18,dim);
-      if((store.getArmoryState() as any).forgeOpen){
+      const mi=store.motifInfo();
+      mi.list.forEach((m:any,i:number)=>{
+        const x=i===0?-224:i===1?0:224;
+        V.panel('MotifCard'+i,x,summaryY-238,218,150,m.active?tone('#45321b'):panel,8,m.active?gold:border);
+        V.text('MotifName'+i,m.name,x,summaryY-208,210,22,m.active?gold:LIGHT);
+        V.text('MotifDesc'+i,m.desc,x,summaryY-238,206,14,dim);
+        V.text('MotifState'+i,m.active?'● 激活中':m.unlocked?'已解锁 · 点击启用':`件数 ${m.pieces}/4`,x,summaryY-268,206,15,m.active?gold:dim);
+        if(!m.active)U.tap('MotifTap'+i,x,summaryY-238,218,150,()=>{
+          const r=store.motifActivate(m.id,true);
+          ctx.tell(r,r.ok?(r.switched?`已启用 ${r.name}`:`已激活 ${r.name}（精铁 ${r.iron}·铜钱 ${r.gold}）`):'');
+        });
+      });
+            if((store.getArmoryState() as any).forgeOpen){
         V.button('ForgeEntry','锻造台已开启 · 词条洗练 ›',0,summaryY-134,660,52,()=>ctx.go('forge'),gold);
       } else {
         const fstars=items.ARMORY_SLOTS.filter((sl:any)=>s.armory.slotStars[sl.id]>=5).length;

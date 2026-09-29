@@ -347,6 +347,9 @@ function normalizeState(s) {
   s.armory.claimedMilestones = s.armory.claimedMilestones || {};
   s.armory.boxes = s.armory.boxes || { 1: 0, 2: 0, 3: 0 };
   s.armory.affixes = s.armory.affixes || {};
+  s.armory.motifs = s.armory.motifs || { active: null, unlocked: {} };
+  s.armory.motifs.unlocked = s.armory.motifs.unlocked || {};
+  s.armory.smeltStock = s.armory.smeltStock || {};
   s.armory.freeRerolls = s.armory.freeRerolls == null ? C.FORGE.freeRerolls : Math.max(0, Math.floor(s.armory.freeRerolls));
   [1,2,3].forEach(q => { s.armory.boxes[q] = Math.max(0, Math.floor(Number(s.armory.boxes[q]) || 0)); });
   IT.ARMORY_SLOTS.forEach(slot => {
@@ -603,6 +606,15 @@ function getArmoryBonuses() {
       out[a.stat] = (out[a.stat] || 0) + a.val;
     });
   });
+  // 阵图（账号级三选一，已激活才生效）
+  const motifActive = state.armory.motifs && state.armory.motifs.active;
+  if (motifActive) {
+    const m = C.MOTIFS.find(x => x.id === motifActive);
+    if (m && state.armory.motifs.unlocked[m.id]) {
+      const mb = motifBonusOf(m, motifPieces(m));
+      Object.keys(mb).forEach(k => { out[k] = (out[k] || 0) + mb[k]; });
+    }
+  }
   return out;
 }
 function getArmoryState() {
@@ -1263,6 +1275,130 @@ function doSummonMutation(type) {
   if (state.summon.total % C.SUMMON_TICKET.perPulls === 0) state.summon.ticketStock = (state.summon.ticketStock || 0) + 1;
   bumpQuest('q_summon1', 1);
   return { ok: true, results, pitySinceSsr: pity.sinceSsr, focusUsed, focusHit };
+}
+// ---------- 阵图（账号级三选一）----------
+function motifPieces(m) {
+  return m.slots.reduce((n, sl) => n + ((state.armory.slotStars[sl] || 0) >= 3 ? 1 : 0), 0);
+}
+function motifAllMaxed(m) {
+  return m.slots.every(sl => (state.armory.slotStars[sl] || 0) >= 5);
+}
+function motifInfo() {
+  const active = state.armory.motifs ? state.armory.motifs.active : null;
+  const unlocked = (state.armory.motifs && state.armory.motifs.unlocked) || {};
+  const list = C.MOTIFS.map(m => {
+    const pieces = motifPieces(m);
+    const isUnlocked = !!unlocked[m.id];
+    return {
+      id: m.id, name: m.name, desc: m.desc, slots: m.slots, pieces, need: 4,
+      unlocked: isUnlocked, active: active === m.id,
+      bonus: isUnlocked && active ? motifBonusOf(m, pieces) : null
+    };
+  });
+  return { list, active };
+}
+function motifBonusOf(m, pieces) {
+  const out = {};
+  const merge = (mods) => Object.keys(mods || {}).forEach(k => { out[k] = (out[k] || 0) + mods[k]; });
+  if (pieces >= 2) merge(m.two);
+  if (pieces >= 4) merge(m.four);
+  if (pieces >= 4 && motifAllMaxed(m)) merge(m.maxed);
+  return out;
+}
+function motifActivate(id, payGold) {
+  return withSavedMutation(() => {
+    const m = C.MOTIFS.find(x => x.id === id);
+    if (!m) return { ok: false, msg: '阵图不存在' };
+    state.armory.motifs = state.armory.motifs || { active: null, unlocked: {} };
+    if (state.armory.motifs.unlocked[id]) {
+      state.armory.motifs.active = id; // 已解锁：免费切换
+      return { ok: true, switched: true, name: m.name };
+    }
+    if (motifPieces(m) < 2) return { ok: false, msg: '指定部位至少 2 个达到 3★' };
+    let iron = C.MOTIF_COST.iron, gold = 0;
+    if (payGold) { gold = Math.min(iron, 20) * C.MOTIF_COST.goldPerIron; iron -= Math.min(iron, 20); gold += Math.max(0, iron - 20) * 0; }
+    // 铜钱抵扣至多一半精铁（1 铁=40 铜钱）
+    if (payGold) {
+      const half = Math.floor(C.MOTIF_COST.iron / 2);
+      gold = half * C.MOTIF_COST.goldPerIron; iron = C.MOTIF_COST.iron - half;
+    }
+    if (state.res.iron < iron) return { ok: false, msg: '精铁不足，还差 ' + (iron - state.res.iron) };
+    if (state.res.gold < gold) return { ok: false, msg: '铜钱不足，还差 ' + (gold - state.res.gold) };
+    state.res.iron -= iron; state.res.gold -= gold;
+    state.armory.motifs.unlocked[id] = true;
+    state.armory.motifs.active = id;
+    return { ok: true, name: m.name, iron, gold };
+  });
+}
+// ---------- 熔炉 ----------
+function smeltInfo() {
+  const stock = state.armory.smeltStock || {};
+  const items = Object.keys(stock).map(itemId => {
+    const cat = IT.CATALOG.find(x => x.id === itemId);
+    return cat ? { id: itemId, name: cat.name, slot: cat.slot, q: cat.q, count: stock[itemId],
+      meltIron: Math.floor(IT.GRADES[cat.q].duplicate * C.SMELT.meltRate) } : null;
+  }).filter(Boolean);
+  return { stock: items, recipes: C.SMELT.recipes };
+}
+function smeltMelt(itemId) {
+  return withSavedMutation(() => {
+    const stock = state.armory.smeltStock || {};
+    const cat = IT.CATALOG.find(x => x.id === itemId);
+    if (!cat || !stock[itemId]) return { ok: false, msg: '库存中没有该军械' };
+    const iron = Math.floor(IT.GRADES[cat.q].duplicate * C.SMELT.meltRate);
+    delete stock[itemId];
+    state.res.iron += iron;
+    return { ok: true, iron, name: cat.name };
+  });
+}
+function smeltCombine(slot, q) {
+  return withSavedMutation(() => {
+    const recipe = C.SMELT.recipes[q];
+    if (!recipe || q > 2) return { ok: false, msg: '该品质不可合成（SR/SSR 不可合成）' };
+    const stock = state.armory.smeltStock = state.armory.smeltStock || {};
+    const cand = Object.keys(stock).filter(id => {
+      const cat = IT.CATALOG.find(x => x.id === id);
+      return cat && cat.slot === slot && cat.q === q - 1; // 消耗低一档库存
+    });
+    const have = cand.reduce((n, id) => n + stock[id], 0);
+    if (have < recipe.need) return { ok: false, msg: `同槽 ${q === 1 ? 'N' : 'R'} 军械不足（${have}/${recipe.need}）` };
+    if (state.res.iron < recipe.iron) return { ok: false, msg: '精铁不足' };
+    if (state.res.gold < recipe.gold) return { ok: false, msg: '铜钱不足' };
+    let need = recipe.need;
+    cand.forEach(id => {
+      while (need > 0 && stock[id] > 0) { stock[id] -= 1; need -= 1; }
+      if (stock[id] <= 0) delete stock[id];
+    });
+    state.res.iron -= recipe.iron; state.res.gold -= recipe.gold;
+    // 产物=同槽随机未解锁条目；全解锁则自动折精铁
+    const pool = IT.CATALOG.filter(x => x.slot === slot && x.q === q && !state.armory.unlocked[x.id]);
+    if (pool.length) {
+      const item = pool[Math.floor(Math.random() * pool.length)];
+      state.armory.unlocked[item.id] = true; state.armory.seen[item.id] = true;
+      return { ok: true, itemId: item.id, name: item.name };
+    }
+    const iron = IT.GRADES[q + 1].duplicate;
+    state.res.iron += iron;
+    return { ok: true, convertedIron: iron };
+  });
+}
+// 重复掉落改入熔炉库存（图鉴未解锁仍直接解锁）
+function grantArmoryItem(itemId) {
+  const item = IT.CATALOG.find(x => x.id === itemId);
+  if (!item) return { ok: false, msg: '军械奖励无效' };
+  if (state.armory.unlocked[item.id]) {
+    if ((state.campaign.cleared || 0) >= 25) {
+      // 25 关后重复件入熔炉库存（可零损耗熔回 70% 或攒合成）
+      const stock = state.armory.smeltStock = state.armory.smeltStock || {};
+      stock[itemId] = Math.min(C.SMELT.stockCap, (stock[itemId] || 0) + 1);
+      return { ok: true, duplicate: true, smelted: true, itemId };
+    }
+    const iron = IT.GRADES[item.q].duplicate;
+    state.res.iron += iron;
+    return { ok: true, duplicate: true, iron, itemId };
+  }
+  state.armory.unlocked[item.id] = true; state.armory.seen[item.id] = true;
+  return { ok: true, duplicate: false, itemId };
 }
 // ---------- 定向招募券 / 招贤值 / 万能 SSR 卡 ----------
 function setSummonFocus(f) {
@@ -1966,7 +2102,7 @@ module.exports = {
   levelUp, ascend, ascendPreview, foodPoints, dismiss, resetHero, convertCards, setCardsLocked, addChoiceVoucher, useChoiceVoucher, firstWinChoice, claimFirstWinChoice,
   exchangeQualityShard, qualityShardInfo,
   getFormationCalc, setFormationSlot, applyFormation, formationFactionBonus, teamPower, playerUnits, enemyUnits, activeBonds, bondMods,
-  getArmoryBonuses, getArmoryState, armoryUnlock, armorySelect, armoryUpgrade, armoryUpgradeToNode, armoryClaimBox, grantArmoryItem, applyArmoryRecommendations, forgeInfo, forgeReroll, forgeSetDir, forgeToggleLock, forgeGateOpen,
+  getArmoryBonuses, getArmoryState, armoryUnlock, armorySelect, armoryUpgrade, armoryUpgradeToNode, armoryClaimBox, grantArmoryItem, applyArmoryRecommendations, forgeInfo, forgeReroll, forgeSetDir, forgeToggleLock, forgeGateOpen, motifInfo, motifActivate, smeltInfo, smeltMelt, smeltCombine,
   addEquip, equipInventory, equipTo, unequip, enhanceEquip, fodderPickIds, salvageEquip, salvageBatch, isEquipped,
   migrateSaveV1, migrateSaveV2, migrateSaveV3, migrateSaveV4, migrateSaveV5, migrateSaveV6, normalizeState,
   idlePending, idleTick, gemQuotaInfo, claimIdle, claimIdleInternal, fastReward, fastRewardMutation, fastRewardAdMutation, adReward,

@@ -274,6 +274,28 @@ const FORGE = {
   }
 };
 
+// 阵图（评审团裁决版）：账号级三选一、切换免费；件数=指定部位中 3★ 数（5★ 计满档）。
+// 激活 250/张（铜钱可抵 50%，1 精铁=40 铜钱）；效果量级 ≤ 名器单件，防"套装>一切"。
+const MOTIFS = [
+  { id: 'huxiao', name: '虎啸阵', slots: ['weapon', 'seal', 'helm', 'jade'],
+    two: { crit: 0.02 }, four: { atk: 0.03 }, maxed: { critDmg: 0.10 },
+    desc: '二件套暴击+2% · 四件套全军攻击+3% · 全 5★ 追加暴伤+10%' },
+  { id: 'panshi', name: '磐石阵', slots: ['armor', 'helm', 'jade', 'seal'],
+    two: { recvHeal: 0.06 }, four: { hp: 0.03 }, maxed: { startShield: 0.02 },
+    desc: '二件套受疗+6% · 四件套全军生命+3% · 全 5★ 追加开场护盾+2%' },
+  { id: 'jifeng', name: '疾风阵', slots: ['boots', 'seal', 'weapon', 'jade'],
+    two: { energyGain: 0.05 }, four: { spdPct: 0.02 }, maxed: { startEnergy: 3 },
+    desc: '二件套怒气获取+5% · 四件套全军速度+2% · 全 5★ 追加开场怒气+3' }
+];
+const MOTIF_COST = { iron: 250, goldPerIron: 40 };
+
+// 熔炉：重复掉落入库存（条目上限 9），熔回 70%，3 件同槽 N/R 合成上一档（SR/SSR 不可合成）
+const SMELT = {
+  stockCap: 9,
+  meltRate: 0.7,
+  recipes: { 1: { need: 3, iron: 60, gold: 8000 }, 2: { need: 3, iron: 150, gold: 20000 } }
+};
+
 // 回归补给（断签梯度）：lastSeenTs 间隔 ≥48h 触发，7 天窗口至多一次；每日上线玩家结构性拿不到
 const RETURN_GRANTS = [
   { minDays: 2, reward: { scroll: 3, gem: 300 }, label: '招募令 ×3 · 元宝 ×300' },
@@ -291,5 +313,5 @@ export {
   FAST_AD, FAST_PAID,
   GACHA, factionBonus, FORMATION_ROWS, BATTLE, ARENA, SEVEN_DAY, TRAINING_DAILY_CAP, BOUNTY, ROAMER_POOL, AD,
   FIRST_STAGE_END, CAMPAIGN_DIFFICULTY, CAMPAIGN_MILESTONES, ELITE_STAGE, STAR_RULES, CHAPTER_STAR_CHESTS, DAILY_ELITE_CHEST,
-  CAMPAIGN_MODS, BOSS_MODS, RETURN_GRANTS, SUMMON_TICKET, SUMMON_POINTS, FORGE
+  CAMPAIGN_MODS, BOSS_MODS, RETURN_GRANTS, SUMMON_TICKET, SUMMON_POINTS, FORGE, MOTIFS, MOTIF_COST, SMELT
 };
