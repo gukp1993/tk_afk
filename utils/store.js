@@ -53,7 +53,7 @@ function defaultState() {
     achv: { claimed: {} },
     seals: 0,
     week: null,
-    hall: { kills: {}, stars: {}, threeClaimed: {}, weeklyClearWeek: '', honor: 0, titlesClaimed: [] },
+    hall: { kills: {}, stars: {}, threeClaimed: {}, weeklyClearWeek: '', honor: 0, titlesClaimed: [], killsTotal: 0 },
     replays: [],
     formationPresets: {},
     lastSeenTs: Date.now()
@@ -491,6 +491,7 @@ function winHall(seat, lineup, stars, hallWeek) {
   const key = w.weekId + ':' + lineup.id;
   if (!state.hall.kills[key]) {
     state.hall.kills[key] = 1;
+    state.hall.killsTotal = (state.hall.killsTotal || 0) + 1;
     reward.firstKill = true;
     reward.firstKillHonor = C.HALL.firstKill.honor;
     reward.honor += C.HALL.firstKill.honor;
@@ -718,6 +719,7 @@ function normalizeState(s) {
   s.achv.claimed = s.achv.claimed || {};
   s.hall = s.hall || { kills: {}, stars: {}, threeClaimed: {}, weeklyClearWeek: '', honor: 0, titlesClaimed: [] };
   if (typeof s.hall.honor !== 'number') s.hall.honor = 0;
+  if (typeof s.hall.killsTotal !== 'number') s.hall.killsTotal = 0;
   s.hall.kills = s.hall.kills || {}; s.hall.stars = s.hall.stars || {}; s.hall.threeClaimed = s.hall.threeClaimed || {};
   s.hall.titlesClaimed = s.hall.titlesClaimed || [];
   if (!Array.isArray(s.replays)) s.replays = [];
