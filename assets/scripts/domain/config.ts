@@ -124,6 +124,11 @@ const DEFEAT_RX = { enabled: true, maxItems: 2 };
 const REPLAYS = { max: 20, arenaHighDiff: 1.2,
   capture: { hall: true, campaignFirst: true, towerMilestone: true, arenaHigh: true } };
 
+// N/R 校场操练（2026-09-30 研讨会三方案 1）：铜钱排水渠。N/R 武将操练升级，
+// 每级 +4% 该将悬赏派遣加成（5 级 +20%），与阵营加成叠加、总封顶 40%；不碰战斗数值。
+const DRILL = { maxLevel: 5, pctPerLevel: 0.04, totalCap: 0.4,
+  costs: [50000, 120000, 250000, 450000, 700000] };
+
 // 演武场：每日 5 次；令牌按对手难度分档（胜），败给 1；段位首次达成发一次性奖励。
 // 赛季（2026-09-30 研讨会裁决 A）：每周一软重置，新周积分=上周×WEEK_CARRY；
 // 周段位奖按本周达到的最高段位一次性发放（偏将及以上），只发铜钱/演武令/元宝/印信——禁精铁与招募令直发。
@@ -470,7 +475,7 @@ export {
   MAX_LEVEL, PLAYER_LEVEL, BATTLE_XP, AUTO_BATTLE, FOOD_VALUE, DUPE_GOLD,
   goldCost, expCost, idleRates, IDLE_CAP_HOURS, GEM_IDLE, ARMORY_IRON_PER_HOUR,
   FAST_AD, FAST_PAID,
-  GACHA, factionBonus, FORMATION_ROWS, BATTLE, ARENA, DEFEAT_RX, REPLAYS, SEVEN_DAY, TRAINING_DAILY_CAP, BOUNTY, ROAMER_POOL, AD,
+  GACHA, factionBonus, FORMATION_ROWS, BATTLE, ARENA, DEFEAT_RX, REPLAYS, DRILL, SEVEN_DAY, TRAINING_DAILY_CAP, BOUNTY, ROAMER_POOL, AD,
   FIRST_STAGE_END, CAMPAIGN_DIFFICULTY, CAMPAIGN_MILESTONES, ELITE_STAGE, STAR_RULES, CHAPTER_STAR_CHESTS, DAILY_ELITE_CHEST,
   CAMPAIGN_MODS, BOSS_MODS, RETURN_GRANTS, SUMMON_TICKET, SUMMON_POINTS, FORGE, MOTIFS, MOTIF_COST, SMELT,
   CODEX_REWARDS, ACHV_AXES, ACHV_REWARDS, WEEKLY, HALL, AWAKEN, FORMATION_PRESETS_MAX, TACTIC, BATTLE_TACTICS, TACTIC_SR, HALL_ACHV, TACTIC_ACHV, AWAKEN_ACHV

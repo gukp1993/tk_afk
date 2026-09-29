@@ -193,7 +193,7 @@ export function heroDetail(ctx: ScreenContext) {
   const hasVoucher=(s.vouchers[h.rarity===4?'ssr':'sr']||0)>0&&h.rarity>=3;
   const awakenShown=h.rarity===4&&own.star>=5;
   const tacticShown=(h.rarity===4&&own.star>=5)||(h.rarity===3&&own.star>=4);
-  const contentH=1160+(own.cards>0?110:0)+(hasVoucher?115:0)+(ctx.heroDetailOrigin==='heroes'?90:0)+(awakenShown?130:0)+(tacticShown?130:0);
+  const contentH=1160+(own.cards>0?110:0)+(hasVoucher?115:0)+(ctx.heroDetailOrigin==='heroes'?90:0)+(awakenShown?130:0)+(tacticShown?130:0)+(h.rarity<=2?130:0);
   const top=contentH/2, pct=(v:number)=>fmt.fmtPct(v);
   U.rect('DetailBackdrop',0,0,720,1280,tone('#122a22'));
   U.panel('DetailHeader',0,587,720,96,new Color(9,28,25,245),0,gold);
@@ -292,6 +292,28 @@ export function heroDetail(ctx: ScreenContext) {
           V.text('TacticMax',`已达兵法上限 · 「${tc.name}」大成`,0,ty-14,600,19,tone('#d9b06a'));
         }
         next=ty-64;
+      }
+    }
+    // N/R 校场操练（研讨会三方案 1）：铜钱排水渠，效果只加该将悬赏派遣加成
+    if(h.rarity<=2){
+      const dr=store.drillInfo(h.id) as any;
+      if(dr&&dr.ok){
+        const dy=next-64;
+        V.panel('DrillPanel',0,dy,666,108,new Color(30,40,24,242),8,gold);
+        V.text('DrillTitle',`校场操练 · ${dr.level}/${dr.max} 级（悬赏加成 +${Math.round(dr.bonusPct*100)}%）`,-170,dy+28,470,22,gold);
+        V.tap('DrillInfoTap',0,dy,666,108,()=>heroInfoModal(ctx,'校场操练',[
+          '派遣该将执行悬赏时，该单铜钱与元宝奖励提升 '+Math.round(dr.bonusPct*100)+'%',
+          '与阵营匹配加成（+20%）叠加，总加成封顶 +40%',
+          '操练只影响悬赏收益，不改变战斗数值',
+          '操练消耗铜钱——后期铜钱富余，正好用在编外将身上']));
+        if(dr.nextCost!=null){
+          const can=s.res.gold>=dr.nextCost;
+          V.text('DrillCost',`下一级：铜钱 ${fmt.fmtNum(dr.nextCost)}`,-170,dy-10,430,17,dim);
+          V.button('DrillGo',can?'操 练':'铜钱不足',225,dy,180,54,()=>{const r:any=store.drillHero(h.id);ctx.tell(r,r.ok?`${h.name} 操练至 ${r.level} 级（悬赏加成 +${Math.round(r.bonusPct*100)}%）`:'');},can?palette.gold:palette.paperDark);
+        } else {
+          V.text('DrillMax','已达操练上限 · 悬赏加成 +'+Math.round(dr.bonusPct*100)+'%',0,dy-14,600,19,tone('#d9b06a'));
+        }
+        next=dy-64;
       }
     }
     if(ctx.heroDetailOrigin==='heroes')V.button('ReturnHeroes','返回群英录',0,next-40,350,72,()=>ctx.back('heroes'),palette.paperDark);

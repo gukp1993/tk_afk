@@ -845,7 +845,7 @@ export function bountyView(ctx: ScreenContext) {
     if(b.wantFaction){
       const fname=(config.FACTIONS as any)[b.wantFaction]?.name||'';
       const pct=Math.round((b.bonusPct||0)*100);
-      U.text('BountyWant'+i,b.state==='open'?`征${fname}将 · +${pct}%`:b.bonusActive?`征${fname}将 ✓ 加成生效`:`非${fname}将 · 无加成`,205,y-14,225,16,
+      U.text('BountyWant'+i,b.state==='open'?`征${fname}将 · +${pct}%`:b.bonusActive?`已生效 +${b.realizedPct||pct}%`:`非${fname}将 · 无阵营加成`,205,y-14,225,16,
         b.state==='open'?GOLD:b.bonusActive?tone('#6f8a5f'):tone('#7a6c52'));
     }
     const heroName=b.heroId?(heroes.getHero(b.heroId)?.name||b.heroId):'';

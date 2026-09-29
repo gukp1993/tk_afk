@@ -845,6 +845,8 @@ function normalizeState(s) {
     if (!Number.isFinite(h.star)) h.star = 0;
     if (!Number.isFinite(h.cards)) h.cards = 0;
     h.awaken = Math.max(0, Math.min(C.AWAKEN.max, Math.floor(Number(h.awaken) || 0)));
+    // N/R 校场操练等级（研讨会三）：旧档缺省 0，钳位防脏数据
+    h.drill = Math.max(0, Math.min(C.DRILL.maxLevel, Math.floor(Number(h.drill) || 0)));
     // 专属兵法等级：v7 后增字段，旧档缺省 0，不升存档版本号
     h.tacticLv = Math.max(0, Math.min(C.TACTIC.max, Math.floor(Number(h.tacticLv) || 0)));
   });
@@ -2398,16 +2400,48 @@ function refreshBounties(today) {
 }
 const BOUNTY_FACTIONS = ['wei', 'shu', 'wu', 'qun'];
 // 同阵营派遣结算：只乘铜钱/元宝，招募令永不加成；旧档无 wantFaction 的在途单视为无条件
+// N/R 校场操练（研讨会三方案 1）：铜钱排水渠，效果只进悬赏派遣加成，不碰战斗数值
+function drillInfo(heroId) {
+  const own = state.roster[heroId];
+  const def = H.getHero(heroId);
+  if (!own || !def) return { ok: false, msg: '武将不存在' };
+  if (def.rarity > 2) return { ok: false, msg: '仅 N/R 品质可操练' };
+  const lv = own.drill || 0;
+  return { ok: true, heroId, name: def.name, rarity: def.rarity, level: lv, max: C.DRILL.maxLevel,
+    pctPerLevel: C.DRILL.pctPerLevel,
+    nextCost: lv < C.DRILL.maxLevel ? C.DRILL.costs[lv] : null,
+    bonusPct: lv * C.DRILL.pctPerLevel };
+}
+function drillHero(heroId) {
+  return withSavedMutation(() => {
+    const info = drillInfo(heroId);
+    if (!info.ok) return info;
+    const own = state.roster[heroId];
+    if (info.level >= C.DRILL.maxLevel) return { ok: false, msg: '操练已满级' };
+    const cost = C.DRILL.costs[info.level];
+    if ((state.res.gold || 0) < cost) return { ok: false, msg: `铜钱不足，还差 ${fmtShort(cost - state.res.gold)}` };
+    state.res.gold -= cost;
+    own.drill = info.level + 1;
+    return { ok: true, level: own.drill, cost, bonusPct: own.drill * C.DRILL.pctPerLevel };
+  });
+}
+function fmtShort(n) { return n >= 10000 ? (n / 10000).toFixed(1) + '万' : String(n); }
+// 同阵营派遣结算（裁决 E）+ 操练加成（研讨会三）：只乘铜钱/元宝，招募令永不加成；
+// 总加成封顶 DRILL.totalCap；旧档无 wantFaction/未操练视为无加成
 function bountyPayout(b) {
-  const pct = (C.BOUNTY.factionBonus && C.BOUNTY.factionBonus.pct) || 0;
-  const hero = b.heroId && H.getHero(b.heroId);
-  const match = !!(b.wantFaction && hero && hero.faction === b.wantFaction);
-  if (!match || !pct) return { reward: b.reward, bonus: false };
+  const heroDef = b.heroId && H.getHero(b.heroId);
+  const own = b.heroId ? state.roster[b.heroId] : null;
+  const fPct = (C.BOUNTY.factionBonus && C.BOUNTY.factionBonus.pct) || 0;
+  const match = !!(b.wantFaction && heroDef && heroDef.faction === b.wantFaction);
+  const drillLv = Math.min(C.DRILL.maxLevel, (own && own.drill) || 0);
+  let pct = (match ? fPct : 0) + drillLv * C.DRILL.pctPerLevel;
+  pct = Math.min(pct, C.DRILL.totalCap);
+  if (pct <= 0) return { reward: b.reward, bonus: false, factionMatch: match, drillPct: 0 };
   const scaled = {};
   Object.keys(b.reward).forEach(k => {
     scaled[k] = (k === 'gold' || k === 'gem') ? Math.floor(b.reward[k] * (1 + pct)) : b.reward[k];
   });
-  return { reward: scaled, bonus: true };
+  return { reward: scaled, bonus: true, factionMatch: match, drillPct: drillLv * C.DRILL.pctPerLevel };
 }
 function bountyInfo() {
   checkDailyReset();
@@ -2421,6 +2455,7 @@ function bountyInfo() {
       wantFaction: b.wantFaction || null,
       bonusActive: !!(b.wantFaction && hero && hero.faction === b.wantFaction),
       bonusPct: (C.BOUNTY.factionBonus && C.BOUNTY.factionBonus.pct) || 0,
+      realizedPct: (() => { const pay = bountyPayout(b); return pay.bonus ? Math.round(((pay.drillPct || 0) + (pay.factionMatch ? (C.BOUNTY.factionBonus ? C.BOUNTY.factionBonus.pct : 0) : 0)) * 100) : 0; })(),
       state: b.claimed ? 'claimed' : (b.heroId && remainMs <= 0 ? 'done' : b.heroId ? 'running' : 'open'),
       remainMs: Math.ceil(remainMs / 60000) * 60000
     };
@@ -2654,7 +2689,7 @@ module.exports = {
   load, save, getState, checkDailyReset, SAVE_KEY,
   allRoster, getOwned, addHeroCard, grantCard, crystalInfo, effectiveLevel, playerLevel, playerXpNeeded, addPlayerXP, levelCap, calcHero,
   ascend, ascendPreview, foodPoints, dismiss, resetHero, convertCards, setCardsLocked, addChoiceVoucher, useChoiceVoucher, firstWinChoice, claimFirstWinChoice,
-  exchangeQualityShard, qualityShardInfo,
+  exchangeQualityShard, qualityShardInfo, drillInfo, drillHero,
   getFormationCalc, setFormationSlot, applyFormation, formationFactionBonus, teamPower, playerUnits, enemyUnits, activeBonds, bondMods,
   getArmoryBonuses, getArmoryState, armoryUnlock, armorySelect, armoryUpgrade, armoryUpgradeToNode, armoryClaimBox, grantArmoryItem, applyArmoryRecommendations, armoryAffixBadges, forgeInfo, forgeReroll, forgeSetDir, forgeToggleLock, forgeGateOpen, motifInfo, motifActivate, smeltInfo, smeltMelt, smeltCombine,
   codexInfo, claimCodex, useUniversalSr, achvInfo, claimAchv, weekInfo, claimWeekQuest, claimWeekActive, buyWeekly, makeExpeditionFloor, bumpWeek, beginHall, winHall, hallInfo, saveReplay, replaysInfo, awakenInfo, awakenHero, formationPresetsInfo, saveFormationPreset, applyFormationPreset, delFormationPreset, tacticInfo, tacticUpgrade,
@@ -2664,7 +2699,7 @@ module.exports = {
   winCampaign, campaignRewardPreview, winTower, arenaFight, arenaSeasonInfo, arenaBoardInfo, summonGapInfo, beginBattle, settleBattle, campaignStarChestInfo, claimStarChests,
   markStorySeen, isStorySeen, retroGrants, dismissRetroGrants, dismissReturnPending,
   questList, claimQuest, activePoints, claimActiveChest, claimAllDailyRewards, claimFreeRewards, bumpQuest, applyReward,
-  sevenDayInfo, claimSevenDay, bountyInfo, dispatchBounty, claimBounty, roamerInfo, buyRoamer, takeBountyGrantsNotice,
+  sevenDayInfo, claimSevenDay, bountyInfo, bountyPayout, dispatchBounty, claimBounty, roamerInfo, buyRoamer, takeBountyGrantsNotice,
   interruptBattle, setAutoBattleSpeed,
   buyGood, CURRENCY_NAME,
   adCount, adBump

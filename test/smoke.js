@@ -1241,4 +1241,30 @@ const storeP2 = freshStore(); storeP2.load();
   check('RP5 20 条战报整包 <120KB', JSON.stringify(storeRP.getState()).length < 120 * 1024);
 }
 
+
+// N/R 校场操练（研讨会三方案 1）：铜钱排水渠 + 悬赏加成叠加
+{
+  const storeDR = freshStore(); storeDR.load();
+  const sDR = storeDR.getState();
+  const dInfo = storeDR.drillInfo('liaohua');
+  check('DR1 操练信息（N 品可练/0 级/下一级 5 万）', dInfo.ok && dInfo.level === 0 && dInfo.nextCost === 50000 && dInfo.bonusPct === 0);
+  check('DR2 SSR 拒绝操练', storeDR.drillInfo('guanyu').ok === false);
+  sDR.res.gold = 1000000;
+  const d1 = storeDR.drillHero('liaohua');
+  check('DR3 操练升 1 级扣 5 万', d1.ok && d1.level === 1 && sDR.res.gold === 950000 && sDR.roster.liaohua.drill === 1);
+  // 悬赏加成叠加：阵营命中 0.2 + 操练 0.04 = 0.24；封顶 0.4
+  sDR.bounty.list[0] = { hours: 4, name: '叠加单', reward: { gold: 10000, gem: 100 }, wantFaction: 'shu', heroId: 'liaohua', dispatchedAt: Date.now() - 5 * 3600000, claimed: false };
+  const pay0 = storeDR.bountyPayout(sDR.bounty.list[0]);
+  check('DR4 操练+阵营叠加 24%', pay0.bonus === true && pay0.reward.gold === 12400 && pay0.reward.gem === 124);
+  sDR.roster.liaohua.drill = 5;
+  const pay1 = storeDR.bountyPayout(sDR.bounty.list[0]);
+  check('DR5 满操练命中封顶 40%', pay1.reward.gold === 14000 && pay1.reward.gem === 140);
+  sDR.bounty.list[0].wantFaction = 'wei';
+  const pay2 = storeDR.bountyPayout(sDR.bounty.list[0]);
+  check('DR6 不命中阵营仍有操练 20%', pay2.bonus === true && pay2.reward.gold === 12000 && pay2.factionMatch === false);
+  check('DR7 招募令永不加成', (() => { sDR.bounty.list[0].reward = { scroll: 1, gem: 100 };
+    const p3 = storeDR.bountyPayout(sDR.bounty.list[0]); return p3.reward.scroll === 1 && p3.reward.gem === 120; })());
+  check('DR8 s_gold 卫生修复（5 元宝限 1）', (() => { const g = IT.SHOP_GOODS.find(x => x.id === 's_gold'); return g.price === 5 && g.limit === 1; })());
+}
+
 console.log('\nsmoke: ' + passed + ' passed, ' + failed + ' failed');process.exit(failed ? 1 : 0);

@@ -101,7 +101,7 @@ function starGold(need) { return need * GOLD_PER_POINT; }
 // 元宝直购招募令旧价（300/1350）已随召唤新价（单抽 100／十连 900）移除；
 // 演武令兑换与通用碎片商品保留。
 const SHOP_GOODS = [
-  { id: 's_gold', name: '铜钱 ×10万', cur: 'gem', price: 20, give: { gold: 100000 }, limit: 3 },
+  { id: 's_gold', name: '铜钱 ×10万', cur: 'gem', price: 5, give: { gold: 100000 }, limit: 1 },
   { id: 't_scroll', name: '招募令 ×1', cur: 'token', price: 40, give: { scroll: 1 }, limit: 5 },
   { id: 't_sr', name: 'SR 自选卡', cur: 'token', price: 300, give: { srPick: 1 }, limit: 1 },
   { id: 'h_ssr', name: 'SSR 自选卡', cur: 'shard', price: 500, give: { ssrPick: 1 }, limit: 1 },
