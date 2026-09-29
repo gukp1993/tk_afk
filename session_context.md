@@ -16,6 +16,20 @@
 
 ## 最近交接（新 → 旧）
 
+### 试玩报告 P1 修补 · zcode · 已实施待验收
+
+时间：2026-09-29 13:50（Asia/Shanghai）；执行者：zcode；状态：已实施待验收。
+
+- 全流程试玩代理报告 12 项 findings，P1 两项必修已修（`a841ed3` 链）：
+  ①成就页返回按钮不可点（玩家被困）→ 补 AchvBackTap 绑定 ctx.back('bag')；
+  ②战前战术三按钮无文字 → BATTLE_TACTICS 缺导出致 config.BATTLE_TACTICS undefined → 补导出。
+- 同批修：玩法页 JourneyGuide 重复绘制去重；bootstrap armedTactic 传入 playerUnits。
+- 验证：smoke 310 全过；微信构建。
+- 待验收：真机成就页返回/战术按钮文字。
+- 下一步循环：试玩报告 P2/P3 修缮（排版/文案）→ 下一批选题研讨。
+
+### 二期主线第一批（13~14 章 +20 关） · zcode · 已实施待验收
+
 ### 二期主线第一批（13~14 章 +20 关） · zcode · 已实施待验收
 
 时间：2026-09-29 13:45（Asia/Shanghai）；执行者：zcode；状态：已实施待验收。
