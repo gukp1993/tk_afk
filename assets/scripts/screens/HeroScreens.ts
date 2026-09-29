@@ -83,7 +83,7 @@ export function heroes(ctx: ScreenContext) {
       const qs=store.qualityShardInfo();
       U.panel('ShardEntry',22,515,230,63,tone('#3a2a1b'),7,gold);
       U.text('ShardEntryText','碎片兑换 ›',22,529,213,22,gold);
-      U.text('ShardEntrySub',`SSR ${qs[4]}/10 · SR ${qs[3]}/10 · R ${qs[2]}/10 · N ${qs[1]}/10`,22,500,213,14,dim);
+      U.text('ShardEntrySub',`SSR ${qs[4]}/10 · SR ${qs[3]}/10 · R ${qs[2]}/10 · N ${qs[1]}/10`,18,500,240,13,dim);
       U.tap('ShardEntryTap',22,515,230,63,()=>{shardTier=4;ctx.show('heroes');});
     }
     const sharedY=455,filterY=378,sortY=303;
@@ -227,10 +227,10 @@ export function heroDetail(ctx: ScreenContext) {
     V.text('SkillsHeading','武将技能',-242,top-555,195,29,gold);
     const skills=[{name:h.ult.name,desc:h.ult.desc,glyph:'杀',fill:palette.red,kind:'必杀技能'},
       {name:h.passiveDef.name,desc:h.passiveDef.desc,glyph:'守',fill:palette.green,kind:'被动技能'}];
-    skills.forEach((skill,i)=>{const x=i===0?-169:169,y=top-673;V.panel('SkillTile'+i,x,y,328,181,new Color(19,38,33,247),7,gold);
+    skills.forEach((skill,i)=>{const x=i===0?-169:169,y=top-673;V.panel('SkillTile'+i,x,y,328,216,new Color(19,38,33,247),7,gold);
       V.seal('SkillIcon'+i,x-115,y,84,skill.glyph,skill.fill,skill.fill,palette.text,40);
       V.textBlock('SkillName'+i,skill.name,x+50,y+42,190,55,26,gold);
-      V.textBlock('SkillSummary'+i,skill.desc,x+50,y-25,190,82,20,paper);
+      V.textBlock('SkillSummary'+i,skill.desc,x+50,y-25,190,110,18,paper);
       V.tap('SkillTap'+i,x,y,328,181,()=>heroInfoModal(ctx,skill.name,[skill.kind,skill.desc]));});
     V.panel('ArmoryBonusPanel',0,top-825,666,111,new Color(17,36,31,245),5,gold);
     V.seal('ArmoryWeapon',-275,top-825,48,'兵',tone('#bb614c'),tone('#bb614c'),palette.ink,24);
