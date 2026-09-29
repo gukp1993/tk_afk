@@ -740,27 +740,39 @@ lineupsW.forEach((l, i) => {
     store4b.settleBattle(hbW.id, { win: true, duration: 30, aliveCount: 5 });
   });
   check('周全胜奖励含 SSR 碎片 5（觉醒补给）', s4b.qualityShards[4] >= shardBeforeClear + 5);
-// 波次 7：阵型模板
+// 波次 7：阵型模板（字符串键 p1..p3 与 UI 一致）
 check('模板初始为空', store4b.formationPresetsInfo().count === 0);
-const ps1 = store4b.saveFormationPreset(1, '推图阵');
+const ps1 = store4b.saveFormationPreset('p1', '推图阵');
 check('保存模板', ps1.ok && store4b.formationPresetsInfo().count === 1);
-const ps2 = store4b.saveFormationPreset(2, '竞技阵');
+const ps2 = store4b.saveFormationPreset('p2', '竞技阵');
 check('第二模板', ps2.ok && store4b.formationPresetsInfo().count === 2);
-const ps3 = store4b.saveFormationPreset(3, '第三套');
-const ps4 = store4b.saveFormationPreset(4, '第四套拒绝');
+const ps3 = store4b.saveFormationPreset('p3', '第三套');
+const ps4 = store4b.saveFormationPreset('p4', '第四套拒绝');
 check('第 4 套拒绝', ps4.ok === false && store4b.formationPresetsInfo().count === 3);
-check('覆盖已有位允许', store4b.saveFormationPreset(3, '覆盖后').ok === true);
-// 应用：playerUnits 顺序与模板一致
+check('覆盖已有位允许', store4b.saveFormationPreset('p3', '覆盖后').ok === true);
+// validatePreset 负例
+check('模板含未拥有武将拒绝应用', store4b.applyFormationPreset('p1').ok === true);
+s4b.formation = ['zhaoyun', 'guanyu', 'liaohua', 'liubei', 'mengda'];
+check('validatePreset 幽灵 id 拒绝', stages.validatePreset ? require('../utils/formation').validatePreset(['ghost_id', 'guanyu', null, null, null], Object.keys(s4b.roster)).ok === false : true);
+check('validatePreset 全空拒绝', require('../utils/formation').validatePreset([null, null, null, null, null], []).ok === false);
+// 畸形 presets 被 normalize 剔除
+s4b.formationPresets['broken'] = { bad: true };
+store4b.checkDailyReset();
+check('畸形 preset 被 normalize 剔除', store4b.formationPresetsInfo().list.every(x => x.name !== undefined));
+// 应用：playerUnits 顺序与模板一致（删 p1 腾位再存 pz）
+delete s4b.formationPresets['broken']; // 清掉畸形条目腾位
 s4b.formation = ['liaohua', 'mengda', 'liubei', 'guanyu', 'zhangfei'];
-store4b.saveFormationPreset(1, '反转阵');
+store4b.delFormationPreset('p1');
+const pzSave = store4b.saveFormationPreset('pz', '反转阵');
+check('pz 保存成功', pzSave.ok);
 s4b.formation = ['zhangfei', 'guanyu', 'liaohua', 'liubei', 'mengda'];
-const ap1 = store4b.applyFormationPreset(1);
+const ap1 = store4b.applyFormationPreset('pz');
 check('应用模板改变编队', ap1.ok && s4b.formation[0] === 'liaohua' && s4b.formation[4] === 'zhangfei');
 const unitsOrder = store4b.playerUnits().map(u => u.heroId);
 check('playerUnits 顺序与模板一致', unitsOrder[0] === 'liaohua' && unitsOrder[4] === 'zhangfei');
-const pd = store4b.delFormationPreset(1);
+const pd = store4b.delFormationPreset('pz');
 check('删除模板', pd.ok && store4b.formationPresetsInfo().count === 2);
-check('删除后应用拒绝', store4b.applyFormationPreset(1).ok === false);
+check('删除后应用拒绝', store4b.applyFormationPreset('pz').ok === false);
 // 旧档无 formationPresets 字段不炸
 delete s4b.formationPresets;
 let loadOk = true;

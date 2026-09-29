@@ -1,6 +1,6 @@
 // @ts-nocheck
 // Generated from utils/formation.js by scripts/cocos-sync-domain.js. Do not edit here.
-
+import * as __domain_heroes from './heroes';
 // 确定性均衡编队建议，不修改传入阵容。
 // 前排取坦度（坦克/战士按战力），后排取输出（法师/神射按攻击，战士次之，辅助兜底），
 // 避免按总战力挑选时凑出五坦克的零输出阵容（输出不足会打满 90 秒超时判负）。
@@ -28,13 +28,16 @@ function recommendFormation(roster) {
   while (ids.length < 5) ids.push(null);
   return ids;
 }
-// 阵型模板校验：5 槽、查重、查未拥有（行位自由，索敌由 slot 顺序决定）
+// 阵型模板校验：5 槽、查重、查未拥有、查英雄表外幽灵 id（防 teamPower 崩溃）、至少 1 人
 function validatePreset(slots, rosterIds) {
   const owned = new Set(rosterIds || []);
   if (!Array.isArray(slots) || slots.length !== 5) return { ok: false, msg: '阵容数据无效' };
   const used = slots.filter(Boolean);
   if (used.some(id => !owned.has(id))) return { ok: false, msg: '含未拥有武将' };
   if (new Set(used).size !== used.length) return { ok: false, msg: '武将重复' };
+  if (used.length < 1) return { ok: false, msg: '至少上阵 1 人' };
+  const H2 = __domain_heroes;
+  if (used.some(id => !H2.getHero(id))) return { ok: false, msg: '含无效武将' };
   return { ok: true };
 }
 export { recommendFormation, validatePreset };

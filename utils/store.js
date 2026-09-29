@@ -289,6 +289,12 @@ function checkWeeklyReset(today) {
   ['kills', 'stars', 'threeClaimed'].forEach(f => {
     if (state.hall && state.hall[f]) Object.keys(state.hall[f]).forEach(k => { if (k.indexOf(weekKey) !== 0) delete state.hall[f][k]; });
   });
+  if (state.formationPresets) {
+    Object.keys(state.formationPresets).forEach(k => {
+      const p = state.formationPresets[k];
+      if (!p || !Array.isArray(p.slots) || p.slots.length !== 5) delete state.formationPresets[k];
+    });
+  }
 }
 function bumpWeek(key, n) {
   if (!state.week || !state.week.counters) return;
@@ -418,7 +424,7 @@ function formationPresetsInfo() {
   const presets = state.formationPresets || {};
   const keys = Object.keys(presets).sort();
   return { max: C.FORMATION_PRESETS_MAX, count: keys.length,
-    list: keys.map(k => ({ key: k, name: presets[k].name, slots: presets[k].slots.slice() })) };
+    list: keys.filter(k => presets[k] && Array.isArray(presets[k].slots)).map(k => ({ key: k, name: presets[k].name || '阵型', slots: presets[k].slots.slice() })) };
 }
 function saveFormationPreset(key, name) {
   return withSavedMutation(() => {
@@ -700,10 +706,11 @@ function normalizeState(s) {
   s.hall.titlesClaimed = s.hall.titlesClaimed || [];
   if (!Array.isArray(s.replays)) s.replays = [];
   s.replays = s.replays.slice(-((C.HALL && C.HALL.replayCap) || 5));
-  s.formationPresets = s.formationPresets || {};
+  if (!s.formationPresets || typeof s.formationPresets !== 'object' || Array.isArray(s.formationPresets)) s.formationPresets = {};
   Object.keys(s.formationPresets).forEach(k => {
     const p = s.formationPresets[k];
-    if (!p || !Array.isArray(p.slots) || p.slots.length !== 5) delete s.formationPresets[k];
+    if (!p || typeof p !== 'object' || !Array.isArray(p.slots) || p.slots.length !== 5) { delete s.formationPresets[k]; return; }
+    if (typeof p.name !== 'string' || !p.name) p.name = '阵型';
   });
   if (typeof s.seals !== 'number') s.seals = 0;
   s.res.univSr = Math.max(0, Math.floor(Number(s.res.univSr) || 0));
