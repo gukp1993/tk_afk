@@ -145,6 +145,16 @@ const BOUNTY = {
   ]
 };
 
+// 集市神秘商人：每日按（日期+建号日）确定性刷 2 件，当日有效、各限购 1。
+// 不上招募令折扣（保"单抽 100/十连 900"定价锚）、不上精铁（保 30 天满星日历）。
+const ROAMER_POOL = [
+  { id: 'r_scroll5', name: '招募令 ×5', cur: 'gem', price: 450, give: { scroll: 5 } },
+  { id: 'r_srbox', name: 'SR 军械自选箱', cur: 'gem', price: 300, give: { armoryBox: 2 } },
+  { id: 'r_ssrbox', name: 'SSR 军械自选箱', cur: 'gem', price: 900, give: { armoryBox: 3 } },
+  { id: 'r_shard30', name: '通用碎片 ×30', cur: 'gem', price: 150, give: { shard: 30 } },
+  { id: 'r_token10', name: '演武令 ×10', cur: 'gem', price: 100, give: { token: 10 } }
+];
+
 // 激励视频广告：按平台配置广告位 ID（微信 wechat / 抖音 douyin）
 // 对应平台为空时使用内置模拟广告（测试模式，流程完整可验证）
 // 正式变现：微信开通流量主 / 抖音开通星图变现后，把各自广告位 ID 填入对应字段即切换为真广告
@@ -189,6 +199,6 @@ module.exports = {
   LEVEL_CAPS, MAX_LEVEL, PLAYER_LEVEL, BATTLE_XP, AUTO_BATTLE, FOOD_VALUE, DUPE_GOLD,
   goldCost, expCost, idleRates, IDLE_CAP_HOURS, GEM_IDLE, ARMORY_IRON_PER_HOUR,
   FAST_AD, FAST_PAID,
-  GACHA, factionBonus, FORMATION_ROWS, BATTLE, ARENA, SEVEN_DAY, TRAINING_DAILY_CAP, BOUNTY, AD,
+  GACHA, factionBonus, FORMATION_ROWS, BATTLE, ARENA, SEVEN_DAY, TRAINING_DAILY_CAP, BOUNTY, ROAMER_POOL, AD,
   FIRST_STAGE_END, CAMPAIGN_DIFFICULTY, CAMPAIGN_MILESTONES
 };

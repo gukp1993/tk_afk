@@ -39,6 +39,7 @@ function defaultState() {
     summon: { total: 0, pity: { sinceSsr: 0 } },
     sevenDay: { start: F.todayStr(), claimed: [] },
     bounty: { day: '', list: [] },
+    roamer: { day: '', ids: [], bought: {} },
     vouchers: { sr: 0, ssr: 0 },
     heroProgress: { starterMengdaGranted: true, firstWinChoiceGranted: false, firstWinChoicePending: false, chapterOneVoucherGranted: false },
     battle: { nextSeq: 1, pending: null, lastSettled: null },
@@ -341,6 +342,9 @@ function normalizeState(s) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(s.sevenDay.start || '')) s.sevenDay.start = F.todayStr();
   s.bounty = s.bounty || { day: '', list: [] };
   if (!Array.isArray(s.bounty.list)) s.bounty.list = [];
+  s.roamer = s.roamer || { day: '', ids: [], bought: {} };
+  if (!Array.isArray(s.roamer.ids)) s.roamer.ids = [];
+  s.roamer.bought = s.roamer.bought || {};
   s.lastSeenTs = Math.max(0, Math.floor(Number(s.lastSeenTs) || 0));
   s.heroProgress = s.heroProgress || { starterMengdaGranted: true, firstWinChoiceGranted: false, firstWinChoicePending: false, chapterOneVoucherGranted: false };
   s.battle = s.battle || { nextSeq: 1, pending: null, lastSettled: null };
@@ -408,6 +412,7 @@ function checkDailyReset() {
     state.arena.attempts = C.ARENA.DAILY;
   }
   if (!state.bounty || state.bounty.day !== today) refreshBounties(today);
+  if (!state.roamer || state.roamer.day !== today) refreshRoamer(today);
   if (state.fast.day !== today) state.fast = { day: today, count: 0 };
   if (state.buyLog.day !== today) state.buyLog = { day: today, buys: {} };
   if (state.ads.day !== today) state.ads = { day: today, counts: {} };
@@ -1423,18 +1428,24 @@ function pickBountyTask() {
   for (const t of pool) { roll -= t.weight; if (roll < 0) return t; }
   return pool[pool.length - 1];
 }
-// 刷新时先自动补发"已完成未领取"的旧悬赏，奖励不因跨日丢失。
+// 刷新时：到期未领的旧单自动补发；进行中单原样结转（不跨日作废）；已领丢弃；新单补足到 slots。
 function refreshBounties(today) {
   const old = state.bounty && Array.isArray(state.bounty.list) ? state.bounty.list : [];
+  const now = Date.now();
+  const carried = [];
   old.forEach(b => {
-    if (b && b.heroId && !b.claimed && b.dispatchedAt &&
-        Date.now() - b.dispatchedAt >= b.hours * 3600000) {
-      applyReward(b.reward);
-    }
+    if (!b || !b.heroId || b.claimed) return;
+    if (now - b.dispatchedAt >= b.hours * 3600000) applyReward(b.reward);
+    else carried.push(b);
   });
-  const list = [];
-  for (let i = 0; i < C.BOUNTY.slots; i++) {
-    const t = pickBountyTask();
+  const list = carried.slice();
+  // 前 3 单从池中不重复抽取，最后一单加权放回（池仅 3 种，允许 1 张重复）
+  const pool = C.BOUNTY.pool;
+  const shuffled = pool.slice().sort(() => Math.random() - 0.5);
+  while (list.length < C.BOUNTY.slots) {
+    const t = list.length < C.BOUNTY.slots - 1
+      ? shuffled[list.length % shuffled.length]
+      : pickBountyTask();
     list.push({ hours: t.hours, name: t.name, reward: bountyScaleReward(t.reward),
       heroId: null, dispatchedAt: 0, claimed: false });
   }
@@ -1485,6 +1496,48 @@ function claimBounty(idx) {
   });
 }
 
+// ---------- 神秘商人 ----------
+// 每日按（日期+建号日）确定性刷 2 件；当日有效、各限购 1；不上招募令折扣与精铁（护定价锚与满星日历）。
+function refreshRoamer(today) {
+  const seedStr = today + ':' + (state.createdAt || 0);
+  let h = 2166136261;
+  for (let i = 0; i < seedStr.length; i++) { h ^= seedStr.charCodeAt(i); h = Math.imul(h, 16777619); }
+  const pick = (salt) => {
+    let x = (h ^ Math.imul(salt, 2654435761)) >>> 0;
+    x = (Math.imul(x, 1103515245) + 12345) >>> 0;
+    return x % C.ROAMER_POOL.length;
+  };
+  const a = pick(1);
+  const bRaw = pick(2);
+  const b = bRaw === a ? (bRaw + 1) % C.ROAMER_POOL.length : bRaw;
+  state.roamer = { day: today, ids: [C.ROAMER_POOL[a].id, C.ROAMER_POOL[b].id], bought: {} };
+}
+function roamerInfo() {
+  checkDailyReset();
+  const r = state.roamer;
+  const goods = (r.ids || []).map(id => C.ROAMER_POOL.find(g => g.id === id)).filter(Boolean)
+    .map(g => Object.assign({}, g, { bought: !!r.bought[g.id] }));
+  return { day: r.day, goods };
+}
+function buyRoamer(goodId) {
+  return withSavedMutation(() => {
+    roamerInfo();
+    const r = state.roamer;
+    if (r.day !== F.todayStr()) return { ok: false, msg: '商人已离开，明日请早' };
+    const good = C.ROAMER_POOL.find(g => g.id === goodId);
+    if (!good || !r.ids.includes(goodId)) return { ok: false, msg: '没有该商品' };
+    if (r.bought[goodId]) return { ok: false, msg: '今日已购' };
+    if (state.res[good.cur] < good.price) return { ok: false, msg: CURRENCY_NAME[good.cur] + '不足' };
+    state.res[good.cur] -= good.price;
+    r.bought[goodId] = 1;
+    applyReward(good.give);
+    if (good.give.armoryBox) {
+      state.armory.boxes[good.give.armoryBox] = (state.armory.boxes[good.give.armoryBox] || 0) + 1;
+    }
+    return { ok: true, name: good.name };
+  });
+}
+
 // ---------- 七日目标 ----------
 // 以首日（存档创建或老档更新当日起算）为锚的 7 天任务轨；漏领可补（窗口内 day <= 当天均可领）。
 function dayDiffStr(fromStr, toStr) {
@@ -1493,12 +1546,14 @@ function dayDiffStr(fromStr, toStr) {
 }
 function sevenDayInfo() {
   checkDailyReset();
-  const cur = Math.min(7, dayDiffStr(state.sevenDay.start, F.todayStr()) + 1);
+  const diff = dayDiffStr(state.sevenDay.start, F.todayStr());
+  const cur = Math.min(7, diff + 1);
+  const windowOpen = diff < 7; // 补领窗口：开服 7 天内，之后未领的作废
   const claimed = state.sevenDay.claimed || [];
   const list = C.SEVEN_DAY.map(d => ({
     day: d.day, label: d.label,
     claimed: claimed.indexOf(d.day) >= 0,
-    claimable: d.day <= cur && claimed.indexOf(d.day) < 0,
+    claimable: windowOpen && d.day <= cur && claimed.indexOf(d.day) < 0,
     locked: d.day > cur
   }));
   return { start: state.sevenDay.start, cur, list, allDone: claimed.length >= 7, canClaim: list.some(x => x.claimable) };
@@ -1633,7 +1688,7 @@ module.exports = {
   winCampaign, campaignRewardPreview, winTower, arenaFight, beginBattle, settleBattle,
   markStorySeen, isStorySeen, retroGrants, dismissRetroGrants,
   questList, claimQuest, activePoints, claimActiveChest, claimAllDailyRewards, claimFreeRewards, bumpQuest, applyReward,
-  sevenDayInfo, claimSevenDay, bountyInfo, dispatchBounty, claimBounty,
+  sevenDayInfo, claimSevenDay, bountyInfo, dispatchBounty, claimBounty, roamerInfo, buyRoamer,
   interruptBattle, setAutoBattleSpeed,
   buyGood, CURRENCY_NAME,
   adCount, adBump

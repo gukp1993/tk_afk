@@ -258,9 +258,9 @@ export function journey(ctx: ScreenContext) {
     const bt=store.bountyInfo();
     U.panel('JourneyBounty',0,-75,682,130,bt.canClaim?tone('#3a2c17'):tone('#312218'),10,bt.canClaim?GOLD:tone('#a17b40'));
     U.text('JourneyBountyGlyph','赏',-272,-60,59,49,GOLD);
-    U.text('JourneyBountyName','悬赏派遣',-198,-60,180,28,LIGHT);
-    U.text('JourneyBountyDesc','派武将出征，时辰到领赏 · 每日 4 单',-58,-95,430,18,tone('#ad9977'));
-    U.text('JourneyBountyStat',bt.canClaim?`有赏可领 · 待派遣 ${bt.idleCount}`:bt.idleCount<4?`进行中 · 待派遣 ${bt.idleCount}`:'今日 4 单待派遣',-60,-58,420,19,GOLD);
+    U.text('JourneyBountyName','悬赏派遣',-150,-60,180,28,LIGHT);
+    U.text('JourneyBountyDesc','派武将出征，到时领赏 · 每日 4 单',-10,-95,430,18,tone('#ad9977'));
+    U.text('JourneyBountyStat',bt.canClaim?`有赏可领 · 待派遣 ${bt.idleCount}`:bt.idleCount>0?`待派遣 ${bt.idleCount} 单`:bt.list.some((b:any)=>b.state==='running')?'出征途中 · 静候归来':'今日已完成',-10,-58,430,19,GOLD);
     U.tap('JourneyBountyTap',0,-75,682,130,()=>ctx.go('bounty'));
     U.text('JourneyVersion','「挂机定三国」放置卡牌 · v2.0.0',0,-168,580,18,tone('#ad9977'));
     U.text('JourneyGuide','挑战群英塔获取资源，在演武场切磋阵容',0,-196,620,18,tone('#ad9977'));
@@ -357,10 +357,29 @@ export function shop(ctx: ScreenContext) {
       if(s.vouchers.ssr)U.button('UseSsr',`使用 SSR 自选券 ×${s.vouchers.ssr}`,171,336,317,48,()=>{shopPickRarity=4;ctx.show('shop');},palette.gold);
       top=303;
     }
-    const height=top+443,contentH=Math.max(height,goods.length*101+62);
+    const roamer=store.roamerInfo();
+    const roamerRows=roamer.goods.length;
+    const roamerBlockH=roamerRows?60+roamerRows*101:0;
+    const height=top+443,contentH=Math.max(height,goods.length*101+62+roamerBlockH);
     U.scroll('ShopGoods',0,(top-443)/2,680,height,contentH,(V)=>{
+      let row=0;
+      if(roamerRows){
+        V.text('RoamerTitle','神秘商人 · 今日限量（跨日换新）',0,contentH/2-roamerBlockH+30,600,22,GOLD);
+        roamer.goods.forEach((good:any,ri:number)=>{
+          const y=contentH/2-51-row*101;row++;
+          V.panel('RoamerGood'+ri,0,y,662,92,tone('#3a2c17'),8,GOLD);
+          V.text('RoamerName'+ri,good.name,-150,y+19,334,26,LIGHT);
+          V.text('RoamerLimit'+ri,good.bought?'今日已购 · 明日换新':'限量 1 件 · 今日有效',-187,y-21,300,18,good.bought?tone('#6f8a5f'):tone('#d9a94e'));
+          V.button('RoamerBuy'+ri,good.bought?'已购':`${fmt.fmtNum(good.price)} ${store.CURRENCY_NAME[good.cur]}`,233,y,198,62,()=>{
+            if(good.bought)return;
+            ctx.confirm('确认购买',`向神秘商人购买 ${good.name}；消耗 ${fmt.fmtNum(good.price)} ${store.CURRENCY_NAME[good.cur]}。`,()=>{
+              ctx.tell(store.buyRoamer(good.id),`购得 ${good.name}`);
+            });
+          },good.bought||s.res[good.cur]<good.price?tone('#423022'):palette.red);
+        });
+      }
       goods.forEach((good:any,i:number)=>{
-        const y=contentH/2-51-i*101,bought=s.buyLog.buys[good.id]||0,sold=bought>=good.limit,afford=s.res[good.cur]>=good.price;
+        const y=contentH/2-51-(row+i)*101,bought=s.buyLog.buys[good.id]||0,sold=bought>=good.limit,afford=s.res[good.cur]>=good.price;
         V.panel('ShopGood'+i,0,y,662,92,tone('#312218'),8,tone('#795b34'));
         V.text('ShopName'+i,good.name,-150,y+19,334,26,good.give.ssrPick?GOLD:LIGHT);
         V.text('ShopLimit'+i,`限购 ${bought}/${good.limit}`,-187,y-21,249,18,tone('#ad9977'));
@@ -374,7 +393,7 @@ export function shop(ctx: ScreenContext) {
           });
         },sold||!afford?tone('#423022'):palette.gold);
       });
-      V.text('ShopTip','满星后的同名卡可兑换碎片；关闭自选窗口不会消耗自选券。',0,contentH/2-51-goods.length*101-16,645,16,tone('#ad9977'));
+      V.text('ShopTip','满星后的同名卡可兑换碎片；关闭自选窗口不会消耗自选券。',0,contentH/2-51-(row+goods.length)*101-16,645,16,tone('#ad9977'));
     });
     U.button('ShopBack','返 回',0,-493,298,56,()=>{shopPickRarity=0;ctx.back('journey');},palette.paperDark);
     if(shopPickRarity){
@@ -409,27 +428,27 @@ export function formation(ctx: ScreenContext) {
   ctx.title('编 队');
   U.text('FormationBackTop','‹ 返回',-287,609,132,22,GOLD);
   U.tap('FormationBackTopTap',-287,609,138,49,()=>ctx.back('campaign'));
-  U.panel('FormationSummary',0,514,682,120,tone('#342518'),11,GOLD);
+  U.panel('FormationSummary',0,514,682,112,tone('#342518'),11,GOLD);
   U.text('FormationSummaryTitle','出征编队',-204,549,260,28,GOLD);
   U.text('FormationPower',`总战力 ${fmt.fmtNum(store.teamPower())}`,-202,514,270,25,GOLD);
   U.text('FormationFaction',bonus.atk>0?`同阵营 ×${bonus.atk>=.18?5:bonus.atk>=.12?4:3}：攻击/生命 +${Math.round(bonus.atk*100)}%`:'同阵营 3/4/5 人激活全队加成',-181,478,355,18,tone('#ad9977'));
   U.button('FormationRecommend','推荐布阵',244,514,170,55,()=>{
     formationRecommended=recommendFormation(store.allRoster());ctx.show('formation');
   },palette.gold);
-  U.text('FormationBackLabel','后 排（远程输出 / 辅助）',0,440,540,19,tone('#ad9977'));
-  U.text('FormationFrontLabel','前 排（承伤 / 近战）',0,245,540,19,tone('#ad9977'));
-  U.line('FormationDivider',[[-250,267],[250,267]],2,tone('#766349'));
+  U.text('FormationBackLabel','后 排（远程输出 / 辅助）',0,444,540,19,tone('#ad9977'));
+  U.text('FormationFrontLabel','前 排（承伤 / 近战）',0,230,540,19,tone('#ad9977'));
+  U.line('FormationDivider',[[-250,252],[250,252]],2,tone('#766349'));
   s.formation.forEach((id: string|null,i: number)=>{
-    const x=i<3?-216+i*216:-108+(i-3)*216,y=i<3?162:362;
+    const x=i<3?-216+i*216:-108+(i-3)*216,y=i<3?138:350;
     const hero=id?heroes.getHero(id):null;
-    U.panel('Slot'+i,x,y,188,172,tone('#322319'),9,id?GOLD:tone('#827563'));
-    U.heroIcon('SlotAvatar'+i,x,y+25,145,105,hero?{surname:hero.surname||hero.name[0],faction:hero.faction,rarity:hero.rarity}:{surname:'+'});
-    U.text('SlotName'+i,hero?.name||'点击上阵',x,y-49,165,21,GOLD);
-    U.text('SlotLevel'+i,hero?`Lv.${store.playerLevel()}`:'',x,y-71,150,16,tone('#ad9977'));
-    U.tap('SlotTap'+i,x,y,188,172,()=>{ctx.selectedFormationSlot=i;ctx.go('formationPick');});
+    U.panel('Slot'+i,x,y,188,164,tone('#322319'),9,id?GOLD:tone('#827563'));
+    U.heroIcon('SlotAvatar'+i,x,y+22,145,100,hero?{surname:hero.surname||hero.name[0],faction:hero.faction,rarity:hero.rarity}:{surname:'+'});
+    U.text('SlotName'+i,hero?.name||'点击上阵',x,y-47,165,21,GOLD);
+    U.text('SlotLevel'+i,hero?`Lv.${store.playerLevel()}`:'',x,y-69,150,16,tone('#ad9977'));
+    U.tap('SlotTap'+i,x,y,188,164,()=>{ctx.selectedFormationSlot=i;ctx.go('formationPick');});
   });
-  U.text('FormationHelp1','点击已上阵武将可更换；阵营克制：魏→蜀→吴→群→魏',0,60,650,18,tone('#ad9977'));
-  U.text('FormationHelp2','克制方伤害 +25%',0,35,600,18,tone('#ad9977'));
+  U.text('FormationHelp1','点击已上阵武将可更换；阵营克制：魏→蜀→吴→群→魏',0,44,650,18,tone('#ad9977'));
+  U.text('FormationHelp2','克制方伤害 +25%',0,22,600,18,tone('#ad9977'));
   const bondsNow=store.activeBonds(),allBonds=heroes.BONDS||[],mods=store.bondMods();
   U.panel('BondsPanel',0,-258,682,436,tone('#342518'),11,GOLD);
   U.text('BondsTitle',`三国羁绊 · 已激活 ${bondsNow.length}/${allBonds.length}`,-160,-70,400,24,GOLD);
@@ -595,7 +614,7 @@ export function bountyView(ctx: ScreenContext) {
       b.state==='done'?tone('#3a2c17'):b.state==='claimed'?tone('#26301f'):tone('#312218'),9,
       b.state==='done'?GOLD:tone('#795b34'));
     U.text('BountyName'+i,b.name,-220,y+24,220,24,GOLD);
-    U.text('BountyHours'+i,`${b.hours} 时辰`,210,y+24,120,19,tone('#ad9977'));
+    U.text('BountyHours'+i,`${b.hours} 小时`,210,y+24,120,19,tone('#ad9977'));
     U.text('BountyReward'+i,reward,-160,y-14,420,18,LIGHT);
     const heroName=b.heroId?(heroes.getHero(b.heroId)?.name||b.heroId):'';
     if(b.state==='open'){
@@ -605,7 +624,7 @@ export function bountyView(ctx: ScreenContext) {
       U.text('BountyAct'+i,`${heroName} · 归来还需 ${h}时${m}分`,150,y-38,360,18,tone('#ad9977'));
     }else if(b.state==='done'){
       U.button('BountyAct'+i,'领 赏',240,y-38,150,52,()=>ctx.tell(store.claimBounty(i),`已领赏：${b.name}`),palette.red);
-      U.text('BountyHero'+i,heroName,-390,y-38,180,17,tone('#ad9977'));
+      U.text('BountyHero'+i,heroName,-220,y-38,220,17,tone('#ad9977'));
     }else{
       U.text('BountyAct'+i,'已完成 · 已领赏',150,y-38,360,18,tone('#6f8a5f'));
     }
@@ -616,10 +635,12 @@ export function bountyView(ctx: ScreenContext) {
     U.tap('BountyPickShadeTap',0,0,720,1280,()=>{bountyPickIdx=-1;ctx.show('bounty');});
     U.panel('BountyPickPanel',0,0,658,974,tone('#251b14'),12,GOLD);
     U.tap('BountyPickBlock',0,0,658,974,()=>{});
-    U.text('BountyPickTitle','选择出征武将',0,427,560,30,GOLD);
-    U.text('BountyPickHint','出征不影响出战阵容；同一武将同时只能接一单',0,388,560,17,tone('#ad9977'));
-    const ids=Object.keys(s.roster).filter(id=>s.roster[id]&&heroes.getHero(id));
-    const slice=ids.slice(0,60);
+    const ids=Object.keys(s.roster).filter(id=>s.roster[id]&&heroes.getHero(id))
+      .sort((a:string,b:string)=>(heroes.getHero(b).rarity-heroes.getHero(a).rarity)||a.localeCompare(b));
+    const slice=ids;
+    U.text('BountyPickTitle',`选择出征武将 · 可派 ${ids.length} 人`,0,427,560,30,GOLD);
+    const pickBounty=store.bountyInfo().list[pickIdx];
+    U.text('BountyPickHint',pickBounty?`${pickBounty.name} · ${pickBounty.hours} 小时 · ${Object.entries(pickBounty.reward).map(([k,n]:any)=>`${store.CURRENCY_NAME[k]||k}×${fmt.fmtNum(n)}`).join(' · ')}`:'出征不影响出战阵容；同一武将同时只能接一单',0,388,600,17,tone('#ad9977'));
     U.scroll('BountyPickScroll',0,-30,600,760,Math.max(760,slice.length*92),V=>{
       slice.forEach((id,j)=>{
         const hero=heroes.getHero(id),y=Math.max(760,slice.length*92)/2-46-j*92;
@@ -632,7 +653,7 @@ export function bountyView(ctx: ScreenContext) {
           V.button('BountyHeroGo'+j,'派遣',225,y,120,54,()=>{
             const r=store.dispatchBounty(pickIdx,id);
             bountyPickIdx=-1;
-            ctx.tell(r,r.ok?'已派遣出征':'');
+            ctx.tell(r,r.ok?`${heroes.getHero(id).name} 已派遣出征`:'');
           },palette.gold);
         }
       });

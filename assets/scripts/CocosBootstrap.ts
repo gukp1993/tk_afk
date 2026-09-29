@@ -40,6 +40,7 @@ export class CocosBootstrap extends Component implements ScreenContext {
   public storyStage = 1;
   public auto = false;
   public autoStopPending = false;
+  private bountyRefresh = 0;
   private autoSession!: AutoBattleSession;
   private adPlacement = '';
   private adSeconds = 0;
@@ -102,6 +103,11 @@ export class CocosBootstrap extends Component implements ScreenContext {
         battleScreens.refreshBattleView(this);
       }
     } else if (this.auto) this.autoAction(this.autoSession.tick(dt));
+    // 悬赏页停留时周期重绘：倒计时走动、到点自动变"领赏"
+    if (this.page === 'bounty') {
+      this.bountyRefresh += dt;
+      if (this.bountyRefresh > 10) { this.bountyRefresh = 0; this.show('bounty'); }
+    }
   }
 
   public show(page: Page) {

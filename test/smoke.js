@@ -233,6 +233,27 @@ s4b.bounty.day = '2000-01-01'; // 强制跨日刷新
 store4b.checkDailyReset();
 check('跨日刷新自动补发未领悬赏', s4b.res.gold >= 1000);
 check('刷新后新 4 单', store4b.bountyInfo().list.length === 4);
+// 进行中悬赏跨日结转（不作废）
+const bt2 = store4b.bountyInfo();
+const openIdx2 = bt2.list.findIndex(b => b.state === 'open');
+store4b.dispatchBounty(openIdx2, 'guanyu');
+s4b.bounty.day = '2000-01-02';
+store4b.checkDailyReset();
+check('进行中悬赏跨日结转', store4b.bountyInfo().list.some(b => b.heroId === 'guanyu' && b.state === 'running'));
+// 七日补领窗口：开服 7 天后未领作废
+s4b.sevenDay.start = '2000-01-01';
+check('超窗后七日不可补领', store4b.sevenDayInfo().list.every(d => !d.claimable) && store4b.claimSevenDay(2).ok === false);
+// 神秘商人：确定性每日 2 件、限购、军械箱入账
+const rm1 = store4b.roamerInfo();
+const rm2 = store4b.roamerInfo();
+check('商人每日 2 件且确定性', rm1.goods.length === 2 && JSON.stringify(rm1.ids) === JSON.stringify(rm2.ids));
+check('商人不卖招募令折扣/精铁', rm1.goods.every(g => !g.give.iron && !(g.give.scroll && g.price / g.give.scroll < 90)));
+const rmBuy = store4b.buyRoamer(rm1.goods[0].id);
+check('商人购买成功', rmBuy.ok);
+check('商人重复购买拒绝', store4b.buyRoamer(rm1.goods[0].id).ok === false);
+if (rm1.goods[0].give.armoryBox) {
+  check('商人军械箱入账', s4b.armory.boxes[rm1.goods[0].give.armoryBox] >= 1);
+}
 // 时钟回拨防护：lastSeenTs 在未来时当日不重置
 s4b.arena.attempts = 2;
 s4b.lastSeenTs = REAL_NOW() + 86400000;
