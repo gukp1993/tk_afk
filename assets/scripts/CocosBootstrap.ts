@@ -66,6 +66,7 @@ export class CocosBootstrap extends Component implements ScreenContext {
     game.on(Game.EVENT_HIDE, this.onHide, this);
     game.on(Game.EVENT_SHOW, this.onShow, this);
     this.show('campaign');
+    this.hookDiag();
   }
   onDestroy() {
     game.off(Game.EVENT_HIDE, this.onHide, this);
@@ -137,6 +138,12 @@ export class CocosBootstrap extends Component implements ScreenContext {
     }
   }
 
+  private diagHooked = false;
+  private hookDiag() {
+    if (this.diagHooked) return;
+    this.diagHooked = true;
+    (globalThis as any).__tkDiag = () => store.diagSnapshot();
+  }
   public show(page: Page) {
     this.page = page;
     for (const child of this.content.children.slice()) child.destroy();

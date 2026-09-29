@@ -1434,4 +1434,21 @@ const storeP2 = freshStore(); storeP2.load();
   check('BW6 未传 borrowInfo 时无借将条目且不崩', rx2 && !rx2.items.some(x => x.key === 'borrow'));
 }
 
+
+// diag 快照（研讨会五批次 3）：只读聚合
+{
+  global.wx._map.delete(SAVE_KEY); // 测试卫生：防前置块遗留存档
+  const storeDG2 = freshStore(); storeDG2.load();
+  const sDG2 = storeDG2.getState();
+  sDG2.roster.liaohua.drill = 2;
+  sDG2.arena.wins = 7;
+  const snap = storeDG2.diagSnapshot();
+  check('DIAG1 快照字段齐全且只读派生', snap.playerLevel === sDG2.player.level
+    && snap.currencies.gem === sDG2.res.gem && snap.systems.drill.totalLevels === 2
+    && snap.systems.arena.wins === 7 && snap.systems.roster.owned === Object.keys(sDG2.roster).length);
+  const before = JSON.stringify(sDG2);
+  storeDG2.diagSnapshot();
+  check('DIAG2 快照无副作用', JSON.stringify(sDG2) === before);
+}
+
 console.log('\nsmoke: ' + passed + ' passed, ' + failed + ' failed');process.exit(failed ? 1 : 0);

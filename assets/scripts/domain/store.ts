@@ -2688,6 +2688,35 @@ function beginWeekBoss() {
   return beginBattle({ mode: 'weekboss', index: 1, referenceLevel: state.player.level });
 }
 
+// 诊断快照（研讨会五批次 3）：只读聚合货币存量与各系统参与度，供验收回传；无副作用
+function diagSnapshot() {
+  checkDailyReset();
+  const drillLevels = Object.values(state.roster || {}).reduce((sum, r) => sum + (r.drill || 0), 0);
+  const awakened = Object.values(state.roster || {}).filter(r => (r.awaken || 0) > 0).length;
+  const tacticSum = Object.values(state.roster || {}).reduce((sum, r) => sum + (r.tacticLv || 0), 0);
+  return {
+    ts: new Date().toISOString(), v: state.v, playerLevel: state.player.level,
+    campaign: { cleared: state.campaign.cleared, stars: Object.keys(state.campaign.stars || {}).length },
+    currencies: { gold: state.res.gold, gem: state.res.gem, scroll: state.res.scroll, token: state.res.token, shard: state.res.shard, iron: state.res.iron, soul: state.res.soul, seals: state.seals || 0, univSsr: state.res.univSsr || 0, univSr: state.res.univSr || 0 },
+    qualityShards: Object.assign({}, state.qualityShards),
+    systems: {
+      arena: { points: state.arena.points, wins: state.arena.wins, weekKey: state.arena.weekKey },
+      tower: { best: state.tower.best },
+      expedition: { best: (state.week && state.week.trial && state.week.trial.best) || 0 },
+      dungeon: { bestGold: state.dungeon.bestGold, bestTrain: state.dungeon.bestTrain, runsToday: state.dungeon.runs },
+      weekBoss: { weekId: state.weekBoss.weekId, attempts: state.weekBoss.attempts, bestPct: state.weekBoss.bestPct },
+      drill: { totalLevels: drillLevels, trainedHeroes: Object.values(state.roster || {}).filter(r => (r.drill || 0) > 0).length },
+      awaken: { awakened, tacticSum },
+      borrow: { day: state.borrow.day, heroId: state.borrow.heroId },
+      roster: { owned: Object.keys(state.roster).length },
+      sevenDayClaimed: (state.sevenDay.claimed || []).length,
+      fourteenClaimed: (state.fourteenDay && state.fourteenDay.claimed || []).length,
+      achvClaimed: Object.keys(state.achv && state.achv.claimed || {}).length,
+      weekly: { sealsEarned: (state.week && state.week.sealsEarned) || 0, questsClaimed: (state.week && state.week.questClaimed || []).length }
+    }
+  };
+}
+
 // 借将助战（研讨会五批次 1）：助将位按周键轮换；每日 1 次借用；编队已含则无需借
 function borrowOfferedHero() {
   const weekId = F.isoWeekKey();
@@ -2920,7 +2949,7 @@ export {
   winCampaign, campaignRewardPreview, winTower, arenaFight, arenaSeasonInfo, arenaBoardInfo, summonGapInfo, beginBattle, settleBattle, campaignStarChestInfo, claimStarChests,
   markStorySeen, isStorySeen, retroGrants, dismissRetroGrants, dismissReturnPending,
   questList, claimQuest, activePoints, claimActiveChest, claimAllDailyRewards, claimFreeRewards, bumpQuest, applyReward,
-  sevenDayInfo, claimSevenDay, fourteenDayInfo, claimFourteenDay, tutorialSeen, markTutorialSeen, dungeonInfo, weekBossInfo, beginWeekBoss, borrowInfo, borrowHero, dismissBorrow, bountyInfo, bountyPayout, dispatchBounty, claimBounty, roamerInfo, buyRoamer, takeBountyGrantsNotice,
+  sevenDayInfo, claimSevenDay, fourteenDayInfo, claimFourteenDay, tutorialSeen, markTutorialSeen, dungeonInfo, weekBossInfo, beginWeekBoss, borrowInfo, borrowHero, dismissBorrow, diagSnapshot, bountyInfo, bountyPayout, dispatchBounty, claimBounty, roamerInfo, buyRoamer, takeBountyGrantsNotice,
   interruptBattle, setAutoBattleSpeed,
   buyGood, CURRENCY_NAME,
   adCount, adBump
