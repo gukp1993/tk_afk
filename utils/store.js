@@ -29,7 +29,6 @@ function defaultState() {
     campaign: { cleared: 0, storySeen: {}, milestones: {}, retroGrants: null, retroGrantsSeen: false, stars: {}, starChests: {} },
     tower: { best: 0 },
     arena: { points: 1000, wins: 0, losses: 0, attempts: C.ARENA.DAILY, rankReached: {} },
-    equips: {}, nextEquip: 1,
     armory: createArmory(),
     idle: { last: Date.now(), gold: 0, gem: 0, scroll: 0, ironAcc: 0 },
     gemDay: { day: F.todayStr(), claimedGem: 0 },
@@ -59,7 +58,7 @@ function defaultState() {
     lastSeenTs: Date.now()
   };
 }
-function newHero(id) { return { id, star: 0, cards: 0, lockedCards: false, equip: { weapon: null, armor: null, helm: null, boots: null } }; }
+function newHero(id) { return { id, star: 0, cards: 0, lockedCards: false }; }
 function createArmory() {
   const unlocked = {}, selected = {}, slotStars = {};
   IT.ARMORY_SLOTS.forEach(s => {
@@ -773,7 +772,6 @@ function normalizeState(s) {
   Object.keys(s.roster).forEach(id => {
     const h = s.roster[id]; if (!h) return;
     delete h.lv;
-    if (!h.equip) h.equip = { weapon: null, armor: null, helm: null, boots: null };
     if (!Number.isFinite(h.star)) h.star = 0;
     if (!Number.isFinite(h.cards)) h.cards = 0;
     h.awaken = Math.max(0, Math.min(C.AWAKEN.max, Math.floor(Number(h.awaken) || 0)));
@@ -1191,9 +1189,6 @@ function rollArmoryDrop(cleared) {
   const pool = IT.CATALOG.filter(x => x.q === q);
   return grantArmoryItem(pool[Math.floor(Math.random()*pool.length)].id);
 }
-function levelUp(id, times) {
-  return 0;
-}
 // 兵魂点：同阵营其他武将的卡
 function foodPoints(exceptId) {
   let pts = 0;
@@ -1361,106 +1356,6 @@ function enemyUnits(units) {
       isBoss: u.isBoss
     }, 'B' + i, u.row);
   });
-}
-
-// ---------- 装备 ----------
-const FACTION_KEYS = ['wei', 'shu', 'wu', 'qun'];
-function addEquip(q, slot) {
-  const id = 'e' + (state.nextEquip++);
-  const inst = { id, q, slot, stars: 0, faction: null };
-  // SR/SSR 掉落自带阵营（对标 AFK 对属装备）
-  if (q >= IT.FACTIONED_MIN_Q) inst.faction = FACTION_KEYS[Math.floor(Math.random() * FACTION_KEYS.length)];
-  state.equips[id] = inst;
-  if (Object.keys(state.equips).length > 300) {
-    // 自动清理多余 N 品装备（R 及以上是升星狗粮，保留）
-    const ids = Object.keys(state.equips).filter(x => !isEquipped(x) && state.equips[x].q === 1 && !state.equips[x].stars);
-    for (const i of ids.slice(0, ids.length - 300 + 60)) delete state.equips[i];
-  }
-  return id;
-}
-function isEquipped(instId) {
-  return Object.keys(state.roster).some(id => Object.keys(state.roster[id].equip || {}).some(s => state.roster[id].equip[s] === instId));
-}
-function equipInventory() {
-  return Object.keys(state.equips).map(k => state.equips[k]).filter(e => !isEquipped(e.id));
-}
-function equipTo(heroId, slot, instId) {
-  const own = state.roster[heroId];
-  if (!own) return;
-  if (own.equip[slot]) {
-    // 旧装备卸下（保留在背包）
-  }
-  // 若目标装备已被他人穿戴则先卸下
-  for (const hid of Object.keys(state.roster)) {
-    for (const s of Object.keys(state.roster[hid].equip || {})) {
-      if (state.roster[hid].equip[s] === instId) state.roster[hid].equip[s] = null;
-    }
-  }
-  own.equip[slot] = instId;
-}
-function unequip(heroId, slot) {
-  const own = state.roster[heroId];
-  if (own) own.equip[slot] = null;
-}
-// 升星：吃掉 fodderIds 里的装备攒强化点 + 铜钱（对标 AFK 强化）
-function enhanceEquip(instId, fodderIds) {
-  const e = state.equips[instId];
-  if (!e) return { ok: false, msg: '装备不存在' };
-  const maxStar = IT.EQUIP_QUALITIES[e.q].maxStar;
-  if (e.stars >= maxStar) return { ok: false, msg: '已满星' };
-  const need = IT.starNeed(e.q, e.stars);
-  const goldCost = IT.starGold(need);
-  if (state.res.gold < goldCost) return { ok: false, msg: '铜钱不足' };
-  const fodder = (fodderIds || [])
-    .map(id => state.equips[id])
-    .filter(x => x && x.id !== instId && !isEquipped(x.id));
-  if (!fodder.length) return { ok: false, msg: '请选择要消耗的装备' };
-  const pts = fodder.reduce((s, x) => s + IT.fodderPoints(x), 0);
-  if (pts < need) return { ok: false, msg: '强化点不足 ' + pts + '/' + need };
-  fodder.forEach(x => { delete state.equips[x.id]; });
-  state.res.gold -= goldCost;
-  e.stars += 1;
-  return { ok: true, stars: e.stars };
-}
-// 一键放入：从可选狗粮里由低到高凑满强化点，返回建议消耗的 id 列表
-function fodderPickIds(instId, ids) {
-  const e = state.equips[instId];
-  if (!e) return [];
-  const maxStar = IT.EQUIP_QUALITIES[e.q].maxStar;
-  if (e.stars >= maxStar) return [];
-  const need = IT.starNeed(e.q, e.stars);
-  const pool = (ids || [])
-    .map(id => state.equips[id])
-    .filter(x => x && x.id !== instId && !isEquipped(x.id))
-    .sort((a, b) => IT.fodderPoints(a) - IT.fodderPoints(b));
-  const picked = [];
-  let pts = 0;
-  for (const x of pool) {
-    if (pts >= need) break;
-    picked.push(x.id);
-    pts += IT.fodderPoints(x);
-  }
-  return picked;
-}
-function salvageEquip(instId) {
-  const e = state.equips[instId];
-  if (!e || isEquipped(instId)) return { ok: false, msg: '无法分解' };
-  const gold = Math.floor(IT.fodderPoints(e) * IT.GOLD_PER_POINT * 0.4);
-  delete state.equips[instId];
-  state.res.gold += gold;
-  return { ok: true, gold };
-}
-// 批量分解：所有未穿戴的指定品质（默认 N）0 星装备
-function salvageBatch(q) {
-  const ids = Object.keys(state.equips)
-    .filter(id => !isEquipped(id) && state.equips[id].q === (q || 1) && !state.equips[id].stars);
-  let gold = 0, n = ids.length;
-  ids.forEach(id => {
-    gold += Math.floor(IT.fodderPoints(state.equips[id]) * IT.GOLD_PER_POINT * 0.4);
-    delete state.equips[id];
-  });
-  state.res.gold += gold;
-  return { ok: n > 0, count: n, gold };
 }
 
 // ---------- 挂机 ----------
@@ -2584,12 +2479,11 @@ const CURRENCY_NAME = { gold: '铜钱', gem: '元宝', scroll: '招募令', toke
 module.exports = {
   load, save, getState, checkDailyReset, SAVE_KEY,
   allRoster, getOwned, addHeroCard, grantCard, crystalInfo, effectiveLevel, playerLevel, playerXpNeeded, addPlayerXP, levelCap, calcHero,
-  levelUp, ascend, ascendPreview, foodPoints, dismiss, resetHero, convertCards, setCardsLocked, addChoiceVoucher, useChoiceVoucher, firstWinChoice, claimFirstWinChoice,
+  ascend, ascendPreview, foodPoints, dismiss, resetHero, convertCards, setCardsLocked, addChoiceVoucher, useChoiceVoucher, firstWinChoice, claimFirstWinChoice,
   exchangeQualityShard, qualityShardInfo,
   getFormationCalc, setFormationSlot, applyFormation, formationFactionBonus, teamPower, playerUnits, enemyUnits, activeBonds, bondMods,
   getArmoryBonuses, getArmoryState, armoryUnlock, armorySelect, armoryUpgrade, armoryUpgradeToNode, armoryClaimBox, grantArmoryItem, applyArmoryRecommendations, forgeInfo, forgeReroll, forgeSetDir, forgeToggleLock, forgeGateOpen, motifInfo, motifActivate, smeltInfo, smeltMelt, smeltCombine,
   codexInfo, claimCodex, useUniversalSr, achvInfo, claimAchv, weekInfo, claimWeekQuest, claimWeekActive, buyWeekly, makeExpeditionFloor, bumpWeek, beginHall, winHall, hallInfo, saveReplay, replaysInfo, awakenInfo, awakenHero, formationPresetsInfo, saveFormationPreset, applyFormationPreset, delFormationPreset, tacticInfo, tacticUpgrade,
-  addEquip, equipInventory, equipTo, unequip, enhanceEquip, fodderPickIds, salvageEquip, salvageBatch, isEquipped,
   migrateSaveV1, migrateSaveV2, migrateSaveV3, migrateSaveV4, migrateSaveV5, migrateSaveV6, normalizeState,
   idlePending, idleTick, gemQuotaInfo, claimIdle, claimIdleInternal, fastReward, fastRewardMutation, fastRewardAdMutation, adReward,
   doSummon, rollRarity, pickHeroOfRarity, summonPityInfo, setSummonFocus, summonTicketInfo, summonPointsInfo, claimSummonPoints, useUniversalSsr,

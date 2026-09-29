@@ -1,12 +1,6 @@
 // 军械图鉴、商店、每日任务定义
-// 下方 EQUIP_* 保留为v1旧档格式转换表；新玩法只使用 ARMORY_* 图鉴配置。
-// 装备槽：weapon 兵刃(atk) armor 铠甲(hp) helm 头盔(def) boots 战靴(hp+atk小)
-const EQUIP_SLOTS = {
-  weapon: { key: 'weapon', name: '兵刃', icon: '⚔', stat: 'atk' },
-  armor:  { key: 'armor',  name: '铠甲', icon: '🛡', stat: 'hp' },
-  helm:   { key: 'helm',   name: '头盔', icon: '⛑', stat: 'def' },
-  boots:  { key: 'boots',  name: '战靴', icon: '👟', stat: 'hp2' }
-};
+// 下方 EQUIP_QUALITIES/STAR_POINTS/starNeed/starGold 仅为旧档迁移转换表（migrateSaveV1/V4 用），新玩法只使用 ARMORY_* 图鉴配置。
+// 旧英雄四槽装备系统的实体/穿戴/升星/分解逻辑已随军械系统上线移除（2026-09-30 死代码清理）。
 
 // 全军共用军械图鉴。品质 q: 0=N, 1=R, 2=SR, 3=SSR。
 const ARMORY_SLOTS = [
@@ -87,11 +81,6 @@ const EQUIP_QUALITIES = {
   3: { key: 3, name: 'SR', label: '百炼', color: '#b57ce8', maxStar: 4, base: { atk: 500,  hp: 4000, def: 300 } },
   4: { key: 4, name: 'SSR', label: '神兵', color: '#f0913c', maxStar: 5, base: { atk: 1150, hp: 9400, def: 690 } }
 };
-const MAX_STAR = 5;
-const STAR_PCT = 0.10;          // 每星属性 +10%，满星 1.5 倍（对标 AFK 强化满 1.5x）
-const FACTION_MATCH_MULT = 1.3; // 阵营匹配 +30%（对标 AFK 对属加成）
-const FACTIONED_MIN_Q = 3;      // SR 及以上掉落自带阵营
-
 // 升到下一星所需强化点（品质 → 下标=当前星数）
 const STAR_POINTS = {
   1: [60],
@@ -100,39 +89,12 @@ const STAR_POINTS = {
   4: [500, 1150, 2300, 4200, 7500]
 };
 const GOLD_PER_POINT = 40; // 每点强化点的铜钱开销
-// 被吃装备提供的基础强化点（自带星数按半星折算，见 fodderPoints）
-const FODDER_POINTS = { 1: 10, 2: 26, 3: 70, 4: 190 };
 
 function starNeed(q, stars) {
   const row = STAR_POINTS[q];
   return row ? row[stars] : undefined;
 }
 function starGold(need) { return need * GOLD_PER_POINT; }
-function fodderPoints(e) {
-  return Math.floor((FODDER_POINTS[e.q] || 0) * (1 + 0.5 * (e.stars || 0)));
-}
-
-// 品质 × 槽位 × 星级（×阵营匹配）→ 属性加成
-function equipStat(q, slot, stars, matchFaction) {
-  const b = EQUIP_QUALITIES[q].base;
-  let m = 1 + STAR_PCT * (stars || 0);
-  if (matchFaction) m *= FACTION_MATCH_MULT;
-  if (slot === 'weapon') return { atk: Math.floor(b.atk * m) };
-  if (slot === 'armor') return { hp: Math.floor(b.hp * m) };
-  if (slot === 'helm') return { def: Math.floor(b.def * m) };
-  return { hp: Math.floor(b.hp * 0.6 * m), atk: Math.floor(b.atk * 0.4 * m) };
-}
-
-// 关卡掉落品质（随进度向高品质偏移）
-function dropQuality(globalStage) {
-  const r = Math.random();
-  const adv = Math.min(0.5, globalStage * 0.006);
-  if (r < 0.04 + adv * 0.06) return 4; // SSR 4%→7%
-  if (r < 0.16 + adv * 0.20) return 3; // SR 12%→19%
-  if (r < 0.46 + adv * 0.30) return 2; // R 30%→35%
-  return 1;                            // N 为其余（含强化狗粮）
-}
-const DROP_SLOTS = ['weapon', 'armor', 'helm', 'boots'];
 
 // ---- 商铺（每日刷新） ----
 // cur: gold 铜钱 / gem 元宝 / scroll 招募卷 / token 演武令 / shard 英雄碎片
@@ -176,8 +138,7 @@ function arenaRank(points) {
 module.exports = {
   ARMORY_SLOTS, GRADES, CATALOG, STAR_NEEDS, STAR_GOLD, DROP_QUALITY_WEIGHTS,
   SLOT_NODES, slotNodeInfo, slotNodeCost,
-  EQUIP_SLOTS, EQUIP_QUALITIES, MAX_STAR, STAR_PCT, FACTION_MATCH_MULT, FACTIONED_MIN_Q,
-  STAR_POINTS, GOLD_PER_POINT, FODDER_POINTS,
-  starNeed, starGold, fodderPoints, equipStat, dropQuality, DROP_SLOTS,
+  EQUIP_QUALITIES, STAR_POINTS, GOLD_PER_POINT,
+  starNeed, starGold,
   SHOP_GOODS, QUESTS, ACTIVE_CHESTS, ARENA_RANKS, arenaRank
 };
