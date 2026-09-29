@@ -279,6 +279,10 @@ export function heroDetail(ctx: ScreenContext) {
         const tactEffect=(level:number)=>Object.keys(tc.perLevel||{}).map((k:string)=>`${TACTIC_KEY_NAMES[k]||k} +${pct((tc.perLevel[k]||0)*level)}`).join(' · ')||'无';
         V.panel('TacticPanel',0,ty,666,108,new Color(24,36,48,242),8,gold);
         V.text('TacticTitle',`兵法 · ${tc.name} ${tc.level}/${tc.max} 级`,-170,ty+28,440,22,gold);
+        V.tap('TacticInfoTap',0,ty,666,108,()=>heroInfoModal(ctx,'兵法 · '+tc.name,[tc.desc,
+          '当前（'+tc.level+' 级）：'+(tc.level>0?tactEffect(tc.level):'未研习'),
+          tc.next?('下一级（'+tc.next.level+' 级）：'+tactEffect(tc.next.level)):'已达上限',
+          '将魂余额：'+tc.soul+'（满星 SSR 重复卡每张转 1 魂）']));
         if(tc.next){
           const can=tc.next.can;
           V.text('TacticCost',`下一级：将魂 ${tc.next.soul} + 铜钱 ${fmt.fmtNum(tc.next.gold)} · 余额 ${tc.soul}`,-170,ty-10,430,17,dim);
@@ -287,10 +291,6 @@ export function heroDetail(ctx: ScreenContext) {
         } else {
           V.text('TacticMax',`已达兵法上限 · 「${tc.name}」大成`,0,ty-14,600,19,tone('#d9b06a'));
         }
-        V.tap('TacticInfoTap',0,ty,666,108,()=>heroInfoModal(ctx,'兵法 · '+tc.name,[tc.desc,
-          '当前（'+tc.level+' 级）：'+(tc.level>0?tactEffect(tc.level):'未研习'),
-          tc.next?('下一级（'+tc.next.level+' 级）：'+tactEffect(tc.next.level)):'已达上限',
-          '将魂余额：'+tc.soul+'（满星 SSR 重复卡每张转 1 魂）']));
         next=ty-64;
       }
     }
