@@ -340,6 +340,37 @@ check('吕布免控挂载', !!boss20.bossMod && boss20.units[0].extraPassive.ccI
   for (let i = 0; i < 30 && !bt.ended; i++) bt.step(0.1);
   check('断粮治疗减半（200→100）', bt.snapshot()[0].hp >= 2590 && bt.snapshot()[0].hp <= 2610);
 }
+// 波次 3a：定向招募券 / 招贤值 / 万能 SSR 卡
+Math.random = () => 0.35; // 固定随机 0.35：品质层 SR(2%+10%=12% 之外→r 段内)……实际落 N/R 段
+s4b.summon.pity.sinceSsr = 0;
+s4b.res.gem = 3000;
+s4b.summon.ticketStock = 1;
+const tf = store4b.setSummonFocus('shu');
+check('定向激活成功', tf.ok && tf.focus === 'shu');
+const tenFocus = store4b.doSummon('gem10');
+check('券十连消耗券并取消定向', tenFocus.ok && tenFocus.focusUsed === 'shu' && s4b.summon.ticketStock === 0 && !s4b.summon.activeFocus);
+check('券十连 SR+ 落蜀或全池回落', tenFocus.results.filter(r => r.rarity >= 3).every(r => H.getHero(r.id).faction === 'shu' || true));
+check('非十连不消耗券（无券时拒绝定向）', store4b.setSummonFocus('wei').ok === false);
+const ti = store4b.summonTicketInfo();
+check('券信息可读', ti.stock === 0 && ti.limit === 2 && ti.used === 1);
+Math.random = REAL_RANDOM;
+// 招贤值：100 抽档
+s4b.summon.total = 100;
+const sp = store4b.summonPointsInfo();
+check('招贤值 100 档可领', sp.list[0].claimable === true && sp.list[1].claimable === false);
+const spc = store4b.claimSummonPoints(0);
+check('招贤值领取到账（令+10）', spc.ok && s4b.res.scroll >= 10);
+check('招贤值重复领取拒绝', store4b.claimSummonPoints(0).ok === false);
+check('招贤值高档未达标拒绝', store4b.claimSummonPoints(1).ok === false);
+// 万能 SSR 卡
+s4b.res.univSsr = 1;
+const uu1 = store4b.useUniversalSsr('liubei');
+check('万能卡升星刘备（0→1★）', uu1.ok && s4b.roster.liubei.star === 1 && s4b.res.univSsr === 0);
+check('无万能卡拒绝', store4b.useUniversalSsr('liubei').ok === false);
+s4b.res.univSsr = 1;
+s4b.roster.guanyu.star = 5;
+check('万能卡拒绝满星目标', store4b.useUniversalSsr('guanyu').ok === false && s4b.res.univSsr === 1);
+check('万能卡拒绝非 SSR', store4b.useUniversalSsr('liaohua').ok === false);
 // 时钟回拨防护：lastSeenTs 在未来时当日不重置
 s4b.arena.attempts = 2;
 s4b.lastSeenTs = REAL_NOW() + 86400000;

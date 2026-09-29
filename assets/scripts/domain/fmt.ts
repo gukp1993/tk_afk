@@ -31,4 +31,15 @@ function cnNum(n) {
   if (n <= 20) return NUM_CN[n - 1] || '' + n;
   return '' + n;
 }
-export { fmtNum, fmtPct, fmtDur, todayStr, cnNum, pad2 };
+// ISO 周键（周一为一周起点），用于周系统与定向券周配额；纯派生自本地日期
+function isoWeekKey(d) {
+  d = d || new Date();
+  const t = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const day = (t.getDay() + 6) % 7; // 周一=0
+  t.setDate(t.getDate() - day + 3); // 本周四
+  const isoYear = t.getFullYear();
+  const thu = new Date(isoYear, 0, 4);
+  const week = 1 + Math.round(((t - thu) / 86400000 - 3 + ((thu.getDay() + 6) % 7)) / 7);
+  return isoYear + '-W' + (week < 10 ? '0' + week : week);
+}
+export { fmtNum, fmtPct, fmtDur, todayStr, cnNum, pad2, isoWeekKey };

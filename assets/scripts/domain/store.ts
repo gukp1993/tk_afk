@@ -45,7 +45,8 @@ function defaultState() {
     fast: { day: '', count: 0 },
     qualityShards: { 1: 0, 2: 0, 3: 0, 4: 0 },
     daily: { day: '', quests: {}, claimed: [], active: [] },
-    summon: { total: 0, pity: { sinceSsr: 0 } },
+    summon: { total: 0, pity: { sinceSsr: 0 }, ticketStock: 2, ticketWeek: { week: '', used: 0 }, pointClaims: [], activeFocus: null },
+    res: { gold: 100000, gem: 1888, scroll: 12, token: 20, shard: 0, iron: 60, univSsr: 0 },
     sevenDay: { start: F.todayStr(), claimed: [] },
     bounty: { day: '', list: [] },
     roamer: { day: '', ids: [], bought: {} },
@@ -345,7 +346,7 @@ function normalizeState(s) {
   s.player = s.player || { level: 1, exp: 0 };
   s.player.level = Math.max(1, Math.min(C.MAX_LEVEL, Math.floor(s.player.level || 1)));
   s.player.exp = s.player.level >= C.MAX_LEVEL ? 0 : Math.max(0, Math.floor(s.player.exp || 0));
-  s.res = s.res || {}; ['gold', 'gem', 'scroll', 'token', 'shard', 'iron'].forEach(k => { if (!Number.isFinite(s.res[k])) s.res[k] = 0; s.res[k] = Math.max(0, Math.floor(s.res[k])); });
+  s.res = s.res || {}; ['gold', 'gem', 'scroll', 'token', 'shard', 'iron', 'univSsr'].forEach(k => { if (!Number.isFinite(s.res[k])) s.res[k] = 0; s.res[k] = Math.max(0, Math.floor(s.res[k])); });
   if (!s.armory) s.armory = createArmory();
   const defaults = createArmory();
   s.armory.unlocked = s.armory.unlocked || defaults.unlocked;
@@ -367,6 +368,10 @@ function normalizeState(s) {
   // 保底计数为 v7 后增字段：旧档缺省从 0 起，不升存档版本号
   s.summon.pity = s.summon.pity || { sinceSsr: 0 };
   s.summon.pity.sinceSsr = Math.max(0, Math.min((C.GACHA.pity && C.GACHA.pity.ssrHard || 40) - 1, Math.floor(s.summon.pity.sinceSsr || 0)));
+  s.summon.ticketStock = Math.max(0, Math.floor(s.summon.ticketStock || 0));
+  s.summon.ticketWeek = s.summon.ticketWeek || { week: '', used: 0 };
+  if (!Array.isArray(s.summon.pointClaims)) s.summon.pointClaims = [];
+  s.summon.activeFocus = ['wei', 'shu', 'wu', 'qun'].includes(s.summon.activeFocus) ? s.summon.activeFocus : null;
   s.arena = s.arena || { points: 1000, wins: 0, losses: 0, attempts: C.ARENA.DAILY };
   s.arena.rankReached = s.arena.rankReached || {};
   s.sevenDay = s.sevenDay || { start: F.todayStr(), claimed: [] };
@@ -1102,8 +1107,12 @@ function rollRarity(sinceSsr) {
   if (r < ssrRate + g.sr + g.r) return 2;
   return 1;
 }
-function pickHeroOfRarity(rarity) {
-  const pool = H.HEROES.filter(h => h.rarity === rarity);
+function pickHeroOfRarity(rarity, focusFaction) {
+  let pool = H.HEROES.filter(h => h.rarity === rarity);
+  if (focusFaction && rarity >= 3 && Math.random() < C.SUMMON_TICKET.focusShare) {
+    const sub = pool.filter(h => h.faction === focusFaction);
+    if (sub.length) pool = sub;
+  }
   return pool[Math.floor(Math.random() * pool.length)].id;
 }
 function doSummon(type) {
@@ -1142,13 +1151,84 @@ function doSummonMutation(type) {
     rarities.push(rarity);
   }
   if (count === 10 && g.pity && g.pity.tenMinR && !rarities.some(r => r >= 2)) rarities[count - 1] = 2;
+  // 定向招募券：十连且已激活阵营时消耗一张券，SR 以上 70% 落所选阵营
+  let focusHit = 0;
+  let focusUsed = null;
+  const weekKey = F.isoWeekKey();
+  if (count === 10 && state.summon.activeFocus &&
+      (state.summon.ticketStock || 0) > 0 &&
+      (state.summon.ticketWeek.week === weekKey ? state.summon.ticketWeek.used : 0) < C.SUMMON_TICKET.weeklyUseLimit) {
+    state.summon.ticketStock -= 1;
+    focusUsed = state.summon.activeFocus;
+    state.summon.ticketWeek = { week: weekKey, used: (state.summon.ticketWeek.week === weekKey ? state.summon.ticketWeek.used : 0) + 1 };
+    state.summon.activeFocus = null;
+  }
   const results = rarities.map(rarity => {
-    const id = pickHeroOfRarity(rarity);
+    const id = pickHeroOfRarity(rarity, focusUsed);
+    if (focusUsed && rarity >= 3 && id && H.getHero(id).faction === focusUsed) focusHit += 1;
     const received = addHeroCard(id);
     return { id, rarity, ...received };
   });
+  // 每 10 抽赠 1 张定向券
+  if (state.summon.total % C.SUMMON_TICKET.perPulls === 0) state.summon.ticketStock = (state.summon.ticketStock || 0) + 1;
   bumpQuest('q_summon1', 1);
-  return { ok: true, results, pitySinceSsr: pity.sinceSsr };
+  return { ok: true, results, pitySinceSsr: pity.sinceSsr, focusUsed, focusHit };
+}
+// ---------- 定向招募券 / 招贤值 / 万能 SSR 卡 ----------
+function setSummonFocus(f) {
+  return withSavedMutation(() => {
+    if (f === null) { state.summon.activeFocus = null; return { ok: true, focus: null }; }
+    if (!['wei', 'shu', 'wu', 'qun'].includes(f)) return { ok: false, msg: '阵营无效' };
+    if ((state.summon.ticketStock || 0) <= 0) return { ok: false, msg: '没有定向招募券' };
+    const weekKey = F.isoWeekKey();
+    const used = state.summon.ticketWeek.week === weekKey ? state.summon.ticketWeek.used : 0;
+    if (used >= C.SUMMON_TICKET.weeklyUseLimit) return { ok: false, msg: '本周定向次数已用完（每周 2 张）' };
+    if (state.summon.activeFocus === f) return { ok: false, msg: '已选定该阵营' };
+    state.summon.activeFocus = f;
+    return { ok: true, focus: f };
+  });
+}
+function summonTicketInfo() {
+  const weekKey = F.isoWeekKey();
+  const used = state.summon.ticketWeek.week === weekKey ? state.summon.ticketWeek.used : 0;
+  return { stock: state.summon.ticketStock || 0, used, limit: C.SUMMON_TICKET.weeklyUseLimit,
+    activeFocus: state.summon.activeFocus || null, canArm: (state.summon.ticketStock || 0) > 0 && used < C.SUMMON_TICKET.weeklyUseLimit };
+}
+function summonPointsInfo() {
+  const total = (state.summon && state.summon.total) || 0;
+  const claimed = state.summon.pointClaims || [];
+  const list = C.SUMMON_POINTS.map((t, i) => ({
+    tier: i, need: t.need, label: t.label,
+    claimed: claimed.indexOf(i) >= 0,
+    claimable: claimed.indexOf(i) < 0 && total >= t.need
+  }));
+  return { total, list, canClaim: list.some(x => x.claimable) };
+}
+function claimSummonPoints(tier) {
+  return withSavedMutation(() => {
+    const info = summonPointsInfo();
+    const entry = info.list[tier];
+    if (!entry) return { ok: false, msg: '档位不存在' };
+    if (entry.claimed) return { ok: false, msg: '已领取' };
+    if (!entry.claimable) return { ok: false, msg: '招贤值尚未达标' };
+    state.summon.pointClaims = state.summon.pointClaims || [];
+    state.summon.pointClaims.push(tier);
+    const def = C.SUMMON_POINTS[tier];
+    applyReward(def.reward);
+    return { ok: true, label: def.label };
+  });
+}
+function useUniversalSsr(heroId) {
+  return withSavedMutation(() => {
+    if ((state.res.univSsr || 0) <= 0) return { ok: false, msg: '没有万能 SSR 卡' };
+    const def = H.getHero(heroId);
+    if (!def || def.rarity !== 4) return { ok: false, msg: '请选择 SSR 武将' };
+    const own = state.roster[heroId];
+    if (own && own.star >= C.RARITIES[4].maxStar) return { ok: false, msg: '该武将已满星' };
+    state.res.univSsr -= 1;
+    const received = addHeroCard(heroId);
+    return { ok: true, heroId, ...received };
+  });
 }
 // 点将台保底进度（供 UI 显示）
 function summonPityInfo() {
@@ -1768,6 +1848,7 @@ function applyReward(r) {
   if (r.token) state.res.token += r.token;
   if (r.shard) state.res.shard += r.shard;
   if (r.iron) state.res.iron += Math.floor(r.iron);
+  if (r.univSsr) state.res.univSsr = (state.res.univSsr || 0) + Math.floor(r.univSsr);
   if (r.srPick) addChoiceVoucher('sr', r.srPick);
   if (r.ssrPick) addChoiceVoucher('ssr', r.ssrPick);
 }
@@ -1799,7 +1880,7 @@ export {
   addEquip, equipInventory, equipTo, unequip, enhanceEquip, fodderPickIds, salvageEquip, salvageBatch, isEquipped,
   migrateSaveV1, migrateSaveV2, migrateSaveV3, migrateSaveV4, migrateSaveV5, migrateSaveV6, normalizeState,
   idlePending, idleTick, gemQuotaInfo, claimIdle, claimIdleInternal, fastReward, fastRewardMutation, fastRewardAdMutation, adReward,
-  doSummon, rollRarity, pickHeroOfRarity, summonPityInfo,
+  doSummon, rollRarity, pickHeroOfRarity, summonPityInfo, setSummonFocus, summonTicketInfo, summonPointsInfo, claimSummonPoints, useUniversalSsr,
   winCampaign, campaignRewardPreview, winTower, arenaFight, beginBattle, settleBattle, campaignStarChestInfo, claimStarChests,
   markStorySeen, isStorySeen, retroGrants, dismissRetroGrants, dismissReturnPending,
   questList, claimQuest, activePoints, claimActiveChest, claimAllDailyRewards, claimFreeRewards, bumpQuest, applyReward,

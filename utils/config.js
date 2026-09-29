@@ -234,6 +234,18 @@ const BOSS_MODS = {
   110: { name: '七擒七纵', desc: '孟获倒地后会以 30% 血量再起一次', passive: { cheatRevivePct: 0.3 } },
   120: { name: '群英梦影', desc: '吕布免疫控制，且倒地后会以 30% 血量再起', passive: { ccImmune: 1, cheatRevivePct: 0.3 } }
 };
+// 定向招募券（评审团裁决版）：每 10 抽赠 1 张、每周限用 2 张；券激活下一组十连，
+// 该十连 SR 以上 70% 落所选阵营（阵营内均匀，无该品质回落全池）。概率/定价/硬保底全部不动。
+const SUMMON_TICKET = { perPulls: 10, weeklyUseLimit: 2, focusShare: 0.7 };
+// 招贤值：终身累计抽数的五档一次性奖励；万能 SSR 在 2500 档（约第 40 天，30 天不可得）
+const SUMMON_POINTS = [
+  { need: 100, reward: { scroll: 10 }, label: '招募令 ×10' },
+  { need: 400, reward: { gem: 888 }, label: '元宝 ×888' },
+  { need: 900, reward: { ssrPick: 1 }, label: 'SSR 自选券 ×1' },
+  { need: 1600, reward: { ssrPick: 1 }, label: 'SSR 自选券 ×1' },
+  { need: 2500, reward: { univSsr: 1 }, label: '万能 SSR 卡 ×1' }
+];
+
 // 回归补给（断签梯度）：lastSeenTs 间隔 ≥48h 触发，7 天窗口至多一次；每日上线玩家结构性拿不到
 const RETURN_GRANTS = [
   { minDays: 2, reward: { scroll: 3, gem: 300 }, label: '招募令 ×3 · 元宝 ×300' },
@@ -251,5 +263,5 @@ module.exports = {
   FAST_AD, FAST_PAID,
   GACHA, factionBonus, FORMATION_ROWS, BATTLE, ARENA, SEVEN_DAY, TRAINING_DAILY_CAP, BOUNTY, ROAMER_POOL, AD,
   FIRST_STAGE_END, CAMPAIGN_DIFFICULTY, CAMPAIGN_MILESTONES, ELITE_STAGE, STAR_RULES, CHAPTER_STAR_CHESTS, DAILY_ELITE_CHEST,
-  CAMPAIGN_MODS, BOSS_MODS, RETURN_GRANTS
+  CAMPAIGN_MODS, BOSS_MODS, RETURN_GRANTS, SUMMON_TICKET, SUMMON_POINTS
 };

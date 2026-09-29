@@ -11,6 +11,8 @@ import * as progression from '../domain/progression';
 const ink=tone('#171009'), panel=tone('#2e2113'), border=tone('#5a452a');
 const gold=tone('#f0cf8a'), paper=tone('#e9d8b4'), dim=tone('#a6906c');
 const rarityNames=['','N','R','SR','SSR'];
+const LIGHT=tone('#e9d8b4');
+let univPickOpen = false;
 const factions:[string,string][]=[['all','全部'],['wei','魏'],['shu','蜀'],['wu','吴'],['qun','群']];
 const sorts:[string,string][]=[['power','战力'],['rarity','品质'],['star','星级']];
 const previewIds = ['zhaoyun','caocao','zhouyu','diaochan','zhugeliang'];
@@ -316,6 +318,67 @@ export function summon(ctx: ScreenContext) {
       U.text(id+'Cost',cost,x,165,150,17,dark?dim:tone('#573d1e'));
       U.tap(id+'Tap',x,185,166,88,action);
     });
+    // —— 招贤值 / 定向招募 / 万能 SSR 卡（下半屏）——
+    const pts=store.summonPointsInfo();
+    U.panel('PointsPanel',0,-28,686,150,panel,9,border);
+    U.text('PointsTitle',`招贤值 · 累计 ${pts.total} 抽`,-190,15,320,24,gold);
+    if(pts.canClaim){
+      const ct=pts.list.find((x:any)=>x.claimable);
+      U.button('PointsClaim','可领：'+(ct?ct.label:''),170,15,300,46,()=>{
+        const r=store.claimSummonPoints(ct.tier);
+        ctx.tell(r,r.ok?'已领取 '+r.label:'');
+      },gold);
+    } else {
+      const next=pts.list.find((x:any)=>!x.claimed);
+      U.text('PointsNext',next?`下一档 ${next.need} 抽：${next.label}`:'全部档位已领完',150,15,380,18,tone('#ad9977'));
+    }
+    pts.list.forEach((t:any,i:number)=>{
+      const x=-264+i*132,y=-48;
+      U.panel('PointTier'+i,x,y,124,66,t.claimed?tone('#26301f'):t.claimable?tone('#3a2c17'):ink,7,t.claimable?gold:border);
+      U.text('PointNeed'+i,t.need+' 抽',x,y+10,116,17,t.claimable?gold:dim);
+      U.text('PointLabel'+i,t.claimed?'已领':t.label,x,y-14,116,15,t.claimed?tone('#6f8a5f'):dim);
+      if(t.claimable)U.tap('PointTap'+i,x,y,124,66,()=>{const r=store.claimSummonPoints(t.tier);ctx.tell(r,r.ok?'已领取 '+r.label:'');});
+    });
+    const tk=store.summonTicketInfo();
+    U.panel('TicketPanel',0,-186,686,120,panel,9,border);
+    U.text('TicketTitle','定向招募',-278,-150,160,22,gold);
+    U.text('TicketInfo',`券 ${tk.stock} 张 · 本周已用 ${tk.used}/${tk.limit} · 每 10 抽赠 1 张`,130,-150,440,17,dim);
+    U.text('TicketHint','券激活后下一组十连：SR 以上 70% 落所选阵营',130,-178,440,15,tone('#ad9977'));
+    (config.FACTIONS ? Object.keys(config.FACTIONS) : []).forEach((fk:any,i:number)=>{
+      const x=-258+i*150,f=(config.FACTIONS as any)[fk];
+      const active=tk.activeFocus===fk;
+      const can=tk.canArm||active;
+      U.panel('FactionBtn'+i,x,-212,142,44,active?tone('#45321b'):ink,8,active?gold:border);
+      U.text('FactionTxt'+i,(active?'● ':'')+f.name+(active?' 定向中':''),x,-212,134,20,active?gold:LIGHT);
+      if(can)U.tap('FactionTap'+i,x,-212,142,44,()=>{
+        const r=store.setSummonFocus(active?null:fk);
+        ctx.tell(r,r.ok?(r.focus?'已定向：'+(config.FACTIONS as any)[r.focus].name+'（下一组十连生效）':'已取消定向'):'');
+      });
+    });
+    if((s.res as any).univSsr>0){
+      U.panel('UnivPanel',0,-300,686,72,tone('#3a2c17'),9,gold);
+      U.text('UnivTitle',`万能 SSR 卡 ×${(s.res as any).univSsr} · 可指定一只未满星 SSR 升星`,-140,-246,460,20,gold);
+      U.button('UnivUse','使 用',240,-300,170,54,()=>{univPickOpen=true;ctx.show('summon');},gold);
+    }
+    if(univPickOpen){
+      const owned=heroData.HEROES.filter((hh:any)=>hh.rarity===4&&s.roster[hh.id]&&s.roster[hh.id].star<4)
+        .sort((x:any,y:any)=>s.roster[x.id].star-s.roster[y.id].star);
+      U.rect('UnivShade',0,0,720,1280,tone('#120c07')).on(Node.EventType.TOUCH_END,()=>{});
+      U.panel('UnivPanel2',0,0,658,900,tone('#251b14'),12,gold);
+      U.text('UnivHeading',`选择万能卡目标（${owned.length} 只未满星）`,0,390,560,28,gold);
+      U.text('UnivHint','按当前星级从低到高排列',0,348,560,16,dim);
+      owned.forEach((hh:any,i:number)=>{
+        const y=290-i*84;
+        U.panel('UnivRow'+i,0,y,600,74,panel,8,border);
+        U.text('UnivName'+i,hh.name+'（★'+s.roster[hh.id].star+'）',-160,y,320,22,paper);
+        U.button('UnivGo'+i,'升星',225,y,130,50,()=>{
+          const r=store.useUniversalSsr(hh.id);
+          univPickOpen=false;
+          ctx.tell(r,r.ok?(r.isNew?'解锁 '+hh.name:hh.name+' 升至 ★'+r.star):'');
+        },gold);
+      });
+      U.button('UnivCancel','取消',0,-400,280,54,()=>{univPickOpen=false;ctx.show('summon');},tone('#423022'));
+    }
     U.panel('SummonAd',0,133,678,51,tone('#2b1e12'),8,border);
     U.text('SummonAdText','看广告 · 免费招募令 ×1',0,133,618,20,gold);
     U.tap('SummonAdTap',0,133,678,51,()=>ctx.playAd('summon',()=>{

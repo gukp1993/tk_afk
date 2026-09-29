@@ -140,6 +140,9 @@ function bestTarget(rarity) {
 }
 
 function autoSummon() {
+  // 定向券：有券且本周未达限则激活蜀阵营（探针口径），下一组十连生效
+  const tk = store.summonTicketInfo();
+  if (tk.canArm) store.setSummonFocus('shu');
   let ops = 0, guard = 0;
   for (;;) {
     const s = store.getState();
@@ -290,6 +293,16 @@ function runSeed(seed) {
       ops++;
     }
     if (store.campaignStarChestInfo().claimable) store.claimStarChests();
+    // 招贤值全领 + 万能卡喂最低星未满星 SSR
+    const pts = store.summonPointsInfo();
+    pts.list.forEach(t => { if (t.claimable) store.claimSummonPoints(t.tier); });
+    if ((store.getState().res.univSsr || 0) > 0) {
+      const ssrIds = H.HEROES.filter(h => h.rarity === 4);
+      const target = ssrIds
+        .filter(h => store.getState().roster[h.id] && store.getState().roster[h.id].star < 5)
+        .sort((a, b) => (store.getState().roster[a.id]?.star || 0) - (store.getState().roster[b.id]?.star || 0))[0];
+      if (target) store.useUniversalSsr(target.id);
+    }
     store.claimAllDailyRewards(); // 三件套任务 + 活跃宝箱
     ops++;
     autoSummon(); // 日常奖励的元宝当日再转化
@@ -303,8 +316,9 @@ function runSeed(seed) {
     }
   }
   const final = store.getState();
+  const maxedSsr = H.HEROES.filter(h => h.rarity === 4 && final.roster[h.id] && final.roster[h.id].star >= 5).length;
   return {
-    seed, cleared: final.campaign.cleared, checkpoints, bossFailedDays, bossLosses, bossTimeouts, stageFailedDays,
+    seed, cleared: final.campaign.cleared, maxedSsr, checkpoints, bossFailedDays, bossLosses, bossTimeouts, stageFailedDays,
     firstClearDay, firstMaxStarDay, timeouts, losses,
     gem: final.res.gem, iron: final.res.iron, scroll: final.res.scroll,
     roster: Object.keys(final.roster).length,
@@ -358,6 +372,7 @@ function main() {
   console.log('六槽首个 5★ 满星日（样本内达成）P10/P50/P90:', maxStarDays.length ? [0.1, 0.5, 0.9].map(p => stat(maxStarDays, p)).join('/') : '无');
   const avg = (f) => (runs.reduce((s, r) => s + f(r), 0) / SEEDS).toFixed(0);
   console.log(`第 ${DAYS} 天均值：元宝 ${avg(r => r.gem)} · 精铁 ${avg(r => r.iron)} · 招募令 ${avg(r => r.scroll)} · 武将 ${avg(r => r.roster)} · 军械总星 ${avg(r => r.armoryStars)}`);
+  console.log('满星 SSR 均值/16：', (runs.reduce((s, r) => s + (r.maxedSsr || 0), 0) / SEEDS).toFixed(2), '（红线 ≤6）');
   const json = { seeds: SEEDS, days: DAYS, battlesPerDay: BATTLES_PER_DAY, doneRate: done30 / SEEDS,
     dayRows: dayRows.map(d => {
       const stages = runs.map(r => Math.min(C.FIRST_STAGE_END, r.checkpoints[d]?.cleared ?? 0));
