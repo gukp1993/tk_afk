@@ -192,7 +192,7 @@ export function heroDetail(ctx: ScreenContext) {
   const cls=(config.CLASSES as any)[h.cls]?.name||'武将', formed=s.formation.includes(h.id);
   const hasVoucher=(s.vouchers[h.rarity===4?'ssr':'sr']||0)>0&&h.rarity>=3;
   const awakenShown=h.rarity===4&&own.star>=5;
-  const tacticShown=h.rarity===4&&own.star>=5;
+  const tacticShown=(h.rarity===4&&own.star>=5)||(h.rarity===3&&own.star>=4);
   const contentH=1160+(own.cards>0?110:0)+(hasVoucher?115:0)+(ctx.heroDetailOrigin==='heroes'?90:0)+(awakenShown?130:0)+(tacticShown?130:0);
   const top=contentH/2, pct=(v:number)=>fmt.fmtPct(v);
   U.rect('DetailBackdrop',0,0,720,1280,tone('#122a22'));
