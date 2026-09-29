@@ -1476,7 +1476,7 @@ function enemyUnits(units) {
   return units.map((u, i) => {
     const base = heroStatsStar(u.hero, u.level, u.star);
     const stats = {
-      hp: Math.floor(base.hp * u.scale),
+      hp: Math.floor(base.hp * (u.hpScale || u.scale)),
       atk: Math.floor(base.atk * u.scale),
       def: Math.floor(base.def * u.scale),
       spd: base.spd, crit: base.crit
@@ -2356,7 +2356,7 @@ function settleBattle(battleId, outcome) {
       // 伤害百分比结算：Boss 掉血/MaxHp；statistics 由 finishBattle 透传 stats
       const stats = outcome.stats || {};
       let damage = 0;
-      // 我方 uid 为 'A'+i（buildUnit 大写前缀），只累计我方对 Boss 的输出
+      // 口径（周Boss仿真 2026-09-30）：Boss 掉血 = 我方 A 侧总输出（巨血 Boss 不会击杀，掉血即输出）
       Object.keys(stats).forEach(uid => { if (String(uid).indexOf('A') === 0) damage += (stats[uid].dmg || 0); });
       const maxHp = Math.max(1, Number(outcome.maxHp) || 1);
       const pct = Math.min(1, damage / maxHp);

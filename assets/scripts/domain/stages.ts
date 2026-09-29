@@ -167,14 +167,19 @@ function makeTowerEnemies(floor) {
 // 周常 Boss（研讨会四 P3）：每周键哈希选一名 SSR 名将 ×bossScale 强度，单体镇场
 function makeWeekBossEnemies(weekId, playerLevel) {
   const heroes = __domain_heroes.HEROES;
-  const ssr = heroes.filter(h => h.rarity === 4);
+  // 池剔除硬控/自疗原型（张飞眩晕周会压伤害档，华佗自疗拉长战斗）
+  const BLACKLIST = { zhangfei: 1, huatuo: 1, diaochan: 1 };
+  const ssr = heroes.filter(h => h.rarity === 4 && !BLACKLIST[h.id]);
   let h = 5381;
   for (let i = 0; i < String(weekId).length; i++) h = ((h * 33) ^ String(weekId).charCodeAt(i)) >>> 0;
   const boss = ssr[h % ssr.length];
   const lv = Math.max(1, Math.round(playerLevel || 1));
-  const scale = (__domain_config.WEEKBOSS && __domain_config.WEEKBOSS.bossScale) || 3;
-  const units = [{ hero: boss, level: lv, star: 5, scale, isBoss: true, row: 0 }];
-  return { name: '本周魔王 · ' + boss.name, units, isBoss: true, weekBoss: { weekId } };
+  // 巨血公式（周Boss仿真 2026-09-30）：MaxHp = 350 × 同等星等级关羽体魄（≈锚档单场输出×20，K 可 15~25 微调）；攻防速保持 ×1
+  const K = (__domain_config.WEEKBOSS && __domain_config.WEEKBOSS.hpK) || 350;
+  const guanyuHp = __domain_heroes.heroStatsStar(__domain_heroes.getHero('guanyu'), lv, 5).hp;
+  const hpOverride = Math.floor(guanyuHp * K);
+  const units = [{ hero: boss, level: lv, star: 5, scale: 1, hpScale: hpOverride / Math.max(1, __domain_heroes.heroStatsStar(boss, lv, 5).hp), isBoss: true, row: 0 }];
+  return { name: '本周魔王 · ' + boss.name, units, isBoss: true, weekBoss: { weekId }, bossMaxHp: hpOverride };
 }
 
 // 军屯双本（研讨会四 P2）：每日资源副本敌阵，敌力随玩家等级与层数缩放，随机 SSR 混编

@@ -346,7 +346,24 @@ export class CocosBootstrap extends Component implements ScreenContext {
 
   public startArenaBattle(diff: number, seed: number) { this.startBattle('arena',0,diff,false,seed); }
   public startDungeonBattle(kind: string, floor: number) { this.startBattle('dungeon',floor,1,false,0,kind); }
-  public startWeekBoss() { const r=store.beginWeekBoss(); if(!r.ok)return this.tell(r,''); }
+  public startWeekBoss() {
+    // 周常 Boss 专用管线（体验官/仿真代理指出的可达性缺陷修复）：扣次数+建敌+进战斗
+    if (this.fighting || this.auto) return this.tell({ ok: false, msg: '已有战斗进行中' }, '');
+    const wb = store.weekBossInfo();
+    if (!wb.enabled) return this.tell({ ok: false, msg: '魔王讨伐未开放' }, '');
+    if (wb.attemptsLeft <= 0) return this.tell({ ok: false, msg: '本周讨伐次数已用完' }, '');
+    const enemy = stages.makeWeekBossEnemies(wb.weekId, store.playerLevel());
+    const started = store.beginBattle({ mode: 'weekboss', index: 1, referenceLevel: store.playerLevel() });
+    if (!started.ok) return this.tell(started, '');
+    this.battleId = started.id; this.battleMode = 'weekboss'; this.battleIndex = 1; this.battleDiff = 1; this.battleArenaSeed = 0;
+    this.fighting = battleRules.createBattle({ team: store.playerUnits(this.armedTactic), enemy: store.enemyUnits(enemy.units), seed: Date.now(), timeLimit: config.BATTLE.TIME_LIMIT });
+    (this as any)._popupCount = 0;
+    this.combatPopupDisplay = [];
+    this.lastUltDisplay = '';
+    this.lastBattleSnapshot = [];
+    this.refreshTime = 0;
+    this.go('battle');
+  }
   public battleDungeonKind: string = '';
 
   public startBattle(mode: string,index: number,diff=1,fromAuto=false,arenaSeed=0,dungeonKind?: string) {

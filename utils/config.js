@@ -125,12 +125,14 @@ const REPLAYS = { max: 20, arenaHighDiff: 1.2,
 // 取最高伤害占 Boss 血量百分比定 5 档奖（只发印信/演武令，零新货币）。周键切换重置。
 // HP/阈值待专项仿真校准（docs/reviews/周Boss仿真-*.md），当前为草案值。回退：enabled=false。
 const WEEKBOSS = {
-  enabled: true, attempts: 3, bossScale: 3,
+  enabled: true, attempts: 3,
+  // 巨血口径（周Boss仿真 2026-09-30）：MaxHp = hpK × 同等星等级关羽体魄；阈值 >7/5.5/4/2/0%
+  hpK: 350,
   tiers: [
-    { pct: 0.55, reward: { seals: 30, token: 10 } },
-    { pct: 0.38, reward: { seals: 20, token: 6 } },
-    { pct: 0.22, reward: { seals: 12, token: 4 } },
-    { pct: 0.10, reward: { seals: 8, token: 2 } },
+    { pct: 0.07, reward: { seals: 30, token: 10 } },
+    { pct: 0.055, reward: { seals: 20, token: 6 } },
+    { pct: 0.04, reward: { seals: 12, token: 4 } },
+    { pct: 0.02, reward: { seals: 8, token: 2 } },
     { pct: 0, reward: { seals: 5 } }
   ]
 };

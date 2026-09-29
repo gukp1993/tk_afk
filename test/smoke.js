@@ -1388,9 +1388,9 @@ const storeP2 = freshStore(); storeP2.load();
     && sWB.weekBoss.bestPct > 0.55 && sWB.weekBoss.bestDamage === 60000);
   const rb2 = storeWB.beginWeekBoss();
   const st2 = storeWB.settleBattle(rb2.id, { win: false, duration: 90, aliveCount: 0,
-    stats: { A0: { dmg: 45000, heal: 0 } }, maxHp: 100000 });
-  check('WB4 低伤害次档发奖且纪录保留 60%', st2.ok && st2.reward.pct > 0.38 && st2.reward.improved === false
-    && sWB.weekBoss.bestPct > 0.55 && st2.reward.reward.seals === 20);
+    stats: { A0: { dmg: 3000, heal: 0 } }, maxHp: 100000 });
+  check('WB4 低伤害次档发奖且纪录保留 60%', st2.ok && st2.reward.pct > 0.02 && st2.reward.pct <= 0.04
+    && st2.reward.improved === false && sWB.weekBoss.bestPct > 0.55 && st2.reward.reward.seals === 8);
   sWB.weekBoss.attempts = 3;
   const rb3 = storeWB.beginWeekBoss();
   check('WB5 次数用完拒绝', rb3.ok === false && /次数已用完/.test(rb3.msg));
