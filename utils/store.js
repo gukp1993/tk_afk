@@ -41,6 +41,7 @@ function defaultState() {
     sevenDay: { start: F.todayStr(), claimed: [] },
     fourteenDay: { claimed: [] },
     tutorial: { seen: {} },
+    dungeon: { day: '', runs: 0, bestGold: 0, bestTrain: 0 },
     bounty: { day: '', list: [] },
     roamer: { day: '', ids: [], bought: {} },
     vouchers: { sr: 0, ssr: 0 },
@@ -779,6 +780,11 @@ function normalizeState(s) {
   s.sevenDay = s.sevenDay || { start: F.todayStr(), claimed: [] };
   if (!Array.isArray(s.sevenDay.claimed)) s.sevenDay.claimed = [];
   s.sevenDay.claimed = s.sevenDay.claimed.map(n => Math.floor(Number(n) || 0)).filter(n => n >= 1 && n <= 7);
+  // 军屯双本（研讨会四）：旧档缺省 + 字段钳位
+  s.dungeon = s.dungeon || { day: '', runs: 0, bestGold: 0, bestTrain: 0 };
+  s.dungeon.runs = Math.max(0, Math.floor(Number(s.dungeon.runs) || 0));
+  s.dungeon.bestGold = Math.max(0, Math.min(10, Math.floor(Number(s.dungeon.bestGold) || 0)));
+  s.dungeon.bestTrain = Math.max(0, Math.min(10, Math.floor(Number(s.dungeon.bestTrain) || 0)));
   // 14 日第二周目标（研讨会三方案 2）：旧档缺省空、领取记录钳位
   s.fourteenDay = s.fourteenDay || { claimed: [] };
   if (!Array.isArray(s.fourteenDay.claimed)) s.fourteenDay.claimed = [];
@@ -900,6 +906,8 @@ function checkDailyReset() {
   checkWeeklyReset(today);
   if (!state.roamer || state.roamer.day !== today) refreshRoamer(today);
   if (state.fast.day !== today) state.fast = { day: today, count: 0 };
+  // 军屯双本次数随日重置（最佳层数跨日保留）
+  if (!state.dungeon || state.dungeon.day !== today) state.dungeon = { day: today, runs: 0, bestGold: (state.dungeon && state.dungeon.bestGold) || 0, bestTrain: (state.dungeon && state.dungeon.bestTrain) || 0 };
   if (state.buyLog.day !== today) state.buyLog = { day: today, buys: {} };
   if (state.ads.day !== today) state.ads = { day: today, counts: {} };
   // 元宝当日额度 00:00 重置；已积累的待领元宝跨天保留（待领总额封顶 5000）。
@@ -2219,15 +2227,27 @@ function beginBattle(spec) {
     if (state.arena.attempts <= 0) return { ok: false, msg: '今日演武次数不足' };
     state.arena.attempts -= 1;
   }
+  if (spec.mode === 'dungeon') {
+    if (!C.DUNGEON || !C.DUNGEON.enabled) return { ok: false, msg: '军屯未开放' };
+    checkDailyReset();
+    if ((state.dungeon.runs || 0) >= C.DUNGEON.daily) return { ok: false, msg: '今日军屯次数已用完（每日 ' + C.DUNGEON.daily + ' 次）' };
+    const kind = spec.dungeonKind === 'train' ? 'train' : 'gold';
+    const best = kind === 'train' ? (state.dungeon.bestTrain || 0) : (state.dungeon.bestGold || 0);
+    if (spec.index < 1 || spec.index > C.DUNGEON.maxFloor) return { ok: false, msg: '层数无效' };
+    if (spec.index > best + 1) return { ok: false, msg: '需先通过第 ' + (best + 1) + ' 层' };
+    state.dungeon.runs = (state.dungeon.runs || 0) + 1;
+  }
   const original = state, backup = JSON.parse(JSON.stringify(state));
   const seq = state.battle.nextSeq++;
   const id = 'b' + seq;
   const mode = spec.mode || 'campaign', index = spec.index || 0;
   const first = mode === 'campaign' ? index === state.campaign.cleared + 1
     : mode === 'tower' ? index === state.tower.best + 1
-    : mode === 'expedition' ? index === ((state.week && state.week.trial.best) || 0) + 1 : false;
+    : mode === 'expedition' ? index === ((state.week && state.week.trial.best) || 0) + 1
+    : mode === 'dungeon' ? index === ((spec.dungeonKind === 'train' ? state.dungeon.bestTrain : state.dungeon.bestGold) || 0) + 1 : false;
   state.battle.pending = {
     id, mode, index,
+    dungeonKind: spec.dungeonKind || null, first,
     hallLineup: spec.hallLineup || null,
     hallWeek: (state.week && state.week.weekId) || null,
     referenceLevel: Math.max(1, Math.floor(spec.referenceLevel || state.player.level)),
@@ -2271,6 +2291,7 @@ function battleXP(pending, win) {
   }
   if (pending.mode === 'tower') return pending.first ? Math.floor(base * C.BATTLE_XP.towerFirst) : 0;
   if (pending.mode === 'arena') return Math.floor(base * C.BATTLE_XP.arenaWin);
+  if (pending.mode === 'dungeon') return 0;
   if (pending.mode === 'training') {
     // 练兵经验每日上限：前 N 场全额，之后 0（切断"无限练兵=免费等级"）
     const done = (state.daily.trainingWins || 0);
@@ -2317,6 +2338,23 @@ function settleBattle(battleId, outcome) {
         const stars = st.hallStars(win, outcome.duration || 0, Number(outcome.aliveCount) || 0);
         reward.stars = stars;
         reward.hallReward = winHall(pending.index, pending.hallLineup || null, stars, pending.hallWeek);
+      }
+    } else if (pending.mode === 'dungeon') {
+      if (win) {
+        const kind = pending.dungeonKind === 'train' ? 'train' : 'gold';
+        const f = Math.max(1, Math.min(C.DUNGEON.maxFloor, pending.index || 1));
+        if (kind === 'gold') {
+          const gold = C.DUNGEON.goldReward(f);
+          state.res.gold += gold;
+          reward = { kind: 'gold', floor: f, gold };
+        } else {
+          const lv = C.DUNGEON.enemyLevel(f, state.player.level);
+          const xpDirect = C.DUNGEON.xpReward(lv);
+          const lvl = addPlayerXP(xpDirect);
+          reward = { kind: 'train', floor: f, xpDirect, levelBefore: lvl.before, levelAfter: lvl.after };
+        }
+        const key = kind === 'gold' ? 'bestGold' : 'bestTrain';
+        if (pending.first && f > (state.dungeon[key] || 0)) state.dungeon[key] = f;
       }
     } else if (pending.mode === 'arena') {
       reward = arenaFight(win, pending.diff, true);
@@ -2572,6 +2610,21 @@ function markTutorialSeen(key) {
   });
 }
 
+// 军屯双本（研讨会四 P2）：每日 2 次、双轨 10 层顺序解锁
+function dungeonInfo() {
+  checkDailyReset();
+  const enabled = !!(C.DUNGEON && C.DUNGEON.enabled);
+  const runsLeft = enabled ? Math.max(0, C.DUNGEON.daily - (state.dungeon.runs || 0)) : 0;
+  const track = (key) => {
+    const best = state.dungeon[key] || 0;
+    const next = best < C.DUNGEON.maxFloor ? best + 1 : null;
+    return { best, next, enemyLevel: next ? C.DUNGEON.enemyLevel(next, state.player.level) : null,
+      rewardPreview: next ? (key === 'bestGold' ? C.DUNGEON.goldReward(next) : null) : null };
+  };
+  return { enabled, day: state.dungeon.day, runs: state.dungeon.runs || 0, runsLeft, daily: C.DUNGEON.daily,
+    gold: track('bestGold'), train: track('bestTrain') };
+}
+
 // 14 日第二周目标（研讨会三方案 2）：第 8~14 天一次性里程碑，条件绑定既有进度。
 // 无时限：开服天数到位 + 条件达成即可领（追赶友好）；演武条件用当前赛季积分。
 function fourteenDayInfo() {
@@ -2755,7 +2808,7 @@ module.exports = {
   winCampaign, campaignRewardPreview, winTower, arenaFight, arenaSeasonInfo, arenaBoardInfo, summonGapInfo, beginBattle, settleBattle, campaignStarChestInfo, claimStarChests,
   markStorySeen, isStorySeen, retroGrants, dismissRetroGrants, dismissReturnPending,
   questList, claimQuest, activePoints, claimActiveChest, claimAllDailyRewards, claimFreeRewards, bumpQuest, applyReward,
-  sevenDayInfo, claimSevenDay, fourteenDayInfo, claimFourteenDay, tutorialSeen, markTutorialSeen, bountyInfo, bountyPayout, dispatchBounty, claimBounty, roamerInfo, buyRoamer, takeBountyGrantsNotice,
+  sevenDayInfo, claimSevenDay, fourteenDayInfo, claimFourteenDay, tutorialSeen, markTutorialSeen, dungeonInfo, bountyInfo, bountyPayout, dispatchBounty, claimBounty, roamerInfo, buyRoamer, takeBountyGrantsNotice,
   interruptBattle, setAutoBattleSpeed,
   buyGood, CURRENCY_NAME,
   adCount, adBump

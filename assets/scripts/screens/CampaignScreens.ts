@@ -336,9 +336,58 @@ export function journey(ctx: ScreenContext) {
     U.text('JourneyWeeklyDesc','周任务与活跃宝箱在远征页领取',-58,-305,430,17,tone('#ad9977'));
     U.text('JourneyWeeklyReplay',`战报 · 最近 ${(store.replaysInfo().list as any[]).length} 场 ›`,-58,-330,300,17,GOLD);
     U.tap('JourneyWeeklyReplayTap',110,-330,240,34,()=>ctx.go('hall'));
-    U.tap('JourneyWeeklyTap',0,-290,682,70,()=>ctx.go('expedition'));
+    U.tap('JourneyWeeklyTap',0,-280,682,60,()=>ctx.go('expedition'));
+    // 军屯双本入口（研讨会四 P2）
+    const dg=store.dungeonInfo();
+    if(dg.enabled){
+      U.panel('JourneyDungeon',0,-430,682,70,tone('#312218'),10,tone('#a17b40'));
+      U.text('JourneyDungeonGlyph','屯',-272,-415,59,49,GOLD);
+      U.text('JourneyDungeonName','军屯双本',-158,-415,180,26,LIGHT);
+      U.text('JourneyDungeonStat',dg.runsLeft>0?`剩 ${dg.runsLeft} 次 · 屯金 ${dg.gold.best}/10 · 屯兵 ${dg.train.best}/10`:dg.runsLeft<=0&&dg.runs>=dg.daily?'今日次数已用完':'',120,-414,280,18,GOLD);
+      U.text('JourneyDungeonDesc','屯金得铜钱 · 屯兵得主公经验 · 每日各 2 次',-58,-450,470,17,tone('#ad9977'));
+      U.tap('JourneyDungeonTap',0,-430,682,70,()=>ctx.go('dungeon'));
+    }
     U.text('JourneyVersion','「挂机定三国」放置卡牌 · v2.0.0',0,-364,580,16,tone('#ad9977'));
   }
+
+// 军屯双本（研讨会四 P2）：每日 2 次，双轨 10 层顺序解锁
+export function dungeonView(ctx: ScreenContext) {
+  const U=ctx.ui,info=store.dungeonInfo();
+  ctx.title('军 屯 双 本');
+  U.text('DungeonBack','‹ 返回',-291,484,130,22,GOLD);
+  U.tap('DungeonBackTap',-291,484,136,52,()=>ctx.back('journey'));
+  U.text('DungeonGuide',`每日 ${info.daily} 次 · 双轨共用次数 · 层数顺序解锁 · 敌力随主公等级缩放`,0,443,640,18,tone('#ad9977'));
+  U.text('DungeonRuns',`今日剩余次数：${info.runsLeft} / ${info.daily}`,0,404,640,20,info.runsLeft>0?GOLD:tone('#a99778'));
+  const tracks=[
+    { key:'gold', name:'屯金本', glyph:'金', desc:'胜利奖励铜钱', best:info.gold.best, next:info.gold.next, elv:info.gold.enemyLevel, rp:info.gold.rewardPreview?`铜钱 ${fmt.fmtNum(info.gold.rewardPreview)}`:'', color:tone('#d9a94e') },
+    { key:'train', name:'屯兵本', glyph:'兵', desc:'胜利奖励主公经验', best:info.train.best, next:info.train.next, elv:info.train.enemyLevel, rp:info.train.next?`经验 ${60+15*info.train.enemyLevel}`:'', color:tone('#7fbd94') }
+  ];
+  tracks.forEach((t:any,i:number)=>{
+    const x=i%2===0?-171:171, y=170;
+    U.panel('DungeonTrack'+i,x,y,330,300,tone('#312218'),10,t.color);
+    U.seal('DungeonGlyph'+i,x,y+108,56,t.glyph,t.color,t.color,tone('#3a2b20'),30);
+    U.text('DungeonName'+i,t.name,x-70,y+112,220,26,GOLD);
+    U.text('DungeonDesc'+i,t.desc,x,y-120,300,17,tone('#ad9977'));
+    U.text('DungeonBest'+i,t.best>0?`已通 ${t.best}/10 层`:'尚未挑战',x,y+64,300,20,LIGHT);
+    if(t.next){
+      U.text('DungeonNext'+i,`下一层 · 第 ${t.next} 层（敌约 Lv.${t.elv}）`,x,y+22,300,18,tone('#d9b06a'));
+      U.text('DungeonReward'+i,`首通奖励：${t.rp}`,x,y-14,300,17,GOLD);
+      U.button('DungeonGo'+i,info.runsLeft>0?`挑 战 第 ${t.next} 层`:'次数已用完',x,y-70,280,56,()=>{
+        if(info.runsLeft<=0)return;
+        ctx.startDungeonBattle(t.key,t.next);
+      },info.runsLeft>0?palette.red:tone('#423022'));
+    } else {
+      U.text('DungeonNext'+i,'10 层全部通过',x,y+22,300,18,GOLD);
+      U.text('DungeonReward'+i,'每日 2 次重打任意已通层',x,y-14,300,16,tone('#ad9977'));
+      if(t.best>0)U.button('DungeonGo'+i,info.runsLeft>0?`重打第 ${t.best} 层`:'次数已用完',x,y-70,280,56,()=>{
+        if(info.runsLeft<=0)return;
+        ctx.startDungeonBattle(t.key,t.best);
+      },info.runsLeft>0?palette.paperDark:tone('#423022'));
+    }
+  });
+  U.text('DungeonRule','层数每日不重置；敌方等级随主公等级与层数缩放，战力不足先回主线发育',0,-470,640,16,tone('#7a6c52'));
+  U.button('DungeonBackBtn','返 回',0,-510,295,52,()=>ctx.back('journey'),palette.paperDark);
+}
 
 export function bag(ctx: ScreenContext) {
     const s=store.getState(),U=ctx.ui;ctx.title('背包','查看物资 · 了解用途 · 管理装备');

@@ -181,6 +181,10 @@ export function resultView(ctx: ScreenContext) {
     }
   }
   else if(ctx.battleMode==='training') lines=[`练兵经验 +${r.gainedXP||0}`];
+  else if(ctx.battleMode==='dungeon'){
+    const dr=reward||{};
+    lines=r?.win?(dr.kind==='gold'?[`屯金第 ${dr.floor} 层通关 · 铜钱 +${fmt.fmtNum(dr.gold||0)}`]:[`屯兵第 ${dr.floor} 层通关 · 主公经验 +${dr.xpDirect||0}${r.levelAfter>r.levelBefore?` · 升至 Lv.${r.levelAfter}`:''}`]):[defeatDiag(ctx,r),'军屯不计入主线进度 · 明日再来'];
+  }
   else if(r?.win){
     if(reward.first){
       lines=[`元宝 +${reward.gem||0} · 铜钱 +${fmt.fmtNum(reward.gold||0)}${reward.scroll?` · 招募令 +${reward.scroll}`:''}`,

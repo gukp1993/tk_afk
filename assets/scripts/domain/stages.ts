@@ -164,6 +164,22 @@ function makeTowerEnemies(floor) {
   return { name: '群英塔 · 第' + floor + '层', units, isBoss: floor % 5 === 0 };
 }
 
+// 军屯双本（研讨会四 P2）：每日资源副本敌阵，敌力随玩家等级与层数缩放，随机 SSR 混编
+function makeDungeonEnemies(kind, floor, playerLevel) {
+  const heroes = __domain_heroes.HEROES;
+  const C2 = __domain_heroes;
+  const lv = Math.max(1, Math.round((playerLevel || 1) * (0.85 + 0.07 * Math.min(floor, 10))));
+  const rng = __domain_rng.makeRng(7700 + floor * 17 + (kind === 'train' ? 500 : 0));
+  const pool = rng.shuffle(heroes.map(h => h.id));
+  const units = [];
+  for (let i = 0; i < 5; i++) {
+    const h = __domain_heroes.getHero(pool[i]);
+    const isBoss = i === 0;
+    units.push({ hero: h, level: lv, star: 1, scale: isBoss ? 1.08 : 0.9, isBoss, row: i <= 2 ? 0 : 1 });
+  }
+  return { name: (kind === 'train' ? '军屯 · 屯兵 ' : '军屯 · 屯金 ') + '第' + floor + '层', units, isBoss: true, dungeon: { kind, floor } };
+}
+
 // 无次数限制的练兵队：三名低稀有度武将，敌方弱于同等级常规守军。
 function makePracticeEnemies(playerLevel, seed) {
   const H = __domain_heroes;
@@ -220,4 +236,4 @@ function buildReinforceUnits(globalStage, chapterFoes, lv, star, baseScale) {
     };
   });
 }
-export { CHAPTERS, STAGES_PER_CH, stageScale, chapterOf, isEliteStage, stageStars, resolveMods, stageBattleEffects, buildReinforceUnits, makeHallEnemies, hallStars, hallWeeklyLineups, makeStageEnemies, makeTowerEnemies, makeArenaEnemies, makePracticeEnemies };
+export { CHAPTERS, STAGES_PER_CH, stageScale, chapterOf, isEliteStage, stageStars, resolveMods, stageBattleEffects, buildReinforceUnits, makeHallEnemies, hallStars, hallWeeklyLineups, makeStageEnemies, makeTowerEnemies, makeArenaEnemies, makePracticeEnemies, makeDungeonEnemies };

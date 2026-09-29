@@ -1317,4 +1317,40 @@ const storeP2 = freshStore(); storeP2.load();
   global.wx._map.delete(SAVE_KEY);
 }
 
+
+// 军屯双本（研讨会四 P2）：次数门/顺序解锁/双轨奖励/每日重置
+{
+  const storeDG = freshStore(); storeDG.load();
+  const sDG = storeDG.getState();
+  const d0 = storeDG.dungeonInfo();
+  check('DG1 新档 2 次双轨从 1 层起', d0.enabled && d0.runsLeft === 2 && d0.gold.next === 1 && d0.train.next === 1);
+  // 跳层拒绝
+  const rJump = storeDG.beginBattle({ mode: 'dungeon', index: 3, dungeonKind: 'gold' });
+  check('DG2 顺序解锁：跳层拒绝', rJump.ok === false && /先通过/.test(rJump.msg));
+  const r1 = storeDG.beginBattle({ mode: 'dungeon', index: 1, dungeonKind: 'gold' });
+  check('DG3 屯金首层可开战且扣次数', r1.ok && sDG.dungeon.runs === 1 && storeDG.dungeonInfo().runsLeft === 1);
+  const st1 = storeDG.settleBattle(r1.id, { win: true, duration: 20, aliveCount: 5 });
+  check('DG4 屯金胜利发铜钱（f1=10500）并解锁 2 层', st1.ok && st1.reward.gold === 10500 && sDG.dungeon.bestGold === 1);
+  // 败局不更新最佳层
+  const r2 = storeDG.beginBattle({ mode: 'dungeon', index: 2, dungeonKind: 'gold' });
+  storeDG.settleBattle(r2.id, { win: false, duration: 10, aliveCount: 0 });
+  check('DG5 败局不推进层数', sDG.dungeon.bestGold === 1);
+  // 屯兵 XP 直发（重置次数供测试）
+  sDG.dungeon.runs = 0;
+  const r3 = storeDG.beginBattle({ mode: 'dungeon', index: 1, dungeonKind: 'train' });
+  const lvBefore = sDG.player.level, expBefore = sDG.player.exp;
+  const st3 = storeDG.settleBattle(r3.id, { win: true, duration: 20, aliveCount: 5 });
+  check('DG6 屯兵胜利直发主公经验', st3.ok && st3.reward.kind === 'train' && st3.reward.xpDirect > 0
+    && (sDG.player.exp > expBefore || sDG.player.level > lvBefore));
+  check('DG7 屯兵本不加战斗结算经验（防双发）', (st3.gainedXP || 0) === 0);
+  // 次数耗尽
+  sDG.dungeon.runs = 2;
+  const r4 = storeDG.beginBattle({ mode: 'dungeon', index: 1, dungeonKind: 'gold' });
+  check('DG8 次数用完拒绝', r4.ok === false && /次数已用完/.test(r4.msg));
+  // 跨日重置：runs 归零、最佳层保留
+  sDG.dungeon.day = '2000-01-01';
+  storeDG.checkDailyReset();
+  check('DG9 跨日次数重置最佳层保留', sDG.dungeon.runs === 0 && sDG.dungeon.bestGold === 1);
+}
+
 console.log('\nsmoke: ' + passed + ' passed, ' + failed + ' failed');process.exit(failed ? 1 : 0);

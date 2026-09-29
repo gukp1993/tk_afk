@@ -124,6 +124,16 @@ const DEFEAT_RX = { enabled: true, maxItems: 2 };
 const REPLAYS = { max: 20, arenaHighDiff: 1.2,
   capture: { hall: true, campaignFirst: true, towerMilestone: true, arenaHigh: true } };
 
+// 军屯双本（2026-09-30 研讨会四 P2）：每日资源副本。屯金（铜钱）+ 屯兵（玩家经验）各每日 2 次，
+// 10 层顺序解锁、敌力按层爬升（敌人等级随玩家等级与层数缩放）。掉落只发铜钱/玩家经验——
+// 禁碎片/精铁/招募令/元宝/军械箱（护 SSR 数量锚、军械 30 天锚、抽卡锚）。回退：enabled=false 隐入口。
+const DUNGEON = {
+  enabled: true, daily: 2, maxFloor: 10,
+  goldReward: (f) => 6000 + 4500 * f,
+  xpReward: (enemyLevel) => 60 + 15 * enemyLevel,
+  enemyLevel: (f, playerLevel) => Math.max(1, Math.round((playerLevel || 1) * (0.85 + 0.07 * Math.min(f, 10))))
+};
+
 // 新手首见浮层（2026-09-30 研讨会四 P1）：每场景首次进入弹一次图文说明。
 // 老档（无 tutorial 字段）视为全部已见，防浮层雨；TUTORIAL_OFF=true 全局关闭。
 const TUTORIAL_OFF = false;
@@ -497,7 +507,7 @@ export {
   MAX_LEVEL, PLAYER_LEVEL, BATTLE_XP, AUTO_BATTLE, FOOD_VALUE, DUPE_GOLD,
   goldCost, expCost, idleRates, IDLE_CAP_HOURS, GEM_IDLE, ARMORY_IRON_PER_HOUR,
   FAST_AD, FAST_PAID,
-  GACHA, factionBonus, FORMATION_ROWS, BATTLE, ARENA, DEFEAT_RX, REPLAYS, DRILL, SEVEN_DAY, FOURTEEN_DAY, TUTORIAL_OFF, TUTORIALS, TRAINING_DAILY_CAP, BOUNTY, ROAMER_POOL, AD,
+  GACHA, factionBonus, FORMATION_ROWS, BATTLE, ARENA, DEFEAT_RX, REPLAYS, DRILL, SEVEN_DAY, FOURTEEN_DAY, DUNGEON, TUTORIAL_OFF, TUTORIALS, TRAINING_DAILY_CAP, BOUNTY, ROAMER_POOL, AD,
   FIRST_STAGE_END, CAMPAIGN_DIFFICULTY, CAMPAIGN_MILESTONES, ELITE_STAGE, STAR_RULES, CHAPTER_STAR_CHESTS, DAILY_ELITE_CHEST,
   CAMPAIGN_MODS, BOSS_MODS, RETURN_GRANTS, SUMMON_TICKET, SUMMON_POINTS, FORGE, MOTIFS, MOTIF_COST, SMELT,
   CODEX_REWARDS, ACHV_AXES, ACHV_REWARDS, WEEKLY, HALL, AWAKEN, FORMATION_PRESETS_MAX, TACTIC, BATTLE_TACTICS, TACTIC_SR, HALL_ACHV, TACTIC_ACHV, AWAKEN_ACHV

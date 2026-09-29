@@ -156,7 +156,7 @@ export class CocosBootstrap extends Component implements ScreenContext {
       campaign: () => campaignScreens.campaign(this), stagePreview: () => campaignScreens.stagePreview(this), home: () => campaignScreens.home(this), journey: () => campaignScreens.journey(this),
       heroes: () => heroScreens.heroes(this), heroDetail: () => heroScreens.heroDetail(this), summon: () => heroScreens.summon(this), summonResults: () => heroScreens.summonResults(this), bag: () => campaignScreens.bag(this),
       armory: () => heroScreens.armory(this), armoryCatalog: () => heroScreens.armoryCatalog(this), armoryBox: () => heroScreens.armoryBox(this), shop: () => campaignScreens.shop(this), formation: () => campaignScreens.formation(this), formationPick: () => campaignScreens.formationPick(this), quests: () => campaignScreens.quests(this),
-      tower: () => campaignScreens.tower(this), arena: () => campaignScreens.arena(this), arenaBoard: () => campaignScreens.arenaBoard(this), story: () => campaignScreens.storyView(this), sevenDay: () => campaignScreens.sevenDayView(this), bounty: () => campaignScreens.bountyView(this), forge: () => heroScreens.forgeView(this), codex: () => heroScreens.codexView(this), achv: () => heroScreens.achvView(this), expedition: () => campaignScreens.expeditionView(this), hall: () => campaignScreens.hallView(this),
+      tower: () => campaignScreens.tower(this), arena: () => campaignScreens.arena(this), arenaBoard: () => campaignScreens.arenaBoard(this), dungeon: () => campaignScreens.dungeonView(this), story: () => campaignScreens.storyView(this), sevenDay: () => campaignScreens.sevenDayView(this), bounty: () => campaignScreens.bountyView(this), forge: () => heroScreens.forgeView(this), codex: () => heroScreens.codexView(this), achv: () => heroScreens.achvView(this), expedition: () => campaignScreens.expeditionView(this), hall: () => campaignScreens.hallView(this),
       battle: () => battleScreens.battleView(this), result: () => battleScreens.resultView(this), autoSummary: () => battleScreens.autoSummary(this, this.autoSession.summary), ad: () => this.adView()
     };
     render[page]();
@@ -344,8 +344,10 @@ export class CocosBootstrap extends Component implements ScreenContext {
   }
 
   public startArenaBattle(diff: number, seed: number) { this.startBattle('arena',0,diff,false,seed); }
+  public startDungeonBattle(kind: string, floor: number) { this.startBattle('dungeon',floor,1,false,0,kind); }
+  public battleDungeonKind: string = '';
 
-  public startBattle(mode: string,index: number,diff=1,fromAuto=false,arenaSeed=0) {
+  public startBattle(mode: string,index: number,diff=1,fromAuto=false,arenaSeed=0,dungeonKind?: string) {
     if(this.fighting)return this.tell({ok:false,msg:'已有战斗进行中'},'');
     if(this.auto && !fromAuto) return this.confirm('自动出征进行中','结束当前自动会话后再开始手动挑战？',()=>{
       this.autoAction(this.autoSession.stop('replaced-by-battle'));
@@ -358,8 +360,9 @@ export class CocosBootstrap extends Component implements ScreenContext {
     const effectiveArenaSeed=arenaSeed||Date.now();
     let _hallLineup:any=null;
     if(mode==='hall'){const bh=store.beginHall(index);if(!bh.ok)return this.tell(bh,'');_hallLineup=bh.lineup;}
-    const enemy=mode==='campaign'?stages.makeStageEnemies(index):mode==='tower'?stages.makeTowerEnemies(index):mode==='training'?stages.makePracticeEnemies(store.playerLevel(),Date.now()):mode==='expedition'?store.makeExpeditionFloor(index):mode==='hall'?(():any=>{const bh=store.beginHall(index);if(!bh.ok)return null;return stages.makeHallEnemies(bh.lineup,store.teamPower(),index);})():stages.makeArenaEnemies(store.teamPower(),effectiveArenaSeed,diff);
-    const started=store.beginBattle({mode,index,diff,referenceLevel:enemy.units[0]?.level||store.playerLevel(),hallLineup:_hallLineup,hallWeek:(store.getState().week||{}).weekId||null});
+    const enemy=mode==='campaign'?stages.makeStageEnemies(index):mode==='tower'?stages.makeTowerEnemies(index):mode==='training'?stages.makePracticeEnemies(store.playerLevel(),Date.now()):mode==='expedition'?store.makeExpeditionFloor(index):mode==='dungeon'?stages.makeDungeonEnemies(dungeonKind==='train'?'train':'gold',index,store.playerLevel()):mode==='hall'?(():any=>{const bh=store.beginHall(index);if(!bh.ok)return null;return stages.makeHallEnemies(bh.lineup,store.teamPower(),index);})():stages.makeArenaEnemies(store.teamPower(),effectiveArenaSeed,diff);
+    const started=store.beginBattle({mode,index,diff,referenceLevel:enemy.units[0]?.level||store.playerLevel(),hallLineup:_hallLineup,hallWeek:(store.getState().week||{}).weekId||null,dungeonKind});
+    this.battleDungeonKind=dungeonKind||'';
     if(!started.ok){
       if(fromAuto) this.autoAction(this.autoSession.battleStarted(false,undefined,started.msg));
       return this.tell(started,'');

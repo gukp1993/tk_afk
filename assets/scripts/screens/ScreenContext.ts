@@ -1,6 +1,6 @@
 import { CocosUi } from '../ui/CocosUi';
 
-export type Page = 'campaign'|'stagePreview'|'home'|'journey'|'heroes'|'heroDetail'|'summon'|'summonResults'|'bag'|'armory'|'armoryCatalog'|'armoryBox'|'shop'|'formation'|'formationPick'|'tower'|'arena'|'arenaBoard'|'quests'|'sevenDay'|'bounty'|'forge'|'codex'|'achv'|'expedition'|'hall'|'story'|'battle'|'result'|'autoSummary'|'ad';
+export type Page = 'campaign'|'stagePreview'|'home'|'journey'|'heroes'|'heroDetail'|'summon'|'summonResults'|'bag'|'armory'|'armoryCatalog'|'armoryBox'|'shop'|'formation'|'formationPick'|'tower'|'arena'|'arenaBoard'|'dungeon'|'quests'|'sevenDay'|'bounty'|'forge'|'codex'|'achv'|'expedition'|'hall'|'story'|'battle'|'result'|'autoSummary'|'ad';
 
 /** Navigation and transient interaction state shared by native Cocos screen renderers. */
 export interface ScreenContext {
@@ -37,6 +37,7 @@ export interface ScreenContext {
   row(name: string, text: string, y: number, action?: () => void, actionText?: string): void;
   startBattle(mode: string, index: number, diff?: number): void;
   startArenaBattle(diff: number, seed: number): void;
+  startDungeonBattle(kind: string, floor: number): void;
   startAuto(mode: 'campaign'|'training'): void;
   stopAuto(afterBattle?: boolean): void;
   skipBattle(): void;
