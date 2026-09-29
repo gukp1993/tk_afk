@@ -325,18 +325,14 @@ export function bag(ctx: ScreenContext) {
       U.text('BagCardLink'+i,action+' ›',x,y-70,275,18,GOLD);
       U.tap('BagCardTap'+i,x,y,310,193,()=>ctx.go(page));
     });
-    U.text('BagGuide','点击物资卡片，前往对应功能使用',0,-458,620,18,tone('#ad9977'));
+    U.text('BagGuide','点击物资卡片，前往对应功能使用',0,-340,620,18,tone('#ad9977'));
     [['典','图鉴收集 · 集齐阵营领厚礼','codex'],['勋','主公成就 · 五轴长线目标','achv'],['远','远征周 · 周任务与词缀挑战','expedition']].forEach(([glyph,label,page]:any,i:number)=>{
-      const y=-510+i*0-0+0;
-      const yy=-492-i*0;
-      const py=-492;
-      const rowY=py-i*0-i*0-0;
-      const yyFinal=-492;
-      U.panel('BagEntry'+i,0,-492,682,0+56,tone('#312218'),8,tone('#795b34'));
-      U.text('BagEntryGlyph'+i,String(glyph),-290,-492,44,30,GOLD);
-      U.text('BagEntryLabel'+i,String(label),-190,-492,420,19,LIGHT);
-      U.text('BagEntryGo'+i,'›',290,-492,40,19,GOLD);
-      U.tap('BagEntryTap'+i,0,-492,682,56,()=>ctx.go(page as Page));
+      const ey=-372-i*64;
+      U.panel('BagEntry'+i,0,ey,682,52,tone('#312218'),8,tone('#795b34'));
+      U.text('BagEntryGlyph'+i,String(glyph),-290,ey,44,30,GOLD);
+      U.text('BagEntryLabel'+i,String(label),-190,ey,420,19,LIGHT);
+      U.text('BagEntryGo'+i,'›',290,ey,40,19,GOLD);
+      U.tap('BagEntryTap'+i,0,ey,682,52,()=>ctx.go(page as Page));
     });
   }
 
