@@ -31,6 +31,7 @@ export class CocosBootstrap extends Component implements ScreenContext {
   public fighting: any = null;
   public battleId = '';
   public battleMode = 'campaign';
+  public armedTactic: string | null = null;
   public battleIndex = 1;
   public battleDiff = 1;
   public battleArenaSeed = 0;
@@ -338,7 +339,7 @@ export class CocosBootstrap extends Component implements ScreenContext {
     let effects=null;
     if(mode==='campaign') effects=stages.stageBattleEffects(stages.makeStageEnemies(index));
     else if(mode==='expedition') effects=stages.stageBattleEffects(enemy);
-    this.fighting=battleRules.createBattle(Object.assign({team:store.playerUnits(undefined),enemy:store.enemyUnits(enemy.units),seed:Date.now()},effects||{}));
+    this.fighting=battleRules.createBattle(Object.assign({team:store.playerUnits(this.armedTactic),enemy:store.enemyUnits(enemy.units),seed:Date.now()},effects||{}));
     if(mode==='hall'){
       this.lastReplaySpec={ v:1, mode:'hall', seat:index, lineupId:_hallLineup.id, lineupName:_hallLineup.name, seed:Date.now(), timeLimit:config.BATTLE.TIME_LIMIT,
         team:store.playerUnits(undefined).map((u:any)=>({uid:u.uid,name:u.name,faction:u.faction,cls:u.cls,level:u.level,row:u.row,stats:u.stats,ult:u.ult,passive:u.passive,isBoss:false})),

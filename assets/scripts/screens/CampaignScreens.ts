@@ -200,7 +200,18 @@ export function stagePreview(ctx: ScreenContext) {
   const team=store.getState().formation.map((id:string|null)=>id?heroes.getHero(id)?.name:null).filter(Boolean).join(' · ');
   U.text('StageStarRule','评星：★1 通关 · ★2 限时 ≤60秒（精锐/机制关 70 秒）· ★3 存活 ≥4',0,-130,620,15,dim);
   U.text('StageOurTeam',`出战：${team||'尚未编队'}`,0,-159,610,18,dim);
-  U.button('StageAuto','自动出征',0,-307,596,66,()=>ctx.startAuto('campaign'),tone('#3d6653'));
+  // 战前排兵三选一
+  U.text('StageTacticTitle','战前战术（可选）',0,-247,300,16,tone('#8a9a7a'));
+  (config.BATTLE_TACTICS as any[]).forEach((t:any,i:number)=>{
+    const x=-196+i*196;
+    const armed=(ctx as any).armedTactic===t.id;
+    U.panel('StageTactic'+i,x,-282,186,48,armed?tone('#45321b'):tone('#312218'),7,armed?GOLD:tone('#5a452a'));
+    U.text('StageTacticName'+i,t.name,x,-296,178,16,armed?GOLD:LIGHT);
+    U.text('StageTacticDesc'+i,t.desc,x,-270,178,14,tone('#ad9977'));
+    U.tap('StageTacticTap'+i,x,-282,186,48,()=>{(ctx as any).armedTactic=(ctx as any).armedTactic===t.id?null:t.id;ctx.show('stagePreview');});
+  });
+  const autoLbl=(ctx as any).armedTactic?'自动出征（无战术）':'自动出征';
+  U.button('StageAuto',autoLbl,0,-307,596,66,()=>ctx.startAuto('campaign'),tone('#3d6653'));
   U.text('StageClose','×',302,345,43,28,GOLD);
   U.tap('StageCloseTap',302,345,44,44,()=>ctx.back('campaign'));
 }
