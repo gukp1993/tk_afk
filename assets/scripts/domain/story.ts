@@ -388,6 +388,69 @@ const CHAPTERS = [
         ],
         foes: ['lvbu', 'simayi', 'caocao', 'zhouyu', 'zhugeliang'] }
     ]
+  },
+  {
+    id: 'ch13', name: '三分归晋', subtitle: '天下大势 · 分久必合',
+    intro: '魏蜀吴三国鼎立，英雄迟暮。然天下大势，分久必合，新的乱世序幕悄然拉开。',
+    finale: '三国归晋，乱世终结。然英雄的故事，永不落幕。',
+    stages: [
+      { name: '淮南三叛', narration: '淮南烽烟再起，诸葛诞据城固守，魏军围困数重。',
+        foes: ['caocao', 'simayi', 'zhangliao', 'xuchu', 'chengong'] },
+      { name: '铁笼山', narration: '铁笼山险峻，司马昭被困，蜀军截击魏军援兵。',
+        foes: ['simayi', 'caoren', 'zhanghe', 'xuhuang', 'liru'] },
+      { name: '羌兵援魏', narration: '羌兵铁骑来援，西凉尘土飞扬，蜀军严阵以待。',
+        foes: ['machao', 'pangde', 'huangzhong', 'weiyan', 'jiangwei'] },
+      { name: '剑阁天险', narration: '剑阁天险一夫当关，钟会大军止步关前。',
+        foes: ['jiangwei', 'zhugeliang', 'machao', 'huangzhong', 'pangtong'] },
+      { name: '屯田沓中', narration: '沓中屯田，姜维养精蓄锐，魏军探马来报。',
+        foes: ['jiangwei', 'zhugeliang', 'machao', 'huatuo', 'liru'] },
+      { name: '阴平偷渡', narration: '邓艾偷渡阴平，七百里无人区，蜀军腹背受敌。',
+        foes: ['simayi', 'caocao', 'xuhuang', 'liru', 'chengong'] },
+      { name: '绵竹之战', narration: '绵竹最后防线，诸葛瞻父子殉国，蜀汉危在旦夕。',
+        foes: ['zhugeliang', 'jiangwei', 'machao', 'huangzhong', 'pangtong'] },
+      { name: '成都降魏', narration: '后主出降，蜀汉灭亡。姜维一计害三贤，壮志未酬。',
+        foes: ['jiangwei', 'zhugeliang', 'liubei', 'guanyu', 'zhangfei'] },
+      { name: '吴宫残照', narration: '吴国朝政日非，孙皓暴虐，晋军六路伐吴。',
+        foes: ['sunce', 'ganning', 'taishici', 'zhouyu', 'luxun'] },
+      { name: '三分归晋', narration: '王濬楼船下益州，金陵王气黯然收。三分归一统，天下大势定。',
+        dialogue: [
+          { who: 'simayi', text: '天下大势，分久必合，合久必分。今日三国归晋，乱世终结！' },
+          { who: 'liubei', text: '英雄迟暮，然忠义千秋。这三国的故事，流传百世！' }
+        ],
+        foes: ['caocao', 'simayi', 'sunce', 'zhouyu', 'lvbu'] }
+    ]
+  },
+  {
+    id: 'ch14', name: '群英梦影', subtitle: '英魂不灭 · 再战三国',
+    intro: '三分归晋，然英雄魂魄不灭。梦中重回三国战场，与昔年对手再决高下。',
+    finale: '梦醒时分，英雄已远。但那面战旗，仍在心中飘扬。',
+    stages: [
+      { name: '虎牢关再战', narration: '梦回虎牢关，三英战吕布，枪来刀往如当年。',
+        foes: ['lvbu', 'huaxiong', 'diaochan', 'dongzhuo', 'jiling'] },
+      { name: '官渡旧地', narration: '官渡旧地重游，曹操袁绍旧部在此列阵相迎。',
+        foes: ['yuanshao', 'caocao', 'guojia', 'zhanghe', 'liru'] },
+      { name: '赤壁余烬', narration: '赤壁江面火光依旧，东风再起，樯橹灰飞烟灭。',
+        foes: ['zhouyu', 'luxun', 'huanggai', 'ganning', 'taishici'] },
+      { name: '长坂坡前', narration: '长坂坡前一声吼，常山赵子龙七进七出！',
+        foes: ['zhaoyun', 'guanyu', 'zhangfei', 'machao', 'huangzhong'] },
+      { name: '华容道口', narration: '华容道口云雾迷蒙，昔日恩怨在此了结。',
+        foes: ['guanyu', 'caocao', 'simayi', 'zhangliao', 'xuchu'] },
+      { name: '五丈原秋风', narration: '五丈原秋风萧瑟，出师未捷身先死，长使英雄泪满襟。',
+        foes: ['zhugeliang', 'jiangwei', 'machao', 'huatuo', 'pangtong'] },
+      { name: '街亭遗恨', narration: '街亭失守挥泪斩马谡，武侯泪如雨下。',
+        foes: ['jiangwei', 'zhugeliang', 'machao', 'huangzhong', 'pangtong'] },
+      { name: '麦城残阳', narration: '麦城残阳如血，武圣走麦城，千古悲歌。',
+        foes: ['guanyu', 'guanping', 'jiangwei', 'lvmeng', 'luxun'] },
+      { name: '白帝托孤', narration: '白帝城托孤，先主泣血嘱托，君臣之义至死不渝。',
+        foes: ['liubei', 'zhugeliang', 'guanyu', 'zhangfei', 'zhaoyun'] },
+      { name: '英雄终章', narration: '英雄终章——所有三国英魂在此集结，最终之战一触即发！',
+        dialogue: [
+          { who: 'lvbu', text: '吾乃飞将吕布！今日英雄集结，谁能挡我？！' },
+          { who: 'liubei', text: '天下英雄谁敌手？曹刘！今天就让我等再决高下！' },
+          { who: 'zhangfei', text: '哈哈！俺老张的丈八蛇矛早已饥渴难耐了！' }
+        ],
+        foes: ['lvbu', 'caocao', 'sunce', 'zhugeliang', 'simayi'] }
+    ]
   }
 ];
 
