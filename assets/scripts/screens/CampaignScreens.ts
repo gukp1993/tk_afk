@@ -620,7 +620,6 @@ export function formation(ctx: ScreenContext) {
   U.text('FormationTarget','索敌：同排按 1→3 号位承伤 · 神射直取后排 · 军师随机',0,10,650,16,tone('#8a9a7a'));
   const pi=store.formationPresetsInfo();
     U.panel('PresetBand',0,-30,682,40,tone('#2e2113'),7,tone('#795b34'));
-    U.text('PresetBandTitle','模板',-306,-30,52,16,GOLD);
     pi.list.forEach((pm:any,i:number)=>{
       const x=-244+i*160;
       const active=s.formation.join()===pm.slots.join();
@@ -650,7 +649,7 @@ export function formation(ctx: ScreenContext) {
       U.button('BorrowGo','借 用',230,-510,150,38,()=>{const r=store.borrowHero(bb.heroId);ctx.tell(r,r.ok?`${bb.heroName} 已随军（第 6 人，仅 PVE）`:'');},palette.gold);
     }
   }
-  U.panel('BondsPanel',0,-258,682,436,tone('#342518'),11,GOLD);
+  U.panel('BondsPanel',0,-266,682,420,tone('#342518'),11,GOLD);
   U.text('BondsTitle',`三国羁绊 · 已激活 ${bondsNow.length}/${allBonds.length}`,-160,-70,400,24,GOLD);
   const modLabel:any={atk:'攻击',hp:'生命',def:'防御'};
   const modText=['atk','hp','def'].map((k:string)=>mods[k]?`${modLabel[k]}+${Math.round(mods[k]*100)}%`:'').filter(Boolean).join(' · ');
