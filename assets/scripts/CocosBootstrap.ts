@@ -306,8 +306,10 @@ export class CocosBootstrap extends Component implements ScreenContext {
     }
     if(mode==='campaign'&&fromAuto&&!store.isStorySeen(index)){store.markStorySeen(index);store.save();}
     const effectiveArenaSeed=arenaSeed||Date.now();
-    const enemy=mode==='campaign'?stages.makeStageEnemies(index):mode==='tower'?stages.makeTowerEnemies(index):mode==='training'?stages.makePracticeEnemies(store.playerLevel(),Date.now()):mode==='expedition'?store.makeExpeditionFloor(index):mode==='hall'?stages.makeHallEnemies(store.beginHall(index).lineup,store.teamPower(),index):stages.makeArenaEnemies(store.teamPower(),effectiveArenaSeed,diff);
-    const started=store.beginBattle({mode,index,diff,referenceLevel:enemy.units[0]?.level||store.playerLevel(),hallLineup:mode==='hall'?store.beginHall(index).lineup:null});
+    let _hallLineup:any=null;
+    if(mode==='hall'){const bh=store.beginHall(index);if(!bh.ok)return this.tell(bh,'');_hallLineup=bh.lineup;}
+    const enemy=mode==='campaign'?stages.makeStageEnemies(index):mode==='tower'?stages.makeTowerEnemies(index):mode==='training'?stages.makePracticeEnemies(store.playerLevel(),Date.now()):mode==='expedition'?store.makeExpeditionFloor(index):mode==='hall'?(():any=>{const bh=store.beginHall(index);if(!bh.ok)return null;return stages.makeHallEnemies(bh.lineup,store.teamPower(),index);})():stages.makeArenaEnemies(store.teamPower(),effectiveArenaSeed,diff);
+    const started=store.beginBattle({mode,index,diff,referenceLevel:enemy.units[0]?.level||store.playerLevel(),hallLineup:_hallLineup,hallWeek:(store.getState().week||{}).weekId||null});
     if(!started.ok){
       if(fromAuto) this.autoAction(this.autoSession.battleStarted(false,undefined,started.msg));
       return this.tell(started,'');

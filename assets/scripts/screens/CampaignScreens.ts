@@ -295,12 +295,12 @@ export function journey(ctx: ScreenContext) {
     U.text('JourneyBountyStat',unread?`离线悬赏结算 · 奖励已入账 ›`:bt.canClaim?`有赏可领 · 待派遣 ${bt.idleCount}`:bt.idleCount>0?`待派遣 ${bt.idleCount} 单`:bt.list.some((b:any)=>b.state==='running')?'出征途中 · 静候归来':'今日已完成',-10,-58,430,19,unread?GOLD:GOLD);
     U.tap('JourneyBountyTap',0,-75,682,130,()=>ctx.go('bounty'));
     const hi=store.hallInfo();
-    U.panel('JourneyHall',0,-168,682,84,hi.seats.every((x:any)=>x.killed)?tone('#26301f'):tone('#312218'),10,hi.seats.every((x:any)=>x.killed)?tone('#6f8a5f'):tone('#a17b40'));
-    U.text('JourneyHallGlyph','堂',-272,-153,59,49,GOLD);
-    U.text('JourneyHallName','名人堂',-198,-153,180,26,LIGHT);
-    U.text('JourneyHallDesc','本周名阵容挑战 · 荣耀与称号',-58,-183,430,17,tone('#ad9977'));
-    U.text('JourneyHallStat',hi.seats.every((x:any)=>x.killed)?`本周全胜 · 荣耀 ${hi.honor}`:`已胜 ${hi.seats.filter((x:any)=>x.killed).length}/3 · 荣耀 ${hi.honor}`,-58,-153,430,18,GOLD);
-    U.tap('JourneyHallTap',0,-168,682,84,()=>ctx.go('hall'));
+    U.panel('JourneyHall',0,-188,682,84,hi.seats.every((x:any)=>x.killed)?tone('#26301f'):tone('#312218'),10,hi.seats.every((x:any)=>x.killed)?tone('#6f8a5f'):tone('#a17b40'));
+    U.text('JourneyHallGlyph','堂',-272,-173,59,49,GOLD);
+    U.text('JourneyHallName','名人堂',-198,-173,180,26,LIGHT);
+    U.text('JourneyHallDesc','本周名阵容挑战 · 荣耀与称号',-58,-213,430,17,tone('#ad9977'));
+    U.text('JourneyHallStat',hi.seats.every((x:any)=>x.killed)?`本周全胜 · 荣耀 ${hi.honor}`:`已胜 ${hi.seats.filter((x:any)=>x.killed).length}/3 · 荣耀 ${hi.honor}`,-58,-183,430,18,GOLD);
+    U.tap('JourneyHallTap',0,-188,682,84,()=>ctx.go('hall'));
     U.text('JourneyVersion','「挂机定三国」放置卡牌 · v2.0.0',0,-252,580,18,tone('#ad9977'));
     U.text('JourneyGuide','挑战群英塔获取资源，在演武场切磋阵容',0,-280,620,18,tone('#ad9977'));
     U.text('JourneyGuide2','装备培养与物资兑换也在这里。',0,-306,620,18,tone('#ad9977'));

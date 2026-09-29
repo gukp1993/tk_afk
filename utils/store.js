@@ -284,6 +284,10 @@ function checkWeeklyReset(today) {
     shopBought: {},
     trial: { best: 0, chestClaimed: false }
   };
+  // 修剪旧周名人堂键（防存档无限增长）
+  ['kills', 'stars', 'threeClaimed'].forEach(f => {
+    if (state.hall && state.hall[f]) Object.keys(state.hall[f]).forEach(k => { if (k.indexOf(weekKey) !== 0) delete state.hall[f][k]; });
+  });
 }
 function bumpWeek(key, n) {
   if (!state.week || !state.week.counters) return;
@@ -387,8 +391,16 @@ function beginHall(seat) {
   if (!lineup) return { ok: false, msg: '该席不存在' };
   return { ok: true, lineup, seat };
 }
-function winHall(seat, lineup, stars) {
+function winHall(seat, lineup, stars, hallWeek) {
   const w = state.week;
+  // 跨周边界：开战在上周、结算已换周 → 不发奖不记首杀（极低频，防预支新周奖励与脏键）
+  if (hallWeek && hallWeek !== w.weekId) {
+    return { seat, lineup: lineup ? lineup.name : '阵容', stars, honor: 0, gem: 0, shard: 0, token: 0,
+      firstKill: false, firstThreeStar: false, weeklyClear: false,跨周: true };
+  }
+  if (!lineup || !lineup.id) {
+    return { seat, stars, honor: 0, gem: 0, shard: 0, token: 0, firstKill: false, firstThreeStar: false, weeklyClear: false };
+  }
   const reward = { seat, lineup: lineup.name, stars, honor: 0, gem: 0, shard: 0, token: 0,
     firstKill: false, firstThreeStar: false, weeklyClear: false, firstKillHonor: 0, threeStarHonor: 0 };
   const key = w.weekId + ':' + lineup.id;
@@ -2026,6 +2038,7 @@ function beginBattle(spec) {
   state.battle.pending = {
     id, mode, index,
     hallLineup: spec.hallLineup || null,
+    hallWeek: (state.week && state.week.weekId) || null,
     referenceLevel: Math.max(1, Math.floor(spec.referenceLevel || state.player.level)),
     levelAtStart: state.player.level, first,
     diff: spec.diff || 1, startedAt: Date.now()
@@ -2112,7 +2125,7 @@ function settleBattle(battleId, outcome) {
         const st = require('./stages');
         const stars = st.hallStars(win, outcome.duration || 0, Number(outcome.aliveCount) || 0);
         reward.stars = stars;
-        reward.hallReward = winHall(pending.index, pending.hallLineup || { name: '阵容' }, stars);
+        reward.hallReward = winHall(pending.index, pending.hallLineup || null, stars, pending.hallWeek);
       }
     } else if (pending.mode === 'arena') {
       reward = arenaFight(win, pending.diff, true);

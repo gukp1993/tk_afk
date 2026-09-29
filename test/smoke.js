@@ -567,6 +567,29 @@ check('觉醒 2 级材料不足拒绝', store4b.awakenHero('guanyu').ok === fals
 s4b.roster.liaohua.star = 5;
 check('非 SSR 拒绝觉醒', store4b.awakenHero('liaohua').ok === false);
 check('觉醒上限 3 级', C.AWAKEN.max === 3);
+// 名人堂验收 R2 修补对应断言：
+// 跨周结算不发奖（冻结周校验）
+const hfX = store4b.beginHall(0);
+const heX = stages.makeHallEnemies(hfX.lineup, store4b.teamPower(), 0);
+const hbX = store4b.beginBattle({ mode: 'hall', index: 0, referenceLevel: 5, hallLineup: hfX.lineup });
+s4b.week.weekId = '2099-W01'; // 结算前换周
+const hsX = store4b.settleBattle(hbX.id, { win: true, duration: 30, aliveCount: 5 });
+check('跨周结算名人堂不发奖', hsX.ok && hsX.reward.hallReward.firstKill === false && s4b.hall.honor === 0);
+s4b.week.weekId = store4b.weekInfo().weekId;
+// 周全胜一次性
+s4b.week.counters = {};
+const lineups = stages.hallWeeklyLineups(F.isoWeekKey());
+lineups.forEach((l, i) => {
+  const hb2 = store4b.beginBattle({ mode: 'hall', index: i, referenceLevel: 5, hallLineup: l });
+  store4b.settleBattle(hb2.id, { win: true, duration: 30, aliveCount: 5 });
+});
+check('周三席全胜授周全胜奖励', s4b.res.token >= 10 && s4b.hall.honor >= 10);
+// 觉醒 2→3 与上限态
+s4b.roster.guanyu.awaken = 2; s4b.hall.honor = 200; s4b.qualityShards[4] = 30;
+const aw3 = store4b.awakenHero('guanyu');
+check('觉醒至 3 级（上限）', aw3.ok && s4b.roster.guanyu.awaken === 3);
+check('觉醒上限后 next 为空', store4b.awakenInfo('guanyu').next === null);
+check('觉醒扣荣耀称号不回收', s4b.hall.titlesClaimed.indexOf('常胜将军') >= 0);
 // 时钟回拨防护：lastSeenTs 在未来时当日不重置
 s4b.arena.attempts = 2;
 s4b.lastSeenTs = REAL_NOW() + 86400000;

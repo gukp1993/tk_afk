@@ -30,7 +30,7 @@ function battleTitle(ctx: ScreenContext) {
 }
 
 function returnPage(ctx: ScreenContext) {
-  return ctx.battleMode==='arena'?'arena':ctx.battleMode==='tower'?'tower':ctx.battleMode==='expedition'||ctx.battleMode==='hall'?'expedition':'campaign';
+  return ctx.battleMode==='arena'?'arena':ctx.battleMode==='tower'?'tower':ctx.battleMode==='expedition'||ctx.battleMode==='hall'?'journey':'campaign';
 }
 
 function drawFighter(U: CocosUi, unit: any, index: number) {
