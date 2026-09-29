@@ -218,11 +218,13 @@ function createBattle(cfg) {
   }
 
   // ---- 效果执行 ----
+  let lastUltCast = null; // { uid, x(排位索引), name, time }
   function castUlt(u) {
     u.energy = 0;
     const fx = u.ult.effects || [];
     const scope = fx.some(f => f.tgt === 'allEnemies') ? 'all'
       : fx.some(f => f.tgt === 'frontRow' || f.tgt === 'backRow') ? 'row' : 'single';
+    lastUltCast = { uid: u.uid, name: u.ult.name, time };
     emit({ e: 'ult', uid: u.uid, skill: u.ult.name, scope });
     for (const f of fx) applyEffect(u, f);
   }
@@ -416,7 +418,7 @@ function createBattle(cfg) {
   function result() {
     return { winner, duration: Math.round(time * 10) / 10, stats };
   }
-  return { step, snapshot, result, get ended() { return ended; } };
+  return { step, snapshot, result, get ended() { return ended; }, get lastUlt() { return lastUltCast; } };
 }
 
 // 由武将定义+等级+星+装备生成战斗单元

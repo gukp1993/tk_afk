@@ -65,6 +65,18 @@ function drawField(U: CocosUi, ctx: ScreenContext, snapshot: any[]) {
   U.text('BattleVs','对 阵',0,8,92,18,DIM);
   U.text('BattleLegend','绿条 生命 · 金条 怒气 · 卡边颜色=品质',-140,560,360,15,tone('#7c6a4e'));
   snapshot.forEach((unit,index)=>drawFighter(U,unit,index));
+  // 大招释放名称弹窗
+  var lu = (ctx.fighting as any) && (ctx.fighting as any).lastUlt;
+  if (lu) {
+    var castSide = lu.uid && lu.uid.charAt(0) === 'A' ? 'A' : 'B';
+    var casterUnit = snapshot.find(function(u){return u.uid===lu.uid;});
+    if (casterUnit && casterUnit.alive) {
+      var px = casterUnit.slot < 3 ? [-215,0,215][casterUnit.slot] : [-114,114][casterUnit.slot-3];
+      var py = (castSide==='A' ? (casterUnit.slot<3?-208:245) : (casterUnit.slot<3?-208:245)) - 80;
+      U.panel('UltPopup',px,py,260,42,new Color(46,26,12,230),6,GOLD);
+      U.text('UltPopupTxt',lu.name,px,py,250,20,GOLD);
+    }
+  }
 }
 
 export function battleView(ctx: ScreenContext) {

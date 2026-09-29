@@ -31,6 +31,7 @@ export class CocosBootstrap extends Component implements ScreenContext {
   public fighting: any = null;
   public battleId = '';
   public battleMode = 'campaign';
+  public lastUltDisplay = '';
   public armedTactic: string | null = null;
   public battleIndex = 1;
   public battleDiff = 1;
@@ -98,6 +99,10 @@ export class CocosBootstrap extends Component implements ScreenContext {
       const speed = store.getState().settings.autoBattleSpeed || 1;
       const step = this.fighting.step(Math.min(0.1, dt) * speed);
       this.refreshTime += dt;
+      var lu = (this.fighting as any).lastUlt;
+      if (lu && this.lastUltDisplay !== lu.name + ':' + lu.uid + ':' + lu.time) {
+        this.lastUltDisplay = lu.name + ':' + lu.uid + ':' + lu.time;
+      }
       if (step.done) this.finishBattle(step.winner === 'A');
       else if (this.page === 'battle' && this.refreshTime > 0.3) {
         this.refreshTime = 0;
