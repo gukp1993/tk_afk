@@ -77,9 +77,9 @@ const GACHA = {
   costScroll: 1,
   costTenGold: 900,
   singleGold: 100,
-  // 白/蓝/紫/橙 四档固定概率；叠加保底：十连至少 1 张 R+，累计 40 抽必出 SSR（出 SSR 清零计数）。
+  // 白/蓝/紫/橙 四档固定概率；叠加保底：十连至少 1 张 R+；31 抽起软保底每抽 +7% SSR 概率；40 抽必出 SSR。
   rates: { ssr: 0.02, sr: 0.10, r: 0.28, n: 0.60 },
-  pity: { ssrHard: 40, tenMinR: true }
+  pity: { ssrHard: 40, tenMinR: true, soft: { from: 31, step: 0.07 } }
 };
 
 // 满星后抽到重复卡的转化：N/R 直接转铜钱（碎片对 N/R 无实用出口），SR/SSR 仍转对应品质碎片。
@@ -194,11 +194,24 @@ const CAMPAIGN_MILESTONES = {
   120: { scroll: 10, label: '招募令 ×10 · 第一期主线完成' }
 };
 
+// 会话段落化（评审团波次 1）：每章第 5 关为精锐关（第 3/7 关预留给词缀、第 10 关名将）。
+// 前 25 关不做精锐，保护新手期（第 15 关是首个团灭墙）。
+const ELITE_STAGE = { every: 5, minStage: 25, scale: 1.06 };
+// 三星评星：★1 通关；★2 限时；★3 我方存活≥4。章节星数宝箱 10/20/30（刻意不含精铁）。
+const STAR_RULES = { fastSeconds: 60, eliteFastSeconds: 70, aliveNeed: 4 };
+const CHAPTER_STAR_CHESTS = [
+  { need: 10, reward: { gem: 100 }, label: '元宝 ×100' },
+  { need: 20, reward: { shard: 15 }, label: '通用碎片 ×15' },
+  { need: 30, reward: { scroll: 3 }, label: '招募令 ×3' }
+];
+// 今日目标关（每日首个精锐关胜利）日宝箱：铜钱+三选一随机
+const DAILY_ELITE_CHEST = { gold: 20000, pick: [{ scroll: 1 }, { gem: 50 }, { shard: 5 }] };
+
 module.exports = {
   FACTIONS, BEATS, FACTION_ADV, ENEMY_FACTION_AURA, CLASSES, RARITIES,
   LEVEL_CAPS, MAX_LEVEL, PLAYER_LEVEL, BATTLE_XP, AUTO_BATTLE, FOOD_VALUE, DUPE_GOLD,
   goldCost, expCost, idleRates, IDLE_CAP_HOURS, GEM_IDLE, ARMORY_IRON_PER_HOUR,
   FAST_AD, FAST_PAID,
   GACHA, factionBonus, FORMATION_ROWS, BATTLE, ARENA, SEVEN_DAY, TRAINING_DAILY_CAP, BOUNTY, ROAMER_POOL, AD,
-  FIRST_STAGE_END, CAMPAIGN_DIFFICULTY, CAMPAIGN_MILESTONES
+  FIRST_STAGE_END, CAMPAIGN_DIFFICULTY, CAMPAIGN_MILESTONES, ELITE_STAGE, STAR_RULES, CHAPTER_STAR_CHESTS, DAILY_ELITE_CHEST
 };

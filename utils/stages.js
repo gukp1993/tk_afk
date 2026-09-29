@@ -2,11 +2,25 @@
 // 前 12 章 × 10 关走 utils/story.js 演义剧情表（名称/敌阵/对白/名将关）；
 // 超出剧情表的关卡进入循环乱世，用由 story 派生的兜底章节轮转生成（单一数据源，不维护第二份敌将表）。
 const { getHero } = require('./heroes');
-const { FIRST_STAGE_END, CAMPAIGN_DIFFICULTY } = require('./config');
+const { FIRST_STAGE_END, CAMPAIGN_DIFFICULTY, ELITE_STAGE, STAR_RULES } = require('./config');
 const story = require('./story');
 const F = require('./fmt');
 
 const STAGES_PER_CH = 10;
+
+// 精锐关：每章第 5 关（第 3/7 关预留给词缀、第 10 关名将），minStage 前不启用。
+// 三星评星：★1 通关；★2 限时（精锐/词缀关放宽到 70 秒）；★3 我方存活≥4
+function stageStars(win, duration, aliveCount, elite) {
+  if (!win) return 0;
+  let s = 1;
+  if ((Number(duration) || 0) <= (elite ? STAR_RULES.eliteFastSeconds : STAR_RULES.fastSeconds)) s += 1;
+  if ((Number(aliveCount) || 0) >= STAR_RULES.aliveNeed) s += 1;
+  return s;
+}
+function isEliteStage(globalStage) {
+  const n = Math.floor(Number(globalStage) || 0);
+  return n >= ELITE_STAGE.minStage && ((n - 1) % STAGES_PER_CH) + 1 === ELITE_STAGE.every;
+}
 
 // 循环乱世兜底章节：名字/主将/敌阵取自剧情表（首关敌阵作轮转池）
 const CHAPTERS = story.CHAPTERS.map(sc => ({
@@ -36,7 +50,8 @@ function makeStageEnemies(globalStage) {
   const { ch, inCh, name, isBoss } = chapterOf(globalStage);
   const st = story.getStoryStage(globalStage);
   const bossScale = CAMPAIGN_DIFFICULTY.bossOverrides[globalStage];
-  const normalScale = stageScale(globalStage) * (CAMPAIGN_DIFFICULTY.normalOverrides[globalStage] || 1);
+  const elite = isEliteStage(globalStage);
+  const normalScale = stageScale(globalStage) * (CAMPAIGN_DIFFICULTY.normalOverrides[globalStage] || 1) * (elite ? ELITE_STAGE.scale : 1);
   const lv = Math.max(1, Math.round(1 + (globalStage - 1) * CAMPAIGN_DIFFICULTY.levelSlope));
   const pick = (i) => {
     if (st) return st.stage.foes[i];
@@ -58,8 +73,8 @@ function makeStageEnemies(globalStage) {
       row: i <= 2 ? 0 : 1
     });
   }
-  const label = st ? ' · ' + st.stage.name : (isBoss ? ' · 名将' : ' · 第' + (inCh + 1) + '关');
-  return { name: name + label, units, isBoss, story: st };
+  const label = st ? ' · ' + st.stage.name : (isBoss ? ' · 名将' : elite ? ' · 精锐' : ' · 第' + (inCh + 1) + '关');
+  return { name: name + label, units, isBoss, elite, story: st };
 }
 
 // 群英塔：无限层，随机阵营混合，每 5 层一名将
@@ -108,4 +123,4 @@ function makeArenaEnemies(playerPower, seed, diff) {
   return { name: '演武场 · 对阵', units, isBoss: false };
 }
 
-module.exports = { CHAPTERS, STAGES_PER_CH, stageScale, chapterOf, makeStageEnemies, makeTowerEnemies, makeArenaEnemies, makePracticeEnemies };
+module.exports = { CHAPTERS, STAGES_PER_CH, stageScale, chapterOf, isEliteStage, stageStars, makeStageEnemies, makeTowerEnemies, makeArenaEnemies, makePracticeEnemies };

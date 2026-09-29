@@ -292,7 +292,7 @@ export function summon(ctx: ScreenContext) {
     });
     U.panel('SummonSeal',0,436,72,72,tone('#57402d'),10,gold);
     U.text('SummonSealText','将',0,436,68,42,gold);
-    U.text('SummonRates','概率 SSR 2% · SR 10% · R 28% · N 60%',0,352,630,19,dim);
+    U.text('SummonRates','概率 SSR 2% · SR 10% · R 28% · N 60% · 31 抽起 SSR 概率递增',0,352,630,19,dim);
     const pity=store.summonPityInfo();
     U.panel('SummonPool',0,290,686,96,panel,9,border);
     U.text('PoolTitle',`武将池 · ${heroData.HEROES.length} 将 · SSR 保底 ${pity.sinceSsr}/${pity.ssrHard} 抽`,-73,318,590,19,dim);

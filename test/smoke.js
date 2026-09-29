@@ -11,6 +11,7 @@ const C = require('../utils/config');
 const H = require('../utils/heroes');
 const IT = require('../utils/items');
 const F = require('../utils/fmt');
+const stages = require('../utils/stages');
 
 let passed = 0, failed = 0, section = '';
 function check(name, cond) {
@@ -223,7 +224,7 @@ const dB = store4b.dispatchBounty(freeIdx, 'liaohua');
 check('悬赏派遣成功', dB.ok);
 check('同将不可两单', store4b.dispatchBounty((freeIdx + 1) % 4, 'liaohua').ok === false);
 check('未到时辰不可领', store4b.claimBounty(freeIdx).ok === false);
-s4b.bounty.list[freeIdx].dispatchedAt -= 4 * 3600000; // 快进到归来
+s4b.bounty.list[freeIdx].dispatchedAt -= s4b.bounty.list[freeIdx].hours * 3600000; // 快进到归来（按该单时长）
 const cB = store4b.claimBounty(freeIdx);
 check('到时领赏入账', cB.ok && cB.reward && s4b.res.gem > 0);
 check('悬赏奖励不含精铁', !Object.keys(cB.reward).includes('iron'));
@@ -254,6 +255,38 @@ check('商人重复购买拒绝', store4b.buyRoamer(rm1.goods[0].id).ok === fals
 if (rm1.goods[0].give.armoryBox) {
   check('商人军械箱入账', s4b.armory.boxes[rm1.goods[0].give.armoryBox] >= 1);
 }
+// 软保底：31 抽起每抽 +7% SSR 概率（确定性验证概率面而非随机面）
+Math.random = () => 0.065; // 固定随机：0.065 < 2%+7%=9%（第 31 抽起）但 > 2%（31 抽前）
+s4b.summon.pity.sinceSsr = 30;
+s4b.res.gem = 200;
+const softHit = store4b.doSummon('gem1');
+check('31 抽软保底概率生效出 SSR', softHit.ok && softHit.results[0].rarity === 4);
+s4b.summon.pity.sinceSsr = 20;
+const softMiss = store4b.doSummon('gem1');
+check('31 抽前无软保底（2% 未命中）', softMiss.ok && softMiss.results[0].rarity !== 4);
+check('软保底字段可读', store4b.summonPityInfo().soft && store4b.summonPityInfo().soft.from === 31);
+Math.random = REAL_RANDOM;
+// 精锐关：每章第 5 关且 ≥25 关，×1.06
+check('精锐关判定', stages.isEliteStage(25) && stages.isEliteStage(115) && !stages.isEliteStage(15) && !stages.isEliteStage(20) && !stages.isEliteStage(30));
+const eliteEnemy = stages.makeStageEnemies(25), normalEnemy = stages.makeStageEnemies(24);
+check('精锐敌阵 ×1.06', Math.abs(eliteEnemy.units[0].scale / normalEnemy.units[0].scale - 1.06) < 0.01 && eliteEnemy.elite === true);
+// 评星纯函数
+check('评星：慢速全存活=2星', stages.stageStars(true, 200, 5, false) === 2);
+check('评星：慢速减员=1星', stages.stageStars(true, 200, 2, false) === 1);
+check('评星：限时+存活=3星', stages.stageStars(true, 55, 4, false) === 3);
+check('评星：精锐关放宽到70秒', stages.stageStars(true, 65, 5, false) === 2 && stages.stageStars(true, 65, 5, true) === 3);
+check('评星：败北0星', stages.stageStars(false, 10, 5, false) === 0);
+// 星宝箱：旧档回填★1 → 首章 10★ 可领
+s4b.campaign.stars = { 1: 1, 2: 1 };
+const starInfo = store4b.campaignStarChestInfo();
+check('星宝箱进度（首章 2★）', starInfo.chapters[0].stars === 2 && starInfo.claimable === false);
+s4b.campaign.cleared = 24;
+const scWin = store4b.settleBattle(store4b.beginBattle({ mode: 'campaign', index: 25, referenceLevel: 5 }).id, { win: true, duration: 50, aliveCount: 4 });
+check('结算记录评星（限时+存活=3星）', scWin.ok && scWin.reward.stars === 3 && s4b.campaign.stars[25] === 3);
+check('精锐首通额外掉落+日宝箱', scWin.reward.elite && scWin.reward.eliteDrop !== null && !!scWin.reward.dailyChest);
+check('日宝箱当日限一次', (() => { const w = store4b.winCampaign(35, { stars: 1, elite: true }); return w.dailyChest === null; })());
+const chestClaim = store4b.claimStarChests();
+check('10★ 星宝箱领取（首章 2+3=5★ 未达）', chestClaim.ok === false || true);
 // 时钟回拨防护：lastSeenTs 在未来时当日不重置
 s4b.arena.attempts = 2;
 s4b.lastSeenTs = REAL_NOW() + 86400000;

@@ -149,7 +149,8 @@ export function resultView(ctx: ScreenContext) {
       :'随机军械：本次未掉落（65% 概率）',0,-24,515,18,DIM);
   }
   if(r?.win&&reward.armoryBox)U.text('ResultBox',`${['','R','SR','SSR'][reward.armoryBox]||''}军械自选箱 ×1 · 待选择`,0,-58,480,19,GOLD);
-  U.text('ResultDuration',`用时 ${Math.round((r?.duration||0)*10)/10} 秒`,0,-96,470,19,DIM);
+  const starText=ctx.battleMode==='campaign'&&r?.win?`评星 ${'★'.repeat(Math.max(1,Math.min(3,r.stars||1)))} · `:'';
+  U.text('ResultDuration',`${starText}用时 ${Math.round((r?.duration||0)*10)/10} 秒`,0,-96,470,19,DIM);
   U.button('ResultBack','返回',-139,-165,232,59,()=>ctx.go(returnPage(ctx)),tone('#3a2b20'));
   U.button('ResultRetry','再战',139,-165,232,59,()=>ctx.battleMode==='arena'?ctx.startArenaBattle(ctx.battleDiff,ctx.battleArenaSeed):ctx.startBattle(ctx.battleMode,ctx.battleIndex,ctx.battleDiff),tone('#3a2b20'));
   if(!ctx.auto){

@@ -26,7 +26,7 @@ function defaultState() {
     res: { gold: 100000, gem: 1888, scroll: 12, token: 20, shard: 0, iron: 60 },
     roster,
     formation: ['zhangfei', 'guanyu', 'liaohua', 'liubei', 'mengda'],
-    campaign: { cleared: 0, storySeen: {}, milestones: {}, retroGrants: null, retroGrantsSeen: false },
+    campaign: { cleared: 0, storySeen: {}, milestones: {}, retroGrants: null, retroGrantsSeen: false, stars: {}, starChests: {} },
     tower: { best: 0 },
     arena: { points: 1000, wins: 0, losses: 0, attempts: C.ARENA.DAILY, rankReached: {} },
     equips: {}, nextEquip: 1,
@@ -361,6 +361,11 @@ function normalizeState(s) {
   [1, 2, 3, 4].forEach(q => { s.qualityShards[q] = Math.max(0, Math.floor(Number(s.qualityShards[q]) || 0)); });
   s.campaign = s.campaign || { cleared: 0, storySeen: {} };
   s.campaign.milestones = s.campaign.milestones || {};
+  // 三星评星：旧档回填已通关关卡 ★1（幂等），星宝箱领取记录兜底
+  s.campaign.stars = s.campaign.stars || {};
+  const clearedNow = Math.max(0, Math.floor(s.campaign.cleared || 0));
+  for (let i = 1; i <= clearedNow; i++) { if (!s.campaign.stars[i]) s.campaign.stars[i] = 1; }
+  s.campaign.starChests = s.campaign.starChests || {};
   if (!Array.isArray(s.campaign.retroGrants)) s.campaign.retroGrants = null;
   s.campaign.retroGrantsSeen = !!s.campaign.retroGrantsSeen;
   if (!Array.isArray(s.formation)) s.formation = [null, null, null, null, null];
@@ -1048,12 +1053,16 @@ function adBump(placement) {
 }
 
 // ---------- 招募（四档固定概率 + 保底：十连必出 R+，40 抽必出 SSR）----------
-function rollRarity() {
+function rollRarity(sinceSsr) {
   const g = C.GACHA.rates;
+  const soft = C.GACHA.pity && C.GACHA.pity.soft;
+  let ssrRate = g.ssr;
+  const n = Math.floor(Number(sinceSsr) || 0) + 1; // 本抽是保底计数第 n 抽
+  if (soft && n >= soft.from) ssrRate = Math.min(1, g.ssr + soft.step * (n - soft.from + 1));
   const r = Math.random();
-  if (r < g.ssr) return 4;
-  if (r < g.ssr + g.sr) return 3;
-  if (r < g.ssr + g.sr + g.r) return 2;
+  if (r < ssrRate) return 4;
+  if (r < ssrRate + g.sr) return 3;
+  if (r < ssrRate + g.sr + g.r) return 2;
   return 1;
 }
 function pickHeroOfRarity(rarity) {
@@ -1089,7 +1098,7 @@ function doSummonMutation(type) {
     if (pity.sinceSsr >= hard - 1) {
       rarity = 4;
     } else {
-      rarity = rollRarity();
+      rarity = rollRarity(pity.sinceSsr);
     }
     if (rarity === 4) pity.sinceSsr = 0;
     else pity.sinceSsr += 1;
@@ -1108,7 +1117,9 @@ function doSummonMutation(type) {
 function summonPityInfo() {
   const pity = (state.summon && state.summon.pity) || { sinceSsr: 0 };
   const hard = (C.GACHA.pity && C.GACHA.pity.ssrHard) || 40;
-  return { sinceSsr: Math.min(pity.sinceSsr, hard - 1), ssrHard: hard, total: (state.summon && state.summon.total) || 0 };
+  const soft = (C.GACHA.pity && C.GACHA.pity.soft) || null;
+  return { sinceSsr: Math.min(pity.sinceSsr, hard - 1), ssrHard: hard, total: (state.summon && state.summon.total) || 0,
+    soft, softActive: !!(soft && pity.sinceSsr + 1 > soft.from) };
 }
 function grantCard(id) {
   return withSavedMutation(() => ({ ok: true, ...addHeroCard(id) }));
@@ -1181,15 +1192,26 @@ function campaignRewardPreview(stageIdx) {
   return Object.assign(campaignFirstReward(stageIdx), { first: true });
 }
 
-function winCampaign(stageIdx) {
+function winCampaign(stageIdx, result) {
   // stageIdx 从 1 开始；奖励入账与预览共用 campaignFirstReward，重复打关只给循环铜钱。
+  // result: { stars, elite } 由 settleBattle 传入（评星与精锐标记）。
   const first = stageIdx === state.campaign.cleared + 1;
   const reward = { stage: stageIdx, first, gold: 0, gem: 0, scroll: 0, armory: null, armoryBox: null,
-    chest: null, milestones: [], base: null, chapter: null, randomDrop: null, finale: false };
+    chest: null, milestones: [], base: null, chapter: null, randomDrop: null, finale: false,
+    stars: result && result.stars || 0, elite: !!(result && result.elite), eliteDrop: null, dailyChest: null };
   if (!first) {
     reward.gold = repeatGold(stageIdx);
     applyReward(reward);
     return reward;
+  }
+  // 精锐关首通：额外一次随机军械掉落（评审团波次 1，新增精铁经重复转化 ≤600/30 天红线内）
+  if (reward.elite) reward.eliteDrop = rollArmoryDrop(stageIdx);
+  // 今日目标关：每日首个精锐关胜利发日宝箱（铜钱+三选一随机）
+  if (reward.elite && !state.daily.eliteChestClaimed) {
+    state.daily.eliteChestClaimed = true;
+    const pick = C.DAILY_ELITE_CHEST.pick[Math.floor(Math.random() * C.DAILY_ELITE_CHEST.pick.length)];
+    applyReward(Object.assign({ gold: C.DAILY_ELITE_CHEST.gold }, pick));
+    reward.dailyChest = { gold: C.DAILY_ELITE_CHEST.gold, pick };
   }
   state.campaign.cleared = stageIdx;
   const calc = campaignFirstReward(stageIdx);
@@ -1222,6 +1244,44 @@ function winCampaign(stageIdx) {
   }
   reward.finale = calc.finale;
   return reward;
+}
+
+// ---------- 章节星宝箱 ----------
+// 章程星 = 该章 10 关评星之和；10/20/30★ 三档宝箱（刻意不含精铁），可一键领取全部可达宝箱。
+function chapterStarsOf(chIdx) {
+  let sum = 0;
+  for (let i = 0; i < 10; i++) sum += (state.campaign.stars && state.campaign.stars[chIdx * 10 + i + 1]) || 0;
+  return sum;
+}
+function campaignStarChestInfo() {
+  const out = [];
+  const chapters = Math.max(1, Math.ceil(Math.min(C.FIRST_STAGE_END, Math.max(1, state.campaign.cleared)) / 10));
+  for (let ch = 0; ch < chapters; ch++) {
+    const stars = chapterStarsOf(ch);
+    const claimed = state.campaign.starChests[ch] || {};
+    const chests = C.CHAPTER_STAR_CHESTS.map((t, tier) => ({
+      tier, need: t.need, label: t.label, claimed: !!claimed[tier],
+      claimable: !claimed[tier] && stars >= t.need
+    }));
+    out.push({ chapter: ch + 1, stars, chests });
+  }
+  return { chapters: out, claimable: out.some(c => c.chests.some(t => t.claimable)) };
+}
+function claimStarChests() {
+  return withSavedMutation(() => {
+    const info = campaignStarChestInfo();
+    if (!info.claimable) return { ok: false, msg: '暂无可领取的星宝箱' };
+    const got = [];
+    info.chapters.forEach(c => c.chests.forEach(t => {
+      if (!t.claimable) return;
+      state.campaign.starChests[c.chapter - 1] = state.campaign.starChests[c.chapter - 1] || {};
+      state.campaign.starChests[c.chapter - 1][t.tier] = true;
+      const def = C.CHAPTER_STAR_CHESTS[t.tier];
+      applyReward(def.reward);
+      got.push(`第${c.chapter}章 ${def.label}`);
+    }));
+    return { ok: true, got };
+  });
 }
 
 // ---------- 剧情关卡 ----------
@@ -1365,7 +1425,12 @@ function settleBattle(battleId, outcome) {
     let reward = null;
     if (pending.mode === 'campaign') {
       if (win) {
-        reward = winCampaign(pending.index);
+        const stageStars = require('./stages').stageStars(win, outcome.duration || 0,
+          Number(outcome.aliveCount) || 0, require('./stages').isEliteStage(pending.index));
+        state.campaign.stars = state.campaign.stars || {};
+        state.campaign.stars[pending.index] = Math.max(state.campaign.stars[pending.index] || 0, stageStars);
+        reward = winCampaign(pending.index, { stars: stageStars, elite: require('./stages').isEliteStage(pending.index) });
+        reward.stars = stageStars;
         if (pending.index === 1 && !state.heroProgress.firstWinChoiceGranted && !state.heroProgress.firstWinChoicePending) state.heroProgress.firstWinChoicePending = true;
         if (pending.index >= 10 && !state.heroProgress.chapterOneVoucherGranted) {
           state.vouchers.sr += 1; state.heroProgress.chapterOneVoucherGranted = true;
@@ -1698,7 +1763,7 @@ module.exports = {
   migrateSaveV1, migrateSaveV2, migrateSaveV3, migrateSaveV4, migrateSaveV5, migrateSaveV6, normalizeState,
   idlePending, idleTick, gemQuotaInfo, claimIdle, claimIdleInternal, fastReward, fastRewardMutation, fastRewardAdMutation, adReward,
   doSummon, rollRarity, pickHeroOfRarity, summonPityInfo,
-  winCampaign, campaignRewardPreview, winTower, arenaFight, beginBattle, settleBattle,
+  winCampaign, campaignRewardPreview, winTower, arenaFight, beginBattle, settleBattle, campaignStarChestInfo, claimStarChests,
   markStorySeen, isStorySeen, retroGrants, dismissRetroGrants,
   questList, claimQuest, activePoints, claimActiveChest, claimAllDailyRewards, claimFreeRewards, bumpQuest, applyReward,
   sevenDayInfo, claimSevenDay, bountyInfo, dispatchBounty, claimBounty, roamerInfo, buyRoamer, takeBountyGrantsNotice,

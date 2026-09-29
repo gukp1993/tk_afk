@@ -61,7 +61,8 @@ function fightBattle(stage, battleSeed) {
   }
   const win = done ? done.winner === 'A' : false;
   const timeout = !!(done && done.events.some(e => e.e === 'end' && e.timeout));
-  store.settleBattle(begin.id, { win });
+  const aliveCount = done ? fighting.snapshot().filter(u => u.side === 'A' && u.alive).length : 0;
+  store.settleBattle(begin.id, { win, duration: done ? done.time : 0, aliveCount });
   if (debugRun && !win) {
     const r = fighting.result();
     const alive = fighting.snapshot().filter(u => u.alive).length;
@@ -287,6 +288,7 @@ function runSeed(seed) {
       });
       ops++;
     }
+    if (store.campaignStarChestInfo().claimable) store.claimStarChests();
     store.claimAllDailyRewards(); // 三件套任务 + 活跃宝箱
     ops++;
     autoSummon(); // 日常奖励的元宝当日再转化

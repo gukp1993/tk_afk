@@ -258,7 +258,8 @@ export class CocosBootstrap extends Component implements ScreenContext {
   private finishBattle(win: boolean) {
     const duration=this.fighting?.result()?.duration || 0;
     this.lastBattleSnapshot=this.fighting?.snapshot() || [];
-    const settled=store.settleBattle(this.battleId,{win});
+    const aliveCount=this.lastBattleSnapshot.filter((u:any)=>u.side==='A'&&u.alive).length;
+    const settled=store.settleBattle(this.battleId,{win,duration,aliveCount});
     this.outcome={...settled,win,duration};
     this.fighting=null;
     this.show('result');

@@ -131,4 +131,25 @@ function getNextGoal(state, storeApi, deps) {
   return nextChapterGoal(state, stages);
 }
 
-export { getNextGoal, getArmoryRecommendations };
+
+// 今日军情主卡：第一层可领奖励 → 第二层成长事（getNextGoal 透传）。flags 由调用方计算。
+function buildDailyBriefing(state, flags) {
+  const f = flags || {};
+  const subs = [];
+  let main = null;
+  const push = (flag, make) => { if (flag) { const item = make(); if (!main) main = item; else subs.push(item); } };
+  push(f.bountyClaimable, () => ({ title: '悬赏可领赏', desc: '出征武将已有赏金待收', page: 'bounty' }));
+  push(f.sevenDayClaimable, () => ({ title: '七日目标可领', desc: '今天的厚礼还没拿', page: 'sevenDay' }));
+  push(f.starChestClaimable, () => ({ title: '章节星宝箱可领', desc: '评星攒的宝箱待领取', page: 'campaign' }));
+  push(f.retroGrants, () => ({ title: '旧档补发待读', desc: '有一份补发奖励待确认', page: 'campaign' }));
+  if (!main) {
+    const cleared = Math.max(0, Math.floor(Number(state.campaign && state.campaign.cleared) || 0));
+    if (cleared < 120) main = { title: `继续征途 · 第 ${cleared + 1} 关`, desc: '通过本关提升挂机收益', page: 'stagePreview' };
+    else main = { title: '第一期主线完成', desc: '群英塔与循环乱世继续开放', page: 'journey' };
+  }
+  if (f.arenaAttemptsLeft > 0) subs.push({ title: `演武还剩 ${f.arenaAttemptsLeft} 次`, page: 'journey' });
+  if (f.bountyIdle > 0) subs.push({ title: `悬赏待派遣 ${f.bountyIdle} 单`, page: 'bounty' });
+  return { main, subs: subs.slice(0, 2) };
+}
+
+export { getNextGoal, getArmoryRecommendations, buildDailyBriefing };

@@ -6,6 +6,7 @@ import * as stages from '../domain/stages';
 import * as heroes from '../domain/heroes';
 import * as items from '../domain/items';
 import * as config from '../domain/config';
+import * as progression from '../domain/progression';
 import * as fmt from '../domain/fmt';
 import { recommendFormation } from '../domain/formation';
 import { campaignMap, campaignFlag, campaignCamp, cityMap, CITY_BUILDINGS } from '../ui/Scenery';
@@ -61,6 +62,15 @@ export function campaign(ctx: ScreenContext) {
     U.panel('SevenDayBanner',-60,372,500,44,claimable?tone('#3a2c17'):tone('#2b2118'),7,claimable?GOLD:tone('#6b5837'));
     U.text('SevenDayBannerText',claimable?'七日目标 · 今天有奖励可领 ›':`七日目标 · 第 ${sd.cur} 天 ›`,-60,372,470,18,claimable?GOLD:LIGHT);
     U.tap('SevenDayBannerTap',-60,372,500,44,()=>ctx.go('sevenDay'));
+  }
+  const starInfo=store.campaignStarChestInfo();
+  if(starInfo.claimable){
+    U.panel('StarChestBanner',-60,336,500,40,tone('#3a2c17'),7,GOLD);
+    U.text('StarChestText','章节星宝箱可领 · 点击领取 ›',-60,336,470,18,GOLD);
+    U.tap('StarChestTap',-60,336,500,40,()=>{
+      const r=store.claimStarChests();
+      ctx.tell(r,r.ok?`已领取：${(r.got||[]).join('；')}`:'');
+    });
   }
   const shortcuts: [Page,string][] = [['quests','任务'],['summon','召唤'],['bag','背包'],['armory','军械']];
   shortcuts.forEach(([page,label], i) => {
@@ -176,6 +186,7 @@ export function stagePreview(ctx: ScreenContext) {
     U.text('StageIdle',`挂机铜钱/时：通关后 +${fmt.fmtNum(gain)}`,0,-62,582,17,GOLD);
   }
   const team=store.getState().formation.map((id:string|null)=>id?heroes.getHero(id)?.name:null).filter(Boolean).join(' · ');
+  U.text('StageStarRule','评星：★1 通关 · ★2 限时 ≤60秒 · ★3 存活 ≥4',0,-130,600,15,dim);
   U.text('StageOurTeam',`出战：${team||'尚未编队'}`,0,-159,610,18,dim);
   U.button('StageAuto','自动出征',0,-307,596,66,()=>ctx.startAuto('campaign'),tone('#3d6653'));
   U.text('StageClose','×',302,345,43,28,GOLD);
@@ -204,9 +215,17 @@ export function home(ctx: ScreenContext) {
     U.rect('CityDock',0,-440,720,216,PAPER);
     U.text('CityStage',chapter.name,-156,-350,380,24,INK);
     U.text('CityStageCount',`第 ${stage} 关`,273,-350,135,18,tone('#766a51'));
+    const briefing=progression.buildDailyBriefing(s,{
+      bountyClaimable:store.bountyInfo().canClaim,
+      sevenDayClaimable:!store.sevenDayInfo().allDone&&store.sevenDayInfo().canClaim,
+      starChestClaimable:store.campaignStarChestInfo().claimable,
+      retroGrants:!!store.retroGrants(),
+      arenaAttemptsLeft:s.arena.attempts,
+      bountyIdle:store.bountyInfo().idleCount
+    });
     U.panel('CityGoal',0,-390,674,40,tone('#ddd0b2'),7);
-    U.text('CityGoalText','继续三国征途 · 通过本关提升挂机收益',-42,-390,580,18,INK);
-    U.tap('CityGoalTap',0,-390,674,40,()=>ctx.go('stagePreview'));
+    U.text('CityGoalText',briefing.main.title+' · '+briefing.main.desc,-42,-390,580,18,INK);
+    U.tap('CityGoalTap',0,-390,674,40,()=>ctx.go(briefing.main.page as Page));
     U.panel('CityDeploy',-95,-440,489,57,palette.red,8,GOLD);
     U.text('CityDeployText',ctx.auto?'本场后停止':'自动出征',-95,-440,460,28,LIGHT);
     U.tap('CityDeployTap',-95,-440,489,57,()=>ctx.auto?ctx.stopAuto(true):ctx.startAuto('campaign'));
