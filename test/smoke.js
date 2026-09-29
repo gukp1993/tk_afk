@@ -1155,4 +1155,19 @@ const storeP2 = freshStore(); storeP2.load();
   wxMap.delete(SAVE_KEY);
 }
 
+// 抽卡差页引导（研讨会二 P2）：缺口派生只读
+{
+  const storeSG = freshStore(); storeSG.load();
+  const sSG = storeSG.getState();
+  const g0 = storeSG.summonGapInfo();
+  check('SG1 新档缺口含 3 启动 SSR（已有未满星置前）且兑换不可用', g0.total === 16 && g0.gaps.length === 3 && g0.gaps.every(x => x.kind === 'star')
+    && g0.ownedFull === 0 && g0.exchange === null && g0.pityLeft === 40);
+  sSG.roster.guanyu = { id: 'guanyu', star: 5, cards: 0 };
+  sSG.roster.zhaoyun = { id: 'zhaoyun', star: 3, cards: 0 };
+  sSG.qualityShards[4] = 24;
+  const g1 = storeSG.summonGapInfo();
+  check('SG2 未满星排前/兑换推荐未获得/保底余量', g1.gaps[0].id === 'zhaoyun' && g1.ownedFull === 1
+    && g1.exchange && g1.exchange.kind === 'missing' && g1.shard === 24 && g1.pityLeft === 40);
+}
+
 console.log('\nsmoke: ' + passed + ' passed, ' + failed + ' failed');process.exit(failed ? 1 : 0);

@@ -466,6 +466,15 @@ export function summonResults(ctx: ScreenContext) {
         :`留存 ×${result.cards||1}`,x,single?y-157:y-83,single?235:162,17,dim);
       U.tap('DrawCardTap'+i,x,y,single?350:205,single?420:193,openHero);
     });
+    // 抽卡差页引导（研讨会二 P2）：SSR 缺口 + 保底余量 + 品质碎片兑换推荐
+    {
+      const gap=store.summonGapInfo();
+      U.panel('DrawGap',0,-300,660,120,tone('#312218'),9,tone('#795b34'));
+      U.text('DrawGapTitle',`SSR 收集 ${gap.ownedFull}/${gap.total} · 硬保底还剩 ${gap.pityLeft} 抽`,0,-266,630,19,gold);
+      const gapText=gap.gaps.length?gap.gaps.map((g:any)=>`${g.name}（${g.note}）`).join(' · '):'SSR 已全部满星';
+      U.text('DrawGapList',`缺口：${gapText}`,0,-296,630,17,paper);
+      U.text('DrawGapEx',gap.exchange?`品质碎片 ${gap.shard}/${gap.need} · 可兑换「${gap.exchange.name}」`:gap.gaps.length?`品质碎片 ${gap.shard}/${gap.need} · 集满可兑换缺口 SSR`:`品质碎片 ${gap.shard}/${gap.need}`,0,-324,630,17,tone('#d9b06a'));
+    }
     U.panel('DrawContinue',-169,-478,298,62,tone('#d9a94e'),9,gold);
     U.text('DrawContinueText','继续招募',-169,-478,275,23,ink);
     U.tap('DrawContinueTap',-169,-478,298,62,()=>ctx.go('summon'));

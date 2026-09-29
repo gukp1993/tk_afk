@@ -1148,6 +1148,28 @@ function armoryAffixBadges() {
   return out;
 }
 
+// 抽卡差页引导（2026-09-30 研讨会二 P2，纯信息层）：SSR 收集缺口 Top3 + 品质碎片兑换推荐 + 保底余量。
+// 排序：已有未满星在前（更接近毕业，星高者优先），未获得其后；兑换推荐优先未获得（补图鉴）。
+function summonGapInfo() {
+  checkDailyReset();
+  const pity = summonPityInfo();
+  const maxStar = (C.RARITIES[4] && C.RARITIES[4].maxStar) || 5;
+  const ssr = (H.HEROES || []).filter(h => h.rarity === 4);
+  const gaps = [];
+  ssr.forEach(h => {
+    const own = state.roster[h.id];
+    if (!own) gaps.push({ id: h.id, name: h.name, kind: 'missing', star: 0, note: '未获得' });
+    else if ((own.star || 0) < maxStar) gaps.push({ id: h.id, name: h.name, kind: 'star', star: own.star || 0, note: `★${own.star || 0}·升星需同名卡` });
+  });
+  gaps.sort((a, b) => ((b.kind === 'star' ? 1 : 0) - (a.kind === 'star' ? 1 : 0)) || (b.star - a.star) || a.name.localeCompare(b.name));
+  const shard = (state.qualityShards && state.qualityShards[4]) || 0;
+  const need = 10;
+  const exTarget = gaps.find(g => g.kind === 'missing') || gaps[0] || null;
+  return { gaps: gaps.slice(0, 3), total: ssr.length, ownedFull: ssr.length - gaps.length,
+    shard, need, exchange: (shard >= need && exTarget) ? exTarget : null,
+    pityLeft: Math.max(0, (pity.ssrHard || 40) - (pity.sinceSsr || 0)) };
+}
+
 function forgeInfo(slot) {  const open = forgeGateOpen();
   const def = IT.ARMORY_SLOTS.find(x => x.id === slot);
   if (!def) return { ok: false, msg: '部位不存在' };
@@ -2611,7 +2633,7 @@ module.exports = {
   migrateSaveV1, migrateSaveV2, migrateSaveV3, migrateSaveV4, migrateSaveV5, migrateSaveV6, migrateSaveV7, normalizeState,
   idlePending, idleTick, gemQuotaInfo, claimIdle, claimIdleInternal, fastReward, fastRewardMutation, fastRewardAdMutation, adReward,
   doSummon, rollRarity, pickHeroOfRarity, summonPityInfo, setSummonFocus, summonTicketInfo, summonPointsInfo, claimSummonPoints, useUniversalSsr,
-  winCampaign, campaignRewardPreview, winTower, arenaFight, arenaSeasonInfo, arenaBoardInfo, beginBattle, settleBattle, campaignStarChestInfo, claimStarChests,
+  winCampaign, campaignRewardPreview, winTower, arenaFight, arenaSeasonInfo, arenaBoardInfo, summonGapInfo, beginBattle, settleBattle, campaignStarChestInfo, claimStarChests,
   markStorySeen, isStorySeen, retroGrants, dismissRetroGrants, dismissReturnPending,
   questList, claimQuest, activePoints, claimActiveChest, claimAllDailyRewards, claimFreeRewards, bumpQuest, applyReward,
   sevenDayInfo, claimSevenDay, bountyInfo, dispatchBounty, claimBounty, roamerInfo, buyRoamer, takeBountyGrantsNotice,

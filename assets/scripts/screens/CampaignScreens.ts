@@ -355,12 +355,12 @@ export function bag(ctx: ScreenContext) {
       U.text('BagCardLink'+i,action+' ›',x,y-70,275,18,GOLD);
       U.tap('BagCardTap'+i,x,y,310,193,()=>ctx.go(page));
     });
-    U.text('BagGuide','点击物资卡片，前往对应功能使用',0,-340,620,18,tone('#ad9977'));
+    U.text('BagGuide','点击物资卡片，前往对应功能使用',0,-332,620,18,tone('#ad9977'));
     [['典','图鉴收集 · 集齐阵营领厚礼','codex'],['勋','主公成就 · 八轴长线目标','achv'],['远','远征周 · 周任务与词缀挑战','expedition']].forEach(([glyph,label,page]:any,i:number)=>{
       const ey=-372-i*64;
       U.panel('BagEntry'+i,0,ey,682,52,tone('#312218'),8,tone('#795b34'));
       U.text('BagEntryGlyph'+i,String(glyph),-290,ey,44,30,GOLD);
-      U.text('BagEntryLabel'+i,String(label),-190,ey,420,19,LIGHT);
+      U.text('BagEntryLabel'+i,String(label),-156,ey,420,19,LIGHT);
       U.text('BagEntryGo'+i,'›',290,ey,40,19,GOLD);
       U.tap('BagEntryTap'+i,0,ey,682,52,()=>ctx.go(page as Page));
     });
