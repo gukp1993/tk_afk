@@ -266,7 +266,7 @@ export function heroDetail(ctx: ScreenContext) {
         const can=aw.next.can;
         V.text('AwakenCost',`下一级：荣耀 ${aw.next.honor} + SSR 碎片 ${aw.next.shards}`,-170,ay-10,430,17,dim);
         V.button('AwakenGo',can?'觉 醒':'材料不足',225,ay,180,54,()=>{const r:any=store.awakenHero(h.id);ctx.tell(r,r.ok?`${h.name} 觉醒至 ${r.level} 级（三维 +${Math.round(r.mult*100)}%）`:'');},can?palette.gold:palette.paperDark);
-        if(!can)V.text('AwakenLack',own.star<5?'需先满 5 星':(store.getState().hall.honor<aw.next.honor)?'荣耀不足（名人堂获取）':'SSR 碎片不足',-170,ay-38,430,15,tone('#bb614c'));
+        if(!can)V.text('AwakenLack',own.star<5?'需先满 5 星':(store.getState().hall.honor<aw.next.honor)?'荣耀不足（名人堂获取）':'SSR 碎片不足（名人堂周全胜/成就 7~8 档获取)',-170,ay-38,430,15,tone('#bb614c'));
       } else {
         V.text('AwakenMax',`已达觉醒上限 · ${h.name} 已臻化境`,0,ay-14,600,19,tone('#d9b06a'));
       }

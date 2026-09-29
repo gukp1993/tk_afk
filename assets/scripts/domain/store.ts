@@ -466,6 +466,10 @@ function winHall(seat, lineup, stars, hallWeek) {
     reward.weeklyClear = true;
     reward.token += C.HALL.weeklyClear.token;
     reward.honor += C.HALL.weeklyClear.honor;
+    if (C.HALL.weeklyClear.shard4) {
+      state.qualityShards[4] = (state.qualityShards[4] || 0) + C.HALL.weeklyClear.shard4;
+      reward.shard4 = C.HALL.weeklyClear.shard4;
+    }
   }
   if (reward.honor) state.hall.honor += reward.honor;
   if (reward.gem) state.res.gem += reward.gem;
@@ -783,7 +787,7 @@ function addHeroCard(id) {
       powerDelta: after.power - before.power, statDelta: { hp: after.hp - before.hp, atk: after.atk - before.atk, def: after.def - before.def } };
   }
   // 满星后抽到同名卡：N/R 直接转铜钱（碎片对 N/R 无实用出口），SR 转对应品质碎片，
-  // 满星 SSR 转 1「将魂」（专属兵法升级材料；SSR 品质碎片仍可由图鉴奖励等其他渠道获得）。
+  // 满星 SSR 转 1「将魂」（专属兵法升级材料）。SSR 品质碎片（觉醒材料）改由名人堂周全胜与成就 7~8 档供给。
   // 旧档已存同名卡原样保留。
   if (def.rarity <= 2) {
     const goldGain = (C.DUPE_GOLD && C.DUPE_GOLD[def.rarity]) || 0;
@@ -2475,6 +2479,7 @@ function applyReward(r) {
   if (r.iron) state.res.iron += Math.floor(r.iron);
   if (r.univSsr) state.res.univSsr = (state.res.univSsr || 0) + Math.floor(r.univSsr);
   if (r.univSr) state.res.univSr = (state.res.univSr || 0) + Math.floor(r.univSr);
+  if (r.shard4) state.qualityShards[4] = (state.qualityShards[4] || 0) + Math.floor(r.shard4);
   if (r.seals) state.seals = (state.seals || 0) + Math.floor(r.seals);
   if (r.title) state.titles = state.titles || []; if (r.title && state.titles.indexOf(r.title) < 0) state.titles.push(r.title);
   if (r.srPick) addChoiceVoucher('sr', r.srPick);

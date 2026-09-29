@@ -306,7 +306,8 @@ const AWAKEN = {
 };
 
 // 专属兵法（裁决 C 方向余量）：满 5★ SSR 专属被动长线，1~5 级，只加成该武将自身。
-// 将魂来源：满星 SSR 重复卡每张转 1 将魂（addHeroCard 满星 SSR 分支）；品质碎片仍由其他渠道获得。
+// 将魂来源：满星 SSR 重复卡每张转 1 将魂（addHeroCard 满星 SSR 分支）。
+// SSR 品质碎片（觉醒材料）补给：名人堂周全胜 5 片/周 + 主公成就 7~8 档各 15 片——除此之外无来源，觉醒线节奏受名人堂参与度门控。
 // 每级费用：将魂 2/3/4/5/6 + 铜钱 2万/3万/4万/5万/6万；逐级增量见 utils/heroes.js 各 SSR 的 tactic.perLevel。
 const TACTIC = {
   max: 5,
@@ -322,7 +323,7 @@ const HALL = {
   star: { fast: 45, alive: 4 },
   firstKill: { honor: 20, gem: 50 },
   firstThreeStar: { honor: 10, shard: 5 },
-  weeklyClear: { token: 10, honor: 10 },
+  weeklyClear: { token: 10, honor: 10, shard4: 5 }, // SSR 碎片：觉醒线补给
   titles: [{ honor: 100, title: '常胜将军' }, { honor: 300, title: '武圣传说' }],
   replayCap: 5,
   pool: [
@@ -372,7 +373,7 @@ const ACHV_AXES = {
 const ACHV_REWARDS = [
   { gold: 10000, shard: 5, token: 10 }, { gold: 15000, shard: 8, token: 10 }, { gold: 20000, shard: 10, token: 10 },
   { gold: 30000, shard: 12, token: 10 }, { gold: 40000, shard: 14, token: 10 }, { gold: 50000, shard: 15, token: 10 },
-  { shard: 20, token: 30, title: '名家' }, { shard: 30, token: 30, title: '豪杰' },
+  { shard: 20, token: 30, title: '名家', shard4: 15 }, { shard: 30, token: 30, title: '豪杰', shard4: 15 },
   { gem: 2000, title: 'name' }, { gem: 3000, frame: 1 }
 ];
 

@@ -682,6 +682,64 @@ check('normalize 兜底：tacticLv 夹紧、将魂缺省 0', rawT.v === 7 && raw
   check('跨周结算守卫（不发奖不记首杀）', rsC.ok && rsC.reward.hallReward.firstKill === false && rsC.reward.hallReward.跨周 === true);
   s4b.week.weekId = oldWeek;
 }
+// 兵法验收 R2 修补对应断言：
+// 红线口径机检：16 条 perLevel 全键合规（ultDmg/ultDebuff ≤0.06，其余 ≤0.045，禁全军键）
+{
+  const forbidden = ['auraAtk', 'auraDef', 'auraSpd', 'ultBuff'];
+  const allOk = H.HEROES.filter(h => h.rarity === 4).every(h => h.tactic &&
+    Object.keys(h.tactic.perLevel).every(k => !forbidden.includes(k) &&
+      (k === 'ultDmg' || k === 'ultDebuff' ? h.tactic.perLevel[k] <= 0.06
+        : (k === 'ultHeal' || k === 'ultDot' || k === 'ultShield' || k === 'critDmg') ? h.tactic.perLevel[k] <= 0.05
+        : h.tactic.perLevel[k] <= 0.045)));
+  check('16 条兵法红线机检（口径：ultDmg/ultDebuff ≤0.06，其余 ≤0.045，禁全军键）', allOk);
+}
+// 乘区路径：刘备 ultHeal（治疗）、诸葛亮 ultDot、貂蝉 ultDebuff
+{
+  const healMult = calc => calc.ult.effects.find(e => e.t === 'heal').mult;
+  store4b.grantCard('liubei');
+  s4b.roster.liubei.tacticLv = 0;
+  const h0 = healMult(store4b.calcHero('liubei'));
+  s4b.roster.liubei.tacticLv = 5;
+  const h5 = healMult(store4b.calcHero('liubei'));
+  check('兵法 ultHeal 乘区（刘备 1→5 级递增）', h5 > h0);
+  const dotMult = calc => calc.ult.effects.find(e => e.t === 'dot').mult;
+  store4b.grantCard('zhugeliang');
+  s4b.roster.zhugeliang.tacticLv = 0;
+  const d0 = dotMult(store4b.calcHero('zhugeliang'));
+  s4b.roster.zhugeliang.tacticLv = 5;
+  const d5 = dotMult(store4b.calcHero('zhugeliang'));
+  check('兵法 ultDot 乘区（诸葛亮 1 级 ×1.05 · 5 级 ×1.25）', Math.abs(d0 - 0.35) < 1e-9 && Math.abs(d5 - 0.35 * 1.25) < 1e-9);
+  const deb = calc => calc.ult.effects.find(e => e.t === 'debuff').pct;
+  store4b.grantCard('diaochan');
+  s4b.roster.diaochan.tacticLv = 0;
+  const db0 = deb(store4b.calcHero('diaochan'));
+  s4b.roster.diaochan.tacticLv = 5;
+  const db5 = deb(store4b.calcHero('diaochan'));
+  check('兵法 ultDebuff 乘区（貂蝉 1 级 ×1.015 · 5 级 ×1.075）', Math.abs(db0 - 0.2) < 1e-9 && Math.abs(db5 - 0.2 * 1.075) < 1e-9);
+}
+// 负数/小数 tacticLv 兜底
+s4b.roster.guanyu.tacticLv = -3;
+check('负数 tacticLv 兜底为 0 效果', store4b.calcHero('guanyu').ult.effects[0].mult === 2.5);
+s4b.roster.guanyu.tacticLv = 2.7;
+check('小数 tacticLv 直算（normalize 层负责取整）', Math.abs(ultDmgMult(store4b.calcHero('guanyu')) - 2.5 * (1 + 0.06 * 2.7)) < 1e-9);
+s4b.roster.guanyu.tacticLv = 5;
+// 周全胜 SSR 碎片补给（觉醒线）
+s4b.week.counters = {};
+const lineupsW = stages.hallWeeklyLineups(F.isoWeekKey());
+lineupsW.forEach((l, i) => {
+  const hbW = store4b.beginBattle({ mode: 'hall', index: i, referenceLevel: 5, hallLineup: l });
+  store4b.settleBattle(hbW.id, { win: true, duration: 30, aliveCount: 5 });
+});
+  // Fresh-week 功能测试：强制换周后三席重打，weeklyClear 发 SSR 碎片 5
+  s4b.week.weekId = '2099-W02';
+  store4b.checkDailyReset();
+  const shardBeforeClear = s4b.qualityShards[4];
+  const lineupsNew = stages.hallWeeklyLineups(store4b.weekInfo().weekId);
+  lineupsNew.forEach((l, i) => {
+    const hbW = store4b.beginBattle({ mode: 'hall', index: i, referenceLevel: 5, hallLineup: l });
+    store4b.settleBattle(hbW.id, { win: true, duration: 30, aliveCount: 5 });
+  });
+  check('周全胜奖励含 SSR 碎片 5（觉醒补给）', s4b.qualityShards[4] >= shardBeforeClear + 5);
 // 时钟回拨防护：lastSeenTs 在未来时当日不重置
 s4b.arena.attempts = 2;
 s4b.lastSeenTs = REAL_NOW() + 86400000;

@@ -11,6 +11,10 @@
 //  dot:    { t:'dot', kind, mult, dur, tgt }  kind: burn|poison|bleed
 //  energy: { t:'energy', tgt:'allAllies', amt }
 const CLASSES = require('./config').CLASSES;
+// 专属兵法数值红线口径（smoke 机检）：perLevel 每键 raw 上限（按数值类型分级）——
+// ultDmg/ultDebuff ≤0.06（必杀占总输出约 20~25%，等效战力每级 ≤2.5%）；
+// ultHeal/ultDot/ultShield ≤0.05（持续类每点价值低于直伤）；其余被动键 ≤0.045。
+// 全军通道键（auraAtk/auraDef/auraSpd/ultBuff）禁用。
 
 // 职业基础成长（每级）
 const GROWTH = {
