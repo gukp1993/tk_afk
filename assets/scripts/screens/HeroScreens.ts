@@ -565,6 +565,7 @@ export function achvView(ctx: ScreenContext) {
   const U=ctx.ui,info=store.achvInfo();
   ctx.title('主 公 成 就');
   U.text('AchvBack','‹ 返回',-291,484,130,22,gold);
+  U.tap('AchvBackTap',-291,484,136,52,()=>ctx.back('bag'));
   // 完整档位列表（滚动）
   let flat:any[]=[];
   info.axes.forEach(ax=>ax.tiers.forEach(t=>flat.push({axis:ax,name:ax.name,tier:t.tier,need:t.need,reward:t.reward,claimed:t.claimed,claimable:t.claimable,value:ax.value})));

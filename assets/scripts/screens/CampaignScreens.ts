@@ -312,9 +312,7 @@ export function journey(ctx: ScreenContext) {
     U.text('JourneyHallDesc','本周名阵容挑战 · 荣耀与称号',-58,-213,430,17,tone('#ad9977'));
     U.text('JourneyHallStat',hi.seats.every((x:any)=>x.killed)?`本周全胜 · 荣耀 ${hi.honor}`:`已胜 ${hi.seats.filter((x:any)=>x.killed).length}/3 · 荣耀 ${hi.honor}`,-58,-183,430,18,GOLD);
     U.tap('JourneyHallTap',0,-188,682,84,()=>ctx.go('hall'));
-    U.text('JourneyVersion','「挂机定三国」放置卡牌 · v2.0.0',0,-252,580,18,tone('#ad9977'));
-    U.text('JourneyGuide','挑战群英塔获取资源，在演武场切磋阵容',0,-280,620,18,tone('#ad9977'));
-    U.text('JourneyGuide2','装备培养与物资兑换也在这里。',0,-306,620,18,tone('#ad9977'));
+    U.text('JourneyVersion','「挂机定三国」放置卡牌 · v2.0.0',0,-260,580,16,tone('#ad9977'));
     U.text('JourneyGuide','挑战群英塔获取资源，在演武场切磋阵容',0,-196,620,18,tone('#ad9977'));
     U.text('JourneyGuide2','装备培养与物资兑换也在这里。',0,-222,620,18,tone('#ad9977'));
   }
