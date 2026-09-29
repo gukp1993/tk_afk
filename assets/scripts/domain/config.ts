@@ -114,12 +114,23 @@ const BATTLE = {
   STARTER: ['liubei', 'guanyu', 'zhangfei', 'liaohua']
 };
 
-// 演武场：每日 5 次；令牌按对手难度分档（胜），败给 1；段位首次达成发一次性奖励
+// 演武场：每日 5 次；令牌按对手难度分档（胜），败给 1；段位首次达成发一次性奖励。
+// 赛季（2026-09-30 研讨会裁决 A）：每周一软重置，新周积分=上周×WEEK_CARRY；
+// 周段位奖按本周达到的最高段位一次性发放（偏将及以上），只发铜钱/演武令/元宝/印信——禁精铁与招募令直发。
+// rankReached 保持「历史最高段位」语义，首达奖励永不重发。
 const ARENA = {
   DAILY: 5,
   LOSE_TOKENS: 1,
   winTokens: (diff) => (diff > 1.2 ? 4 : diff >= 1 ? 3 : 2),
-  rankBonus: { gem: 100, iron: 50 }
+  rankBonus: { gem: 100, iron: 50 },
+  WEEK_CARRY: 0.5,
+  weekRankBonus: {
+    '偏将军': { gold: 80000 },
+    '裨将军': { token: 8 },
+    '四征将军': { gem: 120 },
+    '车骑将军': { gem: 200, gold: 100000 },
+    '大将军': { seals: 20, gem: 300 }
+  }
 };
 
 // 七日目标：新档（或老档更新后）首日起 7 天，每天可领一份，第 7 天发 SSR 自选券

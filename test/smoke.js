@@ -1025,5 +1025,50 @@ check('A06 旧档星级直接生效且幂等', JSON.stringify(b6a.nodes) === JSO
   && b6a.nodes.weapon.tier === 2 && b6a.nodes.armor.tier === 1 && b6a.nodes.helm.tier === 1
   && b6a.nodes.boots.tier === 0);
 
+// ============ 演武赛季（2026-09-30 裁决 A）：软重置/周段位奖/榜单 ============
+section = 'arenaSeason';
+const storeAS = freshStore(); storeAS.load();
+const sAS = storeAS.getState();
+check('AS1 新档首周落键不重置起始分', sAS.arena.weekKey === F.isoWeekKey() && sAS.arena.points === 1000);
+// 旧档首周：weekKey 为空 → 只落键，积分保留（不追溯重置）
+const storeAS2 = freshStore(); storeAS2.load();
+const sAS2 = storeAS2.getState();
+sAS2.arena.weekKey = ''; sAS2.arena.points = 1750; sAS2.arena.weekRankReached = { '大将军': 1 };
+storeAS2.checkDailyReset();
+check('AS2 旧档首周 100% 保留积分并清残留周领取', sAS2.arena.weekKey === F.isoWeekKey() && sAS2.arena.points === 1750 && !sAS2.arena.weekRankReached['大将军']);
+// 跨周软重置：积分 ×0.5、周段位领取清空、rankReached（历史首达）保留
+const storeAS3 = freshStore(); storeAS3.load();
+const sAS3 = storeAS3.getState();
+sAS3.arena.points = 1600; sAS3.arena.rankReached['大将军'] = 1; sAS3.arena.weekRankReached['大将军'] = 1;
+sAS3.arena.weekKey = '2020-W01';
+storeAS3.checkDailyReset();
+check('AS3 跨周积分软重置 50%', sAS3.arena.points === 800 && sAS3.arena.weekKey === F.isoWeekKey());
+check('AS4 跨周清周段位领取但保历史首达', !sAS3.arena.weekRankReached['大将军'] && sAS3.arena.rankReached['大将军'] === 1);
+// 周段位奖：跨档一次补齐（1380→胜一局跨 偏将/裨将 两档）、同段位不重发
+const goldBeforeLadder = sAS3.res.gold, tokenBeforeLadder = sAS3.res.token;
+sAS3.arena.points = 1380;
+pinRandom();
+const fLadder = storeAS3.arenaFight(true, 1.35, true);
+unpinRandom();
+check('AS5 跨档补发：偏将+裨将同局齐发', !!sAS3.arena.weekRankReached['偏将军'] && !!sAS3.arena.weekRankReached['裨将军']);
+check('AS6 奖励入账（铜钱+演武令）', sAS3.res.gold > goldBeforeLadder && sAS3.res.token > tokenBeforeLadder);
+const goldAfterLadder = sAS3.res.gold, tokenAfterLadder = sAS3.res.token;
+pinRandom(); storeAS3.arenaFight(true, 1.35, true); unpinRandom();
+check('AS7 同段位不重发', sAS3.res.gold === goldAfterLadder && sAS3.res.token === tokenAfterLadder + fLadder.tokens);
+check('AS8 返回结构带 weekRankUp', fLadder.weekRankUp && fLadder.weekRankUp.name === '偏将军');
+// 赛季信息与榜单
+const season = storeAS3.arenaSeasonInfo();
+check('AS9 seasonInfo 结构', season.tiers.length === 5 && season.tiers[0].name === '偏将军' && season.carry === 0.5
+  && season.carryPreview === Math.floor(sAS3.arena.points * 0.5) && season.claimedCount === 2);
+const board1 = storeAS3.arenaBoardInfo(), board2 = storeAS3.arenaBoardInfo();
+check('AS10 榜单 17 行同周稳定含我', board1.rows.length === 17 && board1.myRank >= 1 && board1.myRank <= 17
+  && JSON.stringify(board1) === JSON.stringify(board2) && board1.rows.some(r => r.me));
+// 本周必做聚合（裁决 B）
+const PB = require('../utils/progression');
+sAS3.week.counters.wins = 21;
+const brief = PB.buildWeeklyBriefing(sAS3, stages.hallWeeklyLineups(F.isoWeekKey()));
+check('AS11 周报聚合派生', brief.questsTotal === 7 && brief.questsDone >= 1 && brief.hallTotal === 3
+  && typeof brief.arenaPoints === 'number' && typeof brief.seals === 'number');
+
 console.log('\nsmoke: ' + passed + ' passed, ' + failed + ' failed');
 process.exit(failed ? 1 : 0);

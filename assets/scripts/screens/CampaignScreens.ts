@@ -312,9 +312,15 @@ export function journey(ctx: ScreenContext) {
     U.text('JourneyHallDesc','本周名阵容挑战 · 荣耀与称号',-58,-213,430,17,tone('#ad9977'));
     U.text('JourneyHallStat',hi.seats.every((x:any)=>x.killed)?`本周全胜 · 荣耀 ${hi.honor}`:`已胜 ${hi.seats.filter((x:any)=>x.killed).length}/3 · 荣耀 ${hi.honor}`,-58,-183,430,18,GOLD);
     U.tap('JourneyHallTap',0,-188,682,84,()=>ctx.go('hall'));
-    U.text('JourneyVersion','「挂机定三国」放置卡牌 · v2.0.0',0,-260,580,16,tone('#ad9977'));
-    U.text('JourneyGuide','挑战群英塔获取资源，在演武场切磋阵容',0,-196,620,18,tone('#ad9977'));
-    U.text('JourneyGuide2','装备培养与物资兑换也在这里。',0,-222,620,18,tone('#ad9977'));
+    // 本周必做聚合卡（2026-09-30 裁决 B）：一眼看全周任务/名人堂/演武赛季，点击进远征周页
+    const wk=progression.buildWeeklyBriefing(s,hi.seats);
+    U.panel('JourneyWeekly',0,-280,682,84,(wk.questsDone<wk.questsTotal)?tone('#312218'):tone('#26301f'),10,(wk.questsDone<wk.questsTotal)?tone('#a17b40'):tone('#6f8a5f'));
+    U.text('JourneyWeeklyGlyph','周',-272,-265,59,49,GOLD);
+    U.text('JourneyWeeklyName','本周必做',-198,-265,180,26,LIGHT);
+    U.text('JourneyWeeklyDesc','周任务与活跃在远征页领取',-58,-305,430,17,tone('#ad9977'));
+    U.text('JourneyWeeklyStat',`任务 ${wk.questsDone}/${wk.questsTotal} · 名人堂 ${hi.seats.filter((x:any)=>x.killed).length}/${hi.seats.length} · 演武 ${wk.arenaRank}`,-58,-275,470,18,GOLD);
+    U.tap('JourneyWeeklyTap',0,-280,682,84,()=>ctx.go('expedition'));
+    U.text('JourneyVersion','「挂机定三国」放置卡牌 · v2.0.0',0,-350,580,16,tone('#ad9977'));
   }
 
 export function bag(ctx: ScreenContext) {
@@ -627,7 +633,13 @@ export function arena(ctx: ScreenContext) {
     U.text('ArenaAttempts',`战绩 ${s.arena.wins} 胜 ${s.arena.losses} 负 · 今日剩 ${s.arena.attempts} 次`,-141,302,420,18,tone('#ad9977'));
     U.text('ArenaFormation','调整编队 ›',222,302,198,18,tone('#ad9977'));
     U.tap('ArenaFormationTap',218,328,228,104,()=>ctx.go('formation'));
-    U.text('ArenaToday','今 日 对 手',-219,233,235,26,GOLD);
+    // 赛季条（2026-09-30 裁决 A）：本周段位 + 周段位奖进度 + 软重置预览，点击进演武榜
+    const season=store.arenaSeasonInfo();
+    U.panel('ArenaSeason',0,237,682,62,tone('#26301f'),9,tone('#6f8a5f'));
+    U.text('ArenaSeasonMain',`本周 ${season.rank} · ${season.points} 分`,-168,250,330,22,GOLD);
+    U.text('ArenaSeasonSub',`周段位奖 ${season.claimedCount}/${season.tiers.length} · 下周一重置至约 ${season.carryPreview} 分`,-131,225,400,16,tone('#ad9977'));
+    U.text('ArenaSeasonGo','榜单 ›',255,250,120,22,GOLD);
+    U.tap('ArenaSeasonTap',0,237,682,62,()=>ctx.go('arenaBoard'));
     const date=new Date(),day=date.getFullYear()*10000+(date.getMonth()+1)*100+date.getDate();
     [
       {diff:.8,name:'守碉老卒·1号'},
@@ -648,9 +660,37 @@ export function arena(ctx: ScreenContext) {
       U.text('ArenaFaction'+i,`${domNameA}×${fCountA[domA]} · ${counterA?(config.FACTIONS as any)[counterA]?.name:''}克`,105,y+32,180,16,tone('#ad9977'));
       U.button('ArenaFight'+i,'切 磋',244,y-20,174,54,()=>ctx.startArenaBattle(o.diff,day*97+i*13),palette.red);
     });
-    U.text('ArenaRule1','胜得积分与演武令（2~4 按难度），败亦得演武令×1',0,-335,660,18,LIGHT);
-    U.text('ArenaRule2','演武令可在集市兑换招募令与自选卡',0,-359,660,18,tone('#ad9977'));
+    U.text('ArenaRule1','赛季每周一刷新 · 积分保留 50% · 周段位奖按本周最高发放',0,-252,660,18,LIGHT);
+    U.text('ArenaRule2','演武令可在集市兑换招募令与自选卡',0,-276,660,18,tone('#ad9977'));
     U.button('ArenaBack','返 回',0,-481,295,59,()=>ctx.back('journey'),palette.paperDark);
+  }
+
+// 演武榜（2026-09-30 裁决 A）：周段位奖里程碑 + 本地假人榜（同周内稳定）
+export function arenaBoard(ctx: ScreenContext) {
+    const U=ctx.ui,season=store.arenaSeasonInfo(),board=store.arenaBoardInfo();
+    ctx.title('演 武 榜');
+    U.panel('BoardMe',0,428,682,74,tone('#3a2c17'),10,GOLD);
+    U.text('BoardMeMain',`第 ${board.myRank} 名 · ${season.points} 分 · ${season.rank}`,-152,450,460,24,GOLD);
+    U.text('BoardMeSub',`本周共 ${board.rows.length} 名 · 下周一重置至约 ${season.carryPreview} 分`,-152,424,460,17,tone('#ad9977'));
+    U.text('BoardTierTitle','周段位奖（按本周最高段位一次性发放）',0,376,620,17,LIGHT);
+    const REWARD_NAME:any={gold:'铜钱',gem:'元宝',token:'演武令',seals:'印信'};
+    season.tiers.forEach((t:any,i:number)=>{
+      const x=-272+i*136;
+      U.panel('BoardTier'+i,x,318,126,64,t.reached?tone('#4a3a17'):tone('#26201a'),8,t.reached?GOLD:tone('#4f4230'));
+      U.text('BoardTierName'+i,t.name,x,334,116,18,t.reached?GOLD:tone('#ad9977'));
+      U.text('BoardTierReward'+i,Object.keys(t.bonus).map((k:string)=>`${(REWARD_NAME as any)[k]||k}×${fmt.fmtNum((t.bonus as any)[k])}`).join('·'),x,308,116,15,t.reached?LIGHT:tone('#7a6c52'));
+    });
+    U.scroll('ArenaBoardList',0,-100,682,720,board.rows.length*52+16,V=>{
+      board.rows.forEach((r:any,i:number)=>{
+        const y=(board.rows.length*52)/2-26-i*52;
+        V.panel('BoardRow'+i,0,y,672,46,r.me?tone('#4a3a17'):tone('#241b12'),7,r.me?GOLD:tone('#3f3424'));
+        V.text('BoardRank'+i,r.rank<=3?['🥇','🥈','🥉'][r.rank-1]:`#${r.rank}`,-290,y,72,20,r.me?GOLD:LIGHT);
+        V.text('BoardName'+i,r.name,-160,y,240,20,r.me?GOLD:LIGHT);
+        V.text('BoardPts'+i,`${r.points} 分`,200,y,180,19,r.me?GOLD:tone('#ad9977'));
+      });
+    });
+    U.text('BoardHint','榜单为本地演武指引，每周随赛季刷新',0,-490,600,16,tone('#7a6c52'));
+    U.button('BoardBack','返 回',0,-528,295,52,()=>ctx.go('arena'),palette.paperDark);
   }
 
 export function storyView(ctx: ScreenContext) {

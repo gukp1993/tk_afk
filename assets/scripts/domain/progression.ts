@@ -152,4 +152,27 @@ function buildDailyBriefing(state, flags) {
   return { main, subs: subs.slice(0, 2) };
 }
 
-export { getNextGoal, getArmoryRecommendations, buildDailyBriefing };
+// 本周必做聚合（2026-09-30 研讨会裁决 B）：远征周任务/活跃、名人堂周席、演武赛季、远征层，
+// 只读派生不做任何状态变更；名人堂周键为 weekId:lunki-id，席位总数取本周阵容表长度。
+function buildWeeklyBriefing(state, hallLineups) {
+  const week = (state && state.week) || {};
+  const counters = week.counters || {};
+  const quests = (C.WEEKLY && C.WEEKLY.quests) || [];
+  const questsDone = quests.filter(q => (counters[q.key] || 0) >= q.target).length;
+  const seals = week.sealsEarned || 0;
+  const nextActive = ((C.WEEKLY && C.WEEKLY.activeTiers) || []).find(t => seals < t.need);
+  const trialBest = (week.trial && week.trial.best) || 0;
+  const weekId = week.weekId || '';
+  const hall = state.hall || {};
+  const lineups = hallLineups || [];
+  const hallCleared = lineups.filter(l => !!(hall.kills || {})[weekId + ':' + l.id]).length;
+  const arena = state.arena || {};
+  return {
+    questsDone, questsTotal: quests.length, seals,
+    nextActiveNeed: nextActive ? nextActive.need : null,
+    trialBest, hallCleared, hallTotal: lineups.length,
+    arenaRank: IT.arenaRank(arena.points || 0), arenaPoints: arena.points || 0
+  };
+}
+
+export { getNextGoal, getArmoryRecommendations, buildDailyBriefing, buildWeeklyBriefing };

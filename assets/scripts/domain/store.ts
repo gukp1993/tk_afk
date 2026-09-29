@@ -6,6 +6,7 @@ import * as __domain_items from './items';
 import * as __domain_fmt from './fmt';
 import * as __domain_platform from './platform';
 import * as __domain_battle from './battle';
+import * as __domain_rng from './rng';
 import * as __domain_formation from './formation';
 import * as __domain_stages from './stages';
 import * as __domain_achievements from './achievements';
@@ -16,6 +17,7 @@ const IT = __domain_items;
 const F = __domain_fmt;
 const platform = __domain_platform;
 const { buildUnit } = __domain_battle;
+const { makeRng } = __domain_rng;
 
 const SAVE_KEY = 'sanguo_afk_save_v1';
 const api = platform.api;
@@ -39,7 +41,7 @@ function defaultState() {
     formation: ['zhangfei', 'guanyu', 'liaohua', 'liubei', 'mengda'],
     campaign: { cleared: 0, storySeen: {}, milestones: {}, retroGrants: null, retroGrantsSeen: false, stars: {}, starChests: {} },
     tower: { best: 0 },
-    arena: { points: 1000, wins: 0, losses: 0, attempts: C.ARENA.DAILY, rankReached: {} },
+    arena: { points: 1000, wins: 0, losses: 0, attempts: C.ARENA.DAILY, rankReached: {}, weekKey: '', weekRankReached: {} },
     armory: createArmory(),
     idle: { last: Date.now(), gold: 0, gem: 0, scroll: 0, ironAcc: 0 },
     gemDay: { day: F.todayStr(), claimedGem: 0 },
@@ -285,6 +287,13 @@ function applyRewardToRaw(raw, r) {
 // ISO 周重置（寄生在日重置的回拨防护内，零新计时器）；周任务=现有行为聚合计数，印信兑换禁精铁/招募令直发
 function checkWeeklyReset(today) {
   const weekKey = F.isoWeekKey();
+  // 演武赛季滚动：跨周先结算（积分×WEEK_CARRY 软重置、清周段位奖领取记录）。
+  // weekKey 为空的档（首建/旧档首周）只落键不重置，避免吃掉起始 1000 分。
+  if (state.arena.weekKey !== weekKey) {
+    if (state.arena.weekKey) state.arena.points = Math.floor(state.arena.points * (C.ARENA.WEEK_CARRY || 0.5));
+    state.arena.weekKey = weekKey;
+    state.arena.weekRankReached = {};
+  }
   if (state.week && state.week.weekId === weekKey) return;
   state.week = {
     weekId: weekKey,
@@ -723,6 +732,9 @@ function normalizeState(s) {
   s.summon.activeFocus = ['wei', 'shu', 'wu', 'qun'].includes(s.summon.activeFocus) ? s.summon.activeFocus : null;
   s.arena = s.arena || { points: 1000, wins: 0, losses: 0, attempts: C.ARENA.DAILY };
   s.arena.rankReached = s.arena.rankReached || {};
+  // 演武赛季字段（v8 增量）：旧档首周按 100% 保留积分，不做追溯重置
+  if (!s.arena.weekKey) s.arena.weekKey = F.isoWeekKey();
+  s.arena.weekRankReached = s.arena.weekRankReached || {};
   s.sevenDay = s.sevenDay || { start: F.todayStr(), claimed: [] };
   if (!Array.isArray(s.sevenDay.claimed)) s.sevenDay.claimed = [];
   s.sevenDay.claimed = s.sevenDay.claimed.map(n => Math.floor(Number(n) || 0)).filter(n => n >= 1 && n <= 7);
@@ -2052,8 +2064,50 @@ function arenaFight(win, diff, reserved) {
     applyReward(bonus);
     rankUp = { name: rank, ...bonus };
   }
+  // 赛季周段位奖：本周达到的最高段位一次性发放；跨档一次补齐（按段位表自低向高扫）
+  let weekRankUp = null;
+  (IT.ARENA_RANKS || []).forEach(r => {
+    const bonus = (C.ARENA.weekRankBonus || {})[r.name];
+    if (!bonus || state.arena.points < r.min || state.arena.weekRankReached[r.name]) return;
+    state.arena.weekRankReached[r.name] = 1;
+    applyReward(bonus);
+    if (!weekRankUp) weekRankUp = { name: r.name, ...bonus };
+  });
   bumpQuest('q_arena1', 1);
-  return { delta, tokens, points: state.arena.points, rankUp };
+  return { delta, tokens, points: state.arena.points, rankUp, weekRankUp };
+}
+
+// 赛季信息：本周段位进度 + 周段位奖领取状态 + 下周一软重置预览（供演武榜页渲染）
+function arenaSeasonInfo() {
+  checkDailyReset();
+  const tiers = (IT.ARENA_RANKS || [])
+    .map(r => ({ name: r.name, min: r.min,
+      bonus: (C.ARENA.weekRankBonus || {})[r.name] || null,
+      reached: !!state.arena.weekRankReached[r.name] }))
+    .filter(r => r.bonus);
+  const carry = C.ARENA.WEEK_CARRY || 0.5;
+  return { weekId: state.arena.weekKey, points: state.arena.points,
+    rank: IT.arenaRank(state.arena.points), carry, carryPreview: Math.floor(state.arena.points * carry),
+    tiers, claimedCount: tiers.filter(t => t.reached).length };
+}
+
+// 演武榜：单机假人榜（无服务器），按周种子+玩家战力确定生成，同一周内名次稳定
+const ARENA_BOARD_NAMES = ['曹性', '胡车儿', '周仓', '纪灵', '蒋钦', '周泰', '黄盖', '程普', '韩当', '朱治', '蒋琬', '费祎', '李通', '臧霸', '文聘', '高顺'];
+function arenaBoardInfo() {
+  checkDailyReset();
+  const weekKey = state.arena.weekKey || F.isoWeekKey();
+  let h = 5381;
+  for (let i = 0; i < weekKey.length; i++) h = ((h * 33) ^ weekKey.charCodeAt(i)) >>> 0;
+  const rng = makeRng((h ^ (teamPower() & 0xffff)) || 1);
+  const pts = state.arena.points;
+  const rows = ARENA_BOARD_NAMES.map(name => ({
+    name, me: false,
+    points: Math.max(40, Math.floor(pts * (0.35 + rng.next() * 1.15) + rng.next() * 120))
+  }));
+  rows.push({ name: '主公（我）', points: pts, me: true });
+  rows.sort((a, b) => b.points - a.points);
+  rows.forEach((r, i) => { r.rank = i + 1; });
+  return { rows, myRank: rows.find(r => r.me).rank, weekId: weekKey };
 }
 
 // 每个对局开始时发ID并冻结等级/关卡；同一结算ID幂等，所有变化一次保存。
@@ -2498,7 +2552,7 @@ export {
   migrateSaveV1, migrateSaveV2, migrateSaveV3, migrateSaveV4, migrateSaveV5, migrateSaveV6, normalizeState,
   idlePending, idleTick, gemQuotaInfo, claimIdle, claimIdleInternal, fastReward, fastRewardMutation, fastRewardAdMutation, adReward,
   doSummon, rollRarity, pickHeroOfRarity, summonPityInfo, setSummonFocus, summonTicketInfo, summonPointsInfo, claimSummonPoints, useUniversalSsr,
-  winCampaign, campaignRewardPreview, winTower, arenaFight, beginBattle, settleBattle, campaignStarChestInfo, claimStarChests,
+  winCampaign, campaignRewardPreview, winTower, arenaFight, arenaSeasonInfo, arenaBoardInfo, beginBattle, settleBattle, campaignStarChestInfo, claimStarChests,
   markStorySeen, isStorySeen, retroGrants, dismissRetroGrants, dismissReturnPending,
   questList, claimQuest, activePoints, claimActiveChest, claimAllDailyRewards, claimFreeRewards, bumpQuest, applyReward,
   sevenDayInfo, claimSevenDay, bountyInfo, dispatchBounty, claimBounty, roamerInfo, buyRoamer, takeBountyGrantsNotice,
