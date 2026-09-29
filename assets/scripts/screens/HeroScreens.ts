@@ -399,9 +399,10 @@ export function summon(ctx: ScreenContext) {
       });
     });
     if((s.res as any).univSsr>0){
+      const univTargets=heroData.HEROES.filter((hh:any)=>hh.rarity===4&&s.roster[hh.id]&&s.roster[hh.id].star<4).length;
       U.panel('UnivPanel',0,-300,686,72,tone('#3a2c17'),9,gold);
-      U.text('UnivTitle',`万能 SSR 卡 ×${(s.res as any).univSsr} · 可指定一只未满星 SSR 升星`,-140,-246,460,20,gold);
-      U.button('UnivUse','使 用',240,-300,170,54,()=>{univPickOpen=true;ctx.show('summon');},gold);
+      U.text('UnivTitle',univTargets?`万能 SSR 卡 ×${(s.res as any).univSsr} · 可指定一只未满星 SSR 升星`:`万能 SSR 卡 ×${(s.res as any).univSsr} · SSR 已全部满星，暂无目标`,-140,-246,460,20,univTargets?gold:dim);
+      U.button('UnivUse',univTargets?'使 用':'无目标',240,-300,170,54,()=>{if(!univTargets)return;univPickOpen=true;ctx.show('summon');},univTargets?gold:tone('#423022'));
     }
     if(univPickOpen){
       const owned=heroData.HEROES.filter((hh:any)=>hh.rarity===4&&s.roster[hh.id]&&s.roster[hh.id].star<4)
@@ -422,9 +423,9 @@ export function summon(ctx: ScreenContext) {
       });
       U.button('UnivCancel','取消',0,-400,280,54,()=>{univPickOpen=false;ctx.show('summon');},tone('#423022'));
     }
-    U.panel('SummonAd',0,133,678,51,tone('#2b1e12'),8,border);
-    U.text('SummonAdText','看广告 · 免费招募令 ×1',0,133,618,20,gold);
-    U.tap('SummonAdTap',0,133,678,51,()=>ctx.playAd('summon',()=>{
+    U.panel('SummonAd',0,76,678,46,tone('#2b1e12'),8,border);
+    U.text('SummonAdText','看广告 · 免费招募令 ×1',0,76,618,20,gold);
+    U.tap('SummonAdTap',0,76,678,46,()=>ctx.playAd('summon',()=>{
       store.applyReward({scroll:1});return {ok:true};
     },'获得招募令 ×1'));
   }
@@ -554,7 +555,7 @@ export function codexView(ctx: ScreenContext) {
     U.panel('CodexRow'+i,0,y,640,78,r.claimed?tone('#26301f'):r.claimable?tone('#3a2c17'):ink,8,r.claimable?gold:border);
     U.text('CodexName'+i,r.name,-180,y+16,340,21,r.claimable?gold:LIGHT);
     U.text('CodexProg'+i,`${r.have}/${r.need}`,-180,y-16,340,17,dim);
-    U.button('CodexClaim'+i,r.claimed?'已领取':r.claimable?'领 取':`${r.have}/${r.need}`,230,y,150,50,()=>{
+    U.button('CodexClaim'+i,r.claimed?'已领取':r.claimable?'领 取':'未集齐',230,y,150,50,()=>{
       const res=store.claimCodex(r.key);
       ctx.tell(res,res.ok?'已领取 '+r.name:'');
     },r.claimable?gold:tone('#423022'));
@@ -568,7 +569,7 @@ export function achvView(ctx: ScreenContext) {
   U.tap('AchvBackTap',-291,484,136,52,()=>ctx.back('bag'));
   // 完整档位列表（滚动）
   let flat:any[]=[];
-  info.axes.forEach(ax=>ax.tiers.forEach(t=>flat.push({axis:ax,name:ax.name,tier:t.tier,need:t.need,reward:t.reward,claimed:t.claimed,claimable:t.claimable,value:ax.value})));
+  info.axes.forEach(ax=>ax.tiers.forEach(t=>flat.push({axis:ax.key,name:ax.name,tier:t.tier,need:t.need,reward:t.reward,claimed:t.claimed,claimable:t.claimable,value:ax.value})));
   flat=flat.filter(t=>t.claimable||!t.claimed);
   flat.sort((a:any,b:any)=>{
     if(a.claimable!==b.claimable)return b.claimable?1:-1;
@@ -577,9 +578,9 @@ export function achvView(ctx: ScreenContext) {
   U.scroll('AchvList',0,-60,680,830,Math.max(830,flat.length*72+20),V=>{
     flat.forEach((t,i)=>{
       const y=Math.max(830,flat.length*72+20)/2-36-i*72;
-      V.panel('AchvRow'+i,0,y,656,64,t.claimable?tone('#3a2c17'):ink,7,t.claimable?gold:border);
-      V.text('AchvRowName'+i,`${t.name} · 第${t.tier+1}档（需 ${t.need}）`,-170,y,400,19,t.claimable?gold:LIGHT);
-      V.text('AchvRowReward'+i,Object.entries(t.reward).map(([k,n]:any)=>`${k==='title'?'称号':k==='frame'?'头像框':k==='gem'?'元宝':k==='shard'?'碎片':k==='token'?'演武令':k}`+'×'+n).join(' · '),-170,y-26,420,15,dim);
+      V.panel('AchvRow'+i,0,y,656,68,t.claimable?tone('#3a2c17'):ink,7,t.claimable?gold:border);
+      V.text('AchvRowName'+i,`${t.name} · 第${t.tier+1}档（需 ${t.need}）`,-170,y+2,400,19,t.claimable?gold:LIGHT);
+      V.text('AchvRowReward'+i,Object.entries(t.reward).map(([k,n]:any)=>`${k==='title'?'称号':k==='frame'?'头像框':k==='gem'?'元宝':k==='shard'?'碎片':k==='token'?'演武令':k}`+'×'+n).join(' · '),-170,y-24,420,15,dim);
       if(t.claimable)V.button('AchvGo'+i,'领 取',235,y,140,48,()=>{const r=store.claimAchv(t.axis,t.tier);ctx.tell(r,r.ok?'已领取 '+r.name:'');},gold);
     });
   });
@@ -644,7 +645,7 @@ export function armory(ctx: ScreenContext) {
         V.text('MotifName'+i,m.name,x,summaryY-208,210,22,m.active?gold:LIGHT);
         V.text('MotifDesc'+i,m.desc,x,summaryY-238,206,14,dim);
         V.text('MotifState'+i,m.active?'● 激活中':m.unlocked?'已解锁 · 点击启用':`件数 ${m.pieces}/4`,x,summaryY-268,206,15,m.active?gold:dim);
-        if(!m.active)U.tap('MotifTap'+i,x,summaryY-238,218,150,()=>{
+        if(!m.active)V.tap('MotifTap'+i,x,summaryY-238,218,150,()=>{
           const r=store.motifActivate(m.id,true);
           ctx.tell(r,r.ok?(r.switched?`已启用 ${r.name}`:`已激活 ${r.name}（精铁 ${r.iron}·铜钱 ${r.gold}）`):'');
         });
@@ -672,7 +673,10 @@ export function armoryCatalog(ctx: ScreenContext) {
     U.text('CatalogCoinsText',`铜钱 ${fmt.fmtNum(s.res.gold)}`,175,409,310,19,gold);
     chip(U,'CatalogOverviewTab','部位养成',-171,345,334,false,()=>ctx.go('armory'));
     chip(U,'CatalogSelectedTab',`装备图鉴  ${unlocked}/${items.CATALOG.length}`,171,345,334,true,()=>ctx.show('armoryCatalog'));
-    const contentH=1610,viewH=840;
+    // 动态内容高（试玩 P2 修补）：随部位词条数与是否有待选箱变化，不再硬编码 1610
+    const hasBoxes=[1,2,3].some((q:any)=>(s.armory.boxes[q]||0)>0);
+    const viewH=840;
+    const contentH=Math.max(viewH,674+slotItems.length*78+(hasBoxes?445:284)+24);
     U.scroll('CatalogScroll',0,-126,704,viewH,contentH,V=>{
       const top=contentH/2;
       items.ARMORY_SLOTS.forEach((entry:any,i:number)=>{

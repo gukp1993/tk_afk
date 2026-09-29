@@ -193,7 +193,7 @@ export class CocosBootstrap extends Component implements ScreenContext {
   public tell(result: any, good: string) { this.notice = result?.ok ? good : (result?.msg || '操作失败'); this.show(this.page); }
   public confirm(title: string, detail: string, act: () => void) {
     const U = this.ui;
-    const mask = U.rect('ConfirmMask', 0, 0, 720, 1280, palette.ink);
+    const mask = U.rect('ConfirmMask', 0, 0, 720, 1280, new Color(12, 10, 8, 190));
     mask.on(Node.EventType.TOUCH_END, () => {});
     U.rect('ConfirmPanel', 0, 0, 625, 385, palette.paper);
     U.text('ConfirmTitle', title, 0, 120, 575, 34, palette.ink);
@@ -366,6 +366,10 @@ export class CocosBootstrap extends Component implements ScreenContext {
     if(mode==='campaign') effects=stages.stageBattleEffects(stages.makeStageEnemies(index));
     else if(mode==='expedition') effects=stages.stageBattleEffects(enemy);
     this.fighting=battleRules.createBattle(Object.assign({team:store.playerUnits(this.armedTactic),enemy:store.enemyUnits(enemy.units),seed:Date.now()},effects||{}));
+    // 每场重置弹字计数（试玩 P2：跨场保留旧计数会抑制新一场的伤害数字）
+    (this as any)._popupCount = 0;
+    this.combatPopupDisplay = [];
+    this.lastUltDisplay = '';
     if(mode==='hall'){
       this.lastReplaySpec={ v:1, mode:'hall', seat:index, lineupId:_hallLineup.id, lineupName:_hallLineup.name, seed:Date.now(), timeLimit:config.BATTLE.TIME_LIMIT,
         team:store.playerUnits((this as any).armedTactic).map((u:any)=>({uid:u.uid,name:u.name,faction:u.faction,cls:u.cls,level:u.level,row:u.row,stats:u.stats,ult:u.ult,passive:u.passive,isBoss:false})),

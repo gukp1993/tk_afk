@@ -22,7 +22,7 @@ function defaultState() {
   C.BATTLE.STARTER.forEach(id => { roster[id] = newHero(id); });
   roster.mengda = newHero('mengda');
   return {
-    v: 7, createdAt: Date.now(), name: '主公',
+    v: 8, createdAt: Date.now(), name: '主公',
     player: { level: 1, exp: 0 },
     res: { gold: 100000, gem: 1888, scroll: 12, token: 20, shard: 0, iron: 60, soul: 0 },
     roster,
@@ -692,10 +692,16 @@ function load() {
     normalizeState(state);
     save();
   } else if (raw && raw.v === 7) {
+    // v7→v8：二期里程碑补发（先备份，迁移后写 v8）
+    rawSet(SAVE_KEY + '.backup.v8', JSON.parse(JSON.stringify(raw)));
+    state = migrateSaveV7(raw);
+    normalizeState(state);
+    save();
+  } else if (raw && raw.v === 8) {
     state = raw;
     normalizeState(state);
     save();
-  } else if (raw && raw.v > 7) {
+  } else if (raw && raw.v > 8) {
     throw new Error('存档版本较新，停止加载以保护数据');
   } else if (raw) {
     throw new Error('存档版本无法识别，保留原数据并停止加载');

@@ -205,18 +205,19 @@ export function stagePreview(ctx: ScreenContext) {
   const team=store.getState().formation.map((id:string|null)=>id?heroes.getHero(id)?.name:null).filter(Boolean).join(' · ');
   U.text('StageStarRule','评星：★1 通关 · ★2 限时 ≤60秒（精锐/机制关 70 秒）· ★3 存活 ≥4',0,-130,620,15,dim);
   U.text('StageOurTeam',`出战：${team||'尚未编队'}`,0,-159,610,18,dim);
-  // 战前排兵三选一
+  // 战前排兵三选一（试玩 P1 修补：与自动出征按钮完全错开，不再叠压）
   U.text('StageTacticTitle','战前战术（可选）',0,-247,300,16,tone('#8a9a7a'));
   (config.BATTLE_TACTICS as any[]).forEach((t:any,i:number)=>{
     const x=-196+i*196;
     const armed=(ctx as any).armedTactic===t.id;
-    U.panel('StageTactic'+i,x,-282,186,48,armed?tone('#45321b'):tone('#312218'),7,armed?GOLD:tone('#5a452a'));
-    U.text('StageTacticName'+i,t.name,x,-296,178,16,armed?GOLD:LIGHT);
-    U.text('StageTacticDesc'+i,t.desc,x,-270,178,14,tone('#ad9977'));
-    U.tap('StageTacticTap'+i,x,-282,186,48,()=>{(ctx as any).armedTactic=(ctx as any).armedTactic===t.id?null:t.id;ctx.show('stagePreview');});
+    U.panel('StageTactic'+i,x,-284,186,46,armed?tone('#45321b'):tone('#312218'),7,armed?GOLD:tone('#5a452a'));
+    U.text('StageTacticName'+i,t.name,x,-271,178,16,armed?GOLD:LIGHT);
+    U.text('StageTacticDesc'+i,t.desc,x,-296,178,14,tone('#ad9977'));
+    U.tap('StageTacticTap'+i,x,-284,186,46,()=>{(ctx as any).armedTactic=(ctx as any).armedTactic===t.id?null:t.id;ctx.show('stagePreview');});
   });
-  const autoLbl=(ctx as any).armedTactic?'自动出征（无战术）':'自动出征';
-  U.button('StageAuto',autoLbl,0,-307,596,66,()=>ctx.startAuto('campaign'),tone('#3d6653'));
+  const armedT=(config.BATTLE_TACTICS as any[]).find((t:any)=>t.id===(ctx as any).armedTactic);
+  const autoLbl=armedT?`自动出征 · 战术：${armedT.name}`:'自动出征';
+  U.button('StageAuto',autoLbl,0,-345,596,66,()=>ctx.startAuto('campaign'),tone('#3d6653'));
   U.text('StageClose','×',302,345,43,28,GOLD);
   U.tap('StageCloseTap',302,345,44,44,()=>ctx.back('campaign'));
 }
@@ -321,9 +322,9 @@ export function journey(ctx: ScreenContext) {
     const wk=progression.buildWeeklyBriefing(s,hi.seats);
     U.panel('JourneyWeekly',0,-280,682,84,(wk.questsDone<wk.questsTotal)?tone('#312218'):tone('#26301f'),10,(wk.questsDone<wk.questsTotal)?tone('#a17b40'):tone('#6f8a5f'));
     U.text('JourneyWeeklyGlyph','周',-272,-265,59,49,GOLD);
-    U.text('JourneyWeeklyName','本周必做',-198,-265,180,26,LIGHT);
-    U.text('JourneyWeeklyDesc','周任务与活跃在远征页领取',-58,-305,430,17,tone('#ad9977'));
-    U.text('JourneyWeeklyStat',`任务 ${wk.questsDone}/${wk.questsTotal} · 名人堂 ${hi.seats.filter((x:any)=>x.killed).length}/${hi.seats.length} · 演武 ${wk.arenaRank}`,-58,-275,470,18,GOLD);
+    U.text('JourneyWeeklyName','本周必做',-158,-265,180,26,LIGHT);
+    U.text('JourneyWeeklyStat',`任务 ${wk.questsDone}/${wk.questsTotal} · 演武 ${wk.arenaRank}`,120,-264,280,18,GOLD);
+    U.text('JourneyWeeklyDesc','周任务与活跃宝箱在远征页领取',-58,-300,430,17,tone('#ad9977'));
     U.tap('JourneyWeeklyTap',0,-280,682,84,()=>ctx.go('expedition'));
     U.text('JourneyVersion','「挂机定三国」放置卡牌 · v2.0.0',0,-350,580,16,tone('#ad9977'));
   }
@@ -767,13 +768,26 @@ export function expeditionView(ctx: ScreenContext) {
   U.text('ExpTrialTitle','远征无限层 · 每周一刷新词缀，难度无上限',0,404,640,18,LIGHT);
   var bestFloor=(w.trial as any).best||0;
   var nextFloor=bestFloor+1;
-  U.panel('ExpTrialCard',0,340,640,80,tone('#3a2c17'),8,GOLD);
-  U.text('ExpTrialLabel','下一层 · 第 '+nextFloor+' 层',0,356,640,22,GOLD);
-  U.text('ExpTrialBest','已通 '+bestFloor+' 层',0,322,640,18,LIGHT);
+  U.panel('ExpTrialCard',0,332,640,96,tone('#3a2c17'),8,GOLD);
+  U.text('ExpTrialLabel','下一层 · 第 '+nextFloor+' 层',0,362,640,22,GOLD);
+  U.text('ExpTrialBest','已通 '+bestFloor+' 层',0,336,640,18,LIGHT);
   var msList=(config.WEEKLY.trial as any).milestones||[];
   var reached=msList.filter(function(m){return bestFloor>=m.floor;}).length;
-  U.text('ExpTrialMs','里程碑 '+reached+'/'+msList.length,0,296,640,15,tone('#d9b06a'));
-  U.button('ExpTrialGo','挑 战 第 '+nextFloor+' 层',0,258,500,58,function(){ctx.startBattle('expedition',nextFloor);},GOLD);
+  U.text('ExpTrialMs','里程碑 '+reached+'/'+msList.length,0,310,640,15,tone('#d9b06a'));
+  U.button('ExpTrialGo','挑 战 第 '+nextFloor+' 层',0,246,500,58,function(){ctx.startBattle('expedition',nextFloor);},GOLD);
+  // 周活跃宝箱（试玩 P1 修补：规则侧已有 claimWeekActive，此前无 UI 入口）
+  U.text('ExpActiveTitle','周活跃宝箱 · 按本周累计印信领额外印信',0,200,640,18,LIGHT);
+  (w.active as any[]).forEach((a:any,i:number)=>{
+    const x=-236+i*236;
+    U.panel('ExpActive'+i,x,142,210,90,a.claimed?tone('#26301f'):a.claimable?tone('#3a2c17'):tone('#171009'),7,a.claimed?tone('#6f8a5f'):a.claimable?GOLD:tone('#5a452a'));
+    U.text('ExpActiveNeed'+i,`累计印信 ${a.need}`,x,168,200,17,a.claimable?GOLD:LIGHT);
+    U.text('ExpActiveReward'+i,`奖 印信 ×${a.reward.seals||0}`,x,144,200,15,tone('#d9b06a'));
+    U.button('ExpActiveGo'+i,a.claimed?'已 领':a.claimable?'领 取':`进度 ${w.sealsEarned}/${a.need}`,x,118,196,38,()=>{
+      if(!a.claimable)return;
+      const r=store.claimWeekActive(i);
+      ctx.tell(r,r.ok?'活跃宝箱已领取':'');
+    },a.claimable?GOLD:tone('#423022'));
+  });
   // 周任务
   // 周任务
   U.text('ExpQuestTitle','周任务 · 印信主要来源',0,32,640,18,LIGHT);

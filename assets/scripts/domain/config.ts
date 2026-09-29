@@ -151,9 +151,9 @@ const TRAINING_DAILY_CAP = 20;
 const TACTIC_SR = { max: 3, shard3: [2, 3, 4], gold: [15000, 25000, 40000] };
 
 const BATTLE_TACTICS = [
-  { id: 'assault', name: '全军突袭', mods: { atkPct: 0.10, defPct: -0.05 } },
-  { id: 'phalanx', name: '坚守阵地', mods: { defPct: 0.10, atkPct: -0.05 } },
-  { id: 'guerrilla', name: '游斗袭扰', mods: { spdPct: 0.05, hpPct: -0.04 } }
+  { id: 'assault', name: '全军突袭', desc: '全军攻击 +10% · 防御 -5%', mods: { atkPct: 0.10, defPct: -0.05 } },
+  { id: 'phalanx', name: '坚守阵地', desc: '全军防御 +10% · 攻击 -5%', mods: { defPct: 0.10, atkPct: -0.05 } },
+  { id: 'guerrilla', name: '游斗袭扰', desc: '全军速度 +5% · 生命 -4%', mods: { spdPct: 0.05, hpPct: -0.04 } }
 ];
 
 // 悬赏派遣：每日刷新 4 单，派闲置武将出征，时辰到领赏（编外武将就业 + 次日回访钩子）。

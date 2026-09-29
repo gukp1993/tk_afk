@@ -50,7 +50,7 @@ check('时限 90 · 残局狂暴 75s+1%/s · 敌方光环 0.75 · 斜率 1.9', C
   && C.ENEMY_FACTION_AURA === 0.75 && C.CAMPAIGN_DIFFICULTY.levelSlope === 1.9);
 const store1 = freshStore(); store1.load();
 let s = store1.getState();
-check('默认档 v7', s.v === 7);
+check('默认档 v8', s.v === 8);
 check('品质碎片字段', s.qualityShards && s.qualityShards[4] === 0);
 check('元宝待领从零起算', Math.floor(s.idle.gem) === 0);
 check('旧商店招募令已移除', !IT.SHOP_GOODS.some(g => g.id === 's_scroll1' || g.id === 's_scroll5'));
@@ -1136,6 +1136,23 @@ const storeP2 = freshStore(); storeP2.load();
     if (floor.reinforceUnits) floor.reinforceUnits.forEach(r => { if (!r.heroId || !r.name || !(r.stats.hp > 0)) okFloors = false; });
   }
   check('P2-7 远征援军单位真实有效（hero 对象取 id）', okDirect && okFloors);
+}
+
+// P2-8 load 级回归：v7 档加载→v8+二期补发；v8 档直载；v9 拒载护数据（save() 存对象，桩内也存对象）
+{
+  const wxMap = global.wx._map;
+  wxMap.set(SAVE_KEY, JSON.parse(JSON.stringify({ v: 7, createdAt: 1, name: '主公', res: { gold: 1 }, roster: {}, campaign: { cleared: 155, storySeen: {}, milestones: {} } })));
+  const s7 = freshStore(); s7.load();
+  const loaded = s7.getState();
+  const mLoad = loaded.v === 8 && loaded.campaign.milestones[140] === 1 && loaded.campaign.milestones[150] === 1;
+  wxMap.set(SAVE_KEY, JSON.parse(JSON.stringify({ v: 8, createdAt: 1, name: '主公', res: { gold: 1 }, roster: {}, campaign: { cleared: 160, storySeen: {}, milestones: {} } })));
+  const s8 = freshStore(); s8.load();
+  const m8 = s8.getState().v === 8 && s8.getState().campaign.cleared === 160;
+  wxMap.set(SAVE_KEY, JSON.parse(JSON.stringify({ v: 9, createdAt: 1, res: {}, roster: {} })));
+  let rejected = false;
+  try { freshStore().load(); } catch (e) { rejected = /存档版本较新/.test(e.message); }
+  check('P2-8 v7 升 v8 补发/v8 直载/v9 拒载', mLoad && m8 && rejected);
+  wxMap.delete(SAVE_KEY);
 }
 
 console.log('\nsmoke: ' + passed + ' passed, ' + failed + ' failed');process.exit(failed ? 1 : 0);
