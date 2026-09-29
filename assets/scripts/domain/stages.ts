@@ -9,12 +9,22 @@ import * as __domain_rng from './rng';
 // 前 12 章 × 10 关走 utils/story.js 演义剧情表（名称/敌阵/对白/名将关）；
 // 超出剧情表的关卡进入循环乱世，用由 story 派生的兜底章节轮转生成（单一数据源，不维护第二份敌将表）。
 const { getHero } = __domain_heroes;
-const { FIRST_STAGE_END, CAMPAIGN_DIFFICULTY, ELITE_STAGE, STAR_RULES } = __domain_config;
+const { FIRST_STAGE_END, CAMPAIGN_DIFFICULTY, ELITE_STAGE, STAR_RULES, CAMPAIGN_MODS, BOSS_MODS } = __domain_config;
 const story = __domain_story;
 const F = __domain_fmt;
 
 const STAGES_PER_CH = 10;
 
+// 词缀关：每章第 3/7 关（章内 index 2/6），≥minStage 启用；ch 序轮换保证相邻章不重样
+function resolveMods(globalStage) {
+  const n = Math.floor(Number(globalStage) || 0);
+  if (n < CAMPAIGN_MODS.minStage || n > FIRST_STAGE_END) return [];
+  const inCh = (n - 1) % 10;
+  if (inCh !== 2 && inCh !== 6) return [];
+  const chIdx = Math.floor((n - 1) / 10);
+  const slot = inCh === 2 ? 0 : 1;
+  return [CAMPAIGN_MODS.pool[(chIdx * 2 + slot) % CAMPAIGN_MODS.pool.length]];
+}
 // 精锐关：每章第 5 关（第 3/7 关预留给词缀、第 10 关名将），minStage 前不启用。
 // 三星评星：★1 通关；★2 限时（精锐/词缀关放宽到 70 秒）；★3 我方存活≥4
 function stageStars(win, duration, aliveCount, elite) {
@@ -58,7 +68,10 @@ function makeStageEnemies(globalStage) {
   const st = story.getStoryStage(globalStage);
   const bossScale = CAMPAIGN_DIFFICULTY.bossOverrides[globalStage];
   const elite = isEliteStage(globalStage);
-  const normalScale = stageScale(globalStage) * (CAMPAIGN_DIFFICULTY.normalOverrides[globalStage] || 1) * (elite ? ELITE_STAGE.scale : 1);
+  const mods = resolveMods(globalStage);
+  // 词缀关属性补偿 ×0.95；已有 normalOverrides 的关不叠乘（如 117 既有削峰）
+  const modComp = mods.length && !CAMPAIGN_DIFFICULTY.normalOverrides[globalStage] ? CAMPAIGN_MODS.compensation : 1;
+  const normalScale = stageScale(globalStage) * (CAMPAIGN_DIFFICULTY.normalOverrides[globalStage] || 1) * (elite ? ELITE_STAGE.scale : 1) * modComp;
   const lv = Math.max(1, Math.round(1 + (globalStage - 1) * CAMPAIGN_DIFFICULTY.levelSlope));
   const pick = (i) => {
     if (st) return st.stage.foes[i];
@@ -66,6 +79,10 @@ function makeStageEnemies(globalStage) {
     return ch.foes[(inCh + i) % ch.foes.length];
   };
   const units = [];
+  const extraPassive = {};
+  if (mods.includes('ironWall')) extraPassive.armoryStartShield = 0.3;
+  if (mods.includes('gale')) { extraPassive.firstEnergy = 40; extraPassive.spd = 0.10; }
+  const bossMod = isBoss && BOSS_MODS[globalStage] ? BOSS_MODS[globalStage] : null;
   for (let i = 0; i < 5; i++) {
     const h = getHero(pick(i));
     units.push({
@@ -77,11 +94,17 @@ function makeStageEnemies(globalStage) {
           : (bossScale ? bossScale.other : CAMPAIGN_DIFFICULTY.bossOtherScale))
         : normalScale * (i === 0 ? 1 : 0.92),
       isBoss: i === 0 && isBoss,
-      row: i <= 2 ? 0 : 1
+      row: mods.includes('allBack') ? 1 : (i <= 2 ? 0 : 1),
+      extraPassive: i === 0 && bossMod ? bossMod.passive : (Object.keys(extraPassive).length ? Object.assign({}, extraPassive) : null)
     });
   }
-  const label = st ? ' · ' + st.stage.name : (isBoss ? ' · 名将' : elite ? ' · 精锐' : ' · 第' + (inCh + 1) + '关');
-  return { name: name + label, units, isBoss, elite, story: st };
+  const label = st ? ' · ' + st.stage.name : (isBoss ? ' · 名将' : elite ? ' · 精锐' : mods.length ? ' · 机制' : ' · 第' + (inCh + 1) + '关');
+  const foePool = st ? st.stage.foes : ch.foes;
+  const out = { name: name + label, units, isBoss, elite, mods, bossMod, story: st };
+  if (mods.includes('reinforce')) {
+    out.reinforceUnits = buildReinforceUnits(globalStage, foePool, lv, Math.min(2, Math.floor((globalStage - 1) / 40)), normalScale);
+  }
+  return out;
 }
 
 // 群英塔：无限层，随机阵营混合，每 5 层一名将
@@ -130,4 +153,33 @@ function makeArenaEnemies(playerPower, seed, diff) {
   return { name: '演武场 · 对阵', units, isBoss: false };
 }
 
-export { CHAPTERS, STAGES_PER_CH, stageScale, chapterOf, isEliteStage, stageStars, makeStageEnemies, makeTowerEnemies, makeArenaEnemies, makePracticeEnemies };
+// 词缀 → createBattle 入参翻译（仿真与客户端同一条路径）；援军取本章第 6/7 号敌将 ×0.75
+function stageBattleEffects(stageObj) {
+  const mods = stageObj && stageObj.mods || [];
+  if (!mods.length) return null;
+  const cfgFrag = {};
+  if (mods.includes('poisonFog')) cfgFrag.env = { pctPerSec: 0.005 };
+  if (mods.includes('famine')) cfgFrag.healScale = { A: 0.5, B: 0.5 };
+  if (mods.includes('ironWall')) cfgFrag.healScale = Object.assign({ B: 0.5 }, cfgFrag.healScale || {});
+  if (mods.includes('reinforce') && Array.isArray(stageObj.reinforceUnits) && stageObj.reinforceUnits.length) {
+    cfgFrag.reinforce = { at: [20, 40], units: stageObj.reinforceUnits };
+  }
+  return Object.keys(cfgFrag).length ? cfgFrag : null;
+}
+// 为词缀关构建援军单元（chapterFoes 为本章 foes 池，取第 6/7 名）
+function buildReinforceUnits(globalStage, chapterFoes, lv, star, baseScale) {
+  const H2 = __domain_heroes;
+  const picks = [chapterFoes[5 % chapterFoes.length], chapterFoes[6 % chapterFoes.length]];
+  return picks.map((id, i) => {
+    const h = H2.getHero(id);
+    const base = H2.heroStatsStar(h, lv, star);
+    const scale = baseScale * 0.75;
+    return {
+      uid: 'R' + i, heroId: h.id, name: h.name, faction: h.faction, cls: h.cls, level: lv, star,
+      row: i === 0 ? 0 : 1,
+      stats: { hp: Math.floor(base.hp * scale), atk: Math.floor(base.atk * scale), def: Math.floor(base.def * scale), spd: base.spd, crit: base.crit },
+      ult: h.ult, passive: h.passive.mods || {}, isBoss: false
+    };
+  });
+}
+export { CHAPTERS, STAGES_PER_CH, stageScale, chapterOf, isEliteStage, stageStars, resolveMods, stageBattleEffects, buildReinforceUnits, makeStageEnemies, makeTowerEnemies, makeArenaEnemies, makePracticeEnemies };

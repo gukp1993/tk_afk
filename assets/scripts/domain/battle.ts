@@ -11,6 +11,12 @@ function createBattle(cfg) {
   const seed = cfg.seed || 1;
   const rng = makeRng(seed);
   const limit = cfg.timeLimit || BATTLE.TIME_LIMIT;
+  // 机制词缀（additive：缺省即旧行为）env=全场周期真伤；reinforce=B 侧定时援军；healScale=分侧治疗系数
+  const env = cfg.env && cfg.env.pctPerSec > 0 ? cfg.env : null;
+  const reinforce = cfg.reinforce && Array.isArray(cfg.reinforce.units) ? cfg.reinforce : null;
+  const reinforceDone = {};
+  const healScaleOf = (side) => (cfg.healScale && cfg.healScale[side]) || 1;
+  let envAcc = 0;
   const stats = {}; // uid -> {dmg, heal}
   const sides = { A: buildSide(cfg.team, 'A'), B: buildSide(cfg.enemy, 'B') };
   let enrageAtk = 0; // 残局狂暴：step 内按战斗时长更新，effStat 叠入双方攻击
@@ -18,8 +24,8 @@ function createBattle(cfg) {
   let ended = false;
   let winner = null;
 
-  function buildSide(list, tag) {
-    const units = list.map((u, i) => ({
+  function buildOne(u, i, tag) {
+    return {
       uid: u.uid || (tag + i),
       side: tag, slot: i, row: u.row !== undefined ? u.row : (i <= 2 ? 0 : 1),
       name: u.name, heroId: u.heroId, faction: u.faction, cls: u.cls, level: u.level,
@@ -32,8 +38,17 @@ function createBattle(cfg) {
       hp: u.stats.hp, maxHp: u.stats.hp, shield: 0, energy: 0,
       alive: true, actTimer: rng.range(0.2, 0.9),
       buffs: [], dots: [], hots: [], cc: null,
-      cheat: (u.passive && u.passive.cheatDeath) || 0
-    }));
+      cheat: (u.passive && u.passive.cheatDeath) || 0,
+      cheatRevivePct: (u.passive && u.passive.cheatRevivePct) || 0
+    };
+  }
+  function applySideAura(u, ref) { // 援军入场沿用本侧既有光环/阵营加成
+    u.auraAtk = ref.auraAtk; u.auraDef = ref.auraDef; u.auraSpd = ref.auraSpd; u.fbHp = ref.fbHp;
+    u.maxHp = Math.floor(u.maxHp * (1 + (u.passive.hp || 0)) * (1 + u.fbHp));
+    u.hp = u.maxHp;
+  }
+  function buildSide(list, tag) {
+    const units = list.map((u, i) => buildOne(u, i, tag));
     // 光环 + 阵营加成（B 侧按 ENEMY_FACTION_AURA 折算：剧情敌阵普遍同阵营满编，全额 +18% 是隐性难度墙）
     const fcount = {};
     units.forEach(u => { fcount[u.faction] = (fcount[u.faction] || 0) + 1; });
@@ -180,7 +195,8 @@ function createBattle(cfg) {
   }
   function healHp(u, amount) {
     if (!u.alive || amount <= 0) return;
-    const real = Math.min(u.maxHp - u.hp, Math.floor(amount));
+    const scaled = amount * healScaleOf(u.side);
+    const real = Math.min(u.maxHp - u.hp, Math.floor(scaled));
     if (real > 0) {
       u.hp += real;
       stats[u.uid].heal += real;
@@ -190,8 +206,8 @@ function createBattle(cfg) {
   function handleDeath(u, killer) {
     if (u.cheat > 0) {
       u.cheat--;
-      u.hp = 1;
-      emit({ e: 'cheat', uid: u.uid });
+      u.hp = u.cheatRevivePct > 0 ? Math.max(1, Math.floor(u.maxHp * u.cheatRevivePct)) : 1;
+      emit({ e: 'cheat', uid: u.uid, pct: u.cheatRevivePct || 0 });
       return;
     }
     u.alive = false;
@@ -260,6 +276,7 @@ function createBattle(cfg) {
       case 'cc': {
         for (const t of tgts) {
           if (!t.alive) continue;
+          if (t.passive.ccImmune) { emit({ e: 'ccImmune', uid: t.uid }); continue; }
           t.cc = { kind: fx.kind, remaining: fx.dur };
           emit({ e: 'cc', uid: t.uid, kind: fx.kind, dur: fx.dur });
         }
@@ -306,6 +323,34 @@ function createBattle(cfg) {
     // swap & clear
     events.length = 0;
     time += dt;
+    // 援军到场（词缀：援军）
+    if (reinforce) {
+      reinforce.at.forEach((atSec, ri) => {
+        if (!reinforceDone[ri] && time >= atSec) {
+          reinforceDone[ri] = true;
+          const spec = reinforce.units[ri];
+          if (spec) {
+            const u = buildOne(spec, 5 + ri, 'B');
+            applySideAura(u, sides.B[0] || u);
+            sides.B.push(u);
+            stats[u.uid] = { dmg: 0, heal: 0 };
+            emit({ e: 'reinforce', uid: u.uid, name: u.name });
+          }
+        }
+      });
+    }
+    // 全场周期真伤（词缀：毒雾/火海）——dealRaw 绕护盾，可击杀
+    if (env) {
+      envAcc += dt;
+      while (envAcc >= 1) {
+        envAcc -= 1;
+        for (const tag of ['A', 'B']) {
+          for (const u of sides[tag].slice()) {
+            if (u.alive) dealRaw(u, Math.max(1, Math.floor(u.maxHp * env.pctPerSec)), 'env');
+          }
+        }
+      }
+    }
     const ot = BATTLE.OVERTIME;
     enrageAtk = ot && time > ot.start ? (time - ot.start) * (ot.atkPerSec || 0) : 0;
     for (const tag of ['A', 'B']) {

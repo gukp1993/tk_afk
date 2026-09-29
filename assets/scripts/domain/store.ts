@@ -56,6 +56,7 @@ function defaultState() {
     ads: { day: '', counts: {} },
     buyLog: { day: '', buys: {} },
     settings: { speed: 1 },
+    return: { lastGrantTs: Date.now() },
     lastSeenTs: Date.now()
   };
 }
@@ -271,6 +272,28 @@ function applyRewardToRaw(raw, r) {
   }
 }
 
+// 回归补给：断签 ≥2 天且距上次 ≥7 天；每日上线玩家结构性拿不到
+function checkReturnGrant() {
+  const now = Date.now();
+  const gap = now - (state.lastSeenTs || 0);
+  const days = Math.floor(gap / 86400000);
+  if (days < 2) return;
+  const last = (state.return && state.return.lastGrantTs) || 0;
+  if (now - last < 7 * 86400000) return;
+  let tier = null;
+  C.RETURN_GRANTS.forEach(t => { if (days >= t.minDays) tier = t; });
+  if (!tier) return;
+  applyReward(tier.reward);
+  state.return = { lastGrantTs: now };
+  state.returnPending = { days, label: tier.label };
+}
+function dismissReturnPending() {
+  return withSavedMutation(() => {
+    if (!state.returnPending) return { ok: true, changed: false };
+    state.returnPending = null;
+    return { ok: true, changed: true };
+  });
+}
 function load() {
   const raw = rawGet(SAVE_KEY);
   if (raw && raw.v === 1) {
@@ -315,6 +338,7 @@ function load() {
   }
   // 离线挂机结算
   idleTick();
+  checkReturnGrant();
   return state;
 }
 function normalizeState(s) {
@@ -355,6 +379,9 @@ function normalizeState(s) {
   s.roamer = s.roamer || { day: '', ids: [], bought: {} };
   if (!Array.isArray(s.roamer.ids)) s.roamer.ids = [];
   s.roamer.bought = s.roamer.bought || {};
+  s.return = s.return || { lastGrantTs: 0 };
+  s.return.lastGrantTs = Math.max(0, Math.floor(Number(s.return.lastGrantTs) || 0));
+  s.returnPending = s.returnPending || null;
   s.lastSeenTs = Math.max(0, Math.floor(Number(s.lastSeenTs) || 0));
   s.heroProgress = s.heroProgress || { starterMengdaGranted: true, firstWinChoiceGranted: false, firstWinChoicePending: false, chapterOneVoucherGranted: false };
   s.battle = s.battle || { nextSeq: 1, pending: null, lastSettled: null };
@@ -837,7 +864,8 @@ function enemyUnits(units) {
     };
     return buildUnit({
       id: u.hero.id, name: u.hero.name, faction: u.hero.faction, cls: u.hero.cls,
-      level: u.level, star: u.star, stats, ult: u.hero.ult, passive: u.hero.passive.mods || {},
+      level: u.level, star: u.star, stats, ult: u.hero.ult,
+      passive: Object.assign({}, u.hero.passive.mods || {}, u.extraPassive || {}),
       isBoss: u.isBoss
     }, 'B' + i, u.row);
   });
@@ -1773,7 +1801,7 @@ export {
   idlePending, idleTick, gemQuotaInfo, claimIdle, claimIdleInternal, fastReward, fastRewardMutation, fastRewardAdMutation, adReward,
   doSummon, rollRarity, pickHeroOfRarity, summonPityInfo,
   winCampaign, campaignRewardPreview, winTower, arenaFight, beginBattle, settleBattle, campaignStarChestInfo, claimStarChests,
-  markStorySeen, isStorySeen, retroGrants, dismissRetroGrants,
+  markStorySeen, isStorySeen, retroGrants, dismissRetroGrants, dismissReturnPending,
   questList, claimQuest, activePoints, claimActiveChest, claimAllDailyRewards, claimFreeRewards, bumpQuest, applyReward,
   sevenDayInfo, claimSevenDay, bountyInfo, dispatchBounty, claimBounty, roamerInfo, buyRoamer, takeBountyGrantsNotice,
   interruptBattle, setAutoBattleSpeed,

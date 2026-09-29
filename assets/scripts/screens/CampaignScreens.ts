@@ -117,6 +117,12 @@ export function campaign(ctx: ScreenContext) {
   U.text('IdleMore','双倍 / 快收',278,-536,147,16,GOLD);
   U.tap('GoalTap',-150,-536,405,24,()=>ctx.go('stagePreview'));
   U.tap('IdleMoreTap',278,-536,147,24,()=>ctx.idleClaimChoice());
+  const returnPending=store.getState().returnPending;
+  if(returnPending){
+    U.panel('ReturnBanner',0,-78,640,54,tone('#3a2c17'),9,GOLD);
+    U.text('ReturnBannerText',`主公回来了！离开 ${returnPending.days} 天，回归补给：${returnPending.label}（已入账）›`,0,-70,600,16,GOLD);
+    U.tap('ReturnBannerTap',0,-78,640,54,()=>{store.dismissReturnPending();ctx.show('campaign');});
+  }
   const retro=store.retroGrants();
   if(retro){
     U.panel('RetroGrants',0,-40,640,54,tone('#2b1e12'),9,GOLD);
@@ -166,6 +172,12 @@ export function stagePreview(ctx: ScreenContext) {
   const fCount:any={};
   enemy.units.forEach((unit:any)=>{fCount[unit.hero.faction]=(fCount[unit.hero.faction]||0)+1;});
   const domFaction=Object.keys(fCount).sort((a:string,b:string)=>fCount[b]-fCount[a])[0];
+  if(enemy.mods&&enemy.mods.length){
+    const modNames=enemy.mods.map((m:any)=>(config.CAMPAIGN_MODS.meta as any)[m]).filter(Boolean);
+    U.text('StageModsHint',`机制：${modNames.map((m:any)=>m.name+' — '+m.desc).join('；')}`,0,42,620,16,palette.red);
+  } else if(enemy.bossMod){
+    U.text('StageModsHint',`敌方主将机制：${enemy.bossMod.name} — ${enemy.bossMod.desc}`,0,42,620,16,palette.red);
+  }
   if(fCount[domFaction]>=4){
     const counterKey=Object.keys(config.BEATS).find((k:any)=>(config.BEATS as any)[k]===domFaction);
     const counterName=counterKey?(config.FACTIONS as any)[counterKey]?.name:'';

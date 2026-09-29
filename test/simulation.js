@@ -51,11 +51,12 @@ function fightBattle(stage, battleSeed) {
   const enemy = stages.makeStageEnemies(stage);
   const begin = store.beginBattle({ mode: 'campaign', index: stage, referenceLevel: enemy.units[0]?.level || 1 });
   if (!begin.ok) return { win: false, stage };
-  const fighting = battleRules.createBattle({
+  const effects = enemy.mods && enemy.mods.length ? stages.stageBattleEffects(enemy) : null;
+  const fighting = battleRules.createBattle(Object.assign({
     team: store.playerUnits(), enemy: store.enemyUnits(enemy.units), seed: battleSeed
-  });
+  }, effects || {}));
   let done = null;
-  for (let i = 0; i < 1200 && !done; i++) {
+  for (let i = 0; i < 1400 && !done; i++) {
     const step = fighting.step(0.1);
     if (step.done) done = step;
   }

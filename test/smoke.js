@@ -12,6 +12,7 @@ const H = require('../utils/heroes');
 const IT = require('../utils/items');
 const F = require('../utils/fmt');
 const stages = require('../utils/stages');
+const battleRules = require('../utils/battle');
 
 let passed = 0, failed = 0, section = '';
 function check(name, cond) {
@@ -287,6 +288,58 @@ check('精锐首通额外掉落+日宝箱', scWin.reward.elite && scWin.reward.e
 check('日宝箱当日限一次', (() => { const w = store4b.winCampaign(35, { stars: 1, elite: true }); return w.dailyChest === null; })());
 const chestClaim = store4b.claimStarChests();
 check('10★ 星宝箱领取（首章 2+3=5★ 未达）', chestClaim.ok === false || true);
+// 波次 2：章节词缀 + Boss 机制 + 引擎 additive
+check('词缀关判定（≥25，章内 3/7 关）', stages.resolveMods(27).length === 1 && stages.resolveMods(23).length === 0 && stages.resolveMods(33).length === 1 && stages.resolveMods(28).length === 0);
+check('词缀相邻章不重样', stages.resolveMods(27)[0] !== stages.resolveMods(33)[0]);
+const se117 = stages.makeStageEnemies(117);
+check('117 削峰关不叠乘词缀补偿', se117.units[0].scale === se117.units[1].scale / 0.92);
+const se27 = stages.makeStageEnemies(27);
+check('词缀关标记生效', se27.mods.length === 1);
+const se43 = stages.makeStageEnemies(43);
+check('援军单元已构建（×0.75）', se43.mods[0] === 'reinforce' && Array.isArray(se43.reinforceUnits) && se43.reinforceUnits.length === 2);
+const boss10 = stages.makeStageEnemies(10);
+check('张角 Boss 机制挂载', !!boss10.bossMod && boss10.units[0].extraPassive && boss10.units[0].extraPassive.cheatRevivePct === 0.3);
+const boss20 = stages.makeStageEnemies(20);
+check('吕布免控挂载', !!boss20.bossMod && boss20.units[0].extraPassive.ccImmune === 1);
+// 引擎：env 周期真伤
+{
+  const mk0 = (id, hp) => ({ uid: id, name: id, faction: 'wei', cls: 'warrior', level: 1, row: 0,
+    stats: { hp, atk: 0, def: 0, spd: 1, crit: 0 } });
+  const bt = battleRules.createBattle({ team: [mk0('a1', 10000)], enemy: [mk0('b1', 10000)],
+    env: { pctPerSec: 0.005 }, timeLimit: 90 });
+  for (let i = 0; i < 110; i++) bt.step(0.1); // 11 秒
+  const snap = bt.snapshot();
+  check('毒雾 11 秒双方各掉 ~5.5%', snap[0].hp > 9300 && snap[0].hp < 9600 && snap[1].hp > 9300 && snap[1].hp < 9600);
+}
+// 引擎：ccImmune
+{
+  const mk = (id, hp) => ({ uid: id, name: id, faction: 'wei', cls: 'warrior', level: 1, row: 0,
+    stats: { hp, atk: 100, def: 0, spd: 1, crit: 0 }, passive: { ccImmune: 1 } });
+  const bt = battleRules.createBattle({ team: [mk('a1', 5000)], enemy: [mk('b1', 5000)] });
+  bt.step(0.1); bt.step(0.1);
+  check('ccImmune 目标不受控', bt.snapshot().every(u => u.cc === null));
+}
+// 引擎：cheatRevivePct 30% 复活
+{
+  const mk = (id, hp) => ({ uid: id, name: id, faction: 'wei', cls: 'warrior', level: 1, row: 0,
+    stats: { hp, atk: 10, def: 0, spd: 1, crit: 0 } });
+  const boss = Object.assign(mk('b1', 1000), {});
+  boss.passive = { cheatDeath: 1, cheatRevivePct: 0.3 };
+  const bt = battleRules.createBattle({ team: [mk('a1', 99999)], enemy: [boss], timeLimit: 90 });
+  for (let i = 0; i < 300 && !bt.ended; i++) bt.step(0.1);
+  check('Boss 复活保留 30% 血（非 1 点）', !bt.ended || bt.snapshot().some(u => u.uid === 'b1' && u.hp === 300));
+}
+// 引擎：healScale 断粮
+{
+  const mkH = (id, hp, atk) => ({ uid: id, name: id, faction: 'wei', cls: 'support', level: 1, row: 0,
+    stats: { hp, atk, def: 0, spd: 1, crit: 0 }, passive: { firstEnergy: 100 },
+    ult: { name: 't', effects: [{ t: 'heal', tgt: 'allAllies', mult: 2 }] } });
+  const a = mkH('a1', 5000, 100); a.startHpPct = 0.5;
+  const b = mkH('b1', 5000, 0);
+  const bt = battleRules.createBattle({ team: [a], enemy: [b], healScale: { A: 0.5, B: 1 }, timeLimit: 5 });
+  for (let i = 0; i < 30 && !bt.ended; i++) bt.step(0.1);
+  check('断粮治疗减半（200→100）', bt.snapshot()[0].hp >= 2590 && bt.snapshot()[0].hp <= 2610);
+}
 // 时钟回拨防护：lastSeenTs 在未来时当日不重置
 s4b.arena.attempts = 2;
 s4b.lastSeenTs = REAL_NOW() + 86400000;
@@ -472,7 +525,7 @@ const bStack = store9.getArmoryBonuses();
 check('A04 玉佩 6%+2%=8%', Math.abs(bStack.startShield - 0.08) < 1e-9);
 check('A04 兵符 10+4=14', bStack.startEnergy === 14);
 // A03 战斗实测（锐进兵符生效中）：开场护盾按最终生命取整、怒气不超上限、敌方无节点
-const battleRules = require('../utils/battle');
+
 const stages9 = require('../utils/stages');
 const fighting = battleRules.createBattle({
   team: store9.playerUnits(), enemy: store9.enemyUnits(stages9.makeStageEnemies(1).units), seed: 42

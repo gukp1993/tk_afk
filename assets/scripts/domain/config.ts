@@ -179,7 +179,7 @@ const CAMPAIGN_DIFFICULTY = {
   levelSlope: 1.9,
   normalEndScale: 1.08,
   // 这些普通关的敌阵技能组合明显强于相邻关，轻微校准后仍保留阵容特点。
-  normalOverrides: { 72: 0.95, 89: 0.95, 99: 0.95, 117: 0.95 },
+  normalOverrides: { 47: 0.95, 72: 0.95, 89: 0.95, 99: 0.95, 117: 0.95 },
   bossMainScale: 1.18,
   bossOtherScale: 1.08,
   bossOverrides: {
@@ -207,6 +207,43 @@ const CHAPTER_STAR_CHESTS = [
   { need: 20, reward: { shard: 15 }, label: '通用碎片 ×15' },
   { need: 30, reward: { scroll: 3 }, label: '招募令 ×3' }
 ];
+// 章节词缀（评审团波次 2）：每章第 3/7 关（章内 index 2/6）带机制词缀，≥25 关启用。
+// 补偿 ×0.95；已有 normalOverrides 的关（如 117）不叠乘。词缀与精锐不叠同关。
+const CAMPAIGN_MODS = {
+  compensation: 1.0,
+  minStage: 25,
+  pool: ['poisonFog', 'allBack', 'reinforce', 'ironWall', 'gale', 'famine'],
+  meta: {
+    poisonFog: { name: '毒雾', desc: '每秒双方全体损失 0.5% 最大生命' },
+    allBack:   { name: '风筝', desc: '敌军全员撤至后排' },
+    reinforce: { name: '援军', desc: '战斗第 20/40 秒敌军各获一支援军' },
+    ironWall:  { name: '铁壁', desc: '敌军开场获得 30% 护盾，受疗减半' },
+    gale:      { name: '疾风', desc: '敌军先手 40 怒气，攻速 +10%' },
+    famine:    { name: '断粮', desc: '双方治疗效果减半' }
+  }
+};
+// 名将 Boss 机制（复用现有被动通道 + ccImmune/cheatRevivePct），全部有剧情对应
+const BOSS_MODS = {
+  10:  { name: '黄天再起', desc: '张角倒地后会以 30% 血量再起一次', passive: { cheatRevivePct: 0.3, firstEnergy: 50 } },
+  20:  { name: '飞将无双', desc: '吕布免疫控制', passive: { ccImmune: 1 } },
+  30:  { name: '飞将无双', desc: '吕布免疫控制', passive: { ccImmune: 1 } },
+  40:  { name: '四世三公', desc: '袁绍家底厚实，开场获得 25% 护盾', passive: { armoryStartShield: 0.25 } },
+  50:  { name: '八门金锁', desc: '曹仁受到的伤害降低 15%', passive: { dmgReduce: 0.15 } },
+  60:  { name: '虎痴裸衣', desc: '许褚反弹 12% 所受伤害', passive: { thorns: 0.12 } },
+  70:  { name: '横槊赋诗', desc: '曹操开场即有 40 怒气', passive: { firstEnergy: 40 } },
+  80:  { name: '亲征汉中', desc: '曹操开场获得 25% 护盾与 40 怒气', passive: { armoryStartShield: 0.25, firstEnergy: 40 } },
+  90:  { name: '白衣绞杀', desc: '吕蒙的攻击附带 15% 吸血', passive: { vamp: 0.15 } },
+  100: { name: '书生拜将', desc: '陆逊开场即有 50 怒气', passive: { firstEnergy: 50 } },
+  110: { name: '七擒七纵', desc: '孟获倒地后会以 30% 血量再起一次', passive: { cheatRevivePct: 0.3 } },
+  120: { name: '群英梦影', desc: '吕布免疫控制，且倒地后会以 30% 血量再起', passive: { ccImmune: 1, cheatRevivePct: 0.3 } }
+};
+// 回归补给（断签梯度）：lastSeenTs 间隔 ≥48h 触发，7 天窗口至多一次；每日上线玩家结构性拿不到
+const RETURN_GRANTS = [
+  { minDays: 2, reward: { scroll: 3, gem: 300 }, label: '招募令 ×3 · 元宝 ×300' },
+  { minDays: 4, reward: { scroll: 5, gem: 800, shard: 20 }, label: '招募令 ×5 · 元宝 ×800 · 碎片 ×20' },
+  { minDays: 7, reward: { ssrPick: 1, gem: 1500 }, label: 'SSR 自选券 ×1 · 元宝 ×1500' }
+];
+
 // 今日目标关（每日首个精锐关胜利）日宝箱：铜钱+三选一随机
 const DAILY_ELITE_CHEST = { gold: 20000, pick: [{ scroll: 1 }, { gem: 50 }, { shard: 5 }] };
 
@@ -216,5 +253,6 @@ export {
   goldCost, expCost, idleRates, IDLE_CAP_HOURS, GEM_IDLE, ARMORY_IRON_PER_HOUR,
   FAST_AD, FAST_PAID,
   GACHA, factionBonus, FORMATION_ROWS, BATTLE, ARENA, SEVEN_DAY, TRAINING_DAILY_CAP, BOUNTY, ROAMER_POOL, AD,
-  FIRST_STAGE_END, CAMPAIGN_DIFFICULTY, CAMPAIGN_MILESTONES, ELITE_STAGE, STAR_RULES, CHAPTER_STAR_CHESTS, DAILY_ELITE_CHEST
+  FIRST_STAGE_END, CAMPAIGN_DIFFICULTY, CAMPAIGN_MILESTONES, ELITE_STAGE, STAR_RULES, CHAPTER_STAR_CHESTS, DAILY_ELITE_CHEST,
+  CAMPAIGN_MODS, BOSS_MODS, RETURN_GRANTS
 };
