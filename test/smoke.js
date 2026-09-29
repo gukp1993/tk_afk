@@ -1372,4 +1372,33 @@ const storeP2 = freshStore(); storeP2.load();
   check('A9-4 操练档领取入账', c.ok && sA9.res.gold >= 10000);
 }
 
+
+// 周常 Boss（研讨会四 P3）：周键门/次数门/伤害档位/纪录
+{
+  const storeWB = freshStore(); storeWB.load();
+  const sWB = storeWB.getState();
+  const w0 = storeWB.weekBossInfo();
+  check('WB1 信息（本周魔王/3 次/未挑战）', w0.enabled && w0.attemptsLeft === 3 && w0.bestPct === 0 && !!w0.bossName);
+  const rb = storeWB.beginWeekBoss();
+  check('WB2 开战扣次数', rb.ok && sWB.weekBoss.attempts === 1 && storeWB.weekBossInfo().attemptsLeft === 2);
+  // 模拟 60% 伤害结算（stats A 侧求和）
+  const st1 = storeWB.settleBattle(rb.id, { win: false, duration: 90, aliveCount: 0,
+    stats: { A0: { dmg: 30000, heal: 0 }, A1: { dmg: 30000, heal: 0 }, B0: { dmg: 5000, heal: 0 } }, maxHp: 100000 });
+  check('WB3 伤害 60% 结算最高档（印信30+令10）', st1.ok && st1.reward.pct > 0.55 && st1.reward.reward.seals === 30
+    && sWB.weekBoss.bestPct > 0.55 && sWB.weekBoss.bestDamage === 60000);
+  const rb2 = storeWB.beginWeekBoss();
+  const st2 = storeWB.settleBattle(rb2.id, { win: false, duration: 90, aliveCount: 0,
+    stats: { A0: { dmg: 45000, heal: 0 } }, maxHp: 100000 });
+  check('WB4 低伤害次档发奖且纪录保留 60%', st2.ok && st2.reward.pct > 0.38 && st2.reward.improved === false
+    && sWB.weekBoss.bestPct > 0.55 && st2.reward.reward.seals === 20);
+  sWB.weekBoss.attempts = 3;
+  const rb3 = storeWB.beginWeekBoss();
+  check('WB5 次数用完拒绝', rb3.ok === false && /次数已用完/.test(rb3.msg));
+  // 跨周重置（惰性：weekBossInfo 检测 weekBoss.weekKey 与当前周不符即清空）
+  sWB.weekBoss.weekId = '2020-W01';
+  sWB.weekBoss.attempts = 3; sWB.weekBoss.bestPct = 0.6;
+  const wNew = storeWB.weekBossInfo();
+  check('WB6 跨周重置次数与纪录', wNew.weekId === F.isoWeekKey() && wNew.attemptsLeft === 3 && wNew.bestPct === 0);
+}
+
 console.log('\nsmoke: ' + passed + ' passed, ' + failed + ' failed');process.exit(failed ? 1 : 0);

@@ -156,7 +156,7 @@ export class CocosBootstrap extends Component implements ScreenContext {
       campaign: () => campaignScreens.campaign(this), stagePreview: () => campaignScreens.stagePreview(this), home: () => campaignScreens.home(this), journey: () => campaignScreens.journey(this),
       heroes: () => heroScreens.heroes(this), heroDetail: () => heroScreens.heroDetail(this), summon: () => heroScreens.summon(this), summonResults: () => heroScreens.summonResults(this), bag: () => campaignScreens.bag(this),
       armory: () => heroScreens.armory(this), armoryCatalog: () => heroScreens.armoryCatalog(this), armoryBox: () => heroScreens.armoryBox(this), shop: () => campaignScreens.shop(this), formation: () => campaignScreens.formation(this), formationPick: () => campaignScreens.formationPick(this), quests: () => campaignScreens.quests(this),
-      tower: () => campaignScreens.tower(this), arena: () => campaignScreens.arena(this), arenaBoard: () => campaignScreens.arenaBoard(this), dungeon: () => campaignScreens.dungeonView(this), story: () => campaignScreens.storyView(this), sevenDay: () => campaignScreens.sevenDayView(this), bounty: () => campaignScreens.bountyView(this), forge: () => heroScreens.forgeView(this), codex: () => heroScreens.codexView(this), achv: () => heroScreens.achvView(this), expedition: () => campaignScreens.expeditionView(this), hall: () => campaignScreens.hallView(this),
+      tower: () => campaignScreens.tower(this), arena: () => campaignScreens.arena(this), arenaBoard: () => campaignScreens.arenaBoard(this), dungeon: () => campaignScreens.dungeonView(this), weekboss: () => campaignScreens.weekBossView(this), story: () => campaignScreens.storyView(this), sevenDay: () => campaignScreens.sevenDayView(this), bounty: () => campaignScreens.bountyView(this), forge: () => heroScreens.forgeView(this), codex: () => heroScreens.codexView(this), achv: () => heroScreens.achvView(this), expedition: () => campaignScreens.expeditionView(this), hall: () => campaignScreens.hallView(this),
       battle: () => battleScreens.battleView(this), result: () => battleScreens.resultView(this), autoSummary: () => battleScreens.autoSummary(this, this.autoSession.summary), ad: () => this.adView()
     };
     render[page]();
@@ -309,7 +309,8 @@ export class CocosBootstrap extends Component implements ScreenContext {
     this.lastBattleSnapshot=this.fighting?.snapshot() || [];
     const aliveCount=this.lastBattleSnapshot.filter((u:any)=>u.side==='A'&&u.alive).length;
     const battleStats=this.fighting?.result()?.stats||null;
-    const settled=store.settleBattle(this.battleId,{win,duration,aliveCount});
+    const bossMaxHp=this.battleMode==='weekboss'?(this.lastBattleSnapshot.find((u:any)=>u.side==='B')?.maxHp||0):0;
+    const settled=store.settleBattle(this.battleId,{win,duration,aliveCount,stats:battleStats,maxHp:bossMaxHp});
     if(this.lastReplaySpec){
       // 战报中心：名人堂带 hallStars；战役带评星（首通挑战），其余模式 stars 置 0
       const stars=this.battleMode==='hall'?(settled.reward&&settled.reward.hallStars||0):(settled.reward&&settled.reward.stars||0);
@@ -345,6 +346,7 @@ export class CocosBootstrap extends Component implements ScreenContext {
 
   public startArenaBattle(diff: number, seed: number) { this.startBattle('arena',0,diff,false,seed); }
   public startDungeonBattle(kind: string, floor: number) { this.startBattle('dungeon',floor,1,false,0,kind); }
+  public startWeekBoss() { const r=store.beginWeekBoss(); if(!r.ok)return this.tell(r,''); }
   public battleDungeonKind: string = '';
 
   public startBattle(mode: string,index: number,diff=1,fromAuto=false,arenaSeed=0,dungeonKind?: string) {

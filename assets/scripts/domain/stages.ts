@@ -164,6 +164,19 @@ function makeTowerEnemies(floor) {
   return { name: '群英塔 · 第' + floor + '层', units, isBoss: floor % 5 === 0 };
 }
 
+// 周常 Boss（研讨会四 P3）：每周键哈希选一名 SSR 名将 ×bossScale 强度，单体镇场
+function makeWeekBossEnemies(weekId, playerLevel) {
+  const heroes = __domain_heroes.HEROES;
+  const ssr = heroes.filter(h => h.rarity === 4);
+  let h = 5381;
+  for (let i = 0; i < String(weekId).length; i++) h = ((h * 33) ^ String(weekId).charCodeAt(i)) >>> 0;
+  const boss = ssr[h % ssr.length];
+  const lv = Math.max(1, Math.round(playerLevel || 1));
+  const scale = (__domain_config.WEEKBOSS && __domain_config.WEEKBOSS.bossScale) || 3;
+  const units = [{ hero: boss, level: lv, star: 5, scale, isBoss: true, row: 0 }];
+  return { name: '本周魔王 · ' + boss.name, units, isBoss: true, weekBoss: { weekId } };
+}
+
 // 军屯双本（研讨会四 P2）：每日资源副本敌阵，敌力随玩家等级与层数缩放，随机 SSR 混编
 function makeDungeonEnemies(kind, floor, playerLevel) {
   const heroes = __domain_heroes.HEROES;
@@ -236,4 +249,4 @@ function buildReinforceUnits(globalStage, chapterFoes, lv, star, baseScale) {
     };
   });
 }
-export { CHAPTERS, STAGES_PER_CH, stageScale, chapterOf, isEliteStage, stageStars, resolveMods, stageBattleEffects, buildReinforceUnits, makeHallEnemies, hallStars, hallWeeklyLineups, makeStageEnemies, makeTowerEnemies, makeArenaEnemies, makePracticeEnemies, makeDungeonEnemies };
+export { CHAPTERS, STAGES_PER_CH, stageScale, chapterOf, isEliteStage, stageStars, resolveMods, stageBattleEffects, buildReinforceUnits, makeHallEnemies, hallStars, hallWeeklyLineups, makeStageEnemies, makeTowerEnemies, makeArenaEnemies, makePracticeEnemies, makeDungeonEnemies, makeWeekBossEnemies };

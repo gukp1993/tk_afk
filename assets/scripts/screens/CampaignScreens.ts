@@ -347,8 +347,44 @@ export function journey(ctx: ScreenContext) {
       U.text('JourneyDungeonDesc','屯金得铜钱 · 屯兵得主公经验 · 每日各 2 次',-58,-450,470,17,tone('#ad9977'));
       U.tap('JourneyDungeonTap',0,-430,682,70,()=>ctx.go('dungeon'));
     }
+    // 周常 Boss 横幅（研讨会四 P3）：导航红线上方窄带
+    const wb=store.weekBossInfo();
+    if(wb.enabled){
+      U.panel('JourneyWeekBoss',0,-500,682,44,wb.attemptsLeft>0?tone('#3a2c17'):tone('#2b2118'),8,wb.attemptsLeft>0?GOLD:tone('#6b5837'));
+      U.text('JourneyWeekBossText',`本周魔王 · ${wb.bossName} · 最高伤害 ${(wb.bestPct*100).toFixed(1)}% · 剩 ${wb.attemptsLeft} 次 ›`,0,-500,650,17,wb.attemptsLeft>0?GOLD:LIGHT);
+      U.tap('JourneyWeekBossTap',0,-500,682,44,()=>ctx.go('weekboss'));
+    }
     U.text('JourneyVersion','「挂机定三国」放置卡牌 · v2.0.0',0,-364,580,16,tone('#ad9977'));
   }
+
+// 周常 Boss（研讨会四 P3）：每周 SSR 魔王，3 次挑战按最高伤害百分比定档
+export function weekBossView(ctx: ScreenContext) {
+  const U=ctx.ui,wb=store.weekBossInfo();
+  ctx.title('魔王 讨 伐');
+  U.text('WbBack','‹ 返回',-291,484,130,22,GOLD);
+  U.tap('WbBackTap',-291,484,136,52,()=>ctx.back('journey'));
+  if(!wb.enabled){
+    U.text('WbClosed','魔王讨伐暂未开放',0,200,600,20,LIGHT);
+    return;
+  }
+  U.panel('WbBossCard',0,330,682,150,tone('#2a1210'),12,palette.red);
+  U.seal('WbBossGlyph',-272,340,64,'魔',palette.red,palette.red,tone('#f0e6cd'),34);
+  U.text('WbBossName',wb.bossName,60,362,300,30,GOLD);
+  U.text('WbBossSub','本周魔王 · 全服同敌 · 伤害定档',60,330,340,17,tone('#ad9977'));
+  U.text('WbBest',`本周最高伤害：${(wb.bestPct*100).toFixed(1)}%`,60,300,340,19,GOLD);
+  U.button('WbGo',wb.attemptsLeft>0?`讨 伐（剩 ${wb.attemptsLeft} 次）`:'本周次数已用完',0,240,460,64,()=>ctx.startWeekBoss(),wb.attemptsLeft>0?palette.red:tone('#423022'));
+  U.text('WbRule','每次挑战按当次伤害档位发奖；纪录只进榜不重复发奖',0,190,620,16,tone('#ad9977'));
+  U.text('WbTierTitle','伤害档位 · 印信与演武令',0,140,620,19,LIGHT);
+  wb.tiers.forEach((t:any,i:number)=>{
+    const y=88-i*54;
+    U.panel('WbTier'+i,0,y,640,46,t.reached?tone('#3a2c17'):tone('#171009'),7,t.reached?GOLD:tone('#5a452a'));
+    U.text('WbTierPct'+i,`伤害 > ${(t.pct*100).toFixed(0)}%`,-170,y,300,18,t.reached?GOLD:LIGHT);
+    const rw=Object.entries(t.reward).map(([k,n]:any)=>`${({seals:'印信',token:'演武令'} as any)[k]||k}×${n}`).join(' · ');
+    U.text('WbTierReward'+i,(t.reached?'已达标 · ':'')+rw,150,y,300,17,t.reached?GOLD:tone('#ad9977'));
+  });
+  U.text('WbHint','伤害 = 全队对魔王输出占其血量比例；魔王强度随主公等级',0,-260,640,16,tone('#7a6c52'));
+  U.button('WbBackBtn','返 回',0,-500,295,52,()=>ctx.back('journey'),palette.paperDark);
+}
 
 // 军屯双本（研讨会四 P2）：每日 2 次，双轨 10 层顺序解锁
 export function dungeonView(ctx: ScreenContext) {

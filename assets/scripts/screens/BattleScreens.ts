@@ -181,6 +181,12 @@ export function resultView(ctx: ScreenContext) {
     }
   }
   else if(ctx.battleMode==='training') lines=[`练兵经验 +${r.gainedXP||0}`];
+  else if(ctx.battleMode==='weekboss'){
+    const wbr=reward||{};
+    lines=[`对魔王输出：${fmt.fmtNum(wbr.damage||0)}（占血量 ${((wbr.pct||0)*100).toFixed(1)}%）`,
+      wbr.improved?`刷新本周纪录！`:`本周最高 ${(store.weekBossInfo().bestPct*100).toFixed(1)}%`,
+      `档位奖：${Object.entries(wbr.reward||{}).map(([k,n]:any)=>({seals:'印信',token:'演武令'} as any)[k]?`${({seals:'印信',token:'演武令'} as any)[k]}×${n}`:'').filter(Boolean).join(' · ')||'—'}`];
+  }
   else if(ctx.battleMode==='dungeon'){
     const dr=reward||{};
     lines=r?.win?(dr.kind==='gold'?[`屯金第 ${dr.floor} 层通关 · 铜钱 +${fmt.fmtNum(dr.gold||0)}`]:[`屯兵第 ${dr.floor} 层通关 · 主公经验 +${dr.xpDirect||0}${r.levelAfter>r.levelBefore?` · 升至 Lv.${r.levelAfter}`:''}`]):[defeatDiag(ctx,r),'军屯不计入主线进度 · 明日再来'];

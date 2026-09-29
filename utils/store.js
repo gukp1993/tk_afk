@@ -42,6 +42,7 @@ function defaultState() {
     fourteenDay: { claimed: [] },
     tutorial: { seen: {} },
     dungeon: { day: '', runs: 0, bestGold: 0, bestTrain: 0 },
+    weekBoss: { weekId: '', attempts: 0, bestPct: 0, bestDamage: 0 },
     bounty: { day: '', list: [] },
     roamer: { day: '', ids: [], bought: {} },
     vouchers: { sr: 0, ssr: 0 },
@@ -780,6 +781,10 @@ function normalizeState(s) {
   s.sevenDay = s.sevenDay || { start: F.todayStr(), claimed: [] };
   if (!Array.isArray(s.sevenDay.claimed)) s.sevenDay.claimed = [];
   s.sevenDay.claimed = s.sevenDay.claimed.map(n => Math.floor(Number(n) || 0)).filter(n => n >= 1 && n <= 7);
+  // 周常 Boss（研讨会四 P3）：旧档缺省 + 字段钳位
+  s.weekBoss = s.weekBoss || { weekId: '', attempts: 0, bestPct: 0, bestDamage: 0 };
+  s.weekBoss.attempts = Math.max(0, Math.floor(Number(s.weekBoss.attempts) || 0));
+  s.weekBoss.bestPct = Math.max(0, Math.min(1, Number(s.weekBoss.bestPct) || 0));
   // 军屯双本（研讨会四）：旧档缺省 + 字段钳位
   s.dungeon = s.dungeon || { day: '', runs: 0, bestGold: 0, bestTrain: 0 };
   s.dungeon.runs = Math.max(0, Math.floor(Number(s.dungeon.runs) || 0));
@@ -2227,6 +2232,13 @@ function beginBattle(spec) {
     if (state.arena.attempts <= 0) return { ok: false, msg: '今日演武次数不足' };
     state.arena.attempts -= 1;
   }
+  if (spec.mode === 'weekboss') {
+    if (!C.WEEKBOSS || !C.WEEKBOSS.enabled) return { ok: false, msg: '魔王讨伐未开放' };
+    const wbInfo = weekBossInfo();
+    if (!wbInfo.enabled) return { ok: false, msg: '魔王讨伐未开放' };
+    if (wbInfo.attemptsLeft <= 0) return { ok: false, msg: '本周讨伐次数已用完' };
+    state.weekBoss.attempts = (state.weekBoss.attempts || 0) + 1;
+  }
   if (spec.mode === 'dungeon') {
     if (!C.DUNGEON || !C.DUNGEON.enabled) return { ok: false, msg: '军屯未开放' };
     checkDailyReset();
@@ -2292,6 +2304,7 @@ function battleXP(pending, win) {
   if (pending.mode === 'tower') return pending.first ? Math.floor(base * C.BATTLE_XP.towerFirst) : 0;
   if (pending.mode === 'arena') return Math.floor(base * C.BATTLE_XP.arenaWin);
   if (pending.mode === 'dungeon') return 0;
+  if (pending.mode === 'weekboss') return 0;
   if (pending.mode === 'training') {
     // 练兵经验每日上限：前 N 场全额，之后 0（切断"无限练兵=免费等级"）
     const done = (state.daily.trainingWins || 0);
@@ -2339,6 +2352,21 @@ function settleBattle(battleId, outcome) {
         reward.stars = stars;
         reward.hallReward = winHall(pending.index, pending.hallLineup || null, stars, pending.hallWeek);
       }
+    } else if (pending.mode === 'weekboss') {
+      // 伤害百分比结算：Boss 掉血/MaxHp；statistics 由 finishBattle 透传 stats
+      const stats = outcome.stats || {};
+      let damage = 0;
+      // 我方 uid 为 'A'+i（buildUnit 大写前缀），只累计我方对 Boss 的输出
+      Object.keys(stats).forEach(uid => { if (String(uid).indexOf('A') === 0) damage += (stats[uid].dmg || 0); });
+      const maxHp = Math.max(1, Number(outcome.maxHp) || 1);
+      const pct = Math.min(1, damage / maxHp);
+      const tier = C.WEEKBOSS.tiers.find(t => pct > t.pct) || C.WEEKBOSS.tiers[C.WEEKBOSS.tiers.length - 1];
+      const improved = pct > (state.weekBoss.bestPct || 0);
+      if (improved) { state.weekBoss.bestPct = pct; state.weekBoss.bestDamage = damage; }
+      // 每次挑战按当次档位发奖（本周最好档位不重复发，只刷纪录）
+      applyReward(tier.reward);
+      reward = { kind: 'weekboss', bossName: require('./stages').makeWeekBossEnemies(F.isoWeekKey(), state.player.level).units[0].hero.name,
+        damage, maxHp, pct, tierPct: tier.pct, reward: tier.reward, improved };
     } else if (pending.mode === 'dungeon') {
       if (win) {
         const kind = pending.dungeonKind === 'train' ? 'train' : 'gold';
@@ -2610,6 +2638,23 @@ function markTutorialSeen(key) {
   });
 }
 
+// 周常 Boss（研讨会四 P3）：周键切换重置次数与纪录；伤害百分比档位奖
+function weekBossInfo() {
+  checkDailyReset();
+  if (!C.WEEKBOSS || !C.WEEKBOSS.enabled) return { enabled: false };
+  const weekId = F.isoWeekKey();
+  if ((state.weekBoss.weekId || '') !== weekId) state.weekBoss = { weekId, attempts: 0, bestPct: 0, bestDamage: 0 };
+  const st = require('./stages').makeWeekBossEnemies(weekId, state.player.level);
+  const boss = st.units[0];
+  const tiers = C.WEEKBOSS.tiers.map((t, i) => ({ pct: t.pct, reward: t.reward, reached: (state.weekBoss.bestPct || 0) > t.pct || (i === C.WEEKBOSS.tiers.length - 1 && state.weekBoss.bestPct > 0) }));
+  return { enabled: true, weekId, bossName: boss.hero.name, bossLevel: boss.level,
+    attemptsLeft: Math.max(0, C.WEEKBOSS.attempts - (state.weekBoss.attempts || 0)),
+    bestPct: state.weekBoss.bestPct || 0, bestDamage: state.weekBoss.bestDamage || 0, tiers };
+}
+function beginWeekBoss() {
+  return beginBattle({ mode: 'weekboss', index: 1, referenceLevel: state.player.level });
+}
+
 // 军屯双本（研讨会四 P2）：每日 2 次、双轨 10 层顺序解锁
 function dungeonInfo() {
   checkDailyReset();
@@ -2808,7 +2853,7 @@ module.exports = {
   winCampaign, campaignRewardPreview, winTower, arenaFight, arenaSeasonInfo, arenaBoardInfo, summonGapInfo, beginBattle, settleBattle, campaignStarChestInfo, claimStarChests,
   markStorySeen, isStorySeen, retroGrants, dismissRetroGrants, dismissReturnPending,
   questList, claimQuest, activePoints, claimActiveChest, claimAllDailyRewards, claimFreeRewards, bumpQuest, applyReward,
-  sevenDayInfo, claimSevenDay, fourteenDayInfo, claimFourteenDay, tutorialSeen, markTutorialSeen, dungeonInfo, bountyInfo, bountyPayout, dispatchBounty, claimBounty, roamerInfo, buyRoamer, takeBountyGrantsNotice,
+  sevenDayInfo, claimSevenDay, fourteenDayInfo, claimFourteenDay, tutorialSeen, markTutorialSeen, dungeonInfo, weekBossInfo, beginWeekBoss, bountyInfo, bountyPayout, dispatchBounty, claimBounty, roamerInfo, buyRoamer, takeBountyGrantsNotice,
   interruptBattle, setAutoBattleSpeed,
   buyGood, CURRENCY_NAME,
   adCount, adBump
