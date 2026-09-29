@@ -2300,7 +2300,7 @@ function refreshBounties(today) {
   const prevUnread = (state.bounty && state.bounty.unreadGrants) || null;
   old.forEach(b => {
     if (!b || !b.heroId || b.claimed) return;
-    if (now - b.dispatchedAt >= b.hours * 3600000) { applyReward(b.reward); settled.push(b.name); }
+    if (now - b.dispatchedAt >= b.hours * 3600000) { applyReward(bountyPayout(b).reward); settled.push(b.name); }
     else carried.push(b);
   });
   if (settled.length) {
@@ -2316,9 +2316,23 @@ function refreshBounties(today) {
       ? shuffled[list.length % shuffled.length]
       : pickBountyTask();
     list.push({ hours: t.hours, name: t.name, reward: bountyScaleReward(t.reward),
+      wantFaction: BOUNTY_FACTIONS[Math.floor(Math.random() * BOUNTY_FACTIONS.length)],
       heroId: null, dispatchedAt: 0, claimed: false });
   }
   state.bounty = { day: today, list, unreadGrants: settled.length ? [today, settled.length] : prevUnread };
+}
+const BOUNTY_FACTIONS = ['wei', 'shu', 'wu', 'qun'];
+// 同阵营派遣结算：只乘铜钱/元宝，招募令永不加成；旧档无 wantFaction 的在途单视为无条件
+function bountyPayout(b) {
+  const pct = (C.BOUNTY.factionBonus && C.BOUNTY.factionBonus.pct) || 0;
+  const hero = b.heroId && H.getHero(b.heroId);
+  const match = !!(b.wantFaction && hero && hero.faction === b.wantFaction);
+  if (!match || !pct) return { reward: b.reward, bonus: false };
+  const scaled = {};
+  Object.keys(b.reward).forEach(k => {
+    scaled[k] = (k === 'gold' || k === 'gem') ? Math.floor(b.reward[k] * (1 + pct)) : b.reward[k];
+  });
+  return { reward: scaled, bonus: true };
 }
 function bountyInfo() {
   checkDailyReset();
@@ -2326,8 +2340,12 @@ function bountyInfo() {
   const list = (state.bounty.list || []).map((b, idx) => {
     const elapsed = b.heroId ? now - b.dispatchedAt : 0;
     const remainMs = b.heroId ? Math.max(0, b.hours * 3600000 - elapsed) : 0;
+    const hero = b.heroId ? H.getHero(b.heroId) : null;
     return {
       idx, name: b.name, hours: b.hours, reward: b.reward, heroId: b.heroId,
+      wantFaction: b.wantFaction || null,
+      bonusActive: !!(b.wantFaction && hero && hero.faction === b.wantFaction),
+      bonusPct: (C.BOUNTY.factionBonus && C.BOUNTY.factionBonus.pct) || 0,
       state: b.claimed ? 'claimed' : (b.heroId && remainMs <= 0 ? 'done' : b.heroId ? 'running' : 'open'),
       remainMs: Math.ceil(remainMs / 60000) * 60000
     };
@@ -2367,9 +2385,10 @@ function claimBounty(idx) {
     if (!b || !b.heroId) return { ok: false, msg: '没有可领取的悬赏' };
     if (b.claimed) return { ok: false, msg: '已领取' };
     if (Date.now() - b.dispatchedAt < b.hours * 3600000) return { ok: false, msg: '尚未归来' };
+    const pay = bountyPayout(b);
     b.claimed = true;
-    applyReward(b.reward);
-    return { ok: true, reward: b.reward, name: b.name, heroId: b.heroId };
+    applyReward(pay.reward);
+    return { ok: true, reward: pay.reward, bonus: pay.bonus, name: b.name, heroId: b.heroId };
   });
 }
 

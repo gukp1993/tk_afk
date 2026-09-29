@@ -807,7 +807,7 @@ export function bountyView(ctx: ScreenContext) {
   ctx.title('悬 赏 派 遣');
   U.text('BountyBack','‹ 返回',-291,484,130,22,GOLD);
   U.tap('BountyBackTap',-291,484,136,52,()=>ctx.back('journey'));
-  U.text('BountyGuide','每日 4 单 · 派一名武将出征 · 时辰到领赏（跨日自动补发）',0,443,640,18,tone('#ad9977'));
+  U.text('BountyGuide','每日 4 单 · 派同阵营武将该单铜钱元宝 +20% · 跨日自动补发',0,443,640,18,tone('#ad9977'));
   info.list.forEach((b:any,i:number)=>{
     const y=360-i*124;
     const reward=Object.entries(b.reward).map(([k,n]:any)=>`${store.CURRENCY_NAME[k]||k}×${fmt.fmtNum(n)}`).join(' · ');
@@ -817,6 +817,13 @@ export function bountyView(ctx: ScreenContext) {
     U.text('BountyName'+i,b.name,-220,y+24,220,24,GOLD);
     U.text('BountyHours'+i,`${b.hours} 小时`,210,y+24,120,19,tone('#ad9977'));
     U.text('BountyReward'+i,reward,-160,y-14,420,18,LIGHT);
+    // 同阵营派遣加成（裁决 E）：派同阵营将该单铜钱元宝 +20%
+    if(b.wantFaction){
+      const fname=(config.FACTIONS as any)[b.wantFaction]?.name||'';
+      const pct=Math.round((b.bonusPct||0)*100);
+      U.text('BountyWant'+i,b.state==='open'?`征${fname}将 · +${pct}%`:b.bonusActive?`征${fname}将 ✓ 加成生效`:`非${fname}将 · 无加成`,205,y-14,225,16,
+        b.state==='open'?GOLD:b.bonusActive?tone('#6f8a5f'):tone('#7a6c52'));
+    }
     const heroName=b.heroId?(heroes.getHero(b.heroId)?.name||b.heroId):'';
     if(b.state==='open'){
       U.button('BountyAct'+i,'派 遣',240,y-38,150,52,()=>{bountyPickIdx=i;ctx.show('bounty');},palette.gold);
@@ -841,7 +848,8 @@ export function bountyView(ctx: ScreenContext) {
     const slice=ids;
     U.text('BountyPickTitle',`选择出征武将 · 可派 ${ids.length} 人`,0,427,560,30,GOLD);
     const pickBounty=store.bountyInfo().list[pickIdx];
-    U.text('BountyPickHint',pickBounty?`${pickBounty.name} · ${pickBounty.hours} 小时 · ${Object.entries(pickBounty.reward).map(([k,n]:any)=>`${store.CURRENCY_NAME[k]||k}×${fmt.fmtNum(n)}`).join(' · ')}`:'出征不影响出战阵容；同一武将同时只能接一单',0,388,600,17,tone('#ad9977'));
+    const pfName=pickBounty&&pickBounty.wantFaction?((config.FACTIONS as any)[pickBounty.wantFaction]?.name||''):'';
+    U.text('BountyPickHint',pickBounty?(pickBounty.wantFaction?`${pickBounty.name} · ${pickBounty.hours} 小时 · 派${pfName}将该单铜钱元宝+${Math.round((pickBounty.bonusPct||0)*100)}%`:`${pickBounty.name} · ${pickBounty.hours} 小时 · ${Object.entries(pickBounty.reward).map(([k,n]:any)=>`${store.CURRENCY_NAME[k]||k}×${fmt.fmtNum(n)}`).join(' · ')}`):'出征不影响出战阵容；同一武将同时只能接一单',0,388,600,17,tone('#ad9977'));
     U.scroll('BountyPickScroll',0,-30,600,760,Math.max(760,slice.length*92),V=>{
       slice.forEach((id,j)=>{
         const hero=heroes.getHero(id),y=Math.max(760,slice.length*92)/2-46-j*92;

@@ -158,6 +158,9 @@ const BATTLE_TACTICS = [
 // gold 随主线进度最高翻倍（铜钱本就富余，作爽点数字）；gem/scroll 固定。
 const BOUNTY = {
   slots: 4,
+  // 同阵营派遣加成（2026-09-30 研讨会备选 E，AFK 悬赏条件本地化单将版）：
+  // 派出与悬赏单 wantFaction 同阵营的武将，该单铜钱与元宝 +20%；招募令永不加成（护抽卡经济锚）。
+  factionBonus: { pct: 0.2 },
   pool: [
     { hours: 4, weight: 40, name: '短途运粮', reward: { gold: 20000, gem: 50 } },
     { hours: 8, weight: 35, name: '州郡剿匪', reward: { gold: 50000, gem: 150 } },

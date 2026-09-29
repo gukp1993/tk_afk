@@ -232,6 +232,20 @@ const cB = store4b.claimBounty(freeIdx);
 check('到时领赏入账', cB.ok && cB.reward && s4b.res.gem > 0);
 check('悬赏奖励不含精铁', !Object.keys(cB.reward).includes('iron'));
 check('重复领取拒绝', store4b.claimBounty(freeIdx).ok === false);
+// 同阵营派遣加成（2026-09-30 裁决 E）：命中铜钱/元宝 ×1.2、招募令不加成；不命中/旧档无条件单原额
+{
+  const g0 = s4b.res.gold, gem0 = s4b.res.gem, sc0 = s4b.res.scroll;
+  s4b.bounty.list[1] = { hours: 4, name: '命中单', reward: { gold: 10000, gem: 100, scroll: 1 }, wantFaction: 'shu', heroId: 'guanyu', dispatchedAt: Date.now() - 5 * 3600000, claimed: false };
+  s4b.bounty.list[2] = { hours: 4, name: '不命中单', reward: { gold: 10000, gem: 100, scroll: 1 }, wantFaction: 'wei', heroId: 'guanyu', dispatchedAt: Date.now() - 5 * 3600000, claimed: false };
+  check('加成标记 bonusActive', store4b.bountyInfo().list[1].bonusActive === true && store4b.bountyInfo().list[2].bonusActive === false);
+  const cHit = store4b.claimBounty(1);
+  check('阵营命中 ×1.2（铜钱/元宝）招募令不加成', cHit.ok && cHit.bonus === true && s4b.res.gold === g0 + 12000 && s4b.res.gem === gem0 + 120 && s4b.res.scroll === sc0 + 1);
+  const cMiss = store4b.claimBounty(2);
+  check('阵营不命中原额', cMiss.ok && cMiss.bonus === false && cMiss.reward.gold === 10000 && cMiss.reward.gem === 100);
+  s4b.bounty.list[3] = { hours: 4, name: '旧档单', reward: { gold: 1000 }, heroId: 'liaohua', dispatchedAt: Date.now() - 5 * 3600000, claimed: false };
+  const cOld = store4b.claimBounty(3);
+  check('旧档无 wantFaction 单不加成', cOld.ok && cOld.bonus === false && cOld.reward.gold === 1000);
+}
 s4b.bounty.list[(freeIdx + 1) % 4] = { hours: 4, name: '测试单', reward: { gold: 1000 }, heroId: 'mengda', dispatchedAt: Date.now() - 5 * 3600000, claimed: false };
 s4b.bounty.day = '2000-01-01'; // 强制跨日刷新
 store4b.checkDailyReset();
