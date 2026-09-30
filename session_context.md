@@ -16,6 +16,16 @@
 
 ## 最近交接（新 → 旧）
 
+### 飞字动画迁移至 update 循环 · zcode · 已实施待验收
+
+时间：2026-10-01 05:30（Asia/Shanghai）；执行者：zcode；状态：已实施待验收。
+
+- `94e96e4`：CocosUi.floatText 从 setInterval 迁移到 Bootstrap.update(dt) 循环驱动（数据驱动 floaters 数组 + updateFloaters(dt)）——游戏暂停时飞字同步暂停（setInterval 不受暂停控制）、帧率无关（dt 累计制）。
+- 验证：smoke 426 全过、镜像/tsc 过、微信包构建正常。
+- 并行进行中：研讨会八（战役体验+手感，后台代理）。
+
+### 七日过期横幅修复 · zcode · 已实施待验收
+
 ### 七日过期横幅修复 · zcode · 已实施待验收
 
 时间：2026-10-01 07:00（Asia/Shanghai）；执行者：zcode；状态：已实施待验收。
