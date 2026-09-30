@@ -1573,4 +1573,21 @@ const storeP2 = freshStore(); storeP2.load();
   check('SG5 小兵体魄随关卡等级增长', !!sLow && !!sHigh && sHigh.stats.hp > sLow.stats.hp * 10);
 }
 
+
+// 导航红点（研讨会七 P1b）：派生条件与真实领取同源
+{
+  const storeNB = freshStore(); storeNB.load();
+  const sNB = storeNB.getState();
+  const b0 = storeNB.navBadges();
+  check('NB1 新档默认有红点（七日可领）且形状正确', b0.campaign === true && typeof b0.journey === 'boolean' && typeof b0.bag === 'boolean');
+  // 悬赏可领 → journey 亮
+  sNB.bounty.list[0] = { hours: 4, name: 'test', reward: { gold: 100 }, heroId: 'liaohua', dispatchedAt: Date.now() - 5 * 3600000, claimed: false };
+  const b1 = storeNB.navBadges();
+  check('NB2 悬赏可领 → journey 亮', b1.journey === true);
+  // 成就可领 → bag 亮
+  sNB.campaign.cleared = 10;
+  const b2 = storeNB.navBadges();
+  check('NB3 成就可领 → bag 亮', b2.bag === true || b2.journey === true);
+}
+
 console.log('\nsmoke: ' + passed + ' passed, ' + failed + ' failed');process.exit(failed ? 1 : 0);

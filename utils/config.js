@@ -165,6 +165,11 @@ const CHAOS_MILESTONES = {
   200: { shard: 40, token: 20, title: '乱世·定鼎', label: '乱世 · 四章定鼎（称号）' }
 };
 
+// 借将助战（2026-09-30 研讨会五批次 1 改判先行；专项仿真 5100 场定稿参数）
+// NPC SSR 每日 1 次第 6 人助战，仅 PVE（演武/名人堂/周Boss 排除）。
+// 等级=玩家等级×0.8、固定 3★、白板体魄（heroStatsStar 纯净值）；周键轮换助将位。
+// 回退：enabled=false 全链隐匿。
+
 // 新手首见浮层（2026-09-30 研讨会四 P1）：每场景首次进入弹一次图文说明。
 // 老档（无 tutorial 字段）视为全部已见，防浮层雨；TUTORIAL_OFF=true 全局关闭。
 const TUTORIAL_OFF = false;

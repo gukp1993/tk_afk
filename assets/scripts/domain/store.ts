@@ -2758,7 +2758,7 @@ function navBadges() {
   return {
     journey: bountyClaimable || weekQuestClaimable || activeClaimable,
     campaign: questClaimable || sevenDayInfo().canClaim || campaignStarChestInfo().claimable || retroGrants() || !!state.forgeOpenNotice,
-    bag: achvInfo().canClaim || codexInfo().canClaim
+    bag: achvInfo().claimable || codexInfo().canClaim
   };
 }
 
