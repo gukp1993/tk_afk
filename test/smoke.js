@@ -1515,4 +1515,16 @@ const storeP2 = freshStore(); storeP2.load();
   check('BIO3 有传将引用的 heroId 全部真实存在', Object.keys(BIOS).every(id => !!H2.getHero(id)));
 }
 
+
+// 乱世 Boss 对白轮换（研讨会六 C4）
+{
+  const st4 = require('../utils/stages');
+  const e170 = st4.makeStageEnemies(170);
+  check('CD1 乱世章末合成剧情（对白 2 条+敌阵仍走兜底）', e170.story && e170.story.stage.dialogue.length >= 2
+    && e170.story.synthetic === true && e170.units.length === 5 && e170.units[0].hero.id === 'lvbu');
+  check('CD2 轮换按乱世章序（170/180/200 各不同）', st4.makeStageEnemies(180).story.stage.name !== e170.story.stage.name
+    && st4.makeStageEnemies(200).story.stage.name !== st4.makeStageEnemies(180).story.stage.name);
+  check('CD3 非章末乱世关无剧情（162）', st4.makeStageEnemies(162).story === null);
+}
+
 console.log('\nsmoke: ' + passed + ' passed, ' + failed + ' failed');process.exit(failed ? 1 : 0);

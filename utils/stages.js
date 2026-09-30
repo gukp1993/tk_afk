@@ -97,7 +97,9 @@ function chapterOf(globalStage) {
 // 生成敌方阵容（5 人，slot 0-2 前排，3-4 后排）；剧情表内关卡附带 story 配置
 function makeStageEnemies(globalStage) {
   const { ch, inCh, name, isBoss } = chapterOf(globalStage);
-  const st = story.getStoryStage(globalStage);
+  // 乱世章末名将（161+ 每章第 10 关）合成剧情：对白轮换（研讨会六 C4），foes 仍走兜底
+  const st = story.getStoryStage(globalStage)
+    || (isBoss && globalStage > CHAPTERS.length * STAGES_PER_CH ? story.getChaosStory(globalStage) : null);
   const bossScale = CAMPAIGN_DIFFICULTY.bossOverrides[globalStage];
   const elite = isEliteStage(globalStage);
   const mods = resolveMods(globalStage);
@@ -106,7 +108,7 @@ function makeStageEnemies(globalStage) {
   const normalScale = stageScale(globalStage) * (CAMPAIGN_DIFFICULTY.normalOverrides[globalStage] || 1) * (elite ? ELITE_STAGE.scale : 1) * modComp;
   const lv = Math.max(1, Math.round(1 + (globalStage - 1) * CAMPAIGN_DIFFICULTY.levelSlope));
   const pick = (i) => {
-    if (st) return st.stage.foes[i];
+    if (st && st.stage.foes) return st.stage.foes[i];
     if (isBoss && i === 0) return ch.boss;
     return ch.foes[(inCh + i) % ch.foes.length];
   };
