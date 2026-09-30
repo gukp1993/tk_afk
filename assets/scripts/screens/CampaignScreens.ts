@@ -170,7 +170,8 @@ export function campaign(ctx: ScreenContext) {
         if(current)V.tap('ChapterRowTap'+i,0,y,600,64,()=>{chapterMapOpen=false;ctx.go('stagePreview');});
       }
     });
-    U.button('ChapterMapClose','返回战役',0,-443,554,55,()=>{chapterMapOpen=false;ctx.show('campaign');},palette.gold);
+    U.button('ChapterMapStory','剧情回顾',-145,-443,270,55,()=>{ctx.storyArchiveCh=chapter.idx;chapterMapOpen=false;ctx.go('storyArchive');},tone('#3a2b20'));
+    U.button('ChapterMapClose','返回战役',145,-443,270,55,()=>{chapterMapOpen=false;ctx.show('campaign');},palette.gold);
   }
 }
 
@@ -886,14 +887,58 @@ export function storyView(ctx: ScreenContext) {
       U.panel('StoryDialogue'+i,0,y,585,83,tone('#d6c49e'),7);
       U.text('StoryLine'+i,`${heroes.getHero(line.who)?.name || ''}：${line.text}`,0,y,552,23,INK);
     });
-    U.panel('StoryFight',0,-392,460,78,palette.red,9,GOLD);
-    U.text('StoryFightText','开始战斗',0,-392,438,27,LIGHT);
-    U.tap('StoryFightTap',0,-392,460,78,()=>{
-      store.markStorySeen(ctx.storyStage); store.save(); ctx.startBattle('campaign',ctx.storyStage);
-    });
-    U.text('StoryBackText','返回关卡预览',0,-482,318,20,GOLD);
-    U.tap('StoryBackTap',0,-482,318,45,()=>ctx.back('stagePreview'));
+    if(ctx.storyReview){
+      // 剧情回顾模式（用户指令 2026-10-01：剧情交互友好化）：只读回看，不进战斗
+      U.text('StoryReviewTag','剧 情 回 顾 · 只读',0,-360,400,17,tone('#a99778'));
+      U.panel('StoryFight',0,-420,460,78,tone('#3a2b20'),9,GOLD);
+      U.text('StoryFightText','返回剧情回顾',0,-420,438,27,LIGHT);
+      U.tap('StoryFightTap',0,-420,460,78,()=>{ctx.storyReview=false;ctx.go('storyArchive');});
+    } else {
+      U.panel('StoryFight',0,-392,460,78,palette.red,9,GOLD);
+      U.text('StoryFightText','开始战斗',0,-392,438,27,LIGHT);
+      U.tap('StoryFightTap',0,-392,460,78,()=>{
+        store.markStorySeen(ctx.storyStage); store.save(); ctx.startBattle('campaign',ctx.storyStage);
+      });
+      U.text('StoryBackText','返回关卡预览',0,-482,318,20,GOLD);
+      U.tap('StoryBackTap',0,-482,318,45,()=>ctx.back('stagePreview'));
+    }
   }
+
+export function storyArchiveView(ctx: ScreenContext) {
+  const U=ctx.ui,s=store.getState();
+  const cleared=s.campaign.cleared||0;
+  const maxCh=Math.min(15,Math.floor(cleared/10));
+  const chIdx=Math.min(Math.max(0,ctx.storyArchiveCh||0),maxCh);
+  ctx.storyArchiveCh=chIdx;
+  ctx.title('剧 情 回 顾');
+  U.text('ArcBack','‹ 返回',-291,484,130,22,GOLD);
+  U.tap('ArcBackTap',-291,484,136,52,()=>ctx.go('campaign'));
+  U.panel('ArcChPanel',0,410,640,70,tone('#312218'),9,GOLD);
+  U.button('ArcPrev','‹',-268,410,84,52,()=>{ctx.storyArchiveCh=Math.max(0,chIdx-1);ctx.show('storyArchive');},chIdx>0?tone('#5a452a'):tone('#332a1e'));
+  U.button('ArcNext','›',268,410,84,52,()=>{ctx.storyArchiveCh=Math.min(maxCh,chIdx+1);ctx.show('storyArchive');},chIdx<maxCh?tone('#5a452a'):tone('#332a1e'));
+  const chName=stages.chapterOf(chIdx*10+1).name;
+  let seenCount=0;
+  for(let i=0;i<10;i++)if(store.isStorySeen(chIdx*10+i+1))seenCount++;
+  U.text('ArcChName',chName,0,428,420,26,GOLD);
+  U.text('ArcChSub',`已读 ${seenCount}/10 · 点击已解锁关回看剧情`,0,398,420,16,tone('#ad9977'));
+  U.scroll('ArcList',0,-75,682,880,10*68+20,V=>{
+    for(let i=0;i<10;i++){
+      const n=chIdx*10+i+1;
+      const st=stages.makeStageEnemies(n).story;
+      const seen=store.isStorySeen(n);
+      const open=n<=cleared+1;
+      const y=(10*68+20)/2-34-i*68;
+      V.panel('ArcRow'+i,0,y,660,58,seen?tone('#2b2418'):tone('#1d1812'),7,seen?tone('#795b34'):tone('#3a2f20'));
+      V.text('ArcRowNum'+i,String(n).padStart(2,'0'),-282,y,60,22,seen?GOLD:tone('#7a6c52'));
+      V.text('ArcRowName'+i,st?.stage?.name||'—',-160,y,344,22,open?LIGHT:tone('#7a6c52'));
+      V.text('ArcRowState'+i,seen?'已读 · 回顾 ›':open?'未读,可阅':'未开放',225,y,150,17,seen?GOLD:open?tone('#a99778'):tone('#6b5837'));
+      if(open)V.tap('ArcRowTap'+i,0,y,660,58,()=>{
+        ctx.storyStage=n;ctx.storyReview=true;ctx.go('story');
+      });
+    }
+  });
+  U.button('ArcBackBtn','返 回',0,-510,295,52,()=>ctx.go('campaign'),palette.paperDark);
+}
 
 const SEVEN_DAY_CN = ['一', '二', '三', '四', '五', '六', '七'];
 

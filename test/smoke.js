@@ -1610,4 +1610,21 @@ const storeP2 = freshStore(); storeP2.load();
   check('P1F3 140 关 gem+888 入账（审计发现的原 bug）', sP1.res.gem >= 888);
 }
 
+
+// 剧情回顾册（用户指令 2026-10-01 剧情交互友好化）
+{
+  const storeSA = freshStore(); storeSA.load();
+  const sSA = storeSA.getState();
+  // 已读标记 API
+  check('SA1 新档未读剧情', storeSA.isStorySeen(1) === false);
+  storeSA.markStorySeen(1); storeSA.save();
+  check('SA2 markStorySeen 后已读', storeSA.isStorySeen(1) === true);
+  // 归档数据链：前 N 关剧情表可枚举
+  const stSA = require('../utils/stages');
+  check('SA3 章节剧情表可枚举（第7章 10 关）', [61,65,70].every(n => {
+    const s2 = stSA.makeStageEnemies(n).story; return s2 && s2.stage && s2.stage.name;
+  }));
+  check('SA4 乱世章末回顾可用（170 合成剧情）', (() => { const s2 = stSA.makeStageEnemies(170).story; return s2 && s2.synthetic === true && s2.stage.dialogue.length >= 2; })());
+}
+
 console.log('\nsmoke: ' + passed + ' passed, ' + failed + ' failed');process.exit(failed ? 1 : 0);

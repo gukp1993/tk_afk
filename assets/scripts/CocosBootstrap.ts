@@ -41,6 +41,8 @@ export class CocosBootstrap extends Component implements ScreenContext {
   public outcome: any = null;
   public lastBattleSnapshot: any[] = [];
   public storyStage = 1;
+  public storyArchiveCh = 0;
+  public storyReview = false;
   public auto = false;
   public autoStopPending = false;
   private bountyRefresh = 0;
@@ -170,7 +172,7 @@ export class CocosBootstrap extends Component implements ScreenContext {
       campaign: () => campaignScreens.campaign(this), stagePreview: () => campaignScreens.stagePreview(this), home: () => campaignScreens.home(this), journey: () => campaignScreens.journey(this),
       heroes: () => heroScreens.heroes(this), heroDetail: () => heroScreens.heroDetail(this), summon: () => heroScreens.summon(this), summonResults: () => heroScreens.summonResults(this), bag: () => campaignScreens.bag(this),
       armory: () => heroScreens.armory(this), armoryCatalog: () => heroScreens.armoryCatalog(this), armoryBox: () => heroScreens.armoryBox(this), shop: () => campaignScreens.shop(this), formation: () => campaignScreens.formation(this), formationPick: () => campaignScreens.formationPick(this), quests: () => campaignScreens.quests(this),
-      tower: () => campaignScreens.tower(this), arena: () => campaignScreens.arena(this), arenaBoard: () => campaignScreens.arenaBoard(this), dungeon: () => campaignScreens.dungeonView(this), weekboss: () => campaignScreens.weekBossView(this), settings: () => campaignScreens.settingsView(this), story: () => campaignScreens.storyView(this), sevenDay: () => campaignScreens.sevenDayView(this), bounty: () => campaignScreens.bountyView(this), forge: () => heroScreens.forgeView(this), codex: () => heroScreens.codexView(this), achv: () => heroScreens.achvView(this), expedition: () => campaignScreens.expeditionView(this), hall: () => campaignScreens.hallView(this),
+      tower: () => campaignScreens.tower(this), arena: () => campaignScreens.arena(this), arenaBoard: () => campaignScreens.arenaBoard(this), dungeon: () => campaignScreens.dungeonView(this), weekboss: () => campaignScreens.weekBossView(this), settings: () => campaignScreens.settingsView(this), story: () => campaignScreens.storyView(this), storyArchive: () => campaignScreens.storyArchiveView(this), sevenDay: () => campaignScreens.sevenDayView(this), bounty: () => campaignScreens.bountyView(this), forge: () => heroScreens.forgeView(this), codex: () => heroScreens.codexView(this), achv: () => heroScreens.achvView(this), expedition: () => campaignScreens.expeditionView(this), hall: () => campaignScreens.hallView(this),
       battle: () => battleScreens.battleView(this), result: () => battleScreens.resultView(this), autoSummary: () => battleScreens.autoSummary(this, this.autoSession.summary), ad: () => this.adView()
     };
     render[page]();
@@ -418,7 +420,7 @@ export class CocosBootstrap extends Component implements ScreenContext {
       this.startBattle(mode,index,diff);
     });
     if(mode==='campaign'&&!fromAuto&&!store.isStorySeen(index)&&stages.makeStageEnemies(index).story){
-      this.storyStage=index;this.go('story');return;
+      this.storyStage=index;this.storyReview=false;this.go('story');return;
     }
     if(mode==='campaign'&&fromAuto&&!store.isStorySeen(index)){store.markStorySeen(index);store.save();}
     const effectiveArenaSeed=arenaSeed||Date.now();
