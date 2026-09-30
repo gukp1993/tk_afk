@@ -16,6 +16,20 @@
 
 ## 最近交接（新 → 旧）
 
+### 研讨会七批次丙：领取飞字 + 震动 · zcode · 已实施待验收
+
+时间：2026-10-01 03:30（Asia/Shanghai）；执行者：zcode；状态：已实施待验收。
+
+- `46f94d1`（研讨会七 P4+P5）：
+  P4 领取飞字——CocosUi.floatText 静态方法，FX 独立层不随 content 清理销毁，上移 80px+淡出 1.2s 自毁；bootstrap.tell 成功时自动检测 reward/label 生成飞字；
+  P5 震动——CocosUi.vibrateShort 静态方法（wx.vibrateShort）+ platform.js 补 vibrateShort/vibrateLong 封装；战斗胜利时短震。
+- 验证：smoke 420 全过、镜像/tsc 过、微信包 3404KB（+4KB）。
+- 待验收：真机领取操作飞字动画/战斗胜利震动。
+- **研讨会七全部批次落地（甲=按压态+红点+主城公告/乙=设置页+异味清理/丙=飞字+震动）**。
+- 队列空：下轮心跳召唤研讨会八，或等真机验收数据。
+
+### 小兵混编系统 · zcode · 已实施待验收
+
 ### 小兵混编系统 · zcode · 已实施待验收
 
 时间：2026-10-01 02:00（Asia/Shanghai）；执行者：zcode；状态：已实施待验收。
