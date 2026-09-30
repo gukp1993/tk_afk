@@ -107,8 +107,14 @@ function makeStageEnemies(globalStage) {
   const modComp = mods.length && !CAMPAIGN_DIFFICULTY.normalOverrides[globalStage] ? CAMPAIGN_MODS.compensation : 1;
   const normalScale = stageScale(globalStage) * (CAMPAIGN_DIFFICULTY.normalOverrides[globalStage] || 1) * (elite ? ELITE_STAGE.scale : 1) * modComp;
   const lv = Math.max(1, Math.round(1 + (globalStage - 1) * CAMPAIGN_DIFFICULTY.levelSlope));
+  // 乱世章末 Boss 按章序轮换（内容多样性：避免每章都是吕布）
+  const chaosLoop = globalStage > CHAPTERS.length * STAGES_PER_CH
+    ? Math.floor((globalStage - 1) / 10) - (CHAPTERS.length - 1) : 0;
+  const chaosBoss = chaosLoop >= 1
+    ? story.CHAOS_BOSS_ROTATION[(chaosLoop - 1) % story.CHAOS_BOSS_ROTATION.length] : null;
   const pick = (i) => {
     if (st && st.stage.foes) return st.stage.foes[i];
+    if (isBoss && i === 0 && chaosBoss) return chaosBoss;
     if (isBoss && i === 0) return ch.boss;
     return ch.foes[(inCh + i) % ch.foes.length];
   };

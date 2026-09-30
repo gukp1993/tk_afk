@@ -1522,8 +1522,13 @@ const storeP2 = freshStore(); storeP2.load();
   const e170 = st4.makeStageEnemies(170);
   check('CD1 乱世章末合成剧情（对白 2 条+敌阵仍走兜底）', e170.story && e170.story.stage.dialogue.length >= 2
     && e170.story.synthetic === true && e170.units.length === 5 && e170.units[0].hero.id === 'lvbu');
-  check('CD2 轮换按乱世章序（170/180/200 各不同）', st4.makeStageEnemies(180).story.stage.name !== e170.story.stage.name
-    && st4.makeStageEnemies(200).story.stage.name !== st4.makeStageEnemies(180).story.stage.name);
+  const e180 = st4.makeStageEnemies(180), e190 = st4.makeStageEnemies(190), e200 = st4.makeStageEnemies(200);
+  check('CD2 Boss 轮换（170 吕布→180 曹操→190 诸葛亮→200 司马懿）且对白随 Boss 配套',
+    e170.units[0].hero.id === 'lvbu' && e180.units[0].hero.id === 'caocao'
+    && e190.units[0].hero.id === 'zhugeliang' && e200.units[0].hero.id === 'simayi'
+    && e170.story.stage.name === '魔影重演' && e180.story.stage.name === '旧梦重临'
+    && e190.story.stage.name === '秋风又满五丈原' && e200.story.stage.name === '鹰视狼顾');
+  check('CD2b 第 8 乱世章回绕（230 再回吕布）', st4.makeStageEnemies(230).units[0].hero.id === 'lvbu');
   check('CD3 非章末乱世关无剧情（162）', st4.makeStageEnemies(162).story === null);
 }
 

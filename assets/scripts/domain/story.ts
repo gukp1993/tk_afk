@@ -519,37 +519,49 @@ const CHAPTERS = [
 
 // 乱世循环 Boss 对白（研讨会六 C4）：161 关后每章末名将合成剧情，按乱世章序从池中轮换。
 // 纯派生不落存档；对白为原创幽灵重演主题，who 引用真实武将 id。
-const CHAOS_STORY_POOL = [
-  { stage: { name: '魔影重演', narration: '倒下的身影再度立起，眼底燃着不散的执念——乱世也不愿谢幕。',
+// 乱世 Boss 轮换池（内容多样性：避免每章都是吕布）：按乱世章序轮换，对白各说各话
+const CHAOS_BOSS_ROTATION = ['lvbu', 'caocao', 'zhugeliang', 'simayi', 'zhouyu', 'sunce'];
+const CHAOS_BOSS_STORY = {
+  lvbu: { stage: { name: '魔影重演', narration: '倒下的身影再度立起，眼底燃着不散的执念——乱世也不愿谢幕。',
       dialogue: [
         { who: 'lvbu', text: '又是我？也好——这乱世本来就没记住几个名字。' },
         { who: 'guanyu', text: '那便再胜你一次，直到天下记住为止。' }
       ] } },
-  { stage: { name: '执念不散', narration: '战鼓无人自响，旗帜无风自动，旧日的对手列阵如生。',
+  caocao: { stage: { name: '旧梦重临', narration: '铜雀台影在硝烟里若隐若现，横槊之人笑声如旧。',
       dialogue: [
         { who: 'caocao', text: '对酒当歌。人生几何——再来一局又何妨？' },
         { who: 'liubei', text: '这一局，为的是白骨露于野的百姓。' }
       ] } },
-  { stage: { name: '英魂试炼', narration: '这一次列阵的，是彼此都敬过的对手。',
+  zhugeliang: { stage: { name: '秋风又满五丈原', narration: '将星摇曳，羽扇再出——灯还亮着，人就未败。',
       dialogue: [
         { who: 'zhugeliang', text: '亮观此阵，虚实相生——是考验，不是埋伏。' },
-        { who: 'sunce', text: '少谋算！小霸王的枪，只认正面！' }
+        { who: 'simayi', text: '丞相放心，仲达这局只守不攻。' }
       ] } },
-  { stage: { name: '循环终章', narration: '无数次的循环在此收束：胜与败都将归尘，唯战意不灭。',
+  simayi: { stage: { name: '鹰视狼顾', narration: '耐心的猎手这一次站在了明处，眼神依旧是只鹰。',
       dialogue: [
         { who: 'simayi', text: '循环？我等的就是循环——每一次，都比上次更有耐心。' },
-        { who: 'zhouyu', text: '东风起了。这一次，周郎先出手。' }
+        { who: 'zhugeliang', text: '耐心再久，也熬不过天下人的眼睛。' }
+      ] } },
+  zhouyu: { stage: { name: '东风又起', narration: '江面火光未冷，曲有误的传闻再次流转水寨。',
+      dialogue: [
+        { who: 'zhouyu', text: '东风起了。这一次，周郎先出手。' },
+        { who: 'zhugeliang', text: '都督请——亮这一次不借，只战。' }
+      ] } },
+  sunce: { stage: { name: '小霸王的答卷', narration: '江东基业替故人年少，这一局由孙郎亲手收官。',
+      dialogue: [
+        { who: 'sunce', text: '江东的基业替我继续年少，这局我来收尾。' },
+        { who: 'zhouyu', text: '主公出枪，公瑾押阵——如当年。' }
       ] } }
-];
+};
 function getChaosStory(globalStage) {
   const n = Math.floor(Number(globalStage) || 0);
   const loop = Math.floor((n - 1) / 10) - (CHAPTERS.length - 1); // 乱世章序（1 起）
   if (loop < 1) return null;
-  const entry = CHAOS_STORY_POOL[(loop - 1) % CHAOS_STORY_POOL.length];
-  const base = { name: '乱世纷争 · 第' + loop + '章' };
-  return { ch: { name: base.name }, chIdx: Math.floor((n - 1) / 10), inCh: (n - 1) % 10,
+  const bossId = CHAOS_BOSS_ROTATION[(loop - 1) % CHAOS_BOSS_ROTATION.length];
+  const entry = CHAOS_BOSS_STORY[bossId];
+  return { ch: { name: '乱世纷争 · 第' + loop + '章' }, chIdx: Math.floor((n - 1) / 10), inCh: (n - 1) % 10,
     stage: { name: entry.stage.name, narration: entry.stage.narration, dialogue: entry.stage.dialogue, foes: null },
-    isBoss: true, synthetic: true };
+    isBoss: true, synthetic: true, chaosBoss: bossId };
 }
 
 // 全局关卡序号（1 起）→ 剧情配置；超出本表（>160 关）返回 null，调用方走循环乱世兜底
@@ -565,4 +577,4 @@ function getStoryChapter(chIdx) {
   return CHAPTERS[chIdx] || null;
 }
 
-export { CHAPTERS, getStoryStage, getStoryChapter, getChaosStory };
+export { CHAPTERS, getStoryStage, getStoryChapter, getChaosStory, CHAOS_BOSS_ROTATION };
