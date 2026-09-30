@@ -2870,7 +2870,7 @@ function sevenDayInfo() {
     claimable: windowOpen && d.day <= cur && claimed.indexOf(d.day) < 0,
     locked: d.day > cur
   }));
-  return { start: state.sevenDay.start, cur, list, allDone: claimed.length >= 7, canClaim: list.some(x => x.claimable) };
+  return { start: state.sevenDay.start, cur, list, allDone: claimed.length >= 7, canClaim: list.some(x => x.claimable), expired: !windowOpen && claimed.length < 7 };
 }
 function claimSevenDay(day) {
   return withSavedMutation(() => {

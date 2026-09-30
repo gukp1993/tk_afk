@@ -67,7 +67,7 @@ export function campaign(ctx: ScreenContext) {
     U.text('FourteenBannerText',fdBanner.canClaim?'第二周目标 · 有奖励可领 ›':`第二周目标 · 第 ${fdBanner.ageDays} 天 ›`,-60,372,470,18,fdBanner.canClaim?GOLD:LIGHT);
     U.tap('FourteenBannerTap',-60,372,500,44,()=>ctx.go('sevenDay'));
   }
-  if(!sd.allDone){
+  if(!sd.allDone&&!sd.expired){
     const claimable=sd.canClaim;
     U.panel('SevenDayBanner',-60,372,500,44,claimable?tone('#3a2c17'):tone('#2b2118'),7,claimable?GOLD:tone('#6b5837'));
     U.text('SevenDayBannerText',claimable?'七日目标 · 今天有奖励可领 ›':`七日目标 · 第 ${sd.cur} 天 ›`,-60,372,470,18,claimable?GOLD:LIGHT);
@@ -1070,9 +1070,10 @@ export function bountyView(ctx: ScreenContext) {
 export function sevenDayView(ctx: ScreenContext) {
   const info=store.sevenDayInfo(),U=ctx.ui;
   ctx.title('七 日 目 标');
+  const sd=info;
   U.text('SevenDayBack','‹ 返回',-291,484,130,22,GOLD);
   U.tap('SevenDayBackTap',-291,484,136,52,()=>ctx.back('campaign'));
-  U.text('SevenDayGuide','开服首 7 天每天一份厚礼；漏领可在 7 天内补领',0,443,640,18,tone('#ad9977'));
+  U.text('SevenDayGuide',sd.expired?'七日目标已结束 · 未领奖励由第二周目标接续':'开服首 7 天每天一份厚礼；漏领可在 7 天内补领',0,443,640,18,tone('#ad9977'));
   info.list.forEach((d:any,i:number)=>{
     const y=375-i*116;
     U.panel('SevenDay'+i,0,y,640,102,
@@ -1080,7 +1081,7 @@ export function sevenDayView(ctx: ScreenContext) {
       d.claimable?GOLD:tone('#6b5837'));
     U.text('SevenDayDay'+i,`第${SEVEN_DAY_CN[i]}天`,-228,y+20,150,26,d.claimable?GOLD:d.claimed?tone('#6f8a5f'):tone('#a99778'));
     U.text('SevenDayLabel'+i,d.label,-66,y-14,360,22,d.locked?tone('#a99778'):LIGHT);
-    U.text('SevenDayState'+i,d.claimed?'已领取':d.claimable?'待领取 ›':`第 ${d.day} 天解锁`,205,y+18,160,20,d.claimable?GOLD:d.claimed?tone('#6f8a5f'):tone('#a99778'));
+    U.text('SevenDayState'+i,d.claimed?'已领取':d.claimable?'待领取 ›':sd.expired?'已过期':`第 ${d.day} 天解锁`,205,y+18,160,20,d.claimable?GOLD:d.claimed?tone('#6f8a5f'):sd.expired?tone('#6b5837'):tone('#a99778'));
     if(d.claimable)U.tap('SevenDayTap'+i,0,y,640,102,()=>{
       const r=store.claimSevenDay(d.day);
       ctx.tell(r,r.ok?`已领取：${d.label}`:'');
