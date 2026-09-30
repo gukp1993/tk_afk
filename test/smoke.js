@@ -1532,4 +1532,24 @@ const storeP2 = freshStore(); storeP2.load();
   check('CD3 非章末乱世关无剧情（162）', st4.makeStageEnemies(162).story === null);
 }
 
+
+// 设置页与异味清理（研讨会七批次乙）
+{
+  const storeST = freshStore(); storeST.load();
+  const sST = storeST.getState();
+  check('ST1 res 单一定义且字段齐（soul+univSsr+univSr）', ['gold','gem','scroll','token','shard','iron','soul','univSsr','univSr'].every(k => k in sST.res));
+  check('ST2 settings 默认 autoBattleSpeed=1（speed 死键已清）', sST.settings && sST.settings.autoBattleSpeed === 1 && !('speed' in sST.settings));
+  sST.settings.speed = 3; // 模拟旧档死键
+  sST.settings.autoBattleSpeed = undefined;
+  const storeST2 = freshStore(); storeST2.load();
+  const s2 = storeST2.getState();
+  global.wx._map.set(SAVE_KEY, JSON.parse(JSON.stringify(Object.assign({}, s2, { settings: { speed: 3 } }))));
+  const storeST3 = freshStore(); storeST3.load();
+  const s3 = storeST3.getState();
+  check('ST3 旧档 speed 死键迁移为 autoBattleSpeed=1', s3.settings.autoBattleSpeed === 1 && !('speed' in s3.settings));
+  storeST3.resetTutorials();
+  check('ST4 重看教程（seen 清空后首见恢复）', storeST3.tutorialSeen('forge') === false);
+  global.wx._map.delete(SAVE_KEY);
+}
+
 console.log('\nsmoke: ' + passed + ' passed, ' + failed + ' failed');process.exit(failed ? 1 : 0);

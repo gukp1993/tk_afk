@@ -30,6 +30,9 @@ function campaignHeader(ctx: ScreenContext, chapter: any, stage: number) {
   U.text('GemName','元宝',216,600,56,16,tone('#c6bc98'));
   U.text('GemCount',String(s.res.gem),308,600,84,23,GOLD);
   U.progress('LordXp',151,552,388,level>=config.MAX_LEVEL?1:s.player.exp/need,GOLD);
+  // 设置入口（研讨会七批次乙）：主公面板点击进设置
+  U.text('LordSettings','设置 ›',-184,545,150,16,tone('#c7cdac'));
+  U.tap('LordSettingsTap',-240,560,200,70,()=>ctx.go('settings'));
   U.text('TeamPower',`战力 ${fmt.fmtNum(store.teamPower())}`,-240,524,220,19,GOLD);
   U.text('ExpCount',level>=config.MAX_LEVEL?'主公等级已满':`战斗经验 ${fmt.fmtNum(s.player.exp)}/${fmt.fmtNum(need)}`,191,524,320,17,tone('#c7cdac'));
   U.rect('ChapterBar',0,463,720,57,tone('#d9cda7'));
@@ -277,6 +280,9 @@ export function home(ctx: ScreenContext) {
     U.panel('CityGoal',0,-390,674,40,s.forgeOpenNotice||store.retroGrants()||s.returnPending?tone('#3a2c17'):tone('#ddd0b2'),7);
     U.text('CityGoalText',goal.title+' · '+goal.desc,-42,-390,580,18,s.forgeOpenNotice||store.retroGrants()||s.returnPending?GOLD:INK);
     U.tap('CityGoalTap',0,-390,674,40,()=>ctx.go(goal.page as Page));
+    // 设置入口（研讨会七批次乙 P3）：主公头像区域点击（个人位惯例，与本章地图/自动出征无冲突）
+    U.text('CitySettings','设置 ›',-133,558,120,17,tone('#766a51'));
+    U.tap('CitySettingsTap',-200,600,220,84,()=>ctx.go('settings'));
     U.panel('CityDeploy',-95,-440,489,57,palette.red,8,GOLD);
     U.text('CityDeployText',ctx.auto?'本场后停止':'自动出征',-95,-440,460,28,LIGHT);
     U.tap('CityDeployTap',-95,-440,489,57,()=>ctx.auto?ctx.stopAuto(true):ctx.startAuto('campaign'));
@@ -398,6 +404,42 @@ export function weekBossView(ctx: ScreenContext) {
   U.text('WbHint','伤害 = 全队对魔王输出占其血量比例；魔王强度随主公等级',0,-260,640,16,tone('#7a6c52'));
   U.button('WbBackBtn','返 回',0,-500,295,52,()=>ctx.back('journey'),palette.paperDark);
   firstTimeOverlay(ctx,'weekboss');
+}
+
+// 设置页（研讨会七批次乙 P3）：最小版——版本/存档诊断/重看教程/战斗倍速
+export function settingsView(ctx: ScreenContext) {
+  const U=ctx.ui,s=store.getState();
+  ctx.title('设 置');
+  U.text('SetBack','‹ 返回',-291,484,130,22,GOLD);
+  U.tap('SetBackTap',-291,484,136,52,()=>ctx.back('home'));
+  U.panel('SetVersion',0,400,682,70,tone('#312218'),9,tone('#795b34'));
+  U.text('SetVersionText','挂机定三国 v2.0.0 · 微信小游戏',0,414,640,19,LIGHT);
+  U.text('SetVersionSub',`存档版本 v${s.v} · 建号 ${new Date(s.createdAt).toLocaleDateString('zh-CN')}`,0,386,640,15,tone('#ad9977'));
+  U.panel('SetTut',0,300,682,70,tone('#312218'),9,tone('#795b34'));
+  U.text('SetTutText','新手说明',-250,316,200,19,LIGHT);
+  U.text('SetTutDesc','已看过说明的场景将重新弹出一次',-130,286,420,15,tone('#ad9977'));
+  U.button('SetTutGo','重看教程',210,300,170,50,()=>{store.resetTutorials();ctx.tell({ok:true},'下次进入各玩法将重新显示说明');},palette.gold);
+  U.panel('SetDiag',0,180,682,90,tone('#312218'),9,tone('#795b34'));
+  U.text('SetDiagText','存档诊断',-250,196,200,19,LIGHT);
+  U.text('SetDiagDesc','生成只读经济快照，供验收反馈回传',-130,166,430,15,tone('#ad9977'));
+  U.button('SetDiagGo','生成诊断',210,180,170,50,()=>{
+    const snap=store.diagSnapshot();
+    const lines=[
+      '推图 '+snap.campaign.cleared+' 关 · 主公 Lv.'+snap.playerLevel,
+      '铜钱 '+fmt.fmtNum(snap.currencies.gold)+' · 元宝 '+fmt.fmtNum(snap.currencies.gem)+' · 精铁 '+fmt.fmtNum(snap.currencies.iron),
+      '招募令 '+snap.currencies.scroll+' · 演武令 '+snap.currencies.token+' · 印信 '+snap.currencies.seals,
+      '军械 '+snap.systems.dungeon.bestGold+'/'+snap.systems.dungeon.bestTrain+' 层 · 操练 '+snap.systems.drill.totalLevels+' 级',
+      '（完整 JSON 见控制台 __tkDiag()）'
+    ];
+    ctx.confirm('存档诊断快照',lines.join('\n'),()=>{});
+  },palette.gold);
+  U.panel('SetSpeed',0,60,682,70,tone('#312218'),9,tone('#795b34'));
+  U.text('SetSpeedText','战斗倍速',-250,76,200,19,LIGHT);
+  U.text('SetSpeedDesc','战斗页亦可随时切换（×1/×2/×4）',-130,46,420,15,tone('#ad9977'));
+  const sp=s.settings&&s.settings.autoBattleSpeed||1;
+  U.button('SetSpeedGo','×'+sp,210,60,170,50,()=>{const r=store.setAutoBattleSpeed(sp===4?1:sp===2?4:2);ctx.tell(r,'倍速已切换 ×'+r.speed);},palette.gold);
+  U.text('SetHint','更多设置（音效/震动/账号）随版本更新加入',0,-20,640,15,tone('#7a6c52'));
+  U.button('SetBackBtn','返 回',0,-470,295,52,()=>ctx.back('home'),palette.paperDark);
 }
 
 // 军屯双本（研讨会四 P2）：每日 2 次，双轨 10 层顺序解锁

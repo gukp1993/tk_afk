@@ -36,7 +36,7 @@ function defaultState() {
   return {
     v: 8, createdAt: Date.now(), name: '主公',
     player: { level: 1, exp: 0 },
-    res: { gold: 100000, gem: 1888, scroll: 12, token: 20, shard: 0, iron: 60, soul: 0 },
+
     roster,
     formation: ['zhangfei', 'guanyu', 'liaohua', 'liubei', 'mengda'],
     campaign: { cleared: 0, storySeen: {}, milestones: {}, retroGrants: null, retroGrantsSeen: false, stars: {}, starChests: {} },
@@ -49,10 +49,11 @@ function defaultState() {
     qualityShards: { 1: 0, 2: 0, 3: 0, 4: 0 },
     daily: { day: '', quests: {}, claimed: [], active: [] },
     summon: { total: 0, pity: { sinceSsr: 0 }, ticketStock: 2, ticketWeek: { week: '', used: 0 }, pointClaims: [], activeFocus: null },
-    res: { gold: 100000, gem: 1888, scroll: 12, token: 20, shard: 0, iron: 60, univSsr: 0, soul: 0 },
+    res: { gold: 100000, gem: 1888, scroll: 12, token: 20, shard: 0, iron: 60, univSsr: 0, univSr: 0, soul: 0 },
     sevenDay: { start: F.todayStr(), claimed: [] },
     fourteenDay: { claimed: [] },
     tutorial: { seen: {} },
+    settings: { autoBattleSpeed: 1 },
     dungeon: { day: '', runs: 0, bestGold: 0, bestTrain: 0 },
     weekBoss: { weekId: '', attempts: 0, bestPct: 0, bestDamage: 0 },
     borrow: { day: '', heroId: null },
@@ -64,7 +65,6 @@ function defaultState() {
     migrations: {},
     ads: { day: '', counts: {} },
     buyLog: { day: '', buys: {} },
-    settings: { speed: 1 },
     return: { lastGrantTs: Date.now() },
     codex: { claimed: [] },
     achv: { claimed: {} },
@@ -796,6 +796,10 @@ function normalizeState(s) {
   s.sevenDay.claimed = s.sevenDay.claimed.map(n => Math.floor(Number(n) || 0)).filter(n => n >= 1 && n <= 7);
   // 借将助战（研讨会五批次 1）：旧档缺省
   s.borrow = s.borrow || { day: '', heroId: null };
+  // 战斗倍速（研讨会七异味清理）：统一 autoBattleSpeed 键，旧死键 speed 移除
+  s.settings = s.settings || {};
+  if (s.settings.speed !== undefined) { delete s.settings.speed; }
+  if (![1, 2, 4].includes(s.settings.autoBattleSpeed)) s.settings.autoBattleSpeed = 1;
   if (s.borrow.heroId != null && !(C.BORROW && C.BORROW.pool || []).includes(s.borrow.heroId)) s.borrow.heroId = null;
   // 周常 Boss（研讨会四 P3）：旧档缺省 + 字段钳位
   s.weekBoss = s.weekBoss || { weekId: '', attempts: 0, bestPct: 0, bestDamage: 0 };
@@ -2673,6 +2677,13 @@ function tutorialSeen(key) {
   if (!state.tutorial || !state.tutorial.seen) return true; // 旧档缺省已见
   return !!state.tutorial.seen[key];
 }
+// 重看教程（研讨会七批次乙）：清空 seen，下次进入各玩法重新弹出
+function resetTutorials() {
+  return withSavedMutation(() => {
+    state.tutorial = { seen: {} };
+    return { ok: true };
+  });
+}
 function markTutorialSeen(key) {
   return withSavedMutation(() => {
     state.tutorial = state.tutorial || { seen: {} };
@@ -2978,7 +2989,7 @@ export {
   winCampaign, campaignRewardPreview, winTower, arenaFight, arenaSeasonInfo, arenaBoardInfo, summonGapInfo, beginBattle, settleBattle, campaignStarChestInfo, claimStarChests,
   markStorySeen, isStorySeen, retroGrants, dismissRetroGrants, dismissReturnPending,
   questList, claimQuest, activePoints, claimActiveChest, claimAllDailyRewards, claimFreeRewards, bumpQuest, applyReward,
-  sevenDayInfo, claimSevenDay, fourteenDayInfo, claimFourteenDay, tutorialSeen, markTutorialSeen, dungeonInfo, weekBossInfo, beginWeekBoss, borrowInfo, borrowHero, dismissBorrow, diagSnapshot, navBadges, bountyInfo, bountyPayout, dispatchBounty, claimBounty, roamerInfo, buyRoamer, takeBountyGrantsNotice,
+  sevenDayInfo, claimSevenDay, fourteenDayInfo, claimFourteenDay, tutorialSeen, markTutorialSeen, resetTutorials, dungeonInfo, weekBossInfo, beginWeekBoss, borrowInfo, borrowHero, dismissBorrow, diagSnapshot, navBadges, bountyInfo, bountyPayout, dispatchBounty, claimBounty, roamerInfo, buyRoamer, takeBountyGrantsNotice,
   interruptBattle, setAutoBattleSpeed,
   buyGood, CURRENCY_NAME,
   adCount, adBump
