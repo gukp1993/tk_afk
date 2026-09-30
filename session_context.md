@@ -16,6 +16,18 @@
 
 ## 最近交接（新 → 旧）
 
+### 研讨会七批次乙：设置页 + 异味清理 · zcode · 已实施待验收
+
+时间：2026-10-01 01:50（Asia/Shanghai）；执行者：zcode；状态：已实施待验收。
+
+- `3ea57cf`：settingsView 最小版（版本/存档版本、重看教程 resetTutorials、存档诊断 diagSnapshot 摘要弹层、战斗倍速切换）；入口=战役/主城共用头主公面板『设置 ›』（首版坐标与主城征途按钮冲突已实测改位）。
+- 异味清理：defaultState res 重复定义合并（补 univSr）；settings.speed 死键删除+normalize 迁移；defaultState 补 settings 初值。
+- 验证：smoke 415 全过（+4 ST1~ST4）、镜像/tsc 过、设置页实拍零重叠（desc 左溢已修）、微信包构建正常。
+- 待验收：真机设置页/重看教程/诊断弹层。
+- P4 领取飞字（需动画管线）与 P5 震动（platform.js）留批次丙。
+
+### 回归基线表 + UI 一致性规范 · zcode · 已实施待验收
+
 ### 研讨会七批次甲：按压态/导航红点/主城公告 · zcode · 已实施待验收
 
 时间：2026-10-01 04:40（Asia/Shanghai）；执行者：zcode；状态：已实施待验收。
