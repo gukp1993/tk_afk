@@ -2729,6 +2729,23 @@ function diagSnapshot() {
   };
 }
 
+// 导航红点（研讨会七 P1）：只读判定各入口是否有「可领取」内容。
+// 刻意只挂可领取类（任务/宝箱/悬赏/成就/周任务），不挂「次数未用完」——防红点焦虑。
+// 与真实领取条件同源（复用各 info 函数），避免双口径漂移。
+function navBadges() {
+  checkDailyReset();
+  const questClaimable = questList().some(q => q.done && !q.claimed);
+  const activeClaimable = C.WEEKLY.activeTiers.some((t, i) =>
+    (state.week.sealsEarned || 0) >= t.need && (state.week.activeClaimed || []).indexOf(i) < 0);
+  const weekQuestClaimable = weekInfo().quests.some(q => q.claimable);
+  const bountyClaimable = bountyInfo().canClaim;
+  return {
+    journey: bountyClaimable || weekQuestClaimable || activeClaimable,
+    campaign: questClaimable || sevenDayInfo().canClaim || campaignStarChestInfo().claimable || retroGrants() || !!state.forgeOpenNotice,
+    bag: achvInfo().canClaim || codexInfo().canClaim
+  };
+}
+
 // 借将助战（研讨会五批次 1）：助将位按周键轮换；每日 1 次借用；编队已含则无需借
 function borrowOfferedHero() {
   const weekId = F.isoWeekKey();
@@ -2961,7 +2978,7 @@ export {
   winCampaign, campaignRewardPreview, winTower, arenaFight, arenaSeasonInfo, arenaBoardInfo, summonGapInfo, beginBattle, settleBattle, campaignStarChestInfo, claimStarChests,
   markStorySeen, isStorySeen, retroGrants, dismissRetroGrants, dismissReturnPending,
   questList, claimQuest, activePoints, claimActiveChest, claimAllDailyRewards, claimFreeRewards, bumpQuest, applyReward,
-  sevenDayInfo, claimSevenDay, fourteenDayInfo, claimFourteenDay, tutorialSeen, markTutorialSeen, dungeonInfo, weekBossInfo, beginWeekBoss, borrowInfo, borrowHero, dismissBorrow, diagSnapshot, bountyInfo, bountyPayout, dispatchBounty, claimBounty, roamerInfo, buyRoamer, takeBountyGrantsNotice,
+  sevenDayInfo, claimSevenDay, fourteenDayInfo, claimFourteenDay, tutorialSeen, markTutorialSeen, dungeonInfo, weekBossInfo, beginWeekBoss, borrowInfo, borrowHero, dismissBorrow, diagSnapshot, navBadges, bountyInfo, bountyPayout, dispatchBounty, claimBounty, roamerInfo, buyRoamer, takeBountyGrantsNotice,
   interruptBattle, setAutoBattleSpeed,
   buyGood, CURRENCY_NAME,
   adCount, adBump

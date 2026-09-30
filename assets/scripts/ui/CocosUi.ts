@@ -152,19 +152,38 @@ export class CocosUi {
     return node;
   }
 
+  /** 红点（研讨会七 P1）：可领取提示小圆点，挂在面板右上角。 */
+  dot(name: string, x: number, y: number) {
+    const node = new Node(name);
+    node.setPosition(new Vec3(x, this.y(y), 0));
+    node.addComponent(UITransform).setContentSize(16, 16);
+    const g = node.addComponent(Graphics);
+    g.circle(0, 0, 7); g.fillColor = new Color(214, 69, 56, 255);
+    g.strokeColor = new Color(240, 230, 205, 255); g.lineWidth = 2; g.stroke();
+    g.fill();
+    this.parent.addChild(node);
+    this.nodes.set(name, node);
+    return node;
+  }
+
   tap(name: string, x: number, y: number, w: number, h: number, action: () => void) {
     const node = new Node(name);
     node.setPosition(new Vec3(x, this.y(y), 0));
     node.addComponent(UITransform).setContentSize(w, this.height(h));
     let startX = 0, startY = 0;
+    // 按压态（研讨会七 P1）：按下缩至 0.97 提供触觉反馈，松开/取消还原
     node.on(Node.EventType.TOUCH_START, (event: EventTouch) => {
       const point = event.getLocation();
       startX = point.x; startY = point.y;
+      node.setScale(0.97, 0.97, 1);
     });
+    const release = () => node.setScale(1, 1, 1);
     node.on(Node.EventType.TOUCH_END, (event: EventTouch) => {
+      release();
       const point = event.getLocation();
       if (Math.hypot(point.x - startX, point.y - startY) < 12) action();
     });
+    node.on(Node.EventType.TOUCH_CANCEL, release);
     this.parent.addChild(node);
     this.nodes.set(name, node);
     return node;

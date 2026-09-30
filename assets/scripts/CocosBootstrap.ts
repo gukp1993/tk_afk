@@ -172,11 +172,13 @@ export class CocosBootstrap extends Component implements ScreenContext {
       U.rect('NavBackground', 0, -594, 720, 92, new Color(9, 31, 27, 248));
       U.line('NavGoldTop',[[-360,-548],[360,-548]],2,palette.gold);
       const nav: [Page,string,string][] = [['home','主城','城'],['journey','玩法','玩'],['campaign','战役','战'],['heroes','英雄','将'],['bag','背包','囊']];
+      const badges = store.navBadges() as Record<string, boolean>;
       nav.forEach(([p,label,glyph], i) => {
         const x=-288+144*i, active=p===page || (p==='campaign'&&page==='stagePreview');
         if(active) U.panel('NavActive'+p,x,-594,140,89,new Color(91,69,35,240),5,palette.gold);
         U.seal('NavIcon'+p,x,-575,54,glyph,active?palette.gold:palette.ink,palette.gold,active?palette.ink:palette.gold,26);
         U.text('NavLabel'+p,label,x,-620,123,23,active?palette.gold:palette.paper);
+        if(badges[p])U.dot('NavDot'+p,x+52,-566);
         U.tap('Nav'+p,x,-594,138,90,()=>this.go(p));
       });
     }

@@ -139,6 +139,8 @@ function buildDailyBriefing(state, flags) {
   let main = null;
   const push = (flag, make) => { if (flag) { const item = make(); if (!main) main = item; else subs.push(item); } };
   push(f.bountyClaimable, () => ({ title: '悬赏可领赏', desc: '出征武将已有赏金待收', page: 'bounty' }));
+  push(f.questsClaimable, () => ({ title: '每日任务可领', desc: '今日任务奖励待领取', page: 'quests' }));
+  push(f.idleFull, () => ({ title: '挂机收益已满', desc: '回主城一键收获', page: 'campaign' }));
   push(f.sevenDayClaimable, () => ({ title: '七日目标可领', desc: '今天的厚礼还没拿', page: 'sevenDay' }));
   push(f.starChestClaimable, () => ({ title: '章节星宝箱可领', desc: '评星攒的宝箱待领取', page: 'campaign' }));
   push(f.retroGrants, () => ({ title: '旧档补发待读', desc: '有一份补发奖励待确认', page: 'campaign' }));

@@ -265,11 +265,18 @@ export function home(ctx: ScreenContext) {
       starChestClaimable:store.campaignStarChestInfo().claimable,
       retroGrants:!!store.retroGrants(),
       arenaAttemptsLeft:s.arena.attempts,
-      bountyIdle:store.bountyInfo().idleCount
+      bountyIdle:store.bountyInfo().idleCount,
+      questsClaimable:store.questList().some(q=>q.done&&!q.claimed),
+      idleFull:store.idlePending().full
     });
-    U.panel('CityGoal',0,-390,674,40,tone('#ddd0b2'),7);
-    U.text('CityGoalText',briefing.main.title+' · '+briefing.main.desc,-42,-390,580,18,INK);
-    U.tap('CityGoalTap',0,-390,674,40,()=>ctx.go(briefing.main.page as Page));
+    // 公告覆盖（研讨会七 P2）：回归/补发/锻造开启优先于日常主卡，单行轮替不新增版面
+    let goal=briefing.main;
+    if(s.forgeOpenNotice)goal={title:'锻造台已开启',desc:'词条洗练解锁 · 点击前往',page:'forge' as Page};
+    else if(store.retroGrants())goal={title:'旧档补发待读',desc:'点击查看补发奖励',page:'campaign' as Page};
+    else if(s.returnPending)goal={title:'主公回来了！',desc:'回归补给已入账 · 点击查看',page:'campaign' as Page};
+    U.panel('CityGoal',0,-390,674,40,s.forgeOpenNotice||store.retroGrants()||s.returnPending?tone('#3a2c17'):tone('#ddd0b2'),7);
+    U.text('CityGoalText',goal.title+' · '+goal.desc,-42,-390,580,18,s.forgeOpenNotice||store.retroGrants()||s.returnPending?GOLD:INK);
+    U.tap('CityGoalTap',0,-390,674,40,()=>ctx.go(goal.page as Page));
     U.panel('CityDeploy',-95,-440,489,57,palette.red,8,GOLD);
     U.text('CityDeployText',ctx.auto?'本场后停止':'自动出征',-95,-440,460,28,LIGHT);
     U.tap('CityDeployTap',-95,-440,489,57,()=>ctx.auto?ctx.stopAuto(true):ctx.startAuto('campaign'));
