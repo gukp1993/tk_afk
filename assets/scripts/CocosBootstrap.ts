@@ -129,9 +129,11 @@ export class CocosBootstrap extends Component implements ScreenContext {
       }
       // 清理过期弹窗（>0.8 秒）
       var now = Date.now();
-      this.combatPopupDisplay = this.combatPopupDisplay.filter(function(p){return now - p.bornAt < 800;});
+      var popupLife = 800 / (store.getState().settings && store.getState().settings.autoBattleSpeed || 1);
+      this.combatPopupDisplay = this.combatPopupDisplay.filter(function(p){return now - p.bornAt < popupLife;});
+      var refreshGap = 0.3 / (store.getState().settings && store.getState().settings.autoBattleSpeed || 1);
       if (step.done) this.finishBattle(step.winner === 'A');
-      else if (this.page === 'battle' && this.refreshTime > 0.3) {
+      else if (this.page === 'battle' && this.refreshTime > refreshGap) {
         this.refreshTime = 0;
         battleScreens.refreshBattleView(this);
       }

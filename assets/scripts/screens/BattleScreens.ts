@@ -72,7 +72,8 @@ function drawField(U: CocosUi, ctx: ScreenContext, snapshot: any[]) {
   for (var pi = 0; pi < popDisp.length; pi++) {
     var pp = popDisp[pi];
     var age = Date.now() - pp.bornAt;
-    var alpha = Math.max(0, 1 - age / 800);
+    var speed = store.getState().settings && store.getState().settings.autoBattleSpeed || 1;
+    var alpha = Math.max(0, 1 - age / (800 / speed));
     var offsetY = -100 - (age / 800) * 60;
     var col = pp.crit ? new Color(255, 120, 40, Math.round(255 * alpha)) : new Color(255, 255, 200, Math.round(255 * alpha));
     var fontSize = pp.crit ? 32 : 24;
