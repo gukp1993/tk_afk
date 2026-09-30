@@ -226,7 +226,6 @@ function createBattle(cfg) {
   let combatPopups = []; // { uid, amount, crit, time }
   function pushPopup(tgt, amount, crit) {
     combatPopups.push({ uid: tgt.uid, amount, crit, time });
-    if (combatPopups.length > 20) combatPopups = combatPopups.slice(-20);
   }
 
   // ---- 效果执行 ----

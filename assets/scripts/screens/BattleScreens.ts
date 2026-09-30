@@ -81,13 +81,18 @@ function drawField(U: CocosUi, ctx: ScreenContext, snapshot: any[]) {
   // 大招释放名称弹窗
   var lu = (ctx.fighting as any) && (ctx.fighting as any).lastUlt;
   if (lu) {
-    var castSide = lu.uid && lu.uid.charAt(0) === 'A' ? 'A' : 'B';
-    var casterUnit = snapshot.find(function(u){return u.uid===lu.uid;});
-    if (casterUnit && casterUnit.alive) {
-      var px = casterUnit.slot < 3 ? [-215,0,215][casterUnit.slot] : [-114,114][casterUnit.slot-3];
-      var py = (castSide==='A' ? (casterUnit.slot<3?-208:245) : (casterUnit.slot<3?-208:245)) - 80;
-      U.panel('UltPopup',px,py,260,42,new Color(46,26,12,230),6,GOLD);
-      U.text('UltPopupTxt',lu.name,px,py,250,20,GOLD);
+    // 大招横幅 1.2s 淡出（研讨会八修复：无超时挂 30 秒+）+ B 侧坐标修正
+    var age = Date.now() - (lu.wallTime || 0);
+    if (age < 1200) {
+      var castSide = lu.uid && lu.uid.charAt(0) === 'A' ? 'A' : 'B';
+      var casterUnit = snapshot.find(function(u){return u.uid===lu.uid;});
+      if (casterUnit) {
+        var px = casterUnit.slot < 3 ? [-215,0,215][casterUnit.slot] : [-114,114][casterUnit.slot-3];
+        var py = (castSide==='A' ? -208 : 245) - 80;
+        var alpha = age < 900 ? 230 : Math.floor(230 * (1200 - age) / 300);
+        U.panel('UltPopup',px,py,260,42,new Color(46,26,12,alpha),6,GOLD);
+        U.text('UltPopupTxt',lu.name,px,py,250,20,GOLD);
+      }
     }
   }
 }
@@ -221,6 +226,20 @@ export function resultView(ctx: ScreenContext) {
   if(r?.win&&reward.armoryBox)U.text('ResultBox',`${['','R','SR','SSR'][reward.armoryBox]||''}军械自选箱 ×1 · 待选择`,0,-58,480,19,GOLD);
   const starText=ctx.battleMode==='campaign'&&r?.win?`评星 ${'★'.repeat(Math.max(1,Math.min(3,r.stars||1)))} · `:'';
   U.text('ResultDuration',`${starText}用时 ${Math.round((r?.duration||0)*10)/10} 秒`,0,-96,470,19,DIM);
+  // DPS 结算榜（研讨会八方案 5）：数据已就绪，复用 settled.stats 按输出排序 TOP3
+  if(r?.stats&&r.win){
+    const dps=Object.entries(r.stats as Record<string,{dmg:number}>)
+      .filter(([uid])=>uid.charAt(0)==='A')
+      .sort((a,b)=>b[1].dmg-a[1].dmg).slice(0,3);
+    if(dps.length&&dps[0][1].dmg>0){
+      const names=(ctx.lastBattleSnapshot||[]).filter((u:any)=>u.side==='A');
+      const dpsText=dps.map(([uid,st])=>{
+        const u=names.find((n:any)=>n.uid===uid);
+        return (u?u.name:uid)+' '+fmt.fmtNum(st.dmg);
+      }).join(' · ');
+      U.text('ResultDPS','输出前三：'+dpsText,0,-66,540,16,DIM);
+    }
+  }
   if(r&&r.replay){
     U.button('ResultCloseReplay','关闭回放',0,-165,478,59,()=>ctx.go('hall'),tone('#3a2b20'));
   } else {

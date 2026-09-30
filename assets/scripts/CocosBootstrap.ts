@@ -105,6 +105,7 @@ export class CocosBootstrap extends Component implements ScreenContext {
       var lu = (this.fighting as any).lastUlt;
       if (lu && this.lastUltDisplay !== lu.name + ':' + lu.uid + ':' + lu.time) {
         this.lastUltDisplay = lu.name + ':' + lu.uid + ':' + lu.time;
+        lu.wallTime = Date.now();
       }
       var allPops = (this.fighting as any).popups || [];
       if (allPops.length) {
@@ -115,8 +116,11 @@ export class CocosBootstrap extends Component implements ScreenContext {
             var pp = newPops[pi];
             var unit = this.fighting.snapshot().find(function(u){return u.uid===pp.uid;});
             if (unit) {
-              var ux = unit.slot < 3 ? [-215,0,215][unit.slot] : [-114,114][unit.slot-3];
-              var uy = unit.slot < 3 ? -280 : 245;
+              // 弹字定位（研讨会八修复）：受击者头顶 + 侧向偏移 + 随机抖动防重叠
+              var frontX=[-215,0,215], backX=[-114,114];
+              var ux = unit.slot < 3 ? frontX[unit.slot] : backX[unit.slot-3];
+              var uy = (unit.side==='A' ? (unit.slot<3?-208:-405) : (unit.slot<3?245:480)) - 30;
+              ux += Math.floor(Math.random()*80-40); // ±40 抖动
               this.combatPopupDisplay.push({x:ux,y:uy,text:String(pp.amount),crit:pp.crit,bornAt:Date.now()});
             }
           }
