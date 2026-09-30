@@ -1638,4 +1638,25 @@ const storeP2 = freshStore(); storeP2.load();
   check('CX2 shu-sr 行 need=4', shuSr && shuSr.need === 4);
 }
 
+
+// 扫荡（研讨会九 S2）：三星门/次数门/同规奖励/不触发任务
+{
+  const storeSW = freshStore(); storeSW.load();
+  const sSW = storeSW.getState();
+  sSW.campaign.cleared = 60;
+  sSW.campaign.stars[55] = 3; sSW.campaign.stars[56] = 2;
+  check('SW1 三星门（55 可扫/56 二星拒绝/70 未通关拒绝）', storeSW.canSweep(55).ok && storeSW.canSweep(56).ok === false && storeSW.canSweep(70).ok === false);
+  const g0 = sSW.res.gold, lv0 = sSW.player.level;
+  const r1 = storeSW.sweepStage(55);
+  check('SW2 扫荡发铜钱+经验（1460/1080 口径）', r1.ok && r1.gold === 1460 && r1.xp === 1080 && sSW.res.gold === g0 + 1460 && sSW.player.level >= lv0);
+  check('SW3 不触发日常/周任务（q_win3 计数不变）', (sSW.daily.quests.q_win3 || 0) === 0 && (sSW.week.counters.wins || 0) === 0);
+  storeSW.sweepStage(55); storeSW.sweepStage(55);
+  const r4 = storeSW.sweepStage(55);
+  check('SW4 每日 3 次上限拒绝', r4.ok === false && /次数/.test(r4.msg) && storeSW.sweepInfo().left === 0);
+  // 跨日重置
+  sSW.sweep.day = '2000-01-01';
+  storeSW.checkDailyReset();
+  check('SW5 跨日次数重置', storeSW.sweepInfo().left === 3);
+}
+
 console.log('\nsmoke: ' + passed + ' passed, ' + failed + ' failed');process.exit(failed ? 1 : 0);

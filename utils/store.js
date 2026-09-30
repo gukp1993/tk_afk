@@ -42,6 +42,7 @@ function defaultState() {
     fourteenDay: { claimed: [] },
     tutorial: { seen: {} },
     settings: { autoBattleSpeed: 1 },
+    sweep: { day: '', used: 0 },
     dungeon: { day: '', runs: 0, bestGold: 0, bestTrain: 0 },
     weekBoss: { weekId: '', attempts: 0, bestPct: 0, bestDamage: 0 },
     borrow: { day: '', heroId: null },
@@ -784,6 +785,9 @@ function normalizeState(s) {
   s.sevenDay.claimed = s.sevenDay.claimed.map(n => Math.floor(Number(n) || 0)).filter(n => n >= 1 && n <= 7);
   // 借将助战（研讨会五批次 1）：旧档缺省
   s.borrow = s.borrow || { day: '', heroId: null };
+  // 扫荡（研讨会九）：旧档缺省 + 次数钳位
+  s.sweep = s.sweep || { day: '', used: 0 };
+  s.sweep.used = Math.max(0, Math.floor(Number(s.sweep.used) || 0));
   // 战斗倍速（研讨会七异味清理）：统一 autoBattleSpeed 键，旧死键 speed 移除
   s.settings = s.settings || {};
   if (s.settings.speed !== undefined) { delete s.settings.speed; }
@@ -919,6 +923,8 @@ function checkDailyReset() {
   checkWeeklyReset(today);
   if (!state.roamer || state.roamer.day !== today) refreshRoamer(today);
   if (state.fast.day !== today) state.fast = { day: today, count: 0 };
+  // 扫荡次数随日重置（研讨会九 S2）
+  if (!state.sweep || state.sweep.day !== today) state.sweep = { day: today, used: 0 };
   // 军屯双本次数随日重置（最佳层数跨日保留）
   if (!state.dungeon || state.dungeon.day !== today) state.dungeon = { day: today, runs: 0, bestGold: (state.dungeon && state.dungeon.bestGold) || 0, bestTrain: (state.dungeon && state.dungeon.bestTrain) || 0 };
   if (state.buyLog.day !== today) state.buyLog = { day: today, buys: {} };
@@ -2009,6 +2015,44 @@ function repeatGold(stage) {
   // 重复通关改线性：与首通同量级，铜钱本身已严重溢出，不再指数放大
   return 800 + 12 * stage;
 }
+// 扫荡（研讨会九 S2）：与重复通关同规——铜钱 repeatGold + 经验 battleXP(campaignRepeat 口径)
+function sweepStageRewards(stageIdx) {
+  const gold = repeatGold(stageIdx);
+  const refLevel = Math.max(1, Math.round(1 + (stageIdx - 1) * C.CAMPAIGN_DIFFICULTY.levelSlope));
+  const base = C.BATTLE_XP.base + C.BATTLE_XP.perEnemyLevel * refLevel;
+  const rate = Math.max(0.2, Math.min(1, refLevel / Math.max(1, state.player.level)));
+  const xp = state.player.level >= C.MAX_LEVEL ? 0 : Math.floor(base * C.BATTLE_XP.campaignRepeat * rate);
+  return { gold, xp };
+}
+function sweepInfo() {
+  checkDailyReset();
+  const enabled = !!(C.SWEEP && C.SWEEP.enabled);
+  const daily = (C.SWEEP && C.SWEEP.daily) || 3;
+  const used = (state.sweep && state.sweep.used) || 0;
+  return { enabled, daily, used, left: enabled ? Math.max(0, daily - used) : 0 };
+}
+function canSweep(stageIdx) {
+  if (!C.SWEEP || !C.SWEEP.enabled) return { ok: false, msg: '扫荡未开放' };
+  const n = Math.floor(Number(stageIdx) || 0);
+  if (n < 1 || n > (state.campaign.cleared || 0)) return { ok: false, msg: '仅可扫荡已通关关卡' };
+  const stars = (state.campaign.stars || {})[n] || 0;
+  if (stars < 3) return { ok: false, msg: '该关尚未达成三星' };
+  return { ok: true };
+}
+function sweepStage(stageIdx) {
+  return withSavedMutation(() => {
+    const gate = canSweep(stageIdx);
+    if (!gate.ok) return gate;
+    const info = sweepInfo();
+    if (info.left <= 0) return { ok: false, msg: '今日扫荡次数已用完（每日 ' + info.daily + ' 次）' };
+    const rw = sweepStageRewards(stageIdx);
+    state.res.gold += rw.gold;
+    const lvl = addPlayerXP(rw.xp);
+    state.sweep.used = (state.sweep.used || 0) + 1;
+    return { ok: true, stage: stageIdx, gold: rw.gold, xp: rw.xp,
+      levelBefore: lvl.before, levelAfter: lvl.after, left: Math.max(0, info.daily - state.sweep.used) };
+  });
+}
 
 // 首通奖励统一计算，返回 base／chapter／milestones／randomDrop 结构供页面分区显示。
 // 里程碑只列「尚未领取」的项；实际入账与打标在 winCampaign 内完成。
@@ -2995,7 +3039,7 @@ module.exports = {
   winCampaign, campaignRewardPreview, winTower, arenaFight, arenaSeasonInfo, arenaBoardInfo, summonGapInfo, beginBattle, settleBattle, campaignStarChestInfo, claimStarChests,
   markStorySeen, isStorySeen, retroGrants, dismissRetroGrants, dismissReturnPending,
   questList, claimQuest, activePoints, claimActiveChest, claimAllDailyRewards, claimFreeRewards, bumpQuest, applyReward,
-  sevenDayInfo, claimSevenDay, fourteenDayInfo, claimFourteenDay, tutorialSeen, markTutorialSeen, resetTutorials, dungeonInfo, weekBossInfo, beginWeekBoss, borrowInfo, borrowHero, dismissBorrow, diagSnapshot, navBadges, bountyInfo, bountyPayout, dispatchBounty, claimBounty, roamerInfo, buyRoamer, takeBountyGrantsNotice,
+  sevenDayInfo, claimSevenDay, fourteenDayInfo, claimFourteenDay, tutorialSeen, markTutorialSeen, resetTutorials, dungeonInfo, weekBossInfo, beginWeekBoss, borrowInfo, borrowHero, dismissBorrow, diagSnapshot, navBadges, sweepInfo, canSweep, sweepStage, sweepStageRewards, bountyInfo, bountyPayout, dispatchBounty, claimBounty, roamerInfo, buyRoamer, takeBountyGrantsNotice,
   interruptBattle, setAutoBattleSpeed,
   buyGood, CURRENCY_NAME,
   adCount, adBump

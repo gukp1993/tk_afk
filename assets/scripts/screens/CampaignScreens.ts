@@ -14,6 +14,7 @@ import { campaignMap, campaignFlag, campaignCamp, cityMap, CITY_BUILDINGS } from
 
 const INK = tone('#3d4337'), PAPER = tone('#eee3bf'), GOLD = tone('#edcf88'), LIGHT = tone('#f5e8c9');
 let chapterMapOpen=false;
+let chapterMapCh=-1; // 地图浏览章（-1=当前章）
 let formationRecommended: Array<string|null>|null=null;
 
 function campaignHeader(ctx: ScreenContext, chapter: any, stage: number) {
@@ -112,7 +113,7 @@ export function campaign(ctx: ScreenContext) {
   U.panel('MapButton',-288,-480,103,86,tone('#3a291a'),8,GOLD);
   U.text('MapButtonTitle','征途',-288,-466,90,24,LIGHT);
   U.text('MapButtonSub','本章地图',-288,-494,90,14,tone('#d6c7a1'));
-  U.tap('JourneyTap',-288,-480,103,86,()=>{chapterMapOpen=true;ctx.show('campaign');});
+  U.tap('JourneyTap',-288,-480,103,86,()=>{chapterMapOpen=true;chapterMapCh=chapter.idx;ctx.show('campaign');});
   U.panel('AutoButton',0,-480,445,86,ctx.auto?palette.red:tone('#39695a'),10,GOLD);
   U.text('AutoButtonTitle',ctx.auto?'本场后停止':'自动出征',0,-467,422,35,LIGHT);
   U.text('AutoButtonSub',`第 ${stage} 关 · ${enemy.name||chapter.name}`,0,-498,417,15,tone('#e5e5bf'));
@@ -157,20 +158,38 @@ export function campaign(ctx: ScreenContext) {
     U.tap('ChapterMapShadeTap',0,0,720,1280,()=>{chapterMapOpen=false;ctx.show('campaign');});
     U.panel('ChapterMapPanel',0,0,658,974,tone('#251b14'),12,GOLD);
     U.tap('ChapterMapBlock',0,0,658,974,()=>{});
-    U.text('ChapterMapTitle',chapter.name,0,437,590,29,GOLD);
-    U.text('ChapterMapCount',`本章征途 · 已通关 ${chapter.inCh}/${stages.STAGES_PER_CH}`,0,393,580,19,LIGHT);
-    const first=chapter.idx*stages.STAGES_PER_CH+1;
-    U.scroll('ChapterMapList',0,-8,612,741,10*73+12,(V)=>{
+    // 章切换（研讨会九 S2：扫荡需回看已通关章节）
+    const maxCh=Math.min(stages.CHAPTERS.length-1,Math.floor(s.campaign.cleared/stages.STAGES_PER_CH));
+    const viewIdx=Math.min(Math.max(0,chapterMapCh<0?chapter.idx:chapterMapCh),maxCh);
+    chapterMapCh=viewIdx;
+    const viewCh=stages.chapterOf(viewIdx*stages.STAGES_PER_CH+1);
+    U.text('ChapterMapTitle',viewCh.name,0,437,440,29,GOLD);
+    U.text('ChapterMapCount',`第${viewIdx+1}章 · 已通关 ${viewCh.inCh}/${stages.STAGES_PER_CH}`,0,393,580,19,LIGHT);
+    U.button('ChapterMapPrev','‹',-284,415,56,44,()=>{chapterMapCh=Math.max(0,viewIdx-1);ctx.show('campaign');},viewIdx>0?tone('#5a452a'):tone('#332a1e'));
+    U.button('ChapterMapNext','›',284,415,56,44,()=>{chapterMapCh=Math.min(maxCh,viewIdx+1);ctx.show('campaign');},viewIdx<maxCh?tone('#5a452a'):tone('#332a1e'));
+    const sw=store.sweepInfo();
+    U.text('ChapterMapSweepInfo',sw.enabled?`扫荡 ${sw.left}/${sw.daily} 次 · 三星关可免战速通`:'',0,366,620,16,tone('#a99778'));
+    const first=viewIdx*stages.STAGES_PER_CH+1;
+    U.scroll('ChapterMapList',0,-30,612,700,10*73+12,(V)=>{
       for(let i=0;i<stages.STAGES_PER_CH;i++){
-        const n=first+i,y=(10*73+12)/2-37-i*73,current=n===stage,cleared=n<stage;
+        const n=first+i,y=(10*73+12)/2-37-i*73,current=(n===stage&&viewIdx===chapter.idx),cleared=n<stage;
         const title=stages.makeStageEnemies(n).story?.stage?.name || stages.chapterOf(n).name;
+        const stars=(s.campaign.stars||{})[n]||0;
+        const sweepable=cleared&&stars>=3;
         V.panel('ChapterRow'+i,0,y,600,64,current?tone('#375c4b'):tone('#302b1c'),5);
-        V.text('ChapterRowText'+i,`${String(n).padStart(2,'0')}  ${title}`,-111,y,347,22,current?GOLD:LIGHT);
-        V.text('ChapterRowState'+i,cleared?'已通关':current?'当前':'未开放',234,y,116,17,current?GOLD:tone('#a99778'));
+        V.text('ChapterRowText'+i,`${String(n).padStart(2,'0')}  ${title}`,sweepable?-120:-111,y,sweepable?300:347,22,current?GOLD:LIGHT);
+        V.text('ChapterRowState'+i,cleared?(stars?'★'.repeat(stars):'已通关'):current?'当前':'未开放',sweepable?70:234,y,sweepable?90:116,17,current?GOLD:tone('#a99778'));
+        if(sweepable){
+          V.button('ChapterRowSweep'+i,sw.left>0?'扫 荡':'次数尽',220,y-4,116,44,()=>{
+            if(sw.left<=0)return;
+            const r=store.sweepStage(n);
+            ctx.tell(r,r.ok?`扫荡第 ${n} 关：铜钱 +${r.gold} · 经验 +${r.xp}`:'');
+          },sw.left>0?palette.gold:tone('#423022'));
+        }
         if(current)V.tap('ChapterRowTap'+i,0,y,600,64,()=>{chapterMapOpen=false;ctx.go('stagePreview');});
       }
     });
-    U.button('ChapterMapStory','剧情回顾',-145,-443,270,55,()=>{ctx.storyArchiveCh=chapter.idx;chapterMapOpen=false;ctx.go('storyArchive');},tone('#3a2b20'));
+    U.button('ChapterMapStory','剧情回顾',-145,-443,270,55,()=>{ctx.storyArchiveCh=viewIdx;chapterMapOpen=false;ctx.go('storyArchive');},tone('#3a2b20'));
     U.button('ChapterMapClose','返回战役',145,-443,270,55,()=>{chapterMapOpen=false;ctx.show('campaign');},palette.gold);
   }
 }
