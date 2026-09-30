@@ -66,6 +66,18 @@ function drawField(U: CocosUi, ctx: ScreenContext, snapshot: any[]) {
   U.panel('BattleVsBg',0,8,108,34,BG,4);
   U.text('BattleVs','对 阵',0,8,92,18,DIM);
   U.text('BattleLegend','绿条 生命 · 金条 怒气 · 卡边颜色=品质',-140,560,360,15,tone('#7c6a4e'));
+  // 实时输出对比条（研讨会十 D1）：底部细条按双方累计输出占比
+  {
+    const tt=((ctx.fighting as any).sideTotals?((ctx.fighting as any).sideTotals()):null);
+    if(tt&&(tt.a>0||tt.b>0)){
+      const total=Math.max(1,tt.a+tt.b);
+      const wA=Math.max(0.06,tt.a/total), wB=1-wA;
+      U.rect('DmgBarBkg',0,-455,600,10,new Color(20,14,10,200));
+      U.rect('DmgBarA',-300+300*wA,-455,600*wA,10,new Color(120,180,130,220));
+      U.rect('DmgBarB',-300+600*wA+300*wB,-455,600*wB,10,new Color(190,90,80,220));
+      U.text('DmgBarTxt',`我军输出 ${fmt.fmtNum(tt.a)} · 敌军 ${fmt.fmtNum(tt.b)}`,0,-437,600,14,tone('#b8a888'));
+    }
+  }
   snapshot.forEach((unit,index)=>drawFighter(U,unit,index));
   // 伤害数字弹窗
   var popDisp = (ctx as any).combatPopupDisplay || [];

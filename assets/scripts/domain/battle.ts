@@ -426,10 +426,19 @@ function createBattle(cfg) {
     }
     return out;
   }
+  function sideTotals() {
+    // 实时输出条（研讨会十 D1）：双方累计伤害合计，UI 按比例绘制
+    let a = 0, b = 0;
+    Object.keys(stats).forEach(uid => {
+      if (uid.charAt(0) === 'A') a += stats[uid].dmg || 0;
+      else b += stats[uid].dmg || 0;
+    });
+    return { a, b };
+  }
   function result() {
     return { winner, duration: Math.round(time * 10) / 10, stats };
   }
-  return { step, snapshot, result, get ended() { return ended; }, get lastUlt() { return lastUltCast; }, get popups() { return combatPopups; } };
+  return { step, snapshot, result, sideTotals, get ended() { return ended; }, get lastUlt() { return lastUltCast; }, get popups() { return combatPopups; } };
 }
 
 // 由武将定义+等级+星+装备生成战斗单元
