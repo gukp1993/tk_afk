@@ -3,6 +3,7 @@ import { palette, hexColor as tone } from '../ui/CocosUi';
 import { Page, ScreenContext } from './ScreenContext';
 import * as store from '../domain/store';
 import * as stages from '../domain/stages';
+import * as story from '../domain/story';
 import * as heroes from '../domain/heroes';
 import * as items from '../domain/items';
 import * as config from '../domain/config';
@@ -932,15 +933,22 @@ export function storyArchiveView(ctx: ScreenContext) {
   ctx.title('剧 情 回 顾');
   U.text('ArcBack','‹ 返回',-291,484,130,22,GOLD);
   U.tap('ArcBackTap',-291,484,136,52,()=>ctx.go('campaign'));
-  U.panel('ArcChPanel',0,410,640,70,tone('#312218'),9,GOLD);
-  U.button('ArcPrev','‹',-268,410,84,52,()=>{ctx.storyArchiveCh=Math.max(0,chIdx-1);ctx.show('storyArchive');},chIdx>0?tone('#5a452a'):tone('#332a1e'));
-  U.button('ArcNext','›',268,410,84,52,()=>{ctx.storyArchiveCh=Math.min(maxCh,chIdx+1);ctx.show('storyArchive');},chIdx<maxCh?tone('#5a452a'):tone('#332a1e'));
+  U.panel('ArcChPanel',0,392,640,126,tone('#312218'),9,GOLD);
+  U.button('ArcPrev','‹',-268,412,84,52,()=>{ctx.storyArchiveCh=Math.max(0,chIdx-1);ctx.show('storyArchive');},chIdx>0?tone('#5a452a'):tone('#332a1e'));
+  U.button('ArcNext','›',268,412,84,52,()=>{ctx.storyArchiveCh=Math.min(maxCh,chIdx+1);ctx.show('storyArchive');},chIdx<maxCh?tone('#5a452a'):tone('#332a1e'));
   const chName=stages.chapterOf(chIdx*10+1).name;
   let seenCount=0;
   for(let i=0;i<10;i++)if(store.isStorySeen(chIdx*10+i+1))seenCount++;
-  U.text('ArcChName',chName,0,428,420,26,GOLD);
-  U.text('ArcChSub',`已读 ${seenCount}/10 · 点击已解锁关回看剧情`,0,398,420,16,tone('#ad9977'));
-  U.scroll('ArcList',0,-75,682,880,10*68+20,V=>{
+  U.text('ArcChName',chName,0,438,420,26,GOLD);
+  U.text('ArcChSub',`已读 ${seenCount}/10 · 点击已解锁关回看剧情`,0,410,420,16,tone('#ad9977'));
+  // 章叙事（用户指令延伸：intro/finale 此前全 UI 零引用）
+  const chDef=(story.CHAPTERS as any[])[chIdx];
+  const chapterDone=cleared>=chIdx*10+10;
+  if(chDef){
+    U.text('ArcNarrTag',chapterDone?'章末 · 全书回顾':'本章 · 开篇叙事',0,384,420,14,tone('#8a7c5f'));
+    U.textBlock('ArcNarr',chapterDone?chDef.finale:chDef.intro,0,358,600,44,17,tone('#c9b489'));
+  }
+  U.scroll('ArcList',0,-102,682,826,10*68+20,V=>{
     for(let i=0;i<10;i++){
       const n=chIdx*10+i+1;
       const st=stages.makeStageEnemies(n).story;
