@@ -1510,7 +1510,7 @@ const storeP2 = freshStore(); storeP2.load();
   const BIOS = require('../utils/bios').BIOS;
   const H2 = require('../utils/heroes');
   const total = Object.keys(BIOS).length;
-  check('BIO1 小传分批上线（SSR16+N/R 首批 40=56 篇）', total >= 56);
+  check('BIO1 小传全 120 将覆盖（16 SSR+80 N/R+24 SR）', total === 120 && H2.HEROES.every(h => BIOS[h.id]));
   check('BIO2 每句非空且长度≤26（弹层折行适配）', Object.values(BIOS).every(v => v.every(l => typeof l === 'string' && l.length > 4 && l.length <= 26)));
   check('BIO3 有传将引用的 heroId 全部真实存在', Object.keys(BIOS).every(id => !!H2.getHero(id)));
 }
