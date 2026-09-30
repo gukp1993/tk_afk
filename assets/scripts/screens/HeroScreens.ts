@@ -596,16 +596,36 @@ export function forgeView(ctx: ScreenContext) {
 }
 
 export function codexView(ctx: ScreenContext) {
-  const U=ctx.ui,info=store.codexInfo();
+  const U=ctx.ui,s=store.getState(),info=store.codexInfo();
   ctx.title('图 鉴 收 集');
   U.text('CodexBack','‹ 返回',-291,484,130,22,gold);
   U.tap('CodexBackTap',-291,484,136,52,()=>ctx.go('bag'));
-  U.text('CodexGuide','集齐各阵营图鉴领取厚礼；全 SR 送万能 SR 卡',0,443,640,18,dim);
+  // 收集率摘要（研讨会九 B）：各稀有度收集进度实时派生
+  {
+    const H2=heroData;
+    const owned=Object.keys(s.roster||{});
+    const rate=(r:number)=>{const all=H2.HEROES.filter((h:any)=>h.rarity===r);return all.filter((h:any)=>owned.indexOf(h.id)>=0).length+'/'+all.length;};
+    U.text('CodexGuide',`收集 ${owned.length}/120 · N ${rate(1)} · R ${rate(2)} · SR ${rate(3)} · SSR ${rate(4)}`,0,443,640,18,gold);
+  }
   info.list.forEach((r:any,i:number)=>{
     const y=375-i*88;
     U.panel('CodexRow'+i,0,y,640,78,r.claimed?tone('#26301f'):r.claimable?tone('#3a2c17'):ink,8,r.claimable?gold:border);
     U.text('CodexName'+i,r.name,-180,y+16,340,21,r.claimable?gold:LIGHT);
-    U.text('CodexProg'+i,`${r.have}/${r.need}`,-180,y-16,340,17,dim);
+    if(r.key==='all-ssr')U.text('CodexSsrSrc'+i,'来源：招募 · 自选券 · 碎片兑换 · 招贤值',148,y-33,340,12,tone('#8a7c5f'));
+    let lackText=`${r.have}/${r.need}`;
+    if(!r.done){const H3=heroData;
+      // 从 key 反推缺谁：阵营行（f-nr/f-sr）与 all-sr/all-ssr
+      const owned=new Set(Object.keys(s.roster||{}));
+      let ids:any[]=[];
+      if(r.key==='all-sr')ids=H3.HEROES.filter((h:any)=>h.rarity===3);
+      else if(r.key==='all-ssr')ids=H3.HEROES.filter((h:any)=>h.rarity===4);
+      else if(r.key&&r.key.endsWith('-nr'))ids=H3.HEROES.filter((h:any)=>h.faction===r.key.split('-')[0]&&h.rarity<=2);
+      else if(r.key&&r.key.endsWith('-sr'))ids=H3.HEROES.filter((h:any)=>h.faction===r.key.split('-')[0]&&h.rarity===3);
+      const missing=ids.filter((h:any)=>!owned.has(h.id)).map((h:any)=>h.name);
+      if(missing.length<=4)lackText=`${r.have}/${r.need} · 缺 ${missing.join('、')}`;
+      else lackText=`${r.have}/${r.need} · 缺 ${missing.slice(0,4).join('、')} 等`;
+    }
+    U.text('CodexProg'+i,lackText,-165,y-16,390,16,dim);
     U.button('CodexClaim'+i,r.claimed?'已领取':r.claimable?'领 取':'未集齐',230,y,150,50,()=>{
       const res=store.claimCodex(r.key);
       ctx.tell(res,res.ok?'已领取 '+r.name:'');

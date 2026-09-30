@@ -1627,4 +1627,15 @@ const storeP2 = freshStore(); storeP2.load();
   check('SA4 乱世章末回顾可用（170 合成剧情）', (() => { const s2 = stSA.makeStageEnemies(170).story; return s2 && s2.synthetic === true && s2.stage.dialogue.length >= 2; })());
 }
 
+
+// 图鉴缺谁提示（研讨会九 B）：key 解析正确性回归
+{
+  const storeCX = freshStore(); storeCX.load();
+  const info = storeCX.codexInfo();
+  const allSr = info.list.find(r => r.key === 'all-sr');
+  const shuSr = info.list.find(r => r.key === 'shu-sr');
+  check('CX1 all-sr 行 need=24（key 未误匹配阵营）', allSr && allSr.need === 24);
+  check('CX2 shu-sr 行 need=4', shuSr && shuSr.need === 4);
+}
+
 console.log('\nsmoke: ' + passed + ' passed, ' + failed + ' failed');process.exit(failed ? 1 : 0);
