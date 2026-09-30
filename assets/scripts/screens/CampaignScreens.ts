@@ -279,7 +279,10 @@ export function home(ctx: ScreenContext) {
     else if(s.returnPending)goal={title:'主公回来了！',desc:'回归补给已入账 · 点击查看',page:'campaign' as Page};
     U.panel('CityGoal',0,-390,674,40,s.forgeOpenNotice||store.retroGrants()||s.returnPending?tone('#3a2c17'):tone('#ddd0b2'),7);
     U.text('CityGoalText',goal.title+' · '+goal.desc,-42,-390,580,18,s.forgeOpenNotice||store.retroGrants()||s.returnPending?GOLD:INK);
-    U.tap('CityGoalTap',0,-390,674,40,()=>ctx.go(goal.page as Page));
+    U.tap('CityGoalTap',0,-390,674,40,()=>{
+      if(goal.page==='forge'&&s.forgeOpenNotice)s.forgeOpenNotice=false;
+      ctx.go(goal.page as Page);
+    });
     // 设置入口（研讨会七批次乙 P3）：主公头像区域点击（个人位惯例，与本章地图/自动出征无冲突）
     U.text('CitySettings','设置 ›',-133,558,120,17,tone('#766a51'));
     U.tap('CitySettingsTap',-200,600,220,84,()=>ctx.go('settings'));

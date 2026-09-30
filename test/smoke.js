@@ -1277,7 +1277,7 @@ const storeP2 = freshStore(); storeP2.load();
   check('F1 新档第 1 天：全部 locked 且不可领', f0.ageDays === 1 && f0.list.every(x => x.locked) && !f0.canClaim);
   // 模拟开服第 10 天 + 条件全达成
   sFD.createdAt = Date.now() - 9 * 86400000;
-  sFD.campaign.cleared = 60; sFD.arena.points = 1000; sFD.tower.best = 20;
+  sFD.campaign.cleared = 60; sFD.arena.points = 1100; sFD.tower.best = 20;
   console.log('  [f-debug] daily=' + JSON.stringify(sFD.daily).slice(0,60) + ' keys=' + Object.keys(sFD).length + ' createdAt=' + new Date(sFD.createdAt).toISOString());
   const f1 = storeFD.fourteenDayInfo();
   check('F2 第 10 天：8/10 可领、12/14 locked', f1.ageDays === 10 && f1.list[0].claimable && f1.list[1].claimable
@@ -1588,6 +1588,26 @@ const storeP2 = freshStore(); storeP2.load();
   sNB.campaign.cleared = 10;
   const b2 = storeNB.navBadges();
   check('NB3 成就可领 → bag 亮', b2.bag === true || b2.journey === true);
+}
+
+
+// 总账审计 P1 回归：milestone gem/shard/token/title 补发
+{
+  const storeP1 = freshStore(); storeP1.load();
+  const sP1 = storeP1.getState();
+  sP1.campaign.cleared = 169;
+  sP1.res.gem = 0; sP1.res.shard = 0; sP1.res.token = 0;
+  const r170 = storeP1.winCampaign(170, { stars: 1 });
+  check('P1F1 170 gem+30/shard+20/token+10 入账', sP1.res.gem === 130 && sP1.res.shard === 20 && sP1.res.token >= 10);
+  // title 入 state.titles
+  sP1.campaign.cleared = 199;
+  const r200 = storeP1.winCampaign(200, { stars: 1 });
+  check('P1F2 200 关称号「主线·乱世·定鼎」入 titles', sP1.titles.some(t => t.indexOf('定鼎') >= 0));
+  // 140 关 gem+888 入账
+  sP1.campaign.cleared = 139;
+  sP1.res.gem = 0;
+  storeP1.winCampaign(140, { stars: 1 });
+  check('P1F3 140 关 gem+888 入账（审计发现的原 bug）', sP1.res.gem >= 888);
 }
 
 console.log('\nsmoke: ' + passed + ' passed, ' + failed + ' failed');process.exit(failed ? 1 : 0);

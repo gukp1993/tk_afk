@@ -2118,6 +2118,17 @@ function winCampaign(stageIdx, result) {
         state.armory.boxes[m.reward.armoryBox] = (state.armory.boxes[m.reward.armoryBox] || 0) + 1;
         reward.armoryBox = m.reward.armoryBox;
       }
+      // 总账体检 P1 修复：补 shard/token/gem/title 发放（此前仅处理券/箱，其余四类漏发）
+      if (m.reward.gem) state.res.gem += m.reward.gem;
+      if (m.reward.shard) state.res.shard += m.reward.shard;
+      if (m.reward.token) state.res.token += m.reward.token;
+      if (m.reward.gold) state.res.gold += m.reward.gold;
+      if (m.reward.title) {
+        const axName = '主线';
+        const full = axName + '·' + m.reward.title;
+        state.titles = state.titles || [];
+        if (state.titles.indexOf(full) < 0) state.titles.push(full);
+      }
     } else if (m.kind === 'armoryBox') {
       state.armory.claimedMilestones[m.boxQ] = true;
       state.armory.boxes[m.boxQ] = (state.armory.boxes[m.boxQ] || 0) + 1;
@@ -2419,6 +2430,8 @@ function settleBattle(battleId, outcome) {
       if (improved) { state.weekBoss.bestPct = pct; state.weekBoss.bestDamage = damage; }
       // 每次挑战按当次档位发奖（本周最好档位不重复发，只刷纪录）
       applyReward(tier.reward);
+      // 总账审计 P2：周Boss 印信计入周活跃（与远征首通口径一致）
+      if (tier.reward.seals) state.week.sealsEarned = (state.week.sealsEarned || 0) + tier.reward.seals;
       reward = { kind: 'weekboss', bossName: __domain_stages.makeWeekBossEnemies(F.isoWeekKey(), state.player.level).units[0].hero.name,
         damage, maxHp, pct, tierPct: tier.pct, reward: tier.reward, improved };
     } else if (pending.mode === 'dungeon') {

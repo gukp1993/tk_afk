@@ -190,7 +190,7 @@ const TUTORIALS = {
 // 毕业奖避开 SSR 券与大额元宝，护 SSR P50 口径与抽卡锚。
 const FOURTEEN_DAY = [
   { day: 8, kind: 'campaign', need: 35, cond: '推图 35 关', reward: { scroll: 5 }, label: '招募令 ×5' },
-  { day: 10, kind: 'arena', need: 1000, cond: '演武都尉', reward: { gem: 300 }, label: '元宝 ×300' },
+  { day: 10, kind: 'arena', need: 1100, cond: '演武上将军', reward: { gem: 300 }, label: '元宝 ×300' },
   { day: 12, kind: 'tower', need: 20, cond: '群英塔 20 层', reward: { shard: 30 }, label: '通用碎片 ×30' },
   { day: 14, kind: 'campaign', need: 60, cond: '推图 60 关', reward: { shard: 50, scroll: 10, gem: 200 }, label: '碎片50 令10 宝200' }
 ];

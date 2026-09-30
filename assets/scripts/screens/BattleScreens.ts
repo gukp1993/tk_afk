@@ -153,7 +153,7 @@ export function resultView(ctx: ScreenContext) {
   if(!ctx.auto&&ctx.battleMode==='campaign'&&r&&!r.win&&!r.replay&&config.DEFEAT_RX.enabled){
     const enemyFactions=(stages.makeStageEnemies(ctx.battleIndex).units||[]).map((u:any)=>u.hero&&u.hero.faction);
     rx=progression.buildDefeatPrescriptions(store.getState(),{
-      questList:store.questList,idlePending:store.idlePending,bountyInfo:store.bountyInfo,summonPityInfo:store.summonPityInfo
+      questList:store.questList,idlePending:store.idlePending,bountyInfo:store.bountyInfo,summonPityInfo:store.summonPityInfo,borrowInfo:store.borrowInfo
     },{duration:r.duration||0,snapshot:ctx.lastBattleSnapshot||[],enemyFactions});
   }
   let diagBrief=!!rx;
@@ -286,7 +286,7 @@ export function autoSummary(ctx: ScreenContext, summary: AutoSummary) {
   if(summary.reason==='recovery-exhausted'){
     const enemyFactions=(stages.makeStageEnemies(ctx.battleIndex).units||[]).map((u:any)=>u.hero&&u.hero.faction);
     const rx=progression.buildDefeatPrescriptions(store.getState(),{
-      questList:store.questList,idlePending:store.idlePending,bountyInfo:store.bountyInfo,summonPityInfo:store.summonPityInfo
+      questList:store.questList,idlePending:store.idlePending,bountyInfo:store.bountyInfo,summonPityInfo:store.summonPityInfo,borrowInfo:store.borrowInfo
     },{duration:0,snapshot:ctx.lastBattleSnapshot||[],enemyFactions});
     if(rx&&(rx.items as any[]).length){
       U.text('SummaryRxTitle','受阻处方 · 照做后再战',0,-224,550,18,GOLD);
