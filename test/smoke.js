@@ -1100,7 +1100,7 @@ check('AS11 周报聚合派生', brief.questsTotal === 7 && brief.questsDone >= 
 // ============ 二期主线 15~16 章（2026-09-30 C 批） ============
 section = 'campaignPhase2';
 check('P2-1 章节数 16 与章名', stages.CHAPTERS.length === 16 && stages.chapterOf(141).ch.name === '乱世再临' && stages.chapterOf(160).ch.name === '天命之战');
-check('P2-2 15~16 章敌阵全部有效', (() => { for (let n = 141; n <= 160; n++) { const e = stages.makeStageEnemies(n); if (!e.units.length || e.units.some(u => !u.hero)) return false; } return true; })());
+check('P2-2 15~16 章敌阵全部有效', (() => { for (let n = 141; n <= 160; n++) { const e = stages.makeStageEnemies(n); if (!e.units.length || e.units.some(u => !u.hero && !u.soldier)) return false; } return true; })());
 check('P2-3 二期词缀关（143/147）与循环关（161）', stages.makeStageEnemies(143).mods.length === 1 && stages.makeStageEnemies(147).mods.length === 1 && stages.makeStageEnemies(161).mods.length === 0);
 check('P2-4 Boss 机制（150 神威天将 / 160 天命所归）', stages.makeStageEnemies(150).bossMod && stages.makeStageEnemies(150).bossMod.passive.ccImmune === 1
   && stages.makeStageEnemies(160).bossMod && stages.makeStageEnemies(160).bossMod.passive.dmgReduce === 0.12);
@@ -1550,6 +1550,27 @@ const storeP2 = freshStore(); storeP2.load();
   storeST3.resetTutorials();
   check('ST4 重看教程（seen 清空后首见恢复）', storeST3.tutorialSeen('forge') === false);
   global.wx._map.delete(SAVE_KEY);
+}
+
+
+// 小兵混编（用户指令 2026-10-01）：推进关附带章主题小兵，核心关全英雄
+{
+  const stS = require('../utils/stages');
+  const S3 = stS.makeStageEnemies(3);
+  const soldier = S3.units.find(u => u.soldier);
+  check('SG1 推进关掺 1 名章主题小兵（黄巾章）', S3.units.filter(u => u.soldier).length === 1
+    && soldier && soldier.name === '黄巾兵' && soldier.soldier === true);
+  check('SG2 核心关全英雄（名将 30/精锐 35/词缀 33 无小兵）', [30, 35, 33].every(n =>
+    stS.makeStageEnemies(n).units.every(u => !u.soldier)));
+  const e14 = stS.makeStageEnemies(14);
+  check('SG3 章主题轮转（二章西凉兵）', e14.units.some(u => u.soldier && u.soldier && u.name === '西凉兵')
+    || e14.units.some(u => u.name === '西凉兵'));
+  const e174 = stS.makeStageEnemies(174);
+  check('SG4 乱世推进关掺兵（174 西凉兵·120 后精锐）', e174.units.some(u => u.soldier && u.name === '西凉兵'));
+  // 可战性：小兵 stats 随等级缩放且可入战斗
+  const sLow = stS.makeStageEnemies(3).units.find(u => u.soldier);
+  const sHigh = stS.makeStageEnemies(174).units.find(u => u.soldier);
+  check('SG5 小兵体魄随关卡等级增长', !!sLow && !!sHigh && sHigh.stats.hp > sLow.stats.hp * 10);
 }
 
 console.log('\nsmoke: ' + passed + ' passed, ' + failed + ' failed');process.exit(failed ? 1 : 0);

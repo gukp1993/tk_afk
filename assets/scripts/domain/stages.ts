@@ -4,6 +4,7 @@ import * as __domain_heroes from './heroes';
 import * as __domain_config from './config';
 import * as __domain_story from './story';
 import * as __domain_fmt from './fmt';
+import * as __domain_soldiers from './soldiers';
 import * as __domain_rng from './rng';
 // 战役章节与群英塔（敌方阵容生成）
 // 前 12 章 × 10 关走 utils/story.js 演义剧情表（名称/敌阵/对白/名将关）；
@@ -103,7 +104,7 @@ function chapterOf(globalStage) {
 
 // 生成敌方阵容（5 人，slot 0-2 前排，3-4 后排）；剧情表内关卡附带 story 配置
 function makeStageEnemies(globalStage) {
-  const { ch, inCh, name, isBoss } = chapterOf(globalStage);
+  const { ch, idx: chIdxTop, inCh, name, isBoss } = chapterOf(globalStage);
   // 乱世章末名将（161+ 每章第 10 关）合成剧情：对白轮换（研讨会六 C4），foes 仍走兜底
   const st = story.getStoryStage(globalStage)
     || (isBoss && globalStage > CHAPTERS.length * STAGES_PER_CH ? story.getChaosStory(globalStage) : null);
@@ -119,6 +120,11 @@ function makeStageEnemies(globalStage) {
     ? Math.floor((globalStage - 1) / 10) - (CHAPTERS.length - 1) : 0;
   const chaosBoss = chaosLoop >= 1
     ? story.CHAOS_BOSS_ROTATION[(chaosLoop - 1) % story.CHAOS_BOSS_ROTATION.length] : null;
+  // 小兵混编（用户指令 2026-10-01）：推进关（非名将/精锐/词缀）后排末位附带 1 名章主题小兵；
+  // 核心关（5/7/10）保持全英雄，对应剧情人物不受影响
+  const soldierType = (!isBoss && !elite && !mods.length)
+    ? __domain_soldiers.troopOfChapter(chIdxTop + 1) : null;
+  const soldierElite = globalStage > 120;
   const pick = (i) => {
     if (st && st.stage.foes) return st.stage.foes[i];
     if (isBoss && i === 0 && chaosBoss) return chaosBoss;
@@ -131,6 +137,10 @@ function makeStageEnemies(globalStage) {
   if (mods.includes('gale')) { extraPassive.firstEnergy = 40; extraPassive.spd = 0.10; }
   const bossMod = isBoss && BOSS_MODS[globalStage] ? BOSS_MODS[globalStage] : null;
   for (let i = 0; i < 5; i++) {
+    if (soldierType && i === 4) {
+      units.push(__domain_soldiers.makeSoldier(soldierType, lv, soldierElite));
+      continue;
+    }
     const h = getHero(pick(i));
     units.push({
       hero: h,

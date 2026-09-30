@@ -1506,6 +1506,11 @@ function enemyUnits(units) {
   const H2 = require('./heroes');
   const { heroStatsStar } = H2;
   return units.map((u, i) => {
+    if (u.soldier) {
+      // 小兵单位：makeSoldier 已产出成品 stats，直接构建（无被动）
+      return buildUnit({ id: u.id, name: u.name, faction: u.faction, cls: u.cls,
+        level: u.level, star: u.star, stats: u.stats, ult: u.ult, passive: {}, isBoss: false }, 'B' + i, u.row);
+    }
     const base = heroStatsStar(u.hero, u.level, u.star);
     const stats = {
       hp: Math.floor(base.hp * (u.hpScale || u.scale)),
