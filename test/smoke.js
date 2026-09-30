@@ -1504,4 +1504,15 @@ const storeP2 = freshStore(); storeP2.load();
   check('F6-3 w_ssr 周限购仍在（回归守护）', (() => { const b1 = storeF6.buyWeekly('w_ssr'); const b2 = storeF6.buyWeekly('w_ssr'); return b1.ok && b2.ok === false; })());
 }
 
+
+// 武将小传库（研讨会六批次 3 C3）：SSR 十六将全量覆盖
+{
+  const BIOS = require('../utils/bios').BIOS;
+  const H2 = require('../utils/heroes');
+  const ssr = H2.HEROES.filter(h => h.rarity === 4);
+  check('BIO1 SSR 16 将全量有小传', ssr.length === 16 && ssr.every(h => Array.isArray(BIOS[h.id]) && BIOS[h.id].length >= 3 && BIOS[h.id].length <= 4));
+  check('BIO2 每句非空且长度≤26（弹层折行适配）', ssr.every(h => BIOS[h.id].every(l => typeof l === 'string' && l.length > 4 && l.length <= 26)));
+  check('BIO3 有传将引用的 heroId 全部真实存在', Object.keys(BIOS).every(id => !!H2.getHero(id)));
+}
+
 console.log('\nsmoke: ' + passed + ' passed, ' + failed + ' failed');process.exit(failed ? 1 : 0);

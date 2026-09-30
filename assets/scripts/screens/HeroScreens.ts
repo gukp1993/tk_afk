@@ -8,6 +8,7 @@ import * as config from '../domain/config';
 import * as fmt from '../domain/fmt';
 import * as progression from '../domain/progression';
 import { firstTimeOverlay } from './TutorialOverlay';
+import * as bios from '../domain/bios';
 
 const ink=tone('#171009'), panel=tone('#2e2113'), border=tone('#5a452a');
 const gold=tone('#f0cf8a'), paper=tone('#e9d8b4'), dim=tone('#a6906c');
@@ -208,7 +209,7 @@ export function heroDetail(ctx: ScreenContext) {
     V.text('DetailTitle',h.title||'武将',92,top-52,240,30,paper);
     V.text('DetailName',h.name,92,top-112,280,62,gold);
     V.text('DetailIdentity',(faction[h.faction]||h.faction)+' · '+cls,92,top-158,250,24,paper);
-    if(h.quote)V.text('DetailQuote','「'+h.quote+'」',0,top-248,560,19,tone('#c9b489'));
+    if(h.quote&&!(bios.BIOS as any)[h.id])V.text('DetailQuote','「'+h.quote+'」',0,top-248,560,19,tone('#c9b489'));
     V.panel('DetailRarity',-52,top-210,139,48,new Color(147,98,37,248),5,gold);
     V.text('DetailRarityText',rarityNames[h.rarity],-52,top-210,131,30,gold);
     V.text('DetailStars','★'.repeat(own.star||0)+'☆'.repeat(Math.max(0,max-(own.star||0))),130,top-210,220,26,gold);
@@ -226,6 +227,10 @@ export function heroDetail(ctx: ScreenContext) {
     V.tap('StatsTap',0,top-450,666,112,()=>heroInfoModal(ctx,'详细属性',['战力：'+fmt.fmtNum(h.power),
       '生命：'+fmt.fmtNum(h.stats.hp)+'    攻击：'+fmt.fmtNum(h.stats.atk),'防御：'+fmt.fmtNum(h.stats.def)+'    攻速：'+h.stats.spd,
       '暴击：'+pct(h.stats.crit||0)+'    同名卡：'+(own.cards||0)+' 张','当前面板值仅供参考，战斗效果以实战结算为准。']));
+    // 小传入口（研讨会六 C3）：台词行兼作按钮，有传记的将点击弹四句小传
+    const bioLines=(bios.BIOS as any)[h.id];
+    if(bioLines)V.tap('BioTap',0,top-248,684,26,()=>heroInfoModal(ctx,'武将小传 · '+h.name,bioLines));
+    if(h.quote)V.text('DetailQuote','「'+h.quote+'」'+(bioLines?'  ·  小传 ›':''),0,top-248,560,19,tone('#c9b489'));
     V.text('SkillsHeading','武将技能',-242,top-555,195,29,gold);
     const skills=[{name:h.ult.name,desc:h.ult.desc,glyph:'杀',fill:palette.red,kind:'必杀技能'},
       {name:h.passiveDef.name,desc:h.passiveDef.desc,glyph:'守',fill:palette.green,kind:'被动技能'}];
