@@ -170,7 +170,8 @@ const TUTORIALS = {
   expedition: { title: '远征 · 周循环中心', lines: ['无限层挑战：难度与印信随层数上涨', '周任务 7 条+活跃宝箱，印信主要来源', '印信商店可换 SSR 自选券与限定称号', '每周一刷新词缀与任务'] },
   rx: { title: '卡关处方单', lines: ['败北不再只给一句提示', '按失败原因给出 2 条「现在就能做」的强化', '点处方按钮直达对应养成页', '做完再战——大多数卡关差的就是一步'] },
   dungeon: { title: '军屯双本 · 每日刷本', lines: ['屯金得铜钱，屯兵得主公经验', '每日 2 次双轨共用，层数顺序解锁', '敌方等级随主公等级与层数缩放', '掉落不含精铁与碎片——资源锚不冲突'] },
-  weekboss: { title: '魔王讨伐 · 每周结算', lines: ['本周魔王全服同敌，每日 3 次机会', '伤害占魔王血量比例越高档位越高', '档位奖发印信与演武令，周日刷新', '打不满 100% 也没关系，逐周变强'] }
+  weekboss: { title: '魔王讨伐 · 每周结算', lines: ['本周魔王全服同敌，每日 3 次机会', '伤害占魔王血量比例越高档位越高', '档位奖发印信与演武令，周日刷新', '打不满 100% 也没关系，逐周变强'] },
+  borrow: { title: '借将助战 · 第 6 人', lines: ['本周可借一位 NPC 名将随军出征', '借将等级为主公等级八折、固定 3★', '仅 PVE 生效——演武与名人堂不带', '编队满员时作为第 6 人补强短板'] }
 };
 
 // 14 日第二周目标树（2026-09-30 研讨会三方案 2）：第 8~14 天一次性里程碑（非每日清单）。
@@ -485,6 +486,10 @@ const HALL_ACHV = { name: '名人堂', tiers: [3, 9, 18, 30, 45, 63, 84, 108, 13
   rewards: [{gold:10000,shard:5},{gold:15000,shard:8},{gold:20000,shard:10},{gold:30000,shard:12},{gold:40000,shard:14},{gold:50000,shard:15},{shard:20,token:30,title:'名人堂·名家'},{shard:30,token:30,title:'名人堂·豪杰'},{gem:2000,title:'名人堂·传奇'},{gem:3000,frame:1}] };
 const TACTIC_ACHV = { name: '兵法', tiers: [1, 3, 6, 10, 15, 22, 30, 42, 60, 80],
   rewards: [{gold:10000,shard:5},{gold:15000,shard:8},{gold:20000,shard:10},{gold:30000,shard:12},{gold:40000,shard:14},{gold:50000,shard:15},{shard:20,token:30,title:'兵法·研习者'},{shard:30,token:30,title:'兵法·大师'},{gem:2000,title:'兵法·宗师'},{gem:3000,frame:1}] };
+// 乱世成就轴（研讨会六 A1）：进度 = 161 关起的主线推进深度（cleared-160），
+// 奖励沿扩展轴 R2 裁决（禁 shard4/精铁/招募令直发）
+const CHAOS_ACHV = { name: '乱世', tiers: [5, 20, 45, 80, 130, 190, 260, 330, 380, 400],
+  rewards: [{gold:10000,shard:5},{gold:15000,shard:8},{gold:20000,shard:10},{gold:30000,shard:12},{gold:40000,shard:14},{gold:50000,shard:15},{shard:20,token:30,title:'乱世·破军'},{shard:30,token:30,title:'乱世·伏虎'},{gem:2000,title:'乱世·天罡'},{gem:3000,frame:1}] };
 const DRILL_ACHV = { name: '操练', tiers: [5, 20, 45, 80, 130, 190, 260, 330, 380, 400],
   rewards: [{gold:10000,shard:5},{gold:15000,shard:8},{gold:20000,shard:10},{gold:30000,shard:12},{gold:40000,shard:14},{gold:50000,shard:15},{shard:20,token:30,title:'操练·什长'},{shard:30,token:30,title:'操练·都伯'},{gem:2000,title:'操练·校尉'},{gem:3000,frame:1}] };
 const AWAKEN_ACHV = { name: '觉醒', tiers: [1, 2, 4, 6, 9, 12, 16, 22, 30, 40],
@@ -539,5 +544,5 @@ export {
   GACHA, factionBonus, FORMATION_ROWS, BATTLE, ARENA, DEFEAT_RX, REPLAYS, DRILL, SEVEN_DAY, FOURTEEN_DAY, DUNGEON, WEEKBOSS, BORROW, TUTORIAL_OFF, TUTORIALS, TRAINING_DAILY_CAP, BOUNTY, ROAMER_POOL, AD,
   FIRST_STAGE_END, CAMPAIGN_DIFFICULTY, CAMPAIGN_MILESTONES, ELITE_STAGE, STAR_RULES, CHAPTER_STAR_CHESTS, DAILY_ELITE_CHEST,
   CAMPAIGN_MODS, BOSS_MODS, RETURN_GRANTS, SUMMON_TICKET, SUMMON_POINTS, FORGE, MOTIFS, MOTIF_COST, SMELT,
-  CODEX_REWARDS, ACHV_AXES, ACHV_REWARDS, WEEKLY, HALL, AWAKEN, FORMATION_PRESETS_MAX, TACTIC, BATTLE_TACTICS, TACTIC_SR, HALL_ACHV, TACTIC_ACHV, AWAKEN_ACHV, DRILL_ACHV
+  CODEX_REWARDS, ACHV_AXES, ACHV_REWARDS, WEEKLY, HALL, AWAKEN, FORMATION_PRESETS_MAX, TACTIC, BATTLE_TACTICS, TACTIC_SR, HALL_ACHV, TACTIC_ACHV, AWAKEN_ACHV, DRILL_ACHV, CHAOS_ACHV
 };

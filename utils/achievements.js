@@ -29,6 +29,10 @@ function axisProgress(axis, state) {
       Object.values(state.roster || {}).forEach((r) => { sum += (r.drill || 0); });
       return sum;
     }
+    case 'chaos': {
+      const cleared = (state.campaign && state.campaign.cleared) || 0;
+      return Math.max(0, cleared - 160); // 乱世推进深度（161 关起计）
+    }
     default: return 0;
   }
 }
@@ -39,7 +43,8 @@ const EXTENDED_AXES = [
   { key: 'hallKills', def: () => C.HALL_ACHV },
   { key: 'tacticLv', def: () => C.TACTIC_ACHV },
   { key: 'awaken', def: () => C.AWAKEN_ACHV },
-  { key: 'drill', def: () => C.DRILL_ACHV }
+  { key: 'drill', def: () => C.DRILL_ACHV },
+  { key: 'chaos', def: () => C.CHAOS_ACHV }
 ];
 function achvInfo(state) {
   const claimed = (state.achv && state.achv.claimed) || {};

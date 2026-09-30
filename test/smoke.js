@@ -464,7 +464,7 @@ store4b.grantCard('liaohua'); // 已拥有
 check('图鉴claim未集齐拒绝', store4b.claimCodex('shu-nr').ok === false);
 // 成就：推图轴 cleared=0 → 第 1 档需 10 关不可领；塔轴首胜后可领
 const av = store4b.achvInfo();
-check('成就九轴（五基础+名人堂/兵法/觉醒/操练）', av.axes.length === 9 && av.axes.every(a => a.tiers.length === 10));
+check('成就十轴（五基础+名人堂/兵法/觉醒/操练/乱世）', av.axes.length === 10 && av.axes.every(a => a.tiers.length === 10));
 check('成就未达标拒绝', store4b.claimAchv('campaign', 2).ok === false); // cleared=30 < 40
 // 远征周：周重置生成、任务进度、领取、印信、兑换
 const wk = store4b.weekInfo();
@@ -1359,7 +1359,7 @@ const storeP2 = freshStore(); storeP2.load();
   const storeA9 = freshStore(); storeA9.load();
   const sA9 = storeA9.getState();
   const axes = storeA9.achvInfo().axes;
-  check('A9-1 九轴齐（五基础+名人堂/兵法/觉醒/操练）', axes.length === 9
+  check('A9-1 十轴齐（五基础+名人堂/兵法/觉醒/操练/乱世）', axes.length === 10
     && ['hallKills','tacticLv','awaken','drill'].every(k => axes.some(a => a.key === k)));
   sA9.roster.liaohua.drill = 5; sA9.roster.mengda.drill = 3;
   sA9.hall.killsTotal = 3;
@@ -1461,6 +1461,27 @@ const storeP2 = freshStore(); storeP2.load();
   const buy2 = storeWS.buyWeekly('w_ssr');
   check('WS1 w_ssr 首购成功/周限购 1 拒绝第二', buy1.ok && buy2.ok === false && /已兑|限购|次数/.test(buy2.msg));
   check('WS2 自选券入 vouchers 且印信扣 90', (sWS.vouchers && sWS.vouchers.ssr) >= 1 && sWS.seals === 500 - 90);
+}
+
+
+// 乱世治理（研讨会六）：词缀轮转 + chaos 成就轴
+{
+  const stC = require('../utils/stages');
+  check('CH1 乱世词缀轮转（163/167/173 各有词缀）', stC.makeStageEnemies(163).mods.length === 1
+    && stC.makeStageEnemies(167).mods.length === 1 && stC.makeStageEnemies(173).mods.length === 1);
+  check('CH2 乱世词缀关走 stageScale×补偿 合成通道', (() => {
+    const C2 = require('../utils/config');
+    const expectScale = stC.stageScale(163) * (C2.CAMPAIGN_DIFFICULTY.normalOverrides[163] || 1) * (C2.CAMPAIGN_MODS.compensation || 1);
+    return Math.abs(stC.makeStageEnemies(163).units[0].scale - expectScale) < 0.0001;
+  })());
+  const storeCH = freshStore(); storeCH.load();
+  const sCH = storeCH.getState();
+  sCH.campaign.cleared = 172;
+  const chaos = storeCH.achvInfo().axes.find(a => a.key === 'chaos');
+  check('CH3 乱世轴进度=cleared-160（172→12，首档 5 可领）', chaos.value === 12 && chaos.tiers[0].claimable);
+  const c2 = storeCH.claimAchv('chaos', 0);
+  check('CH4 乱世档领取', c2.ok);
+  check('CH5 quote 字段全将覆盖（台词上屏数据源）', require('../utils/heroes').HEROES.every(h => typeof h.quote === 'string' && h.quote.length > 0));
 }
 
 console.log('\nsmoke: ' + passed + ' passed, ' + failed + ' failed');process.exit(failed ? 1 : 0);

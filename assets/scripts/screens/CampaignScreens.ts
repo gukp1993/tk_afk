@@ -635,6 +635,7 @@ export function formation(ctx: ScreenContext) {
       U.text('PresetSaveTxt','保存当前阵容',sx,-30,138,15,GOLD);
       U.tap('PresetSaveTap',sx,-30,146,30,()=>ctx.confirm('保存阵型模板','把当前五人编队存为模板（含站位），日后一键启用',()=>{const r=store.saveFormationPreset('p'+(Date.now()%100000),'我的阵型');ctx.tell(r,r.ok?'模板已保存':'');}));
     }
+  firstTimeOverlay(ctx,'borrow');
   const bondsNow=store.activeBonds(),allBonds=heroes.BONDS||[],mods=store.bondMods();
   // 借将助战（研讨会五批次 1）：本周助将位每日一次借用，作第 6 人上阵（仅 PVE）
   const bb=store.borrowInfo();

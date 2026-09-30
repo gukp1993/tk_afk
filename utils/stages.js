@@ -11,8 +11,9 @@ const STAGES_PER_CH = 10;
 // 词缀关：每章第 3/7 关（章内 index 2/6），≥minStage 启用；ch 序轮换保证相邻章不重样
 function resolveMods(globalStage) {
   const n = Math.floor(Number(globalStage) || 0);
-  // 二期（13~16 章）同样启用词缀轮转；超过剧情表（乱世循环）不设词缀。
-  if (n < CAMPAIGN_MODS.minStage || n > CHAPTERS.length * STAGES_PER_CH) return [];
+  // 二期与乱世循环（161+）均启用词缀轮转（研讨会六 A2：乱世三无地带治理）；
+  // chIdx 随乱世章序自然递增，池长取模循环。
+  if (n < CAMPAIGN_MODS.minStage) return [];
   const inCh = (n - 1) % 10;
   if (inCh !== 2 && inCh !== 6) return [];
   const chIdx = Math.floor((n - 1) / 10);

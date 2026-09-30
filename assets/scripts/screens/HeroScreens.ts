@@ -208,6 +208,7 @@ export function heroDetail(ctx: ScreenContext) {
     V.text('DetailTitle',h.title||'武将',92,top-52,240,30,paper);
     V.text('DetailName',h.name,92,top-112,280,62,gold);
     V.text('DetailIdentity',(faction[h.faction]||h.faction)+' · '+cls,92,top-158,250,24,paper);
+    if(h.quote)V.text('DetailQuote','「'+h.quote+'」',0,top-248,560,19,tone('#c9b489'));
     V.panel('DetailRarity',-52,top-210,139,48,new Color(147,98,37,248),5,gold);
     V.text('DetailRarityText',rarityNames[h.rarity],-52,top-210,131,30,gold);
     V.text('DetailStars','★'.repeat(own.star||0)+'☆'.repeat(Math.max(0,max-(own.star||0))),130,top-210,220,26,gold);
