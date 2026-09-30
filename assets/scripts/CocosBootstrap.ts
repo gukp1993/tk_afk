@@ -87,6 +87,7 @@ export class CocosBootstrap extends Component implements ScreenContext {
   }
 
   update(dt: number) {
+    CocosUi.updateFloaters(dt);
     if (this.page === 'ad' && this.adPlacement && this.adSeconds > 0) {
       const before = Math.ceil(this.adSeconds);
       this.adSeconds = Math.max(0, this.adSeconds - dt);

@@ -169,6 +169,7 @@ export class CocosUi {
     }
     return CocosUi.fxLayer;
   }
+  static floaters: { node: Node; opacity: UIOpacity; baseY: number; elapsed: number }[] = [];
   static floatText(parent: Node, x: number, y: number, text: string, color: Color) {
     const layer = CocosUi.ensureFxLayer(parent);
     const node = new Node('Floater');
@@ -180,20 +181,20 @@ export class CocosUi {
     label.color = color;
     layer.addChild(node);
     const opacity = node.addComponent(UIOpacity);
-    const moveTarget = { x: x, y: y };
-    let elapsed = 0;
-    const cb = () => {
-      elapsed += 16;
-      const t = Math.min(1, elapsed / 1200);
-      node.setPosition(new Vec3(x, y + 80 * t, 0));
-      opacity.opacity = Math.floor(255 * (1 - t));
-      if (t >= 1) {
-        node.destroy();
+    CocosUi.floaters.push({ node, opacity, baseY: y, elapsed: 0 });
+  }
+  /** 每帧由 Bootstrap.update 驱动（暂停安全、帧率无关）。 */
+  static updateFloaters(dt: number) {
+    for (let i = CocosUi.floaters.length - 1; i >= 0; i--) {
+      const f = CocosUi.floaters[i];
+      f.elapsed += dt * 1000;
+      const t = Math.min(1, f.elapsed / 1200);
+      if (f.node.isValid) {
+        f.node.setPosition(new Vec3(0, f.baseY + 80 * t, 0));
+        f.opacity.opacity = Math.floor(255 * (1 - t));
       }
-    };
-    const timer = setInterval(cb, 16);
-    // 兜底清理
-    setTimeout(() => { clearInterval(timer); if (node.isValid) node.destroy(); }, 1500);
+      if (t >= 1) { if (f.node.isValid) f.node.destroy(); CocosUi.floaters.splice(i, 1); }
+    }
   }
 
   /** 红点（研讨会七 P1）：可领取提示小圆点，挂在面板右上角。 */
