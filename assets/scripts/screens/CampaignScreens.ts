@@ -658,6 +658,11 @@ export function formation(ctx: ScreenContext) {
   U.text('FormationSummaryTitle','出征编队',-204,549,260,28,GOLD);
   U.text('FormationPower',`总战力 ${fmt.fmtNum(store.teamPower())}`,-202,514,270,25,GOLD);
   U.text('FormationFaction',bonus.atk>0?`同阵营 ×${bonus.atk>=.18?5:bonus.atk>=.12?4:3}：攻击/生命 +${Math.round(bonus.atk*100)}%`:'同阵营 3/4/5 人激活全队加成',-181,478,355,18,tone('#ad9977'));
+  // 队伍总览一行（研讨会八方案 7）：军械+羁绊一目了然
+  const bondCount=store.activeBonds().length;
+  const ab=store.getArmoryBonuses();
+  const overviewText=[`军械 攻+${Math.round(ab.atk*100)}%/体+${Math.round(ab.hp*100)}%`,`羁绊 ${bondCount}/8`].join(' · ');
+  U.text('FormationOverview',overviewText,190,478,290,17,GOLD);
   U.button('FormationRecommend','推荐布阵',244,514,170,55,()=>{
     formationRecommended=recommendFormation(store.allRoster());ctx.show('formation');
   },palette.gold);
