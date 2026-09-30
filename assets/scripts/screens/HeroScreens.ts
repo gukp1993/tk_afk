@@ -491,6 +491,17 @@ export function summonResults(ctx: ScreenContext) {
         :`留存 ×${result.cards||1}`,x,single?y-157:y-83,single?235:162,17,dim);
       U.tap('DrawCardTap'+i,x,y,single?350:205,single?420:193,openHero);
     });
+    // SSR 登场引言（研讨会六 C2）：本抽出新 SSR 时展示专属登场卡（quote 复用，零新文案）
+    {
+      const debut=ctx.lastSummon.find((r2:any)=>{const hh=heroData.getHero(r2.id);return hh&&hh.rarity===4&&r2.isNew;});
+      if(debut){
+        const dh=heroData.getHero(debut.id);
+        U.panel('DebutCard',0,60,620,110,tone('#2a1c10'),12,palette.gold);
+        U.text('DebutTag','初 登 场',0,88,560,18,tone('#d9b06a'));
+        U.text('DebutName',`${dh.name} · ${dh.title||'武将'}`,0,58,560,24,palette.gold);
+        U.text('DebutQuote',`「${dh.quote||'——'}」`,0,26,560,18,tone('#c9b489'));
+      }
+    }
     // 抽卡差页引导（研讨会二 P2）：SSR 缺口 + 保底余量 + 品质碎片兑换推荐
     {
       const gap=store.summonGapInfo();

@@ -156,6 +156,15 @@ const BORROW = {
   excludedModes: ['arena', 'hall', 'weekboss']
 };
 
+// 乱世里程碑（2026-09-30 研讨会六 A3）：每乱世章末一次性小奖（禁精铁/招募令），
+// 200 关（乱世四章）给称号收官。走 campaignFirstReward 里程碑渲染链，旧档无需迁移（cleared 尚不可能超 160）。
+const CHAOS_MILESTONES = {
+  170: { shard: 20, token: 10, label: '乱世 · 一章肃清' },
+  180: { shard: 25, token: 12, label: '乱世 · 二章肃清' },
+  190: { shard: 30, token: 15, label: '乱世 · 三章肃清' },
+  200: { shard: 40, token: 20, title: '乱世·定鼎', label: '乱世 · 四章定鼎（称号）' }
+};
+
 // 新手首见浮层（2026-09-30 研讨会四 P1）：每场景首次进入弹一次图文说明。
 // 老档（无 tutorial 字段）视为全部已见，防浮层雨；TUTORIAL_OFF=true 全局关闭。
 const TUTORIAL_OFF = false;
@@ -541,5 +550,5 @@ module.exports = {
   GACHA, factionBonus, FORMATION_ROWS, BATTLE, ARENA, DEFEAT_RX, REPLAYS, DRILL, SEVEN_DAY, FOURTEEN_DAY, DUNGEON, WEEKBOSS, BORROW, TUTORIAL_OFF, TUTORIALS, TRAINING_DAILY_CAP, BOUNTY, ROAMER_POOL, AD,
   FIRST_STAGE_END, CAMPAIGN_DIFFICULTY, CAMPAIGN_MILESTONES, ELITE_STAGE, STAR_RULES, CHAPTER_STAR_CHESTS, DAILY_ELITE_CHEST,
   CAMPAIGN_MODS, BOSS_MODS, RETURN_GRANTS, SUMMON_TICKET, SUMMON_POINTS, FORGE, MOTIFS, MOTIF_COST, SMELT,
-  CODEX_REWARDS, ACHV_AXES, ACHV_REWARDS, WEEKLY, HALL, AWAKEN, FORMATION_PRESETS_MAX, TACTIC, BATTLE_TACTICS, TACTIC_SR, HALL_ACHV, TACTIC_ACHV, AWAKEN_ACHV, DRILL_ACHV, CHAOS_ACHV
+  CODEX_REWARDS, ACHV_AXES, ACHV_REWARDS, WEEKLY, HALL, AWAKEN, FORMATION_PRESETS_MAX, TACTIC, BATTLE_TACTICS, TACTIC_SR, HALL_ACHV, TACTIC_ACHV, AWAKEN_ACHV, DRILL_ACHV, CHAOS_ACHV, CHAOS_MILESTONES
 };

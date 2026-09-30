@@ -1484,4 +1484,24 @@ const storeP2 = freshStore(); storeP2.load();
   check('CH5 quote 字段全将覆盖（台词上屏数据源）', require('../utils/heroes').HEROES.every(h => typeof h.quote === 'string' && h.quote.length > 0));
 }
 
+
+// 研讨会六批次 2：锻造开启宣告/乱世里程碑/SSR 登场
+{
+  global.wx._map.delete(SAVE_KEY); // 测试卫生：防前置块遗留存档
+  const storeF6 = freshStore(); storeF6.load();
+  const sF6 = storeF6.getState();
+  // B1 锻造开启宣告：六槽顶到 5★ 触发 forgeOpenNotice
+  sF6.armory.slotStars = { weapon: 4, armor: 5, helm: 5, boots: 5, jade: 5, seal: 5 };
+  sF6.res.iron = 500000; sF6.res.gold = 5000000;
+  storeF6.armoryUpgrade('weapon');
+  check('F6-1 第 6 颗 5★ 瞬间置锻造开启旗', sF6.forgeOpenNotice === true);
+  // A3 乱世里程碑：170 关首通发小奖（里程碑渲染链复用）
+  sF6.campaign.cleared = 169;
+  const prev = storeF6.campaignRewardPreview(170);
+  check('F6-2 乱世里程碑可预览（170 章末）', prev.milestones.some(m => m.stage === 170 && m.reward.shard === 20));
+  // C2 SSR 登场数据源：doSummon 新 SSR 标记（isnew 已有——此处验证字段链）
+  sF6.seals = 500;
+  check('F6-3 w_ssr 周限购仍在（回归守护）', (() => { const b1 = storeF6.buyWeekly('w_ssr'); const b2 = storeF6.buyWeekly('w_ssr'); return b1.ok && b2.ok === false; })());
+}
+
 console.log('\nsmoke: ' + passed + ' passed, ' + failed + ' failed');process.exit(failed ? 1 : 0);

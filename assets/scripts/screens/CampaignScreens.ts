@@ -135,6 +135,12 @@ export function campaign(ctx: ScreenContext) {
     U.text('ReturnBannerText',`主公回来了！离开 ${returnPending.days} 天，回归补给：${returnPending.label}（已入账）›`,0,-70,600,16,GOLD);
     U.tap('ReturnBannerTap',0,-78,640,54,()=>{store.dismissReturnPending();ctx.show('campaign');});
   }
+  // 锻造台开启宣告（研讨会六 B1）：第 6 颗 5★ 达成后一次性播报，点击直达锻造台
+  if(s.forgeOpenNotice){
+    U.panel('ForgeOpenBanner',0,-122,640,44,tone('#3a2c17'),9,GOLD);
+    U.text('ForgeOpenBannerText','锻造台已开启 · 词条洗练解锁 ›',0,-122,600,17,GOLD);
+    U.tap('ForgeOpenBannerTap',0,-122,640,44,()=>{s.forgeOpenNotice=false;store.save();ctx.go('forge');});
+  }
   const retro=store.retroGrants();
   if(retro){
     U.panel('RetroGrants',0,-40,640,54,tone('#2b1e12'),9,GOLD);

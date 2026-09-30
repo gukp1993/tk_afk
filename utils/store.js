@@ -1143,6 +1143,8 @@ function armoryUpgrade(slot) {
     const iron = IT.STAR_NEEDS[star], gold = IT.STAR_GOLD[star];
     if (state.res.iron < iron) return { ok:false, msg:'精铁不足，还差' + (iron-state.res.iron) };
     if (state.res.gold < gold) return { ok:false, msg:'铜钱不足，还差' + (gold-state.res.gold) };
+    // 锻造台开启宣告（研讨会六 B1）：写入前采样 gate，写入后检测 false→true 跳变置旗
+    const wasOpen = forgeGateOpen();
     const nodeBefore = IT.slotNodeInfo(slot, star);
     state.res.iron -= iron; state.res.gold -= gold; state.armory.slotStars[slot] = star + 1;
     const nodeAfter = IT.slotNodeInfo(slot, star + 1);
@@ -1150,7 +1152,9 @@ function armoryUpgrade(slot) {
       ? { label: nodeAfter.label, from: nodeBefore.current, to: nodeAfter.current,
           unlocked: nodeBefore.tier === 0, enhanced: nodeBefore.tier === 1 }
       : null;
-    return { ok:true, slot, stars:star+1, iron, gold, before, bonuses:getArmoryBonuses(), node };
+    const forgeJustOpened = !wasOpen && IT.ARMORY_SLOTS.every(sl => (state.armory.slotStars[sl.id] || 0) >= 5);
+    if (forgeJustOpened) state.forgeOpenNotice = true;
+    return { ok:true, slot, stars:star+1, iron, gold, before, bonuses:getArmoryBonuses(), node, forgeJustOpened };
   });
 }
 // 一键升到下个节点（0-2★→3★、3-4★→5★）：同一存档事务内检查全部费用，
@@ -1167,8 +1171,11 @@ function armoryUpgradeToNode(slot) {
     if (lacks.length) return { ok:false, msg:'材料不足：' + lacks.join('、'), need: cost };
     const before = getArmoryBonuses();
     const nodeBefore = IT.slotNodeInfo(slot, star);
+    // 锻造台开启宣告（研讨会六 B1）：写入前采样，写入后检测 false→true 跳变置旗
+    const wasOpenN = forgeGateOpen();
     state.res.iron -= cost.iron; state.res.gold -= cost.gold;
     state.armory.slotStars[slot] = cost.to;
+    if (!wasOpenN && IT.ARMORY_SLOTS.every(sl => (state.armory.slotStars[sl.id] || 0) >= 5)) state.forgeOpenNotice = true;
     const nodeAfter = IT.slotNodeInfo(slot, cost.to);
     return { ok:true, slot, fromStar: cost.from, toStar: cost.to, iron: cost.iron, gold: cost.gold,
       node: { label: nodeAfter.label, from: nodeBefore.current, to: nodeAfter.current,
@@ -2022,6 +2029,11 @@ function campaignFirstReward(stageIdx) {
     if (stageIdx >= 10 && !state.heroProgress.chapterOneVoucherGranted) {
       milestones.push({ stage: stageIdx, kind: 'srVoucher', reward: { srPick: 1 }, label: 'SR 武将自选券 ×1' });
     }
+  }
+  // 乱世里程碑（研讨会六 A3）：每乱世章末（170/180/190/200）一次性小奖，渲染链与标记复用现有机制
+  const chaosMs = C.CHAOS_MILESTONES && C.CHAOS_MILESTONES[stageIdx];
+  if (chaosMs && !state.campaign.milestones[stageIdx]) {
+    milestones.push({ stage: stageIdx, kind: 'milestone', reward: chaosMs, label: chaosMs.label || '乱世里程碑' });
   }
   const totals = {
     gem: base.gem + (chapter ? chapter.gem : 0),
