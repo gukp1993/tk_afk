@@ -6,4 +6,7 @@ const hasWx = typeof wx !== 'undefined' && !!wx;
 const api = hasTt ? tt : (hasWx ? wx : null);
 const name = hasTt ? 'douyin' : (hasWx ? 'wechat' : 'node');
 
-module.exports = { name, api };
+// 震动反馈（研讨会七 P5）：try-catch 防平台不支持
+function vibrateShort() { try { if (api && api.vibrateShort) api.vibrateShort({ type: 'light' }); } catch (e) { /* 平台不支持静默 */ } }
+function vibrateLong() { try { if (api && api.vibrateLong) api.vibrateLong({ type: 'heavy' }); } catch (e) { /* 静默 */ } }
+module.exports = { name, api, vibrateShort, vibrateLong };

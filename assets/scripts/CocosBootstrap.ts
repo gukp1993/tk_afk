@@ -199,7 +199,32 @@ export class CocosBootstrap extends Component implements ScreenContext {
     this.show(page);
   }
   public back(fallback: Page = 'campaign') { this.go(this.navigation[this.navigation.length-1] || fallback); }
-  public tell(result: any, good: string) { this.notice = result?.ok ? good : (result?.msg || '操作失败'); this.show(this.page); }
+  public tell(result: any, good: string) {
+    this.notice = result?.ok ? good : (result?.msg || '操作失败');
+    this.show(this.page);
+    // 领取飞字（研讨会七 P4）：成功且有奖励数据时在屏幕中央偏上飘字
+    if (result?.ok && result?.reward && typeof result.reward === 'object') {
+      this.spawnRewardFloater(result.reward);
+    } else if (result?.ok && result?.label) {
+      this.spawnLabelFloater(good || result.label);
+    }
+  }
+  private spawnRewardFloater(reward: object) {
+    const CN: Record<string,string> = {gold:'铜钱',gem:'元宝',scroll:'令',token:'演武令',shard:'碎片',iron:'精铁',seals:'印信'};
+    const parts = Object.entries(reward)
+      .filter(([k]) => k in CN)
+      .map(([k, v]) => `${CN[k]}+${v}`);
+    if (parts.length) {
+      const color = new (this.ccColor())(255, 220, 120, 255);
+      CocosUi.floatText(this.content, 0, -80, parts.join('  '), color);
+    }
+  }
+  private spawnLabelFloater(text: string) {
+    if (!text) return;
+    const color = new (this.ccColor())(255, 220, 120, 255);
+    CocosUi.floatText(this.content, 0, -80, text, color);
+  }
+  private ccColor() { return Color; }
   public confirm(title: string, detail: string, act: () => void) {
     const U = this.ui;
     const mask = U.rect('ConfirmMask', 0, 0, 720, 1280, new Color(12, 10, 8, 190));
@@ -329,6 +354,10 @@ export class CocosBootstrap extends Component implements ScreenContext {
     this.outcome={...settled,win,duration,stats:battleStats};
     this.fighting=null;
     this.show('result');
+    // 震动反馈（研讨会七 P5）：战斗胜利短震
+    if (win && !this.replaying) {
+      CocosUi.vibrateShort();
+    }
     if(this.auto)this.autoAction(this.autoSession.settled(settled));
   }
 

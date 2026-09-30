@@ -1,4 +1,4 @@
-import { Color, EventTouch, Graphics, Label, Mask, Node, ScrollView, UITransform, Vec2, Vec3 } from 'cc';
+import { Color, EventTouch, Graphics, Label, Mask, Node, ScrollView, UITransform, Vec2, Vec3, Tween, UIOpacity } from 'cc';
 
 export const hexColor = (hex: string) => new Color(
   parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16), 255
@@ -150,6 +150,50 @@ export class CocosUi {
     this.parent.addChild(node);
     this.nodes.set(name, node);
     return node;
+  }
+
+  /** 震动反馈（研讨会七 P5）：短震，wx.vibrateShort 平台调用。 */
+  static vibrateShort() {
+    try {
+      const g = globalThis as any;
+      if (g.wx && g.wx.vibrateShort) g.wx.vibrateShort({ type: 'light' });
+    } catch (e) { /* 平台不支持静默 */ }
+  }
+
+  /** 领取飞字（研讨会七 P4）：浮空文字上移淡出后自毁；挂 fxLayer 不随 content 清理销毁。 */
+  static fxLayer: Node | null = null;
+  static ensureFxLayer(parent: Node) {
+    if (!CocosUi.fxLayer || !CocosUi.fxLayer.isValid) {
+      CocosUi.fxLayer = new Node('FxLayer');
+      parent.parent.addChild(CocosUi.fxLayer);
+    }
+    return CocosUi.fxLayer;
+  }
+  static floatText(parent: Node, x: number, y: number, text: string, color: Color) {
+    const layer = CocosUi.ensureFxLayer(parent);
+    const node = new Node('Floater');
+    node.setPosition(new Vec3(x, y, 0));
+    const transform = node.addComponent(UITransform);
+    transform.setContentSize(400, 30);
+    const label = node.addComponent(Label);
+    label.string = text; label.fontSize = 22; label.lineHeight = 26;
+    label.color = color;
+    layer.addChild(node);
+    const opacity = node.addComponent(UIOpacity);
+    const moveTarget = { x: x, y: y };
+    let elapsed = 0;
+    const cb = () => {
+      elapsed += 16;
+      const t = Math.min(1, elapsed / 1200);
+      node.setPosition(new Vec3(x, y + 80 * t, 0));
+      opacity.opacity = Math.floor(255 * (1 - t));
+      if (t >= 1) {
+        node.destroy();
+      }
+    };
+    const timer = setInterval(cb, 16);
+    // 兜底清理
+    setTimeout(() => { clearInterval(timer); if (node.isValid) node.destroy(); }, 1500);
   }
 
   /** 红点（研讨会七 P1）：可领取提示小圆点，挂在面板右上角。 */
