@@ -353,9 +353,9 @@ const CHAPTERS = [
     ]
   },
   {
-    id: 'ch12', name: '星落五丈原', subtitle: '六出祁山 · 群英梦影',
+    id: 'ch12', name: '星落五丈原', subtitle: '六出祁山 · 将星陨落',
     intro: '「鞠躬尽瘁，死而后已。」六出祁山，北伐中原，这是丞相最后的执念。',
-    finale: '梦醒时分，鼓声已远。天下大势，分久必合——而群英的故事，在你手中，永不落幕。',
+    finale: '将星陨落，鼓声渐远。出师未捷身先死，长使英雄泪满襟——而丞相的忠诚，永照后人。',
     stages: [
       { name: '出师北伐', narration: '出师表上，字字泣血。大军出祁山，直指长安。',
         foes: ['simayi', 'zhanghe', 'haozhao', 'guohuai', 'manchong'] },
@@ -379,11 +379,12 @@ const CHAPTERS = [
         foes: ['simayi', 'simashi', 'guohuai', 'haozhao', 'manchong'] },
       { name: '秋风五丈原', narration: '建兴十二年秋，大星坠于五丈原。将星陨落，汉室最后的擎天之柱，倒了。',
         foes: ['simayi', 'simashi', 'simazhao', 'guohuai', 'haozhao'] },
-      { name: '群英梦影', narration: '将星虽陨，英魂不灭。恍惚之间，五丈原上鼓声再起——演义中所有未竟的对决，都在这场大梦中重逢。',
+      { name: '星落五丈原', narration: '秋风瑟瑟，命灯将熄。司马懿夜观星象，笑曰：「将星坠落，孔明命不久矣！」——蜀军最后的冲锋，为丞相而战。',
         dialogue: [
-          { who: 'lvbu', text: '乱世群英，皆入此梦。汝既走到这里——便与天下英雄，再战一场！' },
+          { who: 'simayi', text: '诸葛亮！汝食少事烦，命灯已暗——何不下马归降，保全性命？' },
+          { who: 'zhugeliang', text: '汉贼不两立，王业不偏安！纵使将星陨落，北伐之志，至死不退！' },
         ],
-        foes: ['lvbu', 'simayi', 'caocao', 'zhouyu', 'zhugeliang'] }
+        foes: ['simayi', 'simashi', 'simazhao', 'guohuai', 'haozhao'] }
     ]
   },
   {
@@ -414,7 +415,7 @@ const CHAPTERS = [
           { who: 'simayi', text: '天下大势，分久必合，合久必分。今日三国归晋，乱世终结！' },
           { who: 'liubei', text: '英雄迟暮，然忠义千秋。这三国的故事，流传百世！' }
         ],
-        foes: ['caocao', 'simayi', 'sunce', 'zhouyu', 'lvbu'] }
+        foes: ['simayi', 'simazhao', 'simashi', 'guohuai', 'haozhao'] }
     ]
   },
   {
