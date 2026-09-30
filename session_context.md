@@ -16,6 +16,14 @@
 
 ## 最近交接（新 → 旧）
 
+### 美术资源管线问答 · zcode · 无变更
+
+时间：2026-09-30 09:41（Asia/Shanghai）；执行者：zcode；状态：无变更（纯问答）。
+
+- 用户告知当前依赖 GPT imagegen 生成美术，问美术资源怎么弄。执行者给出管线建议：①插入点已备好（CocosUi.heroIcon 单一漏斗，重写函数体换真图、无图回退字印）；②包体是第一约束（现 3396KB/主包 4MB），首包只放 16 SSR 卡面+头像，大图走微信分包/远程 bundle；资源按 `hero/<id>/portrait|avatar` 命名对接 heroes.js 拼音 slug；③风格一致性靠「固定风格锚 prompt + 每将角色描述块数据化 + gpt-image-1 参考图模式」；④后处理 sips 分档缩放、原图不入库、压缩交 Cocos 构建预设；⑤分期 16 SSR→24 SR→43 R/37 N（N 可留字印）。
+- 工程现状核实：assets/resources 为空、零图片加载代码，全部视觉为 Graphics+Label 程序化绘制；武将 120（16 SSR/24 SR/43 R/37 N），id 为拼音 slug。
+- 未形成用户决定；下一步候选（若确认）：落《美术资源管线与规格》方案文档 + heroIcon 图片加载链路（含回退）实装。
+
 ### 乱世 Boss 轮换 · zcode · 已实施待验收
 
 时间：2026-10-01 03:40（Asia/Shanghai）；执行者：zcode；状态：已实施待验收。
