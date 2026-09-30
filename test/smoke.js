@@ -464,7 +464,7 @@ store4b.grantCard('liaohua'); // 已拥有
 check('图鉴claim未集齐拒绝', store4b.claimCodex('shu-nr').ok === false);
 // 成就：推图轴 cleared=0 → 第 1 档需 10 关不可领；塔轴首胜后可领
 const av = store4b.achvInfo();
-check('成就十轴（五基础+名人堂/兵法/觉醒/操练/乱世）', av.axes.length === 10 && av.axes.every(a => a.tiers.length === 10));
+check('成就十一轴（五基础+名人堂/兵法/觉醒/操练/乱世/战报）', av.axes.length === 11 && av.axes.every(a => a.tiers.length === 10));
 check('成就未达标拒绝', store4b.claimAchv('campaign', 2).ok === false); // cleared=30 < 40
 // 远征周：周重置生成、任务进度、领取、印信、兑换
 const wk = store4b.weekInfo();
@@ -1359,7 +1359,7 @@ const storeP2 = freshStore(); storeP2.load();
   const storeA9 = freshStore(); storeA9.load();
   const sA9 = storeA9.getState();
   const axes = storeA9.achvInfo().axes;
-  check('A9-1 十轴齐（五基础+名人堂/兵法/觉醒/操练/乱世）', axes.length === 10
+  check('A9-1 十一轴齐（五基础+名人堂/兵法/觉醒/操练/乱世/战报）', axes.length === 11
     && ['hallKills','tacticLv','awaken','drill'].every(k => axes.some(a => a.key === k)));
   sA9.roster.liaohua.drill = 5; sA9.roster.mengda.drill = 3;
   sA9.hall.killsTotal = 3;
@@ -1657,6 +1657,29 @@ const storeP2 = freshStore(); storeP2.load();
   sSW.sweep.day = '2000-01-01';
   storeSW.checkDailyReset();
   check('SW5 跨日次数重置', storeSW.sweepInfo().left === 3);
+}
+
+
+// 战报成就轴（研讨会九 P2）：终身计数/旧档初始化/领取
+{
+  global.wx._map.delete(SAVE_KEY);
+  const storeRA = freshStore(); storeRA.load();
+  const sRA = storeRA.getState();
+  check('RA1 新档战报计数 0', sRA.replayCount === 0);
+  for (let i = 0; i < 3; i++) storeRA.saveReplay({ v: 1, mode: 'hall', ts: Date.now() + i, win: true, duration: 10 });
+  const ax = storeRA.achvInfo().axes.find(a => a.key === 'replay');
+  check('RA2 三次战报后首档可领', sRA.replayCount === 3 && ax.value === 3 && ax.tiers[0].claimable);
+  const c = storeRA.claimAchv('replay', 0);
+  check('RA3 战报档领取（铜钱）', c.ok && sRA.res.gold >= 10000);
+  // 环形淘汰不影响终身计数
+  for (let i = 0; i < 25; i++) storeRA.saveReplay({ v: 1, mode: 'arena', ts: Date.now() + 100 + i, win: false, duration: 5, diff: 1.35 });
+  check('RA4 环形淘汰 20 条但计数累计 28', sRA.replays.length === 20 && sRA.replayCount === 28);
+  // 旧档初始化：有战报无计数字段 → 以条数初始化
+  global.wx._map.set(SAVE_KEY, { v: 8, createdAt: 1, name: '主公', res: { gold: 1 }, roster: {},
+    replays: [{ v: 1, mode: 'hall', ts: 1, win: true, seat: 0, lineupName: 'x' }, { v: 1, mode: 'hall', ts: 2, win: true, seat: 1, lineupName: 'y' }] });
+  const storeRA2 = freshStore(); storeRA2.load();
+  check('RA5 旧档以现有条数初始化', storeRA2.getState().replayCount === 2);
+  global.wx._map.delete(SAVE_KEY);
 }
 
 console.log('\nsmoke: ' + passed + ' passed, ' + failed + ' failed');process.exit(failed ? 1 : 0);

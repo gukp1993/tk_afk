@@ -506,6 +506,10 @@ const TACTIC_ACHV = { name: '兵法', tiers: [1, 3, 6, 10, 15, 22, 30, 42, 60, 8
   rewards: [{gold:10000,shard:5},{gold:15000,shard:8},{gold:20000,shard:10},{gold:30000,shard:12},{gold:40000,shard:14},{gold:50000,shard:15},{shard:20,token:30,title:'兵法·研习者'},{shard:30,token:30,title:'兵法·大师'},{gem:2000,title:'兵法·宗师'},{gem:3000,frame:1}] };
 // 乱世成就轴（研讨会六 A1）：进度 = 161 关起的主线推进深度（cleared-160），
 // 奖励沿扩展轴 R2 裁决（禁 shard4/精铁/招募令直发）
+// 战报轴（研讨会九 P2）：终身战报数（环形缓冲清淘汰前的累计），旧档以当前条数初始化。
+// 沿『资源从简』裁决：只发称号/头像框为主，低档点缀小额铜钱。
+const REPLAY_ACHV = { name: '战报', tiers: [3, 10, 25, 50, 80, 120, 170, 230, 300, 400],
+  rewards: [{gold:10000},{gold:15000},{gold:20000},{gold:30000,title:'战报·录史'},{gold:40000},{shard:20,token:30,title:'战报·藏锋'},{shard:30,token:30,title:'战报·百战'},{gem:2000,title:'战报·千机'},{gem:3000,title:'战报·武库'},{gem:5000,frame:1}] };
 const CHAOS_ACHV = { name: '乱世', tiers: [5, 20, 45, 80, 130, 190, 260, 330, 380, 400],
   rewards: [{gold:10000,shard:5},{gold:15000,shard:8},{gold:20000,shard:10},{gold:30000,shard:12},{gold:40000,shard:14},{gold:50000,shard:15},{shard:20,token:30,title:'乱世·破军'},{shard:30,token:30,title:'乱世·伏虎'},{gem:2000,title:'乱世·天罡'},{gem:3000,frame:1}] };
 const DRILL_ACHV = { name: '操练', tiers: [5, 20, 45, 80, 130, 190, 260, 330, 380, 400],
@@ -559,7 +563,7 @@ export {
   MAX_LEVEL, PLAYER_LEVEL, BATTLE_XP, AUTO_BATTLE, FOOD_VALUE, DUPE_GOLD,
   goldCost, expCost, idleRates, IDLE_CAP_HOURS, GEM_IDLE, ARMORY_IRON_PER_HOUR,
   FAST_AD, FAST_PAID,
-  GACHA, factionBonus, FORMATION_ROWS, BATTLE, ARENA, DEFEAT_RX, REPLAYS, DRILL, SEVEN_DAY, FOURTEEN_DAY, DUNGEON, WEEKBOSS, BORROW, SWEEP, TUTORIAL_OFF, TUTORIALS, TRAINING_DAILY_CAP, BOUNTY, ROAMER_POOL, AD,
+  GACHA, factionBonus, FORMATION_ROWS, BATTLE, ARENA, DEFEAT_RX, REPLAYS, DRILL, SEVEN_DAY, FOURTEEN_DAY, DUNGEON, WEEKBOSS, BORROW, SWEEP, REPLAY_ACHV, TUTORIAL_OFF, TUTORIALS, TRAINING_DAILY_CAP, BOUNTY, ROAMER_POOL, AD,
   FIRST_STAGE_END, CAMPAIGN_DIFFICULTY, CAMPAIGN_MILESTONES, ELITE_STAGE, STAR_RULES, CHAPTER_STAR_CHESTS, DAILY_ELITE_CHEST,
   CAMPAIGN_MODS, BOSS_MODS, RETURN_GRANTS, SUMMON_TICKET, SUMMON_POINTS, FORGE, MOTIFS, MOTIF_COST, SMELT,
   CODEX_REWARDS, ACHV_AXES, ACHV_REWARDS, WEEKLY, HALL, AWAKEN, FORMATION_PRESETS_MAX, TACTIC, BATTLE_TACTICS, TACTIC_SR, HALL_ACHV, TACTIC_ACHV, AWAKEN_ACHV, DRILL_ACHV, CHAOS_ACHV, CHAOS_MILESTONES

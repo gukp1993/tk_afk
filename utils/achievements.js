@@ -33,6 +33,7 @@ function axisProgress(axis, state) {
       const cleared = (state.campaign && state.campaign.cleared) || 0;
       return Math.max(0, cleared - 160); // 乱世推进深度（161 关起计）
     }
+    case 'replay': return (state.replayCount) || 0; // 战报轴：终身战报计数
     default: return 0;
   }
 }
@@ -44,7 +45,8 @@ const EXTENDED_AXES = [
   { key: 'tacticLv', def: () => C.TACTIC_ACHV },
   { key: 'awaken', def: () => C.AWAKEN_ACHV },
   { key: 'drill', def: () => C.DRILL_ACHV },
-  { key: 'chaos', def: () => C.CHAOS_ACHV }
+  { key: 'chaos', def: () => C.CHAOS_ACHV },
+  { key: 'replay', def: () => C.REPLAY_ACHV }
 ];
 function achvInfo(state) {
   const claimed = (state.achv && state.achv.claimed) || {};

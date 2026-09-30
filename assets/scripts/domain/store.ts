@@ -55,6 +55,7 @@ function defaultState() {
     tutorial: { seen: {} },
     settings: { autoBattleSpeed: 1 },
     sweep: { day: '', used: 0 },
+    replayCount: 0,
     dungeon: { day: '', runs: 0, bestGold: 0, bestTrain: 0 },
     weekBoss: { weekId: '', attempts: 0, bestPct: 0, bestDamage: 0 },
     borrow: { day: '', heroId: null },
@@ -612,6 +613,7 @@ function saveReplay(record) {
   return withSavedMutation(() => {
     if (!Array.isArray(state.replays)) state.replays = [];
     state.replays.push(record);
+    state.replayCount = (state.replayCount || 0) + 1; // 战报轴终身计数（环形淘汰不影响）
     const max = (C.REPLAYS && C.REPLAYS.max) || 20;
     while (state.replays.length > max) {
       // 淘汰：tier 最大者中 ts 最小（同分保最旧），确定性
@@ -797,6 +799,8 @@ function normalizeState(s) {
   s.sevenDay.claimed = s.sevenDay.claimed.map(n => Math.floor(Number(n) || 0)).filter(n => n >= 1 && n <= 7);
   // 借将助战（研讨会五批次 1）：旧档缺省
   s.borrow = s.borrow || { day: '', heroId: null };
+  // 战报轴（研讨会九 P2）：旧档以当前条数初始化终身计数（不背填历史）
+  if (!Number.isFinite(s.replayCount)) s.replayCount = Array.isArray(s.replays) ? s.replays.length : 0;
   // 扫荡（研讨会九）：旧档缺省 + 次数钳位
   s.sweep = s.sweep || { day: '', used: 0 };
   s.sweep.used = Math.max(0, Math.floor(Number(s.sweep.used) || 0));
