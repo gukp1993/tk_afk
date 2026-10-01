@@ -411,6 +411,7 @@ export function journey(ctx: ScreenContext) {
       U.text('JourneyWeekBossText',`本周魔王 · ${wb.bossName} · 最高伤害 ${(wb.bestPct*100).toFixed(1)}% · 剩 ${wb.attemptsLeft} 次 ›`,0,-500,650,17,wb.attemptsLeft>0?GOLD:LIGHT);
       U.tap('JourneyWeekBossTap',0,-500,682,44,()=>ctx.go('weekboss'));
     }
+  firstTimeOverlay(ctx,'agenda');
   // 今日军务展开弹层（研讨会十二 C1）：11 条清单+勤勉进度+一键前往
   if(agendaOpen){
     const ag=store.dailyAgendaInfo();

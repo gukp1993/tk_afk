@@ -258,8 +258,8 @@ export function resultView(ctx: ScreenContext) {
         const u=names.find((n:any)=>n.uid===uid);
         return (u?u.name:uid)+' '+fmt.fmtNum(st.dmg);
       }).join(' · ');
-      U.text('ResultDPS','输出前三：'+dpsText+' · 详情 ›',0,-66,500,16,GOLD);
-      U.tap('ResultDPSTap',0,-66,540,30,()=>{battleDetailOpen=true;ctx.show('result');});
+      U.text('ResultDPS','输出前三：'+dpsText+' · 详情 ›',0,-68,500,16,GOLD);
+      U.tap('ResultDPSTap',0,-68,500,30,()=>{battleDetailOpen=true;ctx.show('result');});
     }
   }
   if(r&&r.replay){
