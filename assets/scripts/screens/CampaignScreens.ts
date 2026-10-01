@@ -381,6 +381,19 @@ export function journey(ctx: ScreenContext) {
     U.tap('JourneyWeeklyReplayTap',110,-330,240,34,()=>ctx.go('hall'));
     U.tap('JourneyWeeklyTap',0,-280,682,60,()=>ctx.go('expedition'));
     // 军屯双本入口（研讨会四 P2）
+    // 四方台入口（研讨会十二 A2）：周轮换阵营塔，占集市卡与悬赏卡间空白带
+    {
+      const q=store.quadTowerInfo();
+      if(q.enabled){
+        const qname=(config.FACTIONS as any)[q.faction]?.name||q.faction;
+        const qStat=q.owned>0?`已登 ${q.best}/${q.floors} · 本国可战 ${q.owned} 将 ›`:`本周${qname}台 · 暂无${qname}将（召唤/定向券可补）›`;
+        U.panel('QuadEntry',0,56,682,84,tone('#312218'),10,tone('#a17b40'));
+        U.text('QuadEntryGlyph','四',-272,71,59,49,GOLD);
+        U.text('QuadEntryName',`四方台 · ${qname}·${q.theme}`,-140,71,400,26,LIGHT);
+        U.text('QuadEntryStat',qStat,30,36,520,18,GOLD);
+        U.tap('QuadEntryTap',0,56,682,84,()=>ctx.go('quad' as any));
+      }
+    }
     // 今日军务折叠带（研讨会十二 C1）：单行入口，红点只挂可领取
     {
       const ag=store.dailyAgendaInfo();
@@ -1157,6 +1170,48 @@ export function expeditionView(ctx: ScreenContext) {
     }
   }
   firstTimeOverlay(ctx,'expedition');
+}
+
+
+// 四方台 · 阵营试炼塔（研讨会十二 A2）：周轮换阵营，仅本国将可上阵
+export function quadTowerView(ctx: ScreenContext) {
+  const U=ctx.ui,qi=store.quadTowerInfo();
+  ctx.title('四 方 台');
+  U.text('QuadBack','‹ 返回',-291,484,130,22,GOLD);
+  U.tap('QuadBackTap',-291,484,136,52,()=>ctx.back('journey'));
+  if(!qi.enabled){
+    U.text('QuadClosed','四方台暂未开放',0,200,600,20,LIGHT);
+    return;
+  }
+  const fname=(config.FACTIONS as any)[qi.faction]?.name||qi.faction;
+  U.panel('QuadSummary',0,400,682,110,tone('#3a2c17'),10,GOLD);
+  U.text('QuadTitle',`${fname} · ${qi.theme}`,-110,428,300,24,GOLD);
+  U.text('QuadSub',`已登 ${qi.best}/${qi.floors} · 每日解锁 5 层 · 本国可战 ${qi.owned} 将`,-100,396,360,16,LIGHT);
+  U.button('QuadGo',qi.best>=qi.floors?'本周已登顶':`挑 战 第 ${qi.best+1} 层`,244,400,172,60,()=>ctx.startBattle('quad',qi.best+1),qi.owned>0||qi.borrowUsable?GOLD:tone('#423022'));
+  U.text('QuadBorrow',qi.borrowUsable?`本周可借 ${qi.borrowName}·借（第 6 人，本国将）`:`本周借将非${fname}将 · 不可带入`,0,316,640,16,qi.borrowUsable?GOLD:tone('#7a6c52'));
+  U.text('QuadMile','5 层印信小奖 · 10 层大奖 · 15/30 层授称号',0,292,640,16,tone('#ad9977'));
+  const reward=(f:number)=>{
+    let txt=`铜钱 +${fmt.fmtNum(config.QUAD_TOWER.copper(f))}`;
+    if(f%5===0)txt+=` · 印信 +${config.QUAD_TOWER.smallMilestone.seals}`;
+    if(f%10===0)txt+=` · 铜钱 +${fmt.fmtNum(config.QUAD_TOWER.bigMilestone.gold)}`;
+    if(config.QUAD_TOWER.titles[f])txt+=` · 称号「${config.QUAD_TOWER.titles[f]}」`;
+    return txt;
+  };
+  const bossNameOf=(f:number)=>(config.QUAD_TOWER.bossPassives[f]&&config.QUAD_TOWER.bossPassives[f].name)||'';
+  U.scroll('QuadList',0,-100,688,660,30*92+16,(V)=>{
+    for(let f=1;f<=config.QUAD_TOWER.floors;f++){
+      const cleared=f<=qi.best,current=f===qi.best+1,locked=f>qi.best+1;
+      const y=(30*92+16)/2-40-(f-1)*92;
+      V.panel('QuadFloor'+f,0,y,656,80,cleared?tone('#26301f'):current?tone('#3a2c17'):tone('#171009'),8,cleared?tone('#6f8a5f'):current?GOLD:tone('#5a452a'));
+      V.text('QuadFloorNo'+f,`第 ${f} 层`,-246,y+14,140,20,cleared?tone('#a99778'):current?GOLD:LIGHT);
+      const bossNm=bossNameOf(f);
+      V.text('QuadFloorDesc'+f,current?(f%10===0?`名将层 · ${bossNm}`:'普通层'):'',-90,y+14,380,18,current?GOLD:cleared?tone('#a99778'):tone('#7a6c52'));
+      V.text('QuadFloorReward'+f,current?reward(f):cleared?'已通关 · 可复打（无奖励）':locked&&f>qi.unlocked?`周第 ${Math.ceil(f/config.QUAD_TOWER.dailyUnlock)} 日解锁`:'未开放',-90,y-16,460,15,current?tone('#d9b06a'):cleared?tone('#a99778'):tone('#8a7c5f'));
+      if(current)V.button('QuadFloorGo','出 战',244,y,172,56,()=>ctx.startBattle('quad',f),GOLD);
+    }
+  });
+  U.text('QuadRule','仅本周阵营武将可上阵 · 败北无损失 · 周一换国',0,-510,640,16,tone('#7a6c52'));
+  firstTimeOverlay(ctx,'quad');
 }
 
 let bountyPickIdx = -1;

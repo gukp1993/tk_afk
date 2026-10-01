@@ -1865,4 +1865,47 @@ const storeP2 = freshStore(); storeP2.load();
   C.DAILY_AGENDA.enabled = true;
 }
 
+// 四方台（研讨会十二 A2）：周轮换阵营塔
+{
+  global.wx._map.delete(SAVE_KEY);
+  const storeQ = freshStore(); storeQ.load();
+  const sQ = storeQ.getState();
+  const info = storeQ.quadTowerInfo();
+  check('Q1 轮换顺序严格周期', (() => {
+    const d = new Date(2026, 0, 5); // 锚周一
+    const facs = [0, 1, 2, 3, 4].map(off => {
+      const m = new Date(d.getTime() + off * 604800000);
+      const day = (m.getDay() + 6) % 7;
+      const monday = new Date(m.getFullYear(), m.getMonth(), m.getDate() - day);
+      const weeks = Math.floor((monday - d) / 604800000);
+      return C.QUAD_TOWER.order[((weeks % 4) + 4) % 4];
+    });
+    return facs.join(',') === 'shu,wei,wu,qun,shu';
+  })());
+  check('Q2 info 结构', info.enabled && info.floors === 30 && info.unlocked >= 5 && info.faction === storeQ.quadFactionOfWeek());
+  const anchor = 25;
+  const e1 = stages.makeQuadTowerEnemies(info.faction, info.weekId, anchor, 3);
+  check('Q3 敌阵 5 人全同阵营（小兵同国）', e1.units.length === 5 && e1.units.every(u => (u.hero ? u.hero.faction : u.faction) === info.faction));
+  const e1b = stages.makeQuadTowerEnemies(info.faction, info.weekId, anchor, 3);
+  check('Q4 同周同层确定性', JSON.stringify(e1) === JSON.stringify(e1b));
+  const e10 = stages.makeQuadTowerEnemies(info.faction, info.weekId, anchor, 10);
+  check('Q5 名将层全英雄+主将被动', e10.units.length === 5 && e10.units.every(u => u.hero) && e10.units[0].isBoss && Object.keys(e10.units[0].extraPassive).length > 0);
+  const e30 = stages.makeQuadTowerEnemies('wei', info.weekId, 100, 30);
+  check('Q6 魏国 30 层 3★ 主将最高稀有', e30.units.every(u => u.hero.faction === 'wei') && e30.units[0].star === 3);
+  // first 判定 + 结算
+  sQ.formation = ['liubei', 'guanyu', 'zhangfei', 'machao', 'liaohua'];
+  const rq = storeQ.beginBattle({ mode: 'quad', index: 1, referenceLevel: 20 });
+  check('Q7 首层开战 first', rq.ok && rq.first);
+  const r1 = storeQ.winQuadTower(1);
+  check('Q8 首通铜钱公式', r1.first && r1.gold === C.QUAD_TOWER.copper(1) && sQ.quadTower.best === 1);
+  // 逐层爬塔（first 仅 best+1）
+  for (let f = 2; f <= 15; f++) storeQ.winQuadTower(f);
+  check('Q9 爬塔后 best=15 且里程碑已发', sQ.quadTower.best === 15 && sQ.seals > 0);
+  const r1b = storeQ.winQuadTower(1);
+  check('Q10 复打已通层零奖励', r1b.first === false && r1b.gold === 0);
+  check('Q11 15 层称号「四方先锋」', sQ.titles.indexOf('四方先锋') >= 0);
+  // 存档兼容：normalize 后 v 仍 8
+  check('Q12 旧档 quadTower 兜底且 v8', sQ.v === 8 && typeof sQ.quadTower.weekId === 'string');
+}
+
 console.log('\nsmoke: ' + passed + ' passed, ' + failed + ' failed');process.exit(failed ? 1 : 0);

@@ -182,6 +182,30 @@ const SWEEP = { enabled: true, daily: 3 };
 // 每日 Boss 首杀（2026-10-01 研讨会十一 S3）：每日首个 Boss 系内容（名将/精锐/Boss/周Boss）胜利
 // 发固定小额铜钱+三选一（碎片3/招募令1/元宝30），量级对齐精锐日宝箱。
 // 无精铁、无每胜元宝；各模式共享每日一次。回退：enabled=false。
+// 四方台 · 阵营试炼塔（研讨会十二候选池 A2，规格代理定稿）：周轮换蜀→魏→吴→群，
+// 仅本周阵营武将可上阵（战斗时过滤编队，不动玩家阵型），30 层/周每日解锁 5 层。
+// 奖励只发铜钱+印信小额+两永久称号——0 精铁/0 招募令/0 元宝/0 SSR 卡（铜钱满清 ≈周收入 6.7%<10% 自查）。
+// 回退旋钮：enabled=false 三处收口（beginBattle 门/玩法页入口/试炼页）。
+const QUAD_TOWER = {
+  enabled: true,
+  order: ['shu', 'wei', 'wu', 'qun'],
+  themes: { shu: '汉中之战', wei: '官渡之战', wu: '赤壁之战', qun: '虎牢关' },
+  floors: 30,
+  dailyUnlock: 5,
+  k: 0.80,
+  overrides: {},
+  copper: (f) => 4000 + 700 * f,
+  smallMilestone: { every: 5, seals: 6 },
+  bigMilestone: { every: 10, seals: 12, gold: 80000 },
+  titles: { 15: '四方先锋', 30: '四方都督' },
+  bossPassives: {
+    10: { name: '虎卫结阵', passive: { armoryStartShield: 0.25 } },
+    20: { name: '先登陷阵', passive: { firstEnergy: 40 } },
+    30: { name: '不死再起', passive: { cheatRevivePct: 0.3 } }
+  },
+  soldierOf: { wei: 'weiwu', shu: 'baier', wu: 'jingzhou', qun: 'huangjin' }
+};
+
 // 今日军务（研讨会十二 Top3-C1）：只读聚合清单+勤勉计数。零经济：仅 30 天称号，不动任何数值锚。
 // 回退旋钮：enabled=false 隐入口（store 返回空结构、UI 不渲染）。
 const DAILY_AGENDA = {
@@ -638,7 +662,7 @@ export {
   goldCost, expCost, idleRates, IDLE_CAP_HOURS, GEM_IDLE, ARMORY_IRON_PER_HOUR,
   FAST_AD, FAST_PAID,
   GACHA, factionBonus, FORMATION_ROWS, BATTLE, ARENA, DEFEAT_RX, REPLAYS, DRILL, SEVEN_DAY, FOURTEEN_DAY, DUNGEON, WEEKBOSS, BORROW, SWEEP, REPLAY_ACHV, TUTORIAL_OFF, TUTORIALS, TRAINING_DAILY_CAP, BOUNTY, ROAMER_POOL, AD,
-  FIRST_STAGE_END, CAMPAIGN_DIFFICULTY, CAMPAIGN_MILESTONES, ELITE_STAGE, STAR_RULES, CHAPTER_STAR_CHESTS, DAILY_ELITE_CHEST, DAILY_BOSS_CHEST, DAILY_AGENDA,
+  FIRST_STAGE_END, CAMPAIGN_DIFFICULTY, CAMPAIGN_MILESTONES, ELITE_STAGE, STAR_RULES, CHAPTER_STAR_CHESTS, DAILY_ELITE_CHEST, DAILY_BOSS_CHEST, DAILY_AGENDA, QUAD_TOWER,
   CAMPAIGN_MODS, BOSS_MODS, RETURN_GRANTS, SUMMON_TICKET, SUMMON_POINTS, FORGE, MOTIFS, MOTIF_COST, SMELT,
   CODEX_REWARDS, ACHV_AXES, ACHV_REWARDS, WEEKLY, HALL, AWAKEN, FORMATION_PRESETS_MAX, TACTIC, BATTLE_TACTICS, TACTIC_SR, HALL_ACHV, TACTIC_ACHV, AWAKEN_ACHV, DRILL_ACHV, CHAOS_ACHV, CHAOS_MILESTONES, AFFIX_SETS, EXPEDITION_MUTATORS, EXPEDITION_BOONS
 };

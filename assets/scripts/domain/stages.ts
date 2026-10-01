@@ -183,6 +183,52 @@ function makeTowerEnemies(floor) {
   return { name: '群英塔 · 第' + floor + '层', units, isBoss: floor % 5 === 0 };
 }
 
+// 四方台（研讨会十二 A2）：阵营试炼塔敌阵。同阵营将池+阵营小兵，周键+层数确定性；
+// 曲线锚定主线进度（anchor=clamp(cleared,10,120)），k 已计敌方满编同阵营光环 ≈13.5% 实效。
+function makeQuadTowerEnemies(faction, weekId, anchor, floor) {
+  const C = __domain_config;
+  const cfg = C.QUAD_TOWER;
+  const heroes = __domain_heroes;
+  const soldiers = __domain_soldiers;
+  const pool = heroes.HEROES.filter(h => h.faction === faction);
+  const rng = __domain_rng.makeRng(String(weekId) + ':' + faction + ':' + floor);
+  const lv = Math.max(1, Math.round(2 + (anchor + floor - 1) * 1.8));
+  const star = Math.min(3, Math.floor(floor / 10));
+  const isBoss = floor % 10 === 0;
+  const kMul = (cfg.overrides && cfg.overrides[floor]) || 1;
+  const k = cfg.k * (isBoss ? 1.2 : 0.9) * kMul;
+  const shuffled = rng.shuffle(pool.map(h => h.id));
+  let picks;
+  if (isBoss) {
+    // 名将层：主将取该阵营最高稀有度，其余洗牌补满 5 将
+    const top = pool.slice().sort((a, b) => b.rarity - a.rarity)[0];
+    picks = [top.id].concat(shuffled.filter(id => id !== top.id).slice(0, 4));
+  } else {
+    picks = shuffled.slice(0, 4);
+  }
+  const units = [];
+  picks.forEach((id, i) => {
+    const h = heroes.getHero(id);
+    units.push({
+      hero: h, level: lv, star,
+      scale: k * (isBoss && i === 0 ? 1.2 : 0.9),
+      isBoss: isBoss && i === 0, row: i <= 2 ? 0 : 1,
+      extraPassive: isBoss && i === 0 ? (cfg.bossPassives[floor] && cfg.bossPassives[floor].passive) || {} : {}
+    });
+  });
+  if (!isBoss) {
+    // 非名将层第 5 槽换本阵营小兵（后排末位）
+    const sol = soldiers.makeSoldier(cfg.soldierOf[faction], lv, false);
+    sol.row = 1;
+    units.push(sol);
+  }
+  const boss = isBoss ? cfg.bossPassives[floor] : null;
+  return {
+    name: '四方 · ' + cfg.themes[faction] + ' · 第' + floor + '层' + (boss ? ' · ' + boss.name : ''),
+    units, isBoss, faction
+  };
+}
+
 // 周常 Boss（研讨会四 P3）：每周键哈希选一名 SSR 名将 ×bossScale 强度，单体镇场
 function makeWeekBossEnemies(weekId, playerLevel) {
   const heroes = __domain_heroes.HEROES;
@@ -273,4 +319,4 @@ function buildReinforceUnits(globalStage, chapterFoes, lv, star, baseScale) {
     };
   });
 }
-export { CHAPTERS, STAGES_PER_CH, stageScale, chapterOf, isEliteStage, stageStars, resolveMods, stageBattleEffects, buildReinforceUnits, makeHallEnemies, hallStars, hallWeeklyLineups, makeStageEnemies, makeTowerEnemies, makeArenaEnemies, makePracticeEnemies, makeDungeonEnemies, makeWeekBossEnemies };
+export { CHAPTERS, STAGES_PER_CH, stageScale, chapterOf, isEliteStage, stageStars, resolveMods, stageBattleEffects, buildReinforceUnits, makeHallEnemies, hallStars, hallWeeklyLineups, makeStageEnemies, makeTowerEnemies, makeArenaEnemies, makePracticeEnemies, makeDungeonEnemies, makeWeekBossEnemies, makeQuadTowerEnemies };

@@ -42,6 +42,7 @@ function defaultState() {
     campaign: { cleared: 0, storySeen: {}, milestones: {}, retroGrants: null, retroGrantsSeen: false, stars: {}, starChests: {} },
     tower: { best: 0 },
     arena: { points: 1000, wins: 0, losses: 0, attempts: C.ARENA.DAILY, rankReached: {}, weekKey: '', weekRankReached: {}, lastFirstWinDay: null },
+    quadTower: { weekId: '', best: 0 },
     armory: createArmory(),
     idle: { last: Date.now(), gold: 0, gem: 0, scroll: 0, ironAcc: 0 },
     gemDay: { day: F.todayStr(), claimedGem: 0 },
@@ -326,6 +327,7 @@ function checkWeeklyReset(today) {
     state.arena.weekKey = weekKey;
     state.arena.weekRankReached = {};
   }
+  if (state.quadTower && state.quadTower.weekId !== weekKey) state.quadTower = { weekId: weekKey, best: 0 };
   if (state.week && state.week.weekId === weekKey) return;
   state.week = {
     weekId: weekKey,
@@ -637,6 +639,64 @@ function replaysInfo() {
 // 远征无限层：敌人=塔生成器锚定主线进度 + 当周词缀 + 层数递增倍率（无上限）
 
 
+// —— 四方台（研讨会十二 A2）——
+// 周轮换阵营：以 2026-01-05（周一）为锚的整周数对 4 取模 → 蜀→魏→吴→群 严格周期
+function quadFactionOfWeek() {
+  const cfg = C.QUAD_TOWER;
+  const d = new Date();
+  const day = (d.getDay() + 6) % 7;
+  const monday = new Date(d.getFullYear(), d.getMonth(), d.getDate() - day);
+  const anchor = new Date(2026, 0, 5);
+  const weeks = Math.floor((monday - anchor) / 604800000);
+  const idx = ((weeks % cfg.order.length) + cfg.order.length) % cfg.order.length;
+  return cfg.order[idx];
+}
+function quadTowerInfo() {
+  checkDailyReset();
+  const cfg = C.QUAD_TOWER;
+  const faction = quadFactionOfWeek();
+  const best = (state.quadTower && state.quadTower.best) || 0;
+  const dayIdx = (new Date().getDay() + 6) % 7;
+  const unlocked = Math.min(cfg.floors, (dayIdx + 1) * cfg.dailyUnlock);
+  const owned = Object.keys(state.roster || {}).filter(id => { const h = H.getHero(id); return h && h.faction === faction; }).length;
+  let borrowUsable = false, borrowName = '';
+  try {
+    const bi = borrowInfo();
+    if (bi.active) { const h = H.getHero(bi.active); borrowUsable = !!h && h.faction === faction; borrowName = h ? h.name : ''; }
+    else if (bi.heroId) { const h = H.getHero(bi.heroId); borrowUsable = !!h && h.faction === faction; borrowName = h ? h.name : ''; }
+  } catch (e) { /* 旧档缺借将字段 */ }
+  return {
+    enabled: !!(cfg && cfg.enabled), faction,
+    theme: cfg.themes[faction], weekId: (state.week && state.week.weekId) || '',
+    best, floors: cfg.floors, unlocked, owned, borrowUsable, borrowName,
+    copper: cfg.copper, titles: cfg.titles
+  };
+}
+function winQuadTower(floor) {
+  const cfg = C.QUAD_TOWER;
+  const reward = { mode: 'quad', floor, gold: 0, seals: 0, milestoneGold: 0, first: false, title: null };
+  if (!state.quadTower) state.quadTower = { weekId: (state.week && state.week.weekId) || '', best: 0 };
+  if (floor === (state.quadTower.best || 0) + 1) {
+    reward.first = true;
+    state.quadTower.best = floor;
+    reward.gold = cfg.copper(floor);
+    state.res.gold += reward.gold;
+    if (floor % cfg.smallMilestone.every === 0) reward.seals += cfg.smallMilestone.seals;
+    if (floor % cfg.bigMilestone.every === 0) {
+      reward.seals += cfg.bigMilestone.seals;
+      reward.milestoneGold = cfg.bigMilestone.gold;
+      state.res.gold += reward.milestoneGold;
+    }
+    if (reward.seals) state.seals = (state.seals || 0) + reward.seals; // 不入 week.sealsEarned：周活跃节奏维持审计口径
+    const t = cfg.titles[floor];
+    if (t) {
+      state.titles = state.titles || [];
+      if (state.titles.indexOf(t) < 0) { state.titles.push(t); reward.title = t; }
+    }
+  }
+  return reward;
+}
+
 // —— 今日军务（研讨会十二 C1）：纯读评估器，直接读裸字段不调 info() 防递归/双口径 ——
 function agendaEntriesRaw(st) {
   const cfg = C.DAILY_AGENDA;
@@ -940,6 +1000,9 @@ function normalizeState(s) {
   s.arena.weekRankReached = s.arena.weekRankReached || {};
     if (s.arena.lastFirstWinDay === undefined) s.arena.lastFirstWinDay = null;
     if (!Number.isFinite(s.agendaDays)) s.agendaDays = 0;
+    s.quadTower = s.quadTower || { weekId: '', best: 0 };
+    if (typeof s.quadTower.weekId !== 'string') s.quadTower.weekId = '';
+    s.quadTower.best = Math.max(0, Math.min((C.QUAD_TOWER && C.QUAD_TOWER.floors) || 30, Math.floor(Number(s.quadTower.best) || 0)));
   s.sevenDay = s.sevenDay || { start: F.todayStr(), claimed: [] };
   if (!Array.isArray(s.sevenDay.claimed)) s.sevenDay.claimed = [];
   s.sevenDay.claimed = s.sevenDay.claimed.map(n => Math.floor(Number(n) || 0)).filter(n => n >= 1 && n <= 7);
@@ -2547,6 +2610,13 @@ function beginBattle(spec) {
     if (state.arena.attempts <= 0) return { ok: false, msg: '今日演武次数不足' };
     state.arena.attempts -= 1;
   }
+  if (spec.mode === 'quad') {
+    if (!C.QUAD_TOWER || !C.QUAD_TOWER.enabled) return { ok: false, msg: '四方台未开放' };
+    const info = quadTowerInfo();
+    if (spec.index < 1 || spec.index > (C.QUAD_TOWER.floors || 30)) return { ok: false, msg: '层数无效' };
+    if (spec.index > (state.quadTower.best || 0) + 1) return { ok: false, msg: '需先通过第 ' + ((state.quadTower.best || 0) + 1) + ' 层' };
+    if (spec.index > info.unlocked && spec.index > (state.quadTower.best || 0)) return { ok: false, msg: '第 ' + spec.index + ' 层明日解锁（每日 +5 层）' };
+  }
   if (spec.mode === 'weekboss') {
     if (!C.WEEKBOSS || !C.WEEKBOSS.enabled) return { ok: false, msg: '魔王讨伐未开放' };
     const wbInfo = weekBossInfo();
@@ -2572,6 +2642,7 @@ function beginBattle(spec) {
   const first = mode === 'campaign' ? index === state.campaign.cleared + 1
     : mode === 'tower' ? index === state.tower.best + 1
     : mode === 'expedition' ? index === ((state.week && state.week.trial.best) || 0) + 1
+    : mode === 'quad' ? index === ((state.quadTower && state.quadTower.best) || 0) + 1
     : mode === 'dungeon' ? index === ((spec.dungeonKind === 'train' ? state.dungeon.bestTrain : state.dungeon.bestGold) || 0) + 1 : false;
   state.battle.pending = {
     id, mode, index,
@@ -2621,6 +2692,7 @@ function battleXP(pending, win) {
   if (pending.mode === 'arena') return Math.floor(base * C.BATTLE_XP.arenaWin);
   if (pending.mode === 'dungeon') return 0;
   if (pending.mode === 'weekboss') return 0;
+  if (pending.mode === 'quad') return 0; // 四方台零经验（A2 败北/胜利都不给，不碰经验溢出裁决）
   if (pending.mode === 'training') {
     // 练兵经验每日上限：前 N 场全额，之后 0（切断"无限练兵=免费等级"）
     const done = (state.daily.trainingWins || 0);
@@ -2660,6 +2732,8 @@ function settleBattle(battleId, outcome) {
       if (win) reward = winTower(pending.index);
     } else if (pending.mode === 'expedition') {
       if (win) reward = winExpedition(pending.index);
+    } else if (pending.mode === 'quad') {
+      if (win) reward = winQuadTower(pending.index);
     } else if (pending.mode === 'hall') {
       reward = { seat: pending.index, lineupId: pending.hallLineup ? pending.hallLineup.id : null, stars: 0, hallReward: null };
       if (win) {
@@ -3281,7 +3355,7 @@ export {
   exchangeQualityShard, qualityShardInfo, drillInfo, drillHero,
   getFormationCalc, setFormationSlot, applyFormation, formationFactionBonus, teamPower, playerUnits, enemyUnits, activeBonds, bondMods, bondComboMods,
   getArmoryBonuses, getArmoryState, armoryUnlock, armorySelect, armoryUpgrade, armoryUpgradeToNode, armoryClaimBox, grantArmoryItem, applyArmoryRecommendations, armoryAffixBadges, forgeInfo, forgeReroll, forgeSetDir, forgeToggleLock, forgeGateOpen, motifInfo, motifActivate, smeltInfo, smeltMelt, smeltCombine,
-  codexInfo, claimCodex, useUniversalSr, achvInfo, claimAchv, weekInfo, claimWeekQuest, claimWeekActive, buyWeekly, makeExpeditionFloor, bumpWeek, dailyAgendaInfo, weekMutatorIds, expeditionBoonOffer, pickExpeditionBoon, expeditionBoonMods, beginHall, winHall, hallInfo, saveReplay, replaysInfo, awakenInfo, awakenHero, formationPresetsInfo, saveFormationPreset, applyFormationPreset, delFormationPreset, tacticInfo, tacticUpgrade,
+  codexInfo, claimCodex, useUniversalSr, achvInfo, claimAchv, weekInfo, claimWeekQuest, claimWeekActive, buyWeekly, makeExpeditionFloor, bumpWeek, dailyAgendaInfo, quadFactionOfWeek, quadTowerInfo, winQuadTower, weekMutatorIds, expeditionBoonOffer, pickExpeditionBoon, expeditionBoonMods, beginHall, winHall, hallInfo, saveReplay, replaysInfo, awakenInfo, awakenHero, formationPresetsInfo, saveFormationPreset, applyFormationPreset, delFormationPreset, tacticInfo, tacticUpgrade,
   migrateSaveV1, migrateSaveV2, migrateSaveV3, migrateSaveV4, migrateSaveV5, migrateSaveV6, migrateSaveV7, normalizeState,
   idlePending, idleTick, gemQuotaInfo, claimIdle, claimIdleInternal, fastReward, fastRewardMutation, fastRewardAdMutation, adReward,
   doSummon, rollRarity, pickHeroOfRarity, summonPityInfo, setSummonFocus, summonTicketInfo, summonPointsInfo, claimSummonPoints, useUniversalSsr,
