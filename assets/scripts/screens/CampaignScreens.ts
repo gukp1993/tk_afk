@@ -1034,6 +1034,12 @@ export function expeditionView(ctx: ScreenContext) {
   var reached=msList.filter(function(m){return bestFloor>=m.floor;}).length;
   U.text('ExpTrialMs','里程碑 '+reached+'/'+msList.length,0,310,640,15,tone('#d9b06a'));
   U.button('ExpTrialGo','挑 战 第 '+nextFloor+' 层',0,246,500,58,function(){ctx.startBattle('expedition',nextFloor);},GOLD);
+  // 个人周报（研讨会十 D2）：本周战斗概要一行
+  {
+    const wr=store.weeklyReport();
+    U.text('ExpWeekly','本周：胜 '+wr.wins+' 场 · 推图 +'+wr.stagesCleared+' · 塔 '+wr.towerBest+' 层 · 演武胜 '+wr.arenaWins,0,208,640,15,tone('#a99778'));
+    if(wr.topHeroes.length)U.text('ExpWeeklyTop','常用：'+wr.topHeroes.join(' · '),0,192,640,14,tone('#8a7c5f'));
+  }
   // 周活跃宝箱（试玩 P1 修补：规则侧已有 claimWeekActive，此前无 UI 入口）
   U.text('ExpActiveTitle','周活跃宝箱 · 按本周累计印信领额外印信',0,200,640,18,LIGHT);
   (w.active as any[]).forEach((a:any,i:number)=>{

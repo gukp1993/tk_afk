@@ -47,6 +47,7 @@ function defaultState() {
     dungeon: { day: '', runs: 0, bestGold: 0, bestTrain: 0 },
     weekBoss: { weekId: '', attempts: 0, bestPct: 0, bestDamage: 0 },
     borrow: { day: '', heroId: null },
+    heroUse: {},
     bounty: { day: '', list: [] },
     roamer: { day: '', ids: [], bought: {} },
     vouchers: { sr: 0, ssr: 0 },
@@ -787,6 +788,7 @@ function normalizeState(s) {
   s.sevenDay.claimed = s.sevenDay.claimed.map(n => Math.floor(Number(n) || 0)).filter(n => n >= 1 && n <= 7);
   // 借将助战（研讨会五批次 1）：旧档缺省
   s.borrow = s.borrow || { day: '', heroId: null };
+  s.heroUse = s.heroUse || {};
   // 战报轴（研讨会九 P2）：旧档以当前条数初始化终身计数（不背填历史）
   if (!Number.isFinite(s.replayCount)) s.replayCount = Array.isArray(s.replays) ? s.replays.length : 0;
   // 扫荡（研讨会九）：旧档缺省 + 次数钳位
@@ -2491,6 +2493,9 @@ function settleBattle(battleId, outcome) {
       reward = arenaFight(win, pending.diff, true);
     }
     if (win) { bumpQuest('q_battle1', 1); bumpQuest('q_win3', 1); bumpWeek('wins', 1); }
+    // 个人周报（研讨会十 D2）：战斗后计数上阵武将出场
+    state.heroUse = state.heroUse || {};
+    (state.formation || []).forEach(hid => { if (hid) state.heroUse[hid] = (state.heroUse[hid] || 0) + 1; });
     if (pending.mode === 'tower') bumpQuest('q_tower1', 1);
     if (pending.mode === 'training' && win) state.daily.trainingWins = (state.daily.trainingWins || 0) + 1;
     const xp = battleXP(pending, win);
@@ -2794,6 +2799,33 @@ function diagSnapshot() {
   };
 }
 
+// 个人周报（研讨会十 D2）：本周战斗/推图/常用将聚合，只读派生零经济
+function weeklyReport() {
+  checkDailyReset();
+  const w = state.week || { counters: {} };
+  const c = w.counters || {};
+  const battles = (c.wins || 0) + Math.max(0, (state.arena.wins || 0) - (state.lastWeekArenaWins || 0));
+  const hu = state.heroUse || {};
+  const top = Object.entries(hu).sort((a, b) => b[1] - a[1]).slice(0, 3)
+    .map(([id, n]) => { const d = H.getHero(id); return d ? d.name + '×' + n : ''; }).filter(Boolean);
+  const best = Object.keys(state.roster || {}).map(id => ({ id, p: effectiveLevel(id) ? Math.floor(Math.pow((state.roster[id].star + 1) * (effectiveLevel(id)), 1.35) * 50) : 0 }))
+    .sort((a, b) => b.p - a.p).slice(0, 1);
+  return {
+    weekId: w.weekId || '',
+    wins: c.wins || 0,
+    stagesCleared: c.stages || 0,
+    towerBest: (state.tower && state.tower.best) || 0,
+    arenaWins: c.arenaWins || 0,
+    bountySent: c.bounty || 0,
+    summons: c.summons || 0,
+    sealsEarned: w.sealsEarned || 0,
+    replayCount: state.replayCount || 0,
+    topHeroes: top,
+    strongest: best.length ? (H.getHero(best[0].id) || {}).name || '' : '',
+    totalHeroes: Object.keys(state.roster || {}).length
+  };
+}
+
 // 导航红点（研讨会七 P1）：只读判定各入口是否有「可领取」内容。
 // 刻意只挂可领取类（任务/宝箱/悬赏/成就/周任务），不挂「次数未用完」——防红点焦虑。
 // 与真实领取条件同源（复用各 info 函数），避免双口径漂移。
@@ -3043,7 +3075,7 @@ module.exports = {
   winCampaign, campaignRewardPreview, winTower, arenaFight, arenaSeasonInfo, arenaBoardInfo, summonGapInfo, beginBattle, settleBattle, campaignStarChestInfo, claimStarChests,
   markStorySeen, isStorySeen, retroGrants, dismissRetroGrants, dismissReturnPending,
   questList, claimQuest, activePoints, claimActiveChest, claimAllDailyRewards, claimFreeRewards, bumpQuest, applyReward,
-  sevenDayInfo, claimSevenDay, fourteenDayInfo, claimFourteenDay, tutorialSeen, markTutorialSeen, resetTutorials, dungeonInfo, weekBossInfo, beginWeekBoss, borrowInfo, borrowHero, dismissBorrow, diagSnapshot, navBadges, sweepInfo, canSweep, sweepStage, sweepStageRewards, bountyInfo, bountyPayout, dispatchBounty, claimBounty, roamerInfo, buyRoamer, takeBountyGrantsNotice,
+  sevenDayInfo, claimSevenDay, fourteenDayInfo, claimFourteenDay, tutorialSeen, markTutorialSeen, resetTutorials, dungeonInfo, weekBossInfo, beginWeekBoss, borrowInfo, borrowHero, dismissBorrow, diagSnapshot, navBadges, weeklyReport, sweepInfo, canSweep, sweepStage, sweepStageRewards, bountyInfo, bountyPayout, dispatchBounty, claimBounty, roamerInfo, buyRoamer, takeBountyGrantsNotice,
   interruptBattle, setAutoBattleSpeed,
   buyGood, CURRENCY_NAME,
   adCount, adBump
