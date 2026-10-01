@@ -1102,6 +1102,21 @@ function getArmoryBonuses() {
       Object.keys(mb).forEach(k => { out[k] = (out[k] || 0) + mb[k]; });
     }
   }
+  // 词条套装（研讨会十一 S2）：紫词条计数派生组合奖励
+  if (C.AFFIX_SETS) {
+    const pbs = {};
+    Object.keys(state.armory.affixes || {}).forEach(sl => {
+      const fx = state.armory.affixes[sl];
+      if (!fx || !fx.slots) return;
+      fx.slots.forEach(a => { if (a && a.tier === 2 && a.stat) pbs[a.stat] = (pbs[a.stat] || 0) + 1; });
+    });
+    C.AFFIX_SETS.forEach(st => {
+      if ((pbs[st.stat] || 0) >= st.need) {
+        const bk = st.id === 'daoyi' ? 'critDmg' : st.id === 'budong' ? 'recvHeal' : 'energyGain';
+        out[bk] = (out[bk] || 0) + st.bonus;
+      }
+    });
+  }
   return out;
 }
 function getArmoryState() {

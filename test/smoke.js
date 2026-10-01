@@ -1721,4 +1721,22 @@ const storeP2 = freshStore(); storeP2.load();
   check('R30-3 冷却 7 天内不重复触发', sR30.returnPending === null || sR30.returnPending === undefined);
 }
 
+
+// 词条套装（研讨会十一 S2）：紫词条计数派生组合奖励
+{
+  const storeAS = freshStore(); storeAS.load();
+  const sAS = storeAS.getState();
+  sAS.armory.affixes = {};
+  check('AS1 无紫词条无套装加成', (() => { const b = storeAS.getArmoryBonuses(); return (b.critDmg || 0) === 0; })());
+  sAS.armory.affixes.weapon = { dir: 'atk', slots: [
+    { stat: 'critDmg', name: '暴伤', tier: 2, val: 0.14 },
+    { stat: 'critDmg', name: '暴伤2', tier: 2, val: 0.14 }
+  ], pity: [0, 0], lock: [false, false] };
+  const b1 = storeAS.getArmoryBonuses();
+  check('AS2 双紫暴伤触发刀意套装 (+0.04)', (b1.critDmg || 0) >= 0.04);
+  sAS.armory.affixes.weapon.slots[1] = { stat: 'vamp', name: '吸血', tier: 2, val: 0.05 };
+  const b2 = storeAS.getArmoryBonuses();
+  check('AS3 单紫不触发刀意（0.14=基础值，无 +0.04 套装）', Math.abs((b2.critDmg || 0) - 0.14) < 0.001);
+}
+
 console.log('\nsmoke: ' + passed + ' passed, ' + failed + ' failed');process.exit(failed ? 1 : 0);

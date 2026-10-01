@@ -399,6 +399,18 @@ const FORGE = {
 
 // 阵图（评审团裁决版）：账号级三选一、切换免费；件数=指定部位中 3★ 数（5★ 计满档）。
 // 激活 250/张（铜钱可抵 50%，1 精铁=40 铜钱）；效果量级 ≤ 名器单件，防"套装>一切"。
+// 词条套装（2026-10-01 研讨会十一 S2）：紫词条计数派生组合奖励（不动单条数值）。
+// 量级 ≤ 一条紫词条的 1/3（沿 MOTIFS『套装>一切』防线）；只读派生不改存档。
+const AFFIX_SETS = [
+  { id: 'daoyi', name: '刀意', need: 2, stat: 'critDmg', bonus: 0.04,
+    desc: '任意槽位 2 条暴伤紫词条 → 全军暴伤 +4%' },
+  { id: 'budong', name: '不动', need: 2, stat: 'directDR', bonus: 0.05,
+    desc: '任意槽位 2 条直接减伤紫词条 → 全军受疗 +5%' },
+  { id: 'benlei', name: '奔雷', need: 2, stat: 'energyGain', bonus: 0.02,
+    desc: '任意槽位 2 条怒气获取紫词条 → 开场怒气 +2' }
+];
+
+// 新手首见浮层（2026-09-30 研讨会四 P1）
 const MOTIFS = [
   { id: 'huxiao', name: '虎啸阵', slots: ['weapon', 'seal', 'helm', 'jade'],
     two: { crit: 0.02 }, four: { atk: 0.03 }, maxed: { critDmg: 0.10 },
@@ -565,5 +577,5 @@ module.exports = {
   GACHA, factionBonus, FORMATION_ROWS, BATTLE, ARENA, DEFEAT_RX, REPLAYS, DRILL, SEVEN_DAY, FOURTEEN_DAY, DUNGEON, WEEKBOSS, BORROW, SWEEP, REPLAY_ACHV, TUTORIAL_OFF, TUTORIALS, TRAINING_DAILY_CAP, BOUNTY, ROAMER_POOL, AD,
   FIRST_STAGE_END, CAMPAIGN_DIFFICULTY, CAMPAIGN_MILESTONES, ELITE_STAGE, STAR_RULES, CHAPTER_STAR_CHESTS, DAILY_ELITE_CHEST,
   CAMPAIGN_MODS, BOSS_MODS, RETURN_GRANTS, SUMMON_TICKET, SUMMON_POINTS, FORGE, MOTIFS, MOTIF_COST, SMELT,
-  CODEX_REWARDS, ACHV_AXES, ACHV_REWARDS, WEEKLY, HALL, AWAKEN, FORMATION_PRESETS_MAX, TACTIC, BATTLE_TACTICS, TACTIC_SR, HALL_ACHV, TACTIC_ACHV, AWAKEN_ACHV, DRILL_ACHV, CHAOS_ACHV, CHAOS_MILESTONES
+  CODEX_REWARDS, ACHV_AXES, ACHV_REWARDS, WEEKLY, HALL, AWAKEN, FORMATION_PRESETS_MAX, TACTIC, BATTLE_TACTICS, TACTIC_SR, HALL_ACHV, TACTIC_ACHV, AWAKEN_ACHV, DRILL_ACHV, CHAOS_ACHV, CHAOS_MILESTONES, AFFIX_SETS
 };
