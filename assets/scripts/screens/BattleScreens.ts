@@ -279,7 +279,14 @@ export function resultView(ctx: ScreenContext) {
   if(r&&r.replay){
     U.button('ResultCloseReplay','关闭回放',0,-165,478,59,()=>ctx.go('hall'),tone('#3a2b20'));
   } else {
-    U.button('ResultShare','分享',-139,-228,232,53,()=>{const st2=stages.makeStageEnemies(ctx.battleIndex);ctx.shareResult('我在挂机定三国打到第'+ctx.battleIndex+'关·'+(st2.name||'')+'！');},tone('#5a7a4c'));
+    U.button('ResultShare','传 檄',-139,-228,232,53,()=>{
+      const st2=stages.makeStageEnemies(ctx.battleIndex);
+      const vanguard=((ctx.lastBattleSnapshot||[]).filter((u:any)=>u.side==='A').slice(0,2).map((u:any)=>u.name.replace('·义',''))) .join('、')||'众将';
+      const title=`讨伐檄文 · 已克 ${ctx.battleIndex} 关 · ${vanguard}为先驱，邀同袍共讨国贼`;
+      const ci=(store as any).companionInfo();
+      ctx.shareResult(title,'t=xw&c='+ci.code+'&s='+ctx.battleIndex);
+      (store as any).companionMarkSent();
+    },tone('#5a7a4c'));
   U.button('ResultBack','返回',-139,-165,232,59,()=>ctx.go(returnPage(ctx)),tone('#3a2b20'));
     U.button('ResultRetry','再战',139,-165,232,59,()=>ctx.battleMode==='arena'?ctx.startArenaBattle(ctx.battleDiff,ctx.battleArenaSeed):ctx.startBattle(ctx.battleMode,ctx.battleIndex,ctx.battleDiff),tone('#3a2b20'));
   }

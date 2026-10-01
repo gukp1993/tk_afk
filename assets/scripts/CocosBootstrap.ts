@@ -242,11 +242,13 @@ export class CocosBootstrap extends Component implements ScreenContext {
   }
   private ccColor() { return Color; }
   /** 分享战绩（研讨会十 S1）：wx.shareAppMessage 被动分享，不发奖励（合规）。 */
-  public shareResult(title: string) {
+  public shareResult(title: string, query?: string) {
     try {
       const g = globalThis as any;
       if (g.wx && g.wx.shareAppMessage) {
-        g.wx.shareAppMessage({ title: title || '挂机定三国 · 三国放置卡牌' });
+        const payload: any = { title: title || '挂机定三国 · 三国放置卡牌' };
+        if (query) payload.query = query;
+        g.wx.shareAppMessage(payload);
       }
     } catch (e) { /* 平台不支持静默 */ }
   }
@@ -295,7 +297,8 @@ export class CocosBootstrap extends Component implements ScreenContext {
     U.rect('IdleChoiceMask',0,0,720,1280,palette.ink).on(Node.EventType.TOUCH_END,()=>{});
     U.rect('IdleChoicePanel',0,-10,664,648,palette.paper);
     U.text('IdleChoiceTitle','领取挂机收益',0,252,565,34,palette.ink);
-    U.text('IdleChoiceAmount',`自然待领：铜钱 ${fmt.fmtNum(idle.gold)} · 精铁 ${idle.iron}`,0,204,565,24,palette.ink);
+    const companionBuff = store.companionInfo && store.companionInfo().buffActive;
+    U.text('IdleChoiceAmount',`自然待领：铜钱 ${fmt.fmtNum(idle.gold)} · 精铁 ${idle.iron}${companionBuff?'（含义从 +10%）':''}`,0,204,565,24,palette.ink);
     U.text('IdleGemLine',`今日元宝额度 ${quota.claimedGem}/${quota.cap} · 待领元宝 ${fmt.fmtNum(quota.pending)} · 00:00 重置`,0,170,600,19,palette.ink);
     U.button('IdleNormal','普通领取',-155,100,255,81,()=>{
       const r=store.claimIdle(false);

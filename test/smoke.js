@@ -491,7 +491,7 @@ store4b.grantCard('liaohua'); // 已拥有
 check('图鉴claim未集齐拒绝', store4b.claimCodex('shu-nr').ok === false);
 // 成就：推图轴 cleared=0 → 第 1 档需 10 关不可领；塔轴首胜后可领
 const av = store4b.achvInfo();
-check('成就十一轴（五基础+名人堂/兵法/觉醒/操练/乱世/战报）', av.axes.length === 11 && av.axes.every(a => a.tiers.length === 10));
+check('成就十二轴（五基础+名人堂/兵法/觉醒/操练/乱世/战报/同袍）', av.axes.length === 12 && av.axes.every(a => a.tiers.length === 10));
 check('成就未达标拒绝', store4b.claimAchv('campaign', 2).ok === false); // cleared=30 < 40
 // 远征周：周重置生成、任务进度、领取、印信、兑换
 const wk = store4b.weekInfo();
@@ -1388,7 +1388,7 @@ const storeP2 = freshStore(); storeP2.load();
   const storeA9 = freshStore(); storeA9.load();
   const sA9 = storeA9.getState();
   const axes = storeA9.achvInfo().axes;
-  check('A9-1 十一轴齐（五基础+名人堂/兵法/觉醒/操练/乱世/战报）', axes.length === 11
+  check('A9-1 十二轴齐（五基础+名人堂/兵法/觉醒/操练/乱世/战报/同袍）', axes.length === 12
     && ['hallKills','tacticLv','awaken','drill'].every(k => axes.some(a => a.key === k)));
   sA9.roster.liaohua.drill = 5; sA9.roster.mengda.drill = 3;
   sA9.hall.killsTotal = 3;
@@ -1443,8 +1443,8 @@ const storeP2 = freshStore(); storeP2.load();
   // 第 6 人：playerUnits 默认带借将、排除口径（arena）不带、编队已含则不重复
   sBW.formation = ['liubei', 'guanyu', 'zhangfei', 'liaohua', 'mengda'];
   const withB = storeBW.playerUnits(null, true), withoutB = storeBW.playerUnits(null, false);
-  check('BW3 第 6 人入队（A5·3★·名字带借）', withB.length === 6 && withoutB.length === 5
-    && withB[5].uid === 'A5' && withB[5].star === 3 && /·借$/.test(withB[5].name) && withB[5].level === bi.level);
+  check('BW3 第 6 人入队（A5·3★·义从后缀）', withB.length === 6 && withoutB.length === 5
+    && withB[5].uid === 'A5' && withB[5].star === 3 && /·义$/.test(withB[5].name) && withB[5].level === bi.level);
   check('BW4 借将不吃加成（白板体魄=纯 heroStatsStar）', (() => {
     const H2 = require('../utils/heroes');
     const st = H2.heroStatsStar(H2.getHero(bi.heroId), bi.level, 3);
@@ -2024,6 +2024,50 @@ const storeP2 = freshStore(); storeP2.load();
   storeS.checkDailyReset();
   fmtMod.isoWeekKey = realIso;
   check('S12 跨季清零', sS.season.seasonNo === 2 && sS.season.medalEarned === 0 && sS.seasonMedal === 500 && sS.season.trackClaimed.length === 0);
+}
+
+// 同袍录 Phase A（研讨会十三案三）：檄文/义从/增益
+{
+  global.wx._map.delete(SAVE_KEY);
+  const storeC = freshStore(); storeC.load();
+  const sC = storeC.getState();
+  const ci0 = storeC.companionInfo();
+  check('SC1 phase=a 且同袍码持久', ci0.phase === 'a' && /^[A-Z0-9]{6}$/.test(ci0.code));
+  const code1 = ci0.code; storeC.load();
+  check('SC1b load 两次同袍码不变', storeC.companionInfo().code === code1);
+  // 响应链
+  const r1 = storeC.companionRespond({ t: 'xw', c: 'AB12CD' });
+  check('SC3 响应置当日 buff', r1.ok && sC.companion.respondedDay === sC.companion.respondedDay && storeC.companionInfo().buffActive === true && sC.companion.responds === 1);
+  check('SC4 当日幂等', storeC.companionRespond({ t: 'xw', c: 'ZZZZZZ' }).dup === true && sC.companion.responds === 1);
+  check('SC5 防自刷与非法 query', storeC.companionRespond({ t: 'xw', c: storeC.companionInfo().code }).self === true
+    && storeC.companionRespond({}).ok === false && storeC.companionRespond({ t: 'other', c: 'AB12CD' }).ok === false
+    && storeC.companionRespond({ t: 'xw', c: '!!' }).ok === false);
+  // 增益结算（cleared=80 使 12h 帽 > 待领额，隔离封顶因素）
+  sC.campaign.cleared = 80;
+  sC.idle.gold = 50000;
+  const g0 = Math.floor(50000 * 1.1);
+  const rC = storeC.claimIdle(false);
+  check('SC7 增益领取 ×1.1', rC.gold === g0 && rC.companion === true);
+  check('SC8 双倍叠加 ×2.2', (() => { sC.idle.gold = 50000; const r2 = storeC.claimIdle(true); return r2.gold === Math.floor(50000 * 1.1) * 2; })());
+  // 跨日
+  sC.companion.respondedDay = '2020-01-01';
+  check('SC9 跨日失效', storeC.companionInfo().buffActive === false && storeC.companionRespond({ t: 'xw', c: 'QQ99ZZ' }).ok === true);
+  // 义从 3 席
+  const bi = storeC.borrowInfo();
+  check('SC10 义从三席确定性', bi.seats.length === 3 && new Set(bi.seats).size === 3
+    && bi.seats.every(id => C.BORROW.pool.includes(id)));
+  const storeC2 = freshStore(); storeC2.load();
+  check('SC10b 同周跨档一致', JSON.stringify(storeC2.borrowInfo().seats) === JSON.stringify(bi.seats));
+  // 借非首席
+  const borrowable = bi.seats.find(id => !sC.formation.includes(id) && id !== bi.seats[0]);
+  const rb = storeC.borrowHero(borrowable);
+  check('SC11 借非首席成功', rb.ok);
+  check('SC11b 当日再借拒绝', storeC.borrowHero(bi.seats[0]).ok === false);
+  // 成就轴
+  sC.companion.sent = 2; sC.companion.responds = 3;
+  const A = require('../utils/achievements');
+  check('SC12 同袍轴进度', A.axisProgress('companion', sC) === 5);
+  check('SC12b 奖励表红线', C.COMPANION_ACHV.rewards.every(r => Object.keys(r).every(k => ['gold', 'shard', 'token', 'title', 'frame'].includes(k))));
 }
 
 console.log('\nsmoke: ' + passed + ' passed, ' + failed + ' failed');process.exit(failed ? 1 : 0);

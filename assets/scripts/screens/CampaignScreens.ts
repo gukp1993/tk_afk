@@ -800,18 +800,39 @@ export function formation(ctx: ScreenContext) {
       U.tap('PresetSaveTap',sx,-30,146,30,()=>ctx.confirm('保存阵型模板','把当前五人编队存为模板（含站位），日后一键启用',()=>{const r=store.saveFormationPreset('p'+(Date.now()%100000),'我的阵型');ctx.tell(r,r.ok?'模板已保存':'');}));
     }
   const bondsNow=store.activeBonds(),allBonds=heroes.BONDS||[],mods=store.bondMods();
-  // 借将助战（研讨会五批次 1）：本周助将位每日一次借用，作第 6 人上阵（仅 PVE）
+  // 义从·本周三席（同袍录 Phase A）：三席展示每日 3 选 1，作第 6 人上阵（仅 PVE）
   const bb=store.borrowInfo();
   if(bb.enabled){
     U.panel('BorrowBanner',0,-510,682,48,tone('#26301f'),8,bb.active?tone('#6f8a5f'):GOLD);
-    if(bb.active){
-      const bn=heroes.getHero(bb.active)?.name||bb.active;
-      U.text('BorrowTxt',`${bn}·借 已随军上阵（仅 PVE）· 明日可换`,0,-510,560,18,GOLD);
-      U.tap('BorrowDismissTap',0,-510,682,48,()=>{const r=store.dismissBorrow();ctx.tell(r,r.ok?'助战将已撤下':'');});
-    }else{
-      U.text('BorrowTxt',`今日助战：${bb.heroName} Lv.${bb.level}·${bb.star}★·不吃养成`,-150,-510,420,17,LIGHT);
-      U.button('BorrowGo','借 用',230,-510,150,38,()=>{const r=store.borrowHero(bb.heroId);ctx.tell(r,r.ok?`${bb.heroName} 已随军（第 6 人，仅 PVE）`:'');},palette.gold);
-    }
+    U.text('BorrowTitle','义从三席',-292,-510,96,18,GOLD);
+    const seats=(bb.seats||[]).slice(0,3);
+    seats.forEach((hid:string,i:number)=>{
+      const sx=-160+i*164;
+      const isBorrowed=bb.active===hid;
+      const hname=(heroes.getHero(hid)?.name||hid)+' Lv.'+bb.level;
+      if(isBorrowed){
+        U.panel('BorrowChip'+i,sx,-510,156,36,tone('#3a2c17'),7,GOLD);
+        U.text('BorrowChipTxt'+i,`${heroes.getHero(hid)?.name||hid}·义 随军`,sx,-510,150,16,GOLD);
+        U.tap('BorrowChipTap'+i,sx,-510,156,36,()=>ctx.confirm('撤下义从','撤下后今日仍可改借其他席位（同一日仅一名随军）',()=>{const r=store.dismissBorrow();ctx.tell(r,r.ok?'义从已撤下':'');}));
+      }else if(bb.usedToday){
+        U.panel('BorrowChip'+i,sx,-510,156,36,tone('#171009'),7,tone('#5a452a'));
+        U.text('BorrowChipTxt'+i,`${heroes.getHero(hid)?.name||hid}（明日）`,sx,-510,150,16,tone('#7a6c52'));
+      }else{
+        U.panel('BorrowChip'+i,sx,-510,156,36,tone('#39291a'),7,GOLD);
+        U.text('BorrowChipTxt'+i,hname,sx,-510,150,16,LIGHT);
+        U.tap('BorrowChipTap'+i,sx,-510,156,36,()=>{const r=store.borrowHero(hid);ctx.tell(r,r.ok?`${heroes.getHero(hid)?.name||hid}·义 已随军（第 6 人，仅 PVE）`:'');if(r.ok)ctx.show('formation');});
+      }
+    });
+    // 传檄小按钮（同袍录 Phase A）
+    const ciX=344-64;
+    U.text('CompanionSent','传檄 ›',296,-510,60,16,GOLD);
+    U.tap('CompanionSentTap',296,-510,64,44,()=>{
+      const ci=store.companionInfo();
+      const vanguard=(s.formation||[]).slice(0,2).map((id:string)=>heroes.getHero(id)?.name||id).join('、')||'众将';
+      const cleared=s.campaign.cleared||0;
+      ctx.shareResult(`讨伐檄文 · 已克 ${cleared} 关 · ${vanguard}为先驱，邀同袍共讨国贼`,'t=xw&c='+ci.code+'&s='+cleared);
+      store.companionMarkSent();
+    });
   }
   U.panel('BondsPanel',0,-266,682,420,tone('#342518'),11,GOLD);
   U.text('BondsTitle',`三国羁绊 · 已激活 ${bondsNow.length}/${allBonds.length}`,-160,-70,400,24,GOLD);
@@ -1204,7 +1225,7 @@ export function quadTowerView(ctx: ScreenContext) {
   U.text('QuadTitle',`${fname} · ${qi.theme}`,-110,428,300,24,GOLD);
   U.text('QuadSub',`已登 ${qi.best}/${qi.floors} · 每日解锁 5 层 · 本国可战 ${qi.owned} 将`,-100,396,360,16,LIGHT);
   U.button('QuadGo',qi.best>=qi.floors?'本周已登顶':`挑 战 第 ${qi.best+1} 层`,244,400,172,60,()=>ctx.startBattle('quad',qi.best+1),qi.owned>0||qi.borrowUsable?GOLD:tone('#423022'));
-  U.text('QuadBorrow',qi.borrowUsable?`本周可借 ${qi.borrowName}·借（第 6 人，本国将）`:`本周借将非${fname}将 · 不可带入`,0,316,640,16,qi.borrowUsable?GOLD:tone('#7a6c52'));
+  U.text('QuadBorrow',qi.borrowUsable?`本周义从含本国将 · 可带第 6 人`:`本周义从无${fname}将 · 不可带入`,0,316,640,16,qi.borrowUsable?GOLD:tone('#7a6c52'));
   U.text('QuadMile','5 层印信小奖 · 10 层大奖 · 15/30 层授称号',0,292,640,16,tone('#ad9977'));
   const reward=(f:number)=>{
     let txt=`铜钱 +${fmt.fmtNum(config.QUAD_TOWER.copper(f))}`;

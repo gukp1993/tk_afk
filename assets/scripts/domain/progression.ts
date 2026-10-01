@@ -187,7 +187,7 @@ function buildDefeatPrescriptions(state, api, input) {
   try {
     const bi = api.borrowInfo ? api.borrowInfo() : null;
     if (bi && bi.enabled && bi.heroName && !bi.usedToday && (state.formation || []).indexOf(bi.heroId) < 0) {
-      borrowHint = { key: 'borrow', tier: 2, gain: 5, cost: 0, text: `借${bi.heroName}助战一日`, page: 'formation' };
+      borrowHint = { key: 'borrow', tier: 2, gain: 5, cost: 0, text: `借义从${bi.heroName}助战一日`, page: 'formation' };
     }
   } catch (e) { /* 借将信息不可用时跳过 */ }
   const maxItems = rx.maxItems || 2;

@@ -52,6 +52,7 @@ function defaultState() {
     dungeon: { day: '', runs: 0, bestGold: 0, bestTrain: 0 },
     weekBoss: { weekId: '', attempts: 0, bestPct: 0, bestDamage: 0 },
     borrow: { day: '', heroId: null },
+    companion: { code: '', sent: 0, responds: 0, respondedDay: '', invoked: 0 },
     heroUse: {},
     bounty: { day: '', list: [] },
     roamer: { day: '', ids: [], bought: {} },
@@ -665,8 +666,10 @@ function quadTowerInfo() {
   let borrowUsable = false, borrowName = '';
   try {
     const bi = borrowInfo();
-    if (bi.active) { const h = H.getHero(bi.active); borrowUsable = !!h && h.faction === faction; borrowName = h ? h.name : ''; }
-    else if (bi.heroId) { const h = H.getHero(bi.heroId); borrowUsable = !!h && h.faction === faction; borrowName = h ? h.name : ''; }
+    const seatHeroes = (bi.seats || (bi.heroId ? [bi.heroId] : [])).map(id => H.getHero(id)).filter(Boolean);
+    const match = seatHeroes.find(h => h.faction === faction);
+    borrowUsable = !!match;
+    borrowName = match ? match.name : (seatHeroes[0] ? seatHeroes[0].name : '');
   } catch (e) { /* 旧档缺借将字段 */ }
   return {
     enabled: !!(cfg && cfg.enabled), faction,
@@ -1169,6 +1172,7 @@ function load() {
     throw new Error('存档版本无法识别，保留原数据并停止加载');
   } else {
     state = defaultState();
+    normalizeState(state); // 新档也过 normalize：副作用字段（如同袍码生成）统一在此收口
     save();
   }
   // 离线挂机结算
@@ -1223,6 +1227,12 @@ function normalizeState(s) {
     s.quadTower.best = Math.max(0, Math.min((C.QUAD_TOWER && C.QUAD_TOWER.floors) || 30, Math.floor(Number(s.quadTower.best) || 0)));
     s.trials = s.trials || { cleared: {} };
     s.trials.cleared = s.trials.cleared || {};
+    s.companion = s.companion || { code: '', sent: 0, responds: 0, respondedDay: '', invoked: 0 };
+    s.companion.sent = Math.max(0, Math.floor(Number(s.companion.sent) || 0));
+    s.companion.responds = Math.max(0, Math.floor(Number(s.companion.responds) || 0));
+    s.companion.invoked = Math.max(0, Math.floor(Number(s.companion.invoked) || 0));
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(s.companion.respondedDay || '')) s.companion.respondedDay = '';
+    if (!/^[A-Z0-9]{6}$/.test(s.companion.code || '')) s.companion.code = genCode();
     s.relics = s.relics || { stones: 0, owned: {}, levels: {}, equipped: null };
     s.relics.stones = Math.max(0, Math.floor(Number(s.relics.stones) || 0));
     s.relics.owned = s.relics.owned || {};
@@ -1997,7 +2007,7 @@ function playerUnits(tacticId, includeBorrow) {
       if (def) {
         const lv = Math.max(1, Math.floor(state.player.level * C.BORROW.levelFactor));
         const st = H.heroStatsStar(def, lv, C.BORROW.star);
-        base.push(buildUnit({ id: def.id, name: def.name + '·借', faction: def.faction, cls: def.cls,
+        base.push(buildUnit({ id: def.id, name: def.name + '·义', faction: def.faction, cls: def.cls,
           level: lv, star: C.BORROW.star,
           stats: { hp: st.hp, atk: st.atk, def: st.def, spd: st.spd, crit: st.crit },
           ult: def.ult, passive: Object.assign({}, def.passive.mods || {}) }, 'A5', 1));
@@ -2081,6 +2091,9 @@ function claimIdleInternal(double) {
   let g = Math.floor(state.idle.gold), s = Math.floor(state.idle.scroll), iron = Math.floor(state.idle.ironAcc);
   // 元宝只按当日剩余额度领取，双倍不倍增元宝。
   const gem = Math.min(quota.remaining, Math.floor(state.idle.gem || 0));
+  // 义从护佑（同袍录 Phase A）：响应檄文当日自然挂机铜钱 +10%，只乘自然领取（快收/元宝额度零沾）
+  const cb = (C.SOCIAL && C.SOCIAL.phase === 'a' && state.companion && state.companion.respondedDay === F.todayStr()) ? (C.SOCIAL.buffPct || 0) : 0;
+  if (cb > 0) g = Math.floor(g * (1 + cb));
   if (double) { g *= 2; }
   state.res.gold += g; state.res.scroll += s; state.res.iron += iron;
   state.res.gem += gem;
@@ -2092,7 +2105,7 @@ function claimIdleInternal(double) {
     bumpQuest('q_idle1', 1);
     if (state.week && state.week.idleDay !== F.todayStr()) { state.week.idleDay = F.todayStr(); bumpWeek('idle', 1); }
   }
-  return { ok: true, gold: g, exp: 0, scroll: s, iron, gem, gemClaimed: gem, double: !!double, changed, gemDay: gemQuotaInfo() };
+  return { ok: true, gold: g, exp: 0, scroll: s, iron, gem, gemClaimed: gem, double: !!double, companion: cb > 0, changed, gemDay: gemQuotaInfo() };
 }
 function claimIdle(double) {
   return withSavedMutation(() => claimIdleInternal(double));
@@ -3378,20 +3391,77 @@ function navBadges() {
 }
 
 // 借将助战（研讨会五批次 1）：助将位按周键轮换；每日 1 次借用；编队已含则无需借
-function borrowOfferedHero() {
-  const weekId = F.isoWeekKey();
+function weekHash(weekId) {
   let h = 5381;
   for (let i = 0; i < weekId.length; i++) h = ((h * 33) ^ weekId.charCodeAt(i)) >>> 0;
-  const pool = (C.BORROW && C.BORROW.pool) || [];
-  return pool[h % pool.length];
+  return h >>> 0;
 }
+// 义从席（同袍录 Phase A）：周键种子化 Fisher-Yates 取 3 席（phase off 时 1 席=旧行为）
+function borrowSeats() {
+  const pool = (C.BORROW && C.BORROW.pool) || [];
+  let s = weekHash(F.isoWeekKey());
+  const idx = pool.map((_, i) => i);
+  for (let i = idx.length - 1; i > 0; i--) {
+    s = (s * 1103515245 + 12345) >>> 0;
+    const j = s % (i + 1);
+    const t = idx[i]; idx[i] = idx[j]; idx[j] = t;
+  }
+  const n = (C.SOCIAL && C.SOCIAL.phase === 'a') ? Math.min((C.BORROW && C.BORROW.seats) || 1, pool.length) : 1;
+  return idx.slice(0, n).map(i => pool[i]);
+}
+function borrowOfferedHero() {
+  return borrowSeats()[0];
+}
+
+// —— 同袍录（研讨会十三案三 Phase A）——
+function genCode() {
+  // 时间戳派生（base36 取尾 6 位）：不消耗 Math.random 流——normalize 在 load 时调用，
+  // 若用随机数会整体偏移仿真/回放的确定性随机序列（2026-10-02 200 种子复跑实证 ±4 精铁漂移）。
+  return (Date.now().toString(36).toUpperCase() + '000000').slice(-6);
+}
+function companionInfo() {
+  checkDailyReset();
+  const cp = state.companion || { code: '', sent: 0, responds: 0, respondedDay: '', invoked: 0 };
+  return {
+    phase: (C.SOCIAL && C.SOCIAL.phase) || 'off',
+    code: cp.code, sent: cp.sent || 0, responds: cp.responds || 0, invoked: cp.invoked || 0,
+    buffActive: !!(cp.respondedDay && cp.respondedDay === F.todayStr())
+  };
+}
+function companionMarkSent() {
+  return withSavedMutation(() => {
+    if (!C.SOCIAL || C.SOCIAL.phase !== 'a') return { ok: false };
+    state.companion = state.companion || { code: '', sent: 0, responds: 0, respondedDay: '', invoked: 0 };
+    if (!state.companion.code) state.companion.code = genCode();
+    state.companion.sent += 1;
+    return { ok: true, sent: state.companion.sent };
+  });
+}
+// 响应判定链（幂等）：旋钮→入口类型→同袍码格式→防自刷→当日幂等
+function companionRespond(query) {
+  if (!C.SOCIAL || C.SOCIAL.phase !== 'a' || !query) return { ok: false };
+  if (query.t !== 'xw') return { ok: false };
+  const code = query.c || '';
+  if (!/^[A-Z0-9]{6}$/.test(code)) return { ok: false };
+  return withSavedMutation(() => {
+    state.companion = state.companion || { code: '', sent: 0, responds: 0, respondedDay: '', invoked: 0 };
+    if (!state.companion.code) state.companion.code = genCode();
+    if (code === state.companion.code) return { ok: false, self: true };
+    if (state.companion.respondedDay === F.todayStr()) return { ok: false, dup: true };
+    state.companion.respondedDay = F.todayStr();
+    state.companion.responds += 1;
+    return { ok: true };
+  });
+}
+
 function borrowInfo() {
   checkDailyReset();
   const enabled = !!(C.BORROW && C.BORROW.enabled);
-  const heroId = enabled ? borrowOfferedHero() : null;
+  const seats = enabled ? borrowSeats() : [];
+  const heroId = seats[0] || null;
   const usedToday = !!(state.borrow && state.borrow.day === F.todayStr() && state.borrow.heroId);
   const def = heroId ? H.getHero(heroId) : null;
-  return { enabled, heroId, heroName: def ? def.name : '',
+  return { enabled, heroId, heroName: def ? def.name : '', seats,
     active: usedToday ? state.borrow.heroId : null,
     usedToday, level: enabled ? Math.max(1, Math.floor(state.player.level * C.BORROW.levelFactor)) : 0,
     star: (C.BORROW && C.BORROW.star) || 3 };
@@ -3399,8 +3469,7 @@ function borrowInfo() {
 function borrowHero(heroId) {
   return withSavedMutation(() => {
     if (!C.BORROW || !C.BORROW.enabled) return { ok: false, msg: '借将未开放' };
-    const offered = borrowOfferedHero();
-    if (heroId !== offered) return { ok: false, msg: '该武将本周不在助战位' };
+    if (borrowSeats().indexOf(heroId) < 0) return { ok: false, msg: '该武将本周不在义从席' };
     if (state.borrow && state.borrow.day === F.todayStr() && state.borrow.heroId) return { ok: false, msg: '今日已借用过助战将' };
     if (state.formation.indexOf(heroId) >= 0) return { ok: false, msg: '该武将已在编队中，无需借用' };
     state.borrow = { day: F.todayStr(), heroId };
@@ -3604,7 +3673,7 @@ module.exports = {
   exchangeQualityShard, qualityShardInfo, drillInfo, drillHero,
   getFormationCalc, setFormationSlot, applyFormation, formationFactionBonus, teamPower, playerUnits, enemyUnits, activeBonds, bondMods, bondComboMods,
   getArmoryBonuses, getArmoryState, armoryUnlock, armorySelect, armoryUpgrade, armoryUpgradeToNode, armoryClaimBox, grantArmoryItem, applyArmoryRecommendations, armoryAffixBadges, forgeInfo, forgeReroll, forgeSetDir, forgeToggleLock, forgeGateOpen, motifInfo, motifActivate, smeltInfo, smeltMelt, smeltCombine,
-  codexInfo, claimCodex, useUniversalSr, achvInfo, claimAchv, weekInfo, claimWeekQuest, claimWeekActive, buyWeekly, makeExpeditionFloor, bumpWeek, dailyAgendaInfo, quadFactionOfWeek, quadTowerInfo, winQuadTower, winTrial, trialInfo, winExpedition, seasonInfo, claimSeasonAct, claimSeasonTrack, buySeasonGood, relicInfo, claimRelic, upgradeRelic, equipRelic, relicMods, weekMutatorIds, expeditionBoonOffer, pickExpeditionBoon, expeditionBoonMods, beginHall, winHall, hallInfo, saveReplay, replaysInfo, awakenInfo, awakenHero, formationPresetsInfo, saveFormationPreset, applyFormationPreset, delFormationPreset, tacticInfo, tacticUpgrade,
+  codexInfo, claimCodex, useUniversalSr, achvInfo, claimAchv, weekInfo, claimWeekQuest, claimWeekActive, buyWeekly, makeExpeditionFloor, bumpWeek, dailyAgendaInfo, quadFactionOfWeek, quadTowerInfo, winQuadTower, winTrial, trialInfo, winExpedition, seasonInfo, claimSeasonAct, claimSeasonTrack, buySeasonGood, companionInfo, companionMarkSent, companionRespond, borrowSeats, relicInfo, claimRelic, upgradeRelic, equipRelic, relicMods, weekMutatorIds, expeditionBoonOffer, pickExpeditionBoon, expeditionBoonMods, beginHall, winHall, hallInfo, saveReplay, replaysInfo, awakenInfo, awakenHero, formationPresetsInfo, saveFormationPreset, applyFormationPreset, delFormationPreset, tacticInfo, tacticUpgrade,
   migrateSaveV1, migrateSaveV2, migrateSaveV3, migrateSaveV4, migrateSaveV5, migrateSaveV6, migrateSaveV7, normalizeState,
   idlePending, idleTick, gemQuotaInfo, claimIdle, claimIdleInternal, fastReward, fastRewardMutation, fastRewardAdMutation, adReward,
   doSummon, rollRarity, pickHeroOfRarity, summonPityInfo, setSummonFocus, summonTicketInfo, summonPointsInfo, claimSummonPoints, useUniversalSsr,

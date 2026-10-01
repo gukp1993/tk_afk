@@ -155,8 +155,14 @@ const DUNGEON = {
 const BORROW = {
   enabled: true, levelFactor: 0.8, star: 3,
   pool: ['lvbu', 'zhaoyun', 'zhugeliang', 'zhouyu', 'sunce', 'simayi'],
+  seats: 3, // 义从每周席位（同袍录 Phase A：3 席展示每日 3 选 1；phase off 时按 1 生效）
   excludedModes: ['arena', 'hall', 'weekboss', 'trial']
 };
+// 同袍录社交（研讨会十三案三 Phase A）：檄文分享+响应者当日铜钱 +10%。合规红线见 docs/plans/同袍录-异步社交.md。
+// phase: 'off' 一键全隐 | 'a' 本批 | 'b' 预留开放数据域（需真机联调，另行提请）。
+const SOCIAL = { phase: 'a', buffPct: 0.10 };
+const COMPANION_ACHV = { name: '同袍', tiers: [1, 3, 8, 15, 25, 40, 60, 90, 130, 180],
+  rewards: [{gold:10000},{gold:15000},{gold:20000},{gold:30000,title:'同袍·初檄'},{gold:40000},{shard:20,token:30,title:'同袍·传声'},{shard:30,token:30,title:'同袍·聚义'},{title:'同袍·盟主'},{frame:1,title:'同袍·共讨'},{frame:1,title:'同袍·定国'}] };
 
 // 乱世里程碑（2026-09-30 研讨会六 A3）：每乱世章末一次性小奖（禁精铁/招募令），
 // 200 关（乱世四章）给称号收官。走 campaignFirstReward 里程碑渲染链，旧档无需迁移（cleared 尚不可能超 160）。
@@ -363,7 +369,7 @@ const TUTORIALS = {
   rx: { title: '卡关处方单', lines: ['败北不再只给一句提示', '按失败原因给出 2 条「现在就能做」的强化', '点处方按钮直达对应养成页', '做完再战——大多数卡关差的就是一步'] },
   dungeon: { title: '军屯双本 · 每日刷本', lines: ['屯金得铜钱，屯兵得主公经验', '每日 2 次双轨共用，层数顺序解锁', '敌方等级随主公等级与层数缩放', '掉落不含精铁与碎片——资源锚不冲突'] },
   weekboss: { title: '魔王讨伐 · 每周结算', lines: ['本周魔王全服同敌，每日 3 次机会', '伤害占魔王血量比例越高档位越高', '档位奖发印信与演武令，周日刷新', '打不满 100% 也没关系，逐周变强'] },
-  borrow: { title: '借将助战 · 第 6 人', lines: ['本周可借一位 NPC 名将随军出征', '借将等级为主公等级八折、固定 3★', '仅 PVE 生效——演武与名人堂不带', '编队满员时作为第 6 人补强短板'] }
+  borrow: { title: '义从 · 本周三席', lines: ['每周三席义从，任选一位随军（每日 3 选 1）', '义从等级为主公等级八折、固定 3★', '仅 PVE 生效——演武与名人堂不带', '响应好友檄文当日挂机铜钱 +10%'] }
 };
 
 // 14 日第二周目标树（2026-09-30 研讨会三方案 2）：第 8~14 天一次性里程碑（非每日清单）。
@@ -780,7 +786,7 @@ module.exports = {
   goldCost, expCost, idleRates, IDLE_CAP_HOURS, GEM_IDLE, ARMORY_IRON_PER_HOUR,
   FAST_AD, FAST_PAID,
   GACHA, factionBonus, FORMATION_ROWS, BATTLE, ARENA, DEFEAT_RX, REPLAYS, DRILL, SEVEN_DAY, FOURTEEN_DAY, DUNGEON, WEEKBOSS, BORROW, SWEEP, REPLAY_ACHV, TUTORIAL_OFF, TUTORIALS, TRAINING_DAILY_CAP, BOUNTY, ROAMER_POOL, AD,
-  FIRST_STAGE_END, CAMPAIGN_DIFFICULTY, CAMPAIGN_MILESTONES, ELITE_STAGE, STAR_RULES, CHAPTER_STAR_CHESTS, DAILY_ELITE_CHEST, DAILY_BOSS_CHEST, DAILY_AGENDA, QUAD_TOWER, TRIALS, RELICS, SEASON,
+  FIRST_STAGE_END, CAMPAIGN_DIFFICULTY, CAMPAIGN_MILESTONES, ELITE_STAGE, STAR_RULES, CHAPTER_STAR_CHESTS, DAILY_ELITE_CHEST, DAILY_BOSS_CHEST, DAILY_AGENDA, QUAD_TOWER, TRIALS, RELICS, SEASON, SOCIAL, COMPANION_ACHV,
   CAMPAIGN_MODS, BOSS_MODS, RETURN_GRANTS, SUMMON_TICKET, SUMMON_POINTS, FORGE, MOTIFS, MOTIF_COST, SMELT,
   CODEX_REWARDS, ACHV_AXES, ACHV_REWARDS, WEEKLY, HALL, AWAKEN, FORMATION_PRESETS_MAX, TACTIC, BATTLE_TACTICS, TACTIC_SR, HALL_ACHV, TACTIC_ACHV, AWAKEN_ACHV, DRILL_ACHV, CHAOS_ACHV, CHAOS_MILESTONES, AFFIX_SETS, EXPEDITION_MUTATORS, EXPEDITION_BOONS
 };
