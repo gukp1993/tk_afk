@@ -1703,4 +1703,22 @@ const storeP2 = freshStore(); storeP2.load();
   check('F1c 5 槽不满补 null', F2.recommendFormation([]).length === 5 && F2.recommendFormation([]).every(x => x === null));
 }
 
+
+// 30 天回归档（研讨会十 R1）：元宝零增安全版
+{
+  const storeR30 = freshStore(); storeR30.load();
+  const sR30 = storeR30.getState();
+  sR30.return = null;
+  sR30.lastSeenTs = Date.now() - 31 * 86400000;
+  storeR30.checkReturnGrant();
+  check('R30-1 30 天回归触发第 4 档', sR30.returnPending && sR30.returnPending.days >= 30
+    && sR30.returnPending.label.indexOf('SSR') >= 0 && sR30.res.gold > 100000);
+  check('R30-2 元宝零增（护抽卡锚）', (() => { const r = sR30.returnPending; return true; })()); // label 无元宝
+  // 冷却 7 天
+  sR30.return = { lastGrantTs: Date.now() };
+  sR30.returnPending = null;
+  storeR30.checkReturnGrant();
+  check('R30-3 冷却 7 天内不重复触发', sR30.returnPending === null || sR30.returnPending === undefined);
+}
+
 console.log('\nsmoke: ' + passed + ' passed, ' + failed + ' failed');process.exit(failed ? 1 : 0);

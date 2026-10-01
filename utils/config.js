@@ -549,7 +549,9 @@ const WEEKLY = {
 const RETURN_GRANTS = [
   { minDays: 2, reward: { scroll: 3, gem: 300 }, label: '招募令 ×3 · 元宝 ×300' },
   { minDays: 4, reward: { scroll: 5, gem: 800, shard: 20 }, label: '招募令 ×5 · 元宝 ×800 · 碎片 ×20' },
-  { minDays: 7, reward: { ssrPick: 1, gem: 1500 }, label: 'SSR 自选券 ×1 · 元宝 ×1500' }
+  { minDays: 7, reward: { ssrPick: 1, gem: 1500 }, label: 'SSR 自选券 ×1 · 元宝 ×1500' },
+  // 第 4 档（研讨会十 R1）：30 天未登录大回归——元宝零增（护抽卡锚），铜钱×12h 帽 3 倍+碎片+自选箱
+  { minDays: 30, reward: { gold: 1600000, shard: 50, ssrPick: 1 }, label: '铜钱 ×160 万 · 碎片 ×50 · SSR 自选券 ×1' }
 ];
 
 // 今日目标关（每日首个精锐关胜利）日宝箱：铜钱+三选一随机
