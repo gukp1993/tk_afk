@@ -322,7 +322,7 @@ function checkWeeklyReset(today) {
     activeClaimed: [],
     sealsEarned: 0,
     shopBought: {},
-    trial: { best: 0, chestClaimed: false }
+    trial: { best: 0, chestClaimed: false, boons: [], boonFloors: [] }
   };
   // 修剪旧周名人堂键（防存档无限增长）
   ['kills', 'stars', 'threeClaimed'].forEach(f => {
@@ -354,7 +354,9 @@ function weekInfo() {
     need: t.need, reward: t.reward, claimed: w.activeClaimed.indexOf(i) >= 0,
     claimable: sealsEarned >= t.need && w.activeClaimed.indexOf(i) < 0
   }));
-  const trial = w.trial || { best: 0, chestClaimed: false };
+  const trial = w.trial || { best: 0, chestClaimed: false, boons: [], boonFloors: [] };
+  if (!Array.isArray(trial.boons)) trial.boons = [];
+  if (!Array.isArray(trial.boonFloors)) trial.boonFloors = [];
   return { weekId: w.weekId, quests, active, sealsEarned, seals: state.seals || 0, trial,
     canClaim: quests.some(q => q.claimable) || active.some(a => a.claimable) };
 }
@@ -621,6 +623,70 @@ function replaysInfo() {
 }
 
 // 远征无限层：敌人=塔生成器锚定主线进度 + 当周词缀 + 层数递增倍率（无上限）
+
+// 远征周词缀（研讨会十二 A1）：按周键确定性取 count 条不重复词缀
+function weekMutatorIds() {
+  const cfg = C.EXPEDITION_MUTATORS;
+  let h = 2166136261;
+  for (const ch of String((state.week && state.week.weekId) || '') + '#expmut') { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); }
+  const pool = cfg.pool.slice();
+  const out = [];
+  for (let i = 0; i < (cfg.count || 1) && pool.length; i++) {
+    const idx = (h >>> 0) % pool.length;
+    out.push(pool.splice(idx, 1)[0]);
+    h = Math.imul(h ^ 0x9e3779b9, 16777619);
+  }
+  return out;
+}
+// 远征加护：每通 every 层发三选一（按周键+层数确定性），局内叠加 maxStack 上限，周重置随 week.trial 清空
+function trialBoons() {
+  const t = (state.week && state.week.trial) || {};
+  if (!Array.isArray(t.boons)) t.boons = [];
+  if (!Array.isArray(t.boonFloors)) t.boonFloors = [];
+  return t;
+}
+function expeditionBoonOffer() {
+  const cfg = C.EXPEDITION_BOONS;
+  if (!cfg || !cfg.enabled) return [];
+  const t = trialBoons();
+  const best = (state.week && state.week.trial && state.week.trial.best) || 0;
+  if (!best || best % cfg.every !== 0 || t.boonFloors.indexOf(best) >= 0 || t.boons.length >= cfg.maxStack) return [];
+  let h = 2166136261;
+  for (const ch of String((state.week && state.week.weekId) || '') + ':' + best + ':boon') { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); }
+  const pool = cfg.pool.slice();
+  const out = [];
+  for (let i = 0; i < (cfg.choices || 3) && pool.length; i++) {
+    const idx = (h >>> 0) % pool.length;
+    out.push(pool.splice(idx, 1)[0]);
+    h = Math.imul(h ^ 0x9e3779b9, 16777619);
+  }
+  return out;
+}
+function pickExpeditionBoon(boonId) {
+  return withSavedMutation(() => {
+    const cfg = C.EXPEDITION_BOONS;
+    const offer = expeditionBoonOffer();
+    const boon = offer.find(b => b.id === boonId);
+    if (!boon) return { ok: false, msg: offer.length ? '请从当前三选一里选' : '当前没有可领取的加护' };
+    const t = trialBoons();
+    t.boons.push(boon.id);
+    t.boonFloors.push(state.week.trial.best);
+    return { ok: true, boon: boon.name, boons: t.boons.length, desc: boon.desc };
+  });
+}
+function expeditionBoonMods() {
+  const cfg = C.EXPEDITION_BOONS;
+  const out = {};
+  if (!cfg || !cfg.enabled) return out;
+  const t = (state.week && state.week.trial) || {};
+  const ids = Array.isArray(t.boons) ? t.boons : [];
+  ids.forEach(id => {
+    const b = cfg.pool.find(x => x.id === id);
+    if (!b) return;
+    Object.keys(b.passive).forEach(k => { out[k] = (out[k] || 0) + b.passive[k]; });
+  });
+  return out;
+}
 function makeExpeditionFloor(floor) {
   weekInfo();
   const anchor = Math.max(10, Math.min(C.FIRST_STAGE_END, state.campaign.cleared || 0));
@@ -628,19 +694,20 @@ function makeExpeditionFloor(floor) {
   const trial = C.WEEKLY.trial;
   const scaleMul = Math.min(trial.scaleBase + trial.scaleStep * (floor - 1), trial.scaleCap);
   base.units.forEach(u => { u.scale = (u.scale || 1) * scaleMul; });
-  let h = 2166136261;
-  for (const ch of String(state.week.weekId)) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); }
-  const modId = C.CAMPAIGN_MODS.pool[(h >>> 0) % C.CAMPAIGN_MODS.pool.length];
-  base.mods = [modId];
-  if (modId === 'allBack') base.units.forEach(u => { u.row = 1; });
-  if (modId === 'ironWall') base.units.forEach(u => { u.extraPassive = Object.assign({}, u.extraPassive, { armoryStartShield: 0.3 }); });
-  if (modId === 'gale') base.units.forEach(u => { u.extraPassive = Object.assign({}, u.extraPassive, { firstEnergy: 40, spd: 0.10 }); });
-  if (modId === 'reinforce') {
-    const lv = base.units[0].level, star = base.units[0].star, sc = (base.units[0].scale || 1);
-    // 塔生成器单位带 hero 对象而非 heroId；从 hero 取 id（援军周修复，2026-09-30 60 天仿真暴露）
-    base.reinforceUnits = require('./stages').buildReinforceUnits(0, base.units.map(u => (u.hero && u.hero.id) || u.heroId), lv, star, sc);
-  }
-  base.name = '远征 · 第' + floor + '层 · ' + (C.CAMPAIGN_MODS.meta[modId].name);
+  const mutCfg = C.EXPEDITION_MUTATORS || { enabled: false };
+  const modIds = mutCfg.enabled && floor > (mutCfg.freeFloors || 0) ? weekMutatorIds() : [];
+  base.mods = modIds;
+  modIds.forEach(modId => {
+    if (modId === 'allBack') base.units.forEach(u => { u.row = 1; });
+    if (modId === 'ironWall') base.units.forEach(u => { u.extraPassive = Object.assign({}, u.extraPassive, { armoryStartShield: 0.3 }); });
+    if (modId === 'gale') base.units.forEach(u => { u.extraPassive = Object.assign({}, u.extraPassive, { firstEnergy: 40, spd: 0.10 }); });
+    if (modId === 'reinforce') {
+      const lv = base.units[0].level, star = base.units[0].star, sc = (base.units[0].scale || 1);
+      // 塔生成器单位带 hero 对象而非 heroId；从 hero 取 id（援军周修复，2026-09-30 60 天仿真暴露）
+      base.reinforceUnits = require('./stages').buildReinforceUnits(0, base.units.map(u => (u.hero && u.hero.id) || u.heroId), lv, star, sc);
+    }
+  });
+  base.name = '远征 · 第' + floor + '层' + (modIds.length ? ' · ' + modIds.map(id => C.CAMPAIGN_MODS.meta[id].name).join('') : '');
   base.expedition = { floor };
   return base;
 }
@@ -3110,7 +3177,7 @@ module.exports = {
   exchangeQualityShard, qualityShardInfo, drillInfo, drillHero,
   getFormationCalc, setFormationSlot, applyFormation, formationFactionBonus, teamPower, playerUnits, enemyUnits, activeBonds, bondMods, bondComboMods,
   getArmoryBonuses, getArmoryState, armoryUnlock, armorySelect, armoryUpgrade, armoryUpgradeToNode, armoryClaimBox, grantArmoryItem, applyArmoryRecommendations, armoryAffixBadges, forgeInfo, forgeReroll, forgeSetDir, forgeToggleLock, forgeGateOpen, motifInfo, motifActivate, smeltInfo, smeltMelt, smeltCombine,
-  codexInfo, claimCodex, useUniversalSr, achvInfo, claimAchv, weekInfo, claimWeekQuest, claimWeekActive, buyWeekly, makeExpeditionFloor, bumpWeek, beginHall, winHall, hallInfo, saveReplay, replaysInfo, awakenInfo, awakenHero, formationPresetsInfo, saveFormationPreset, applyFormationPreset, delFormationPreset, tacticInfo, tacticUpgrade,
+  codexInfo, claimCodex, useUniversalSr, achvInfo, claimAchv, weekInfo, claimWeekQuest, claimWeekActive, buyWeekly, makeExpeditionFloor, bumpWeek, weekMutatorIds, expeditionBoonOffer, pickExpeditionBoon, expeditionBoonMods, beginHall, winHall, hallInfo, saveReplay, replaysInfo, awakenInfo, awakenHero, formationPresetsInfo, saveFormationPreset, applyFormationPreset, delFormationPreset, tacticInfo, tacticUpgrade,
   migrateSaveV1, migrateSaveV2, migrateSaveV3, migrateSaveV4, migrateSaveV5, migrateSaveV6, migrateSaveV7, normalizeState,
   idlePending, idleTick, gemQuotaInfo, claimIdle, claimIdleInternal, fastReward, fastRewardMutation, fastRewardAdMutation, adReward,
   doSummon, rollRarity, pickHeroOfRarity, summonPityInfo, setSummonFocus, summonTicketInfo, summonPointsInfo, claimSummonPoints, useUniversalSsr,

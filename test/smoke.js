@@ -512,7 +512,9 @@ check('印信兑换元宝（周限 1 内）', bg.ok);
 // 远征挑战：首层首通得印信
 s4b.campaign.cleared = 30;
 const ef = store4b.makeExpeditionFloor(1);
-check('远征层带当周词缀', ef.mods.length === 1);
+check('远征第 1 层免词缀（A1 免词缀层）', Array.isArray(ef.mods) && ef.mods.length === 0);
+const ef5 = store4b.makeExpeditionFloor(5);
+check('远征第 5 层带当周双词缀', ef5.mods.length === 2);
 const eb = store4b.beginBattle({ mode: 'expedition', index: 1, referenceLevel: 30 });
 const es = store4b.settleBattle(eb.id, { win: true, duration: 30, aliveCount: 5 });
 check('远征首通得印信 15', es.ok && es.reward.seals === 15 && s4b.week.trial.best === 1);
@@ -1781,6 +1783,38 @@ const storeP2 = freshStore(); storeP2.load();
   check('BC1 名将关首杀触发 Boss 日宝箱', !!r.bossChest && r.bossChest.gold === 15000);
   check('BC2 Boss 宝箱金已入账', sBC.res.gold > g0);
   check('BC3 同日再打不发', (() => { sBC.campaign.cleared = 9; const r2 = storeBC.winCampaign(10, { stars: 1 }); return !r2.bossChest; })());
+}
+
+// 远征秘境（研讨会十二 A1）：周词缀双条+免词缀层+加护三选一
+{
+  global.wx._map.delete(SAVE_KEY);
+  const storeEM = freshStore(); storeEM.load();
+  const sEM = storeEM.getState();
+  check('A1 配置导出', C.EXPEDITION_MUTATORS.count === 2 && C.EXPEDITION_BOONS.pool.length >= 10);
+  const f2 = storeEM.makeExpeditionFloor(2);
+  check('A1 前 4 层免词缀', Array.isArray(f2.mods) && f2.mods.length === 0);
+  const f5 = storeEM.makeExpeditionFloor(5);
+  check('A1 第 5 层起双词缀', f5.mods.length === 2);
+  const f5b = storeEM.makeExpeditionFloor(5);
+  check('A1 词缀按周确定性', JSON.stringify(f5.mods) === JSON.stringify(f5b.mods));
+  check('A1 层名带词缀', /第5层 · /.test(f5.name));
+  check('A1 未通关无加护 offer', storeEM.expeditionBoonOffer().length === 0);
+  sEM.week.trial.best = 3;
+  const offer3 = storeEM.expeditionBoonOffer();
+  check('A1 通 3 层发三选一', offer3.length === 3 && new Set(offer3.map(b => b.id)).size === 3);
+  const k3 = Object.keys(offer3[0].passive)[0];
+  check('A1 选加护入列并聚合被动', storeEM.pickExpeditionBoon(offer3[0].id).ok && (storeEM.expeditionBoonMods()[k3] || 0) > 0);
+  check('A1 同层不重复选', storeEM.expeditionBoonOffer().length === 0);
+  check('A1 非法加护拒绝', storeEM.pickExpeditionBoon('b_nope').ok === false);
+  [6, 9, 12, 15, 18].forEach(fl => {
+    sEM.week.trial.best = fl;
+    const of = storeEM.expeditionBoonOffer();
+    if (of.length) storeEM.pickExpeditionBoon(of[0].id);
+  });
+  check('A1 加护 6 条封顶', sEM.week.trial.boons.length === 6);
+  sEM.week.trial.best = 21;
+  check('A1 封顶后无 offer', storeEM.expeditionBoonOffer().length === 0);
+  check('A1 加护聚合 ≤6 条被动叠加', Object.values(storeEM.expeditionBoonMods()).every(v => v > 0));
 }
 
 console.log('\nsmoke: ' + passed + ' passed, ' + failed + ' failed');process.exit(failed ? 1 : 0);

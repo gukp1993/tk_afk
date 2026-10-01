@@ -397,7 +397,6 @@ export function journey(ctx: ScreenContext) {
       U.text('JourneyWeekBossText',`本周魔王 · ${wb.bossName} · 最高伤害 ${(wb.bestPct*100).toFixed(1)}% · 剩 ${wb.attemptsLeft} 次 ›`,0,-500,650,17,wb.attemptsLeft>0?GOLD:LIGHT);
       U.tap('JourneyWeekBossTap',0,-500,682,44,()=>ctx.go('weekboss'));
     }
-    U.text('JourneyVersion','「挂机定三国」放置卡牌 · v2.0.0',0,-364,580,16,tone('#ad9977'));
   }
 
 // 周常 Boss（研讨会四 P3）：每周 SSR 魔王，3 次挑战按最高伤害百分比定档
@@ -421,7 +420,7 @@ export function weekBossView(ctx: ScreenContext) {
   wb.tiers.forEach((t:any,i:number)=>{
     const y=88-i*54;
     U.panel('WbTier'+i,0,y,640,46,t.reached?tone('#3a2c17'):tone('#171009'),7,t.reached?GOLD:tone('#5a452a'));
-    U.text('WbTierPct'+i,`伤害 > ${(t.pct*100).toFixed(0)}%`,-170,y,300,18,t.reached?GOLD:LIGHT);
+    U.text('WbTierPct'+i,`伤害 > ${(t.pct*100).toFixed(1).replace(/\.0$/,'')}%`,-170,y,300,18,t.reached?GOLD:LIGHT);
     const rw=Object.entries(t.reward).map(([k,n]:any)=>`${({seals:'印信',token:'演武令'} as any)[k]||k}×${n}`).join(' · ');
     U.text('WbTierReward'+i,(t.reached?'已达标 · ':'')+rw,150,y,300,17,t.reached?GOLD:tone('#ad9977'));
   });
@@ -546,7 +545,7 @@ export function bag(ctx: ScreenContext) {
       const ey=-372-i*64;
       U.panel('BagEntry'+i,0,ey,682,52,tone('#312218'),8,tone('#795b34'));
       U.text('BagEntryGlyph'+i,String(glyph),-290,ey,44,30,GOLD);
-      U.text('BagEntryLabel'+i,String(label),-156,ey,420,19,LIGHT);
+      U.text('BagEntryLabel'+i,String(label),-128,ey,400,19,LIGHT);
       U.text('BagEntryGo'+i,'›',290,ey,40,19,GOLD);
       U.tap('BagEntryTap'+i,0,ey,682,52,()=>ctx.go(page as Page));
     });
@@ -714,8 +713,7 @@ export function formation(ctx: ScreenContext) {
     U.tap('SlotTap'+i,x,y,188,164,()=>{ctx.selectedFormationSlot=i;ctx.go('formationPick');});
   });
   U.text('FormationHelp1','点击已上阵武将可更换；阵营克制：魏→蜀→吴→群→魏',0,44,650,18,tone('#ad9977'));
-  U.text('FormationHelp2','克制方伤害 +25%',0,22,600,18,tone('#ad9977'));
-  U.text('FormationTarget','索敌：同排按 1→3 号位承伤 · 神射直取后排 · 军师随机',0,10,650,16,tone('#8a9a7a'));
+  U.text('FormationHelp2','克制方伤害 +25% · 索敌：同排按 1→3 号位承伤 · 神射直取后排 · 军师随机',0,20,668,15,tone('#8a9a7a'));
   const pi=store.formationPresetsInfo();
     U.panel('PresetBand',0,-30,682,40,tone('#2e2113'),7,tone('#795b34'));
     pi.list.forEach((pm:any,i:number)=>{
@@ -733,7 +731,6 @@ export function formation(ctx: ScreenContext) {
       U.text('PresetSaveTxt','保存当前阵容',sx,-30,138,15,GOLD);
       U.tap('PresetSaveTap',sx,-30,146,30,()=>ctx.confirm('保存阵型模板','把当前五人编队存为模板（含站位），日后一键启用',()=>{const r=store.saveFormationPreset('p'+(Date.now()%100000),'我的阵型');ctx.tell(r,r.ok?'模板已保存':'');}));
     }
-  firstTimeOverlay(ctx,'borrow');
   const bondsNow=store.activeBonds(),allBonds=heroes.BONDS||[],mods=store.bondMods();
   // 借将助战（研讨会五批次 1）：本周助将位每日一次借用，作第 6 人上阵（仅 PVE）
   const bb=store.borrowInfo();
@@ -744,7 +741,7 @@ export function formation(ctx: ScreenContext) {
       U.text('BorrowTxt',`${bn}·借 已随军上阵（仅 PVE）· 明日可换`,0,-510,560,18,GOLD);
       U.tap('BorrowDismissTap',0,-510,682,48,()=>{const r=store.dismissBorrow();ctx.tell(r,r.ok?'助战将已撤下':'');});
     }else{
-      U.text('BorrowTxt',`今日助战将：${bb.heroName}（Lv.${bb.level}·${bb.star}★ · 不吃养成加成）`,-160,-510,420,18,LIGHT);
+      U.text('BorrowTxt',`今日助战：${bb.heroName} Lv.${bb.level}·${bb.star}★·不吃养成`,-150,-510,420,17,LIGHT);
       U.button('BorrowGo','借 用',230,-510,150,38,()=>{const r=store.borrowHero(bb.heroId);ctx.tell(r,r.ok?`${bb.heroName} 已随军（第 6 人，仅 PVE）`:'');},palette.gold);
     }
   }
@@ -782,6 +779,7 @@ export function formation(ctx: ScreenContext) {
       formationRecommended=null;ctx.tell(store.applyFormation(recommended),'均衡推荐编队已应用');
     },palette.gold);
   }
+  firstTimeOverlay(ctx,'borrow'); // 移至末尾：晚于羁绊面板注册，遮罩置顶（体验官 P2 修复）
 }
 
 export function formationPick(ctx: ScreenContext) {
@@ -1034,41 +1032,48 @@ export function expeditionView(ctx: ScreenContext) {
   U.text('ExpBack','‹ 返回',-291,484,130,22,GOLD);
   U.tap('ExpBackTap',-291,484,136,52,()=>ctx.go('journey'));
   U.text('ExpWeek',`本周（${w.weekId}）· 印信 ${w.seals}`,0,443,640,20,GOLD);
-  // 无限层词缀挑战
-  U.text('ExpTrialTitle','远征无限层 · 每周一刷新词缀，难度无上限',0,404,640,18,LIGHT);
+  // 无限层词缀挑战（研讨会十二 A1：本周双词缀横幅，前 4 层免词缀）
+  U.text('ExpTrialTitle','远征秘境 · 每周双词缀轮换，难度无上限',0,418,640,17,LIGHT);
   var bestFloor=(w.trial as any).best||0;
   var nextFloor=bestFloor+1;
-  U.panel('ExpTrialCard',0,332,640,96,tone('#3a2c17'),8,GOLD);
-  U.text('ExpTrialLabel','下一层 · 第 '+nextFloor+' 层',0,362,640,22,GOLD);
-  U.text('ExpTrialBest','已通 '+bestFloor+' 层',0,336,640,18,LIGHT);
+  const mutCfg=(config as any).EXPEDITION_MUTATORS||{enabled:false,freeFloors:4};
+  const mutIds:any[]=mutCfg.enabled?store.weekMutatorIds():[];
+  const mutMeta=(config as any).CAMPAIGN_MODS.meta;
+  const mutText=mutIds.length?mutIds.map((id:string)=>`${mutMeta[id].name}（${mutMeta[id].desc}）`).join(' · '):'';
+  const boonPool=((config as any).EXPEDITION_BOONS||{}).pool||[];
+  const curBoons=((w.trial as any).boons||[]).map((id:string)=>(boonPool.find((b:any)=>b.id===id)||{}).name||id);
+  U.panel('ExpTrialCard',0,348,640,104,tone('#3a2c17'),8,GOLD);
+  U.text('ExpTrialLabel','下一层 · 第 '+nextFloor+' 层',0,372,640,22,GOLD);
   var msList=(config.WEEKLY.trial as any).milestones||[];
   var reached=msList.filter(function(m){return bestFloor>=m.floor;}).length;
-  U.text('ExpTrialMs','里程碑 '+reached+'/'+msList.length,0,310,640,15,tone('#d9b06a'));
-  U.button('ExpTrialGo','挑 战 第 '+nextFloor+' 层',0,246,500,58,function(){ctx.startBattle('expedition',nextFloor);},GOLD);
+  U.text('ExpTrialBest',`已通 ${bestFloor} 层 · 里程碑 ${reached}/${msList.length}`,0,346,640,16,LIGHT);
+  U.text('ExpTrialMut',bestFloor<mutCfg.freeFloors?`第 ${mutCfg.freeFloors} 层起生效：本周词缀 ${mutIds.map((id:string)=>mutMeta[id].name).join('·')}`:(mutText||'本周无词缀'),0,320,600,15,tone('#d9b06a'));
+  U.button('ExpTrialGo','挑 战 第 '+nextFloor+' 层',0,262,500,56,function(){ctx.startBattle('expedition',nextFloor);},GOLD);
+  // 加护行（局内 buff，周内累计）
+  if(curBoons.length)U.text('ExpBoons',`加护（${curBoons.length}/${((config as any).EXPEDITION_BOONS||{}).maxStack||6}）：${curBoons.join('·')}`,0,214,640,16,GOLD);
   // 个人周报（研讨会十 D2）：本周战斗概要一行
   {
     const wr=store.weeklyReport();
-    U.text('ExpWeekly','本周：胜 '+wr.wins+' 场 · 推图 +'+wr.stagesCleared+' · 塔 '+wr.towerBest+' 层 · 演武胜 '+wr.arenaWins,0,208,640,15,tone('#a99778'));
-    if(wr.topHeroes.length)U.text('ExpWeeklyTop','常用：'+wr.topHeroes.join(' · '),0,192,640,14,tone('#8a7c5f'));
+    U.text('ExpWeekly','本周：胜 '+wr.wins+' 场 · 推图 +'+wr.stagesCleared+' · 塔 '+wr.towerBest+' 层 · 演武胜 '+wr.arenaWins,0,186,640,15,tone('#a99778'));
+    if(wr.topHeroes.length)U.text('ExpWeeklyTop','常用：'+wr.topHeroes.join(' · '),0,166,640,14,tone('#8a7c5f'));
   }
   // 周活跃宝箱（试玩 P1 修补：规则侧已有 claimWeekActive，此前无 UI 入口）
-  U.text('ExpActiveTitle','周活跃宝箱 · 按本周累计印信领额外印信',0,200,640,18,LIGHT);
+  U.text('ExpActiveTitle','周活跃宝箱 · 按本周累计印信领额外印信',0,140,640,18,LIGHT);
   (w.active as any[]).forEach((a:any,i:number)=>{
     const x=-236+i*236;
-    U.panel('ExpActive'+i,x,142,210,90,a.claimed?tone('#26301f'):a.claimable?tone('#3a2c17'):tone('#171009'),7,a.claimed?tone('#6f8a5f'):a.claimable?GOLD:tone('#5a452a'));
-    U.text('ExpActiveNeed'+i,`累计印信 ${a.need}`,x,168,200,17,a.claimable?GOLD:LIGHT);
-    U.text('ExpActiveReward'+i,`奖 印信 ×${a.reward.seals||0}`,x,144,200,15,tone('#d9b06a'));
-    U.button('ExpActiveGo'+i,a.claimed?'已 领':a.claimable?'领 取':`进度 ${w.sealsEarned}/${a.need}`,x,118,196,38,()=>{
+    U.panel('ExpActive'+i,x,88,210,84,a.claimed?tone('#26301f'):a.claimable?tone('#3a2c17'):tone('#171009'),7,a.claimed?tone('#6f8a5f'):a.claimable?GOLD:tone('#5a452a'));
+    U.text('ExpActiveNeed'+i,`累计印信 ${a.need}`,x,114,200,17,a.claimable?GOLD:LIGHT);
+    U.text('ExpActiveReward'+i,`奖 印信 ×${a.reward.seals||0}`,x,90,200,15,tone('#d9b06a'));
+    U.button('ExpActiveGo'+i,a.claimed?'已 领':a.claimable?'领 取':`进度 ${w.sealsEarned}/${a.need}`,x,64,196,38,()=>{
       if(!a.claimable)return;
       const r=store.claimWeekActive(i);
       ctx.tell(r,r.ok?'活跃宝箱已领取':'');
     },a.claimable?GOLD:tone('#423022'));
   });
   // 周任务
-  // 周任务
-  U.text('ExpQuestTitle','周任务 · 印信主要来源',0,32,640,18,LIGHT);
+  U.text('ExpQuestTitle','周任务 · 印信主要来源',0,24,640,18,LIGHT);
   w.quests.forEach((q:any,i:number)=>{
-    const y=-14-i*56;
+    const y=-22-i*56;
     U.panel('ExpQuest'+i,0,y,640,58,tone('#171009'),7,tone('#5a452a'));
     U.text('ExpQuestLabel'+i,q.label,-160,y+10,420,18,LIGHT);
     U.text('ExpQuestProg'+i,`${q.prog}/${q.target}`,70,y-16,110,15,tone('#a6906c'));
@@ -1079,19 +1084,44 @@ export function expeditionView(ctx: ScreenContext) {
     },q.claimable?GOLD:tone('#423022'));
   });
   // 印信兑换
-  U.text('ExpShopTitle','印信兑换',0,-412,640,18,LIGHT);
+  U.text('ExpShopTitle','印信兑换',0,-408,640,18,LIGHT);
   config.WEEKLY.shop.forEach((g:any,i:number)=>{
-    const x=i%2===0?-224:14, y=-450-Math.floor(i/2)*62;
+    const x=-230+(i%3)*230, y=-448-Math.floor(i/3)*62;
     const bought=g.weekly>0&&(st.week as any).shopBought[g.id];
     U.panel('ExpShopCard'+i,x,y,210,54,bought?tone('#171009'):tone('#3a2c17'),7,bought?tone('#5a452a'):GOLD);
     U.text('ExpShopName'+i,g.name,x,y+10,200,15,LIGHT);
     U.text('ExpShopCost'+i,`${g.seals} 印信`+(bought?' · 已兑':''),x,y-14,200,13,bought?tone('#6f8a5f'):tone('#d9b06a'));
     U.tap('ExpShopTap'+i,x,y,210,54,()=>{const r=store.buyWeekly(g.id);ctx.tell(r,r.ok?'兑换 '+r.name:'');});
   });
+  // 加护三选一弹层（研讨会十二 A1）：每通 3 层出现，可稍后再选
+  {
+    const offer=store.expeditionBoonOffer();
+    if(offer.length&&expBoonDismissedFloor!==bestFloor){
+      U.rect('ExpBoonShade',0,0,720,1280,new Color(12,10,8,190));
+      U.tap('ExpBoonShadeTap',0,0,720,1280,()=>{});
+      U.panel('ExpBoonPanel',0,40,620,430,tone('#251b14'),12,GOLD);
+      U.tap('ExpBoonBlock',0,40,620,430,()=>{});
+      U.text('ExpBoonTitle','加 护 三 选 一',0,206,560,28,GOLD);
+      U.text('ExpBoonSub','第 '+bestFloor+' 层通关嘉奖 · 加护仅本周远征生效，可叠 '+(((config as any).EXPEDITION_BOONS||{}).maxStack||6)+' 层',0,176,560,16,tone('#ad9977'));
+      offer.forEach((b:any,i:number)=>{
+        const y=96-i*88;
+        U.panel('ExpBoonCard'+i,0,y,560,76,tone('#3a2c17'),9,GOLD);
+        U.text('ExpBoonName'+i,b.name,-150,y+12,200,22,GOLD);
+        U.text('ExpBoonDesc'+i,b.desc,60,y+10,320,17,LIGHT);
+        U.tap('ExpBoonTap'+i,0,y,560,76,()=>{
+          const r=store.pickExpeditionBoon(b.id);
+          ctx.tell(r,r.ok?`已选加护「${r.boon}」：${r.desc}`:'');
+          if(r.ok)ctx.show('expedition');
+        });
+      });
+      U.button('ExpBoonLater','稍后再选',0,-134,300,50,()=>{expBoonDismissedFloor=bestFloor;ctx.show('expedition');},tone('#423022'));
+    }
+  }
   firstTimeOverlay(ctx,'expedition');
 }
 
 let bountyPickIdx = -1;
+let expBoonDismissedFloor = -1; // 加护弹层「稍后再选」标记：同层不再弹，新一层 offer 再弹
 
 export function bountyView(ctx: ScreenContext) {
   const info=store.bountyInfo(),U=ctx.ui,s=store.getState();

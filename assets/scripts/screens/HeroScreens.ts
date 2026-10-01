@@ -85,7 +85,7 @@ export function heroes(ctx: ScreenContext) {
       const qs=store.qualityShardInfo();
       U.panel('ShardEntry',22,515,230,63,tone('#3a2a1b'),7,gold);
       U.text('ShardEntryText','碎片兑换 ›',22,529,213,22,gold);
-      U.text('ShardEntrySub',`SSR ${qs[4]}/10 · SR ${qs[3]}/10 · R ${qs[2]}/10 · N ${qs[1]}/10`,18,498,250,14,dim);
+      U.text('ShardEntrySub',`SSR${qs[4]} SR${qs[3]} R${qs[2]} N${qs[1]} 各/10`,34,498,206,14,dim);
       U.tap('ShardEntryTap',22,515,230,63,()=>{shardTier=4;ctx.show('heroes');});
     }
     const sharedY=455,filterY=378,sortY=303;
@@ -651,7 +651,7 @@ export function achvView(ctx: ScreenContext) {
       const y=Math.max(830,flat.length*72+20)/2-36-i*72;
       V.panel('AchvRow'+i,0,y,656,68,t.claimable?tone('#3a2c17'):ink,7,t.claimable?gold:border);
       V.text('AchvRowName'+i,`${t.name} · 第${t.tier+1}档（需 ${t.need}）`,-170,y+2,400,19,t.claimable?gold:LIGHT);
-      V.text('AchvRowReward'+i,Object.entries(t.reward).map(([k,n]:any)=>`${k==='title'?'称号':k==='frame'?'头像框':k==='gem'?'元宝':k==='shard'?'碎片':k==='token'?'演武令':k}`+'×'+n).join(' · '),-170,y-24,420,15,dim);
+      V.text('AchvRowReward'+i,Object.entries(t.reward).map(([k,n]:any)=>`${k==='title'?'称号':k==='frame'?'头像框':k==='gem'?'元宝':k==='shard'?'碎片':k==='token'?'演武令':k==='gold'?'铜钱':k==='scroll'?'招募令':k==='seals'?'印信':k}`+'×'+n).join(' · '),-170,y-24,420,15,dim);
       if(t.claimable)V.button('AchvGo'+i,'领 取',235,y,140,48,()=>{const r=store.claimAchv(t.axis,t.tier);ctx.tell(r,r.ok?'已领取 '+r.name:'');},gold);
     });
   });

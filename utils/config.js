@@ -341,6 +341,29 @@ const CHAPTER_STAR_CHESTS = [
 ];
 // 章节词缀（评审团波次 2）：每章第 3/7 关（章内 index 2/6）带机制词缀，≥25 关启用。
 // 补偿 ×0.95；已有 normalOverrides 的关（如 117）不叠乘。词缀与精锐不叠同关。
+// 远征秘境（研讨会十二 A1）：周词缀双条（前 4 层免词缀护新手）+ 局内加护三选一
+// 词缀复用 CAMPAIGN_MODS 六通道（只作用敌侧）；加护全走既有被动键，局内叠加、周重置清空。
+const EXPEDITION_MUTATORS = {
+  enabled: true, freeFloors: 4, count: 2,
+  pool: ['poisonFog', 'allBack', 'reinforce', 'ironWall', 'gale', 'famine']
+};
+const EXPEDITION_BOONS = {
+  enabled: true, every: 3, choices: 3, maxStack: 6,
+  pool: [
+    { id: 'b_atk1', name: '锋锐', passive: { atk: 0.04 }, desc: '全军攻击 +4%' },
+    { id: 'b_atk2', name: '破军', passive: { atk: 0.07 }, desc: '全军攻击 +7%' },
+    { id: 'b_hp1', name: '坚韧', passive: { hp: 0.05 }, desc: '全军生命 +5%' },
+    { id: 'b_hp2', name: '磐石', passive: { hp: 0.08 }, desc: '全军生命 +8%' },
+    { id: 'b_shield', name: '龟甲', passive: { armoryStartShield: 0.08 }, desc: '开战获 8% 生命护盾' },
+    { id: 'b_vamp', name: '噬血', passive: { vamp: 0.04 }, desc: '全军吸血 +4%' },
+    { id: 'b_thorns', name: '荆棘', passive: { thorns: 0.06 }, desc: '反伤 6%' },
+    { id: 'b_crit', name: '锋芒', passive: { critDmg: 0.10 }, desc: '暴击伤害 +10%' },
+    { id: 'b_energy', name: '奔雷', passive: { energyGain: 0.06 }, desc: '怒气获取 +6%' },
+    { id: 'b_first', name: '先声', passive: { firstEnergy: 8 }, desc: '开场怒气 +8' },
+    { id: 'b_dr', name: '铁壁', passive: { dmgReduce: 0.025 }, desc: '受到伤害 -2.5%' },
+    { id: 'b_heal', name: '甘露', passive: { recvHeal: 0.08 }, desc: '受疗 +8%' }
+  ]
+};
 const CAMPAIGN_MODS = {
   compensation: 1.0,
   minStage: 25,
@@ -592,5 +615,5 @@ module.exports = {
   GACHA, factionBonus, FORMATION_ROWS, BATTLE, ARENA, DEFEAT_RX, REPLAYS, DRILL, SEVEN_DAY, FOURTEEN_DAY, DUNGEON, WEEKBOSS, BORROW, SWEEP, REPLAY_ACHV, TUTORIAL_OFF, TUTORIALS, TRAINING_DAILY_CAP, BOUNTY, ROAMER_POOL, AD,
   FIRST_STAGE_END, CAMPAIGN_DIFFICULTY, CAMPAIGN_MILESTONES, ELITE_STAGE, STAR_RULES, CHAPTER_STAR_CHESTS, DAILY_ELITE_CHEST, DAILY_BOSS_CHEST,
   CAMPAIGN_MODS, BOSS_MODS, RETURN_GRANTS, SUMMON_TICKET, SUMMON_POINTS, FORGE, MOTIFS, MOTIF_COST, SMELT,
-  CODEX_REWARDS, ACHV_AXES, ACHV_REWARDS, WEEKLY, HALL, AWAKEN, FORMATION_PRESETS_MAX, TACTIC, BATTLE_TACTICS, TACTIC_SR, HALL_ACHV, TACTIC_ACHV, AWAKEN_ACHV, DRILL_ACHV, CHAOS_ACHV, CHAOS_MILESTONES, AFFIX_SETS
+  CODEX_REWARDS, ACHV_AXES, ACHV_REWARDS, WEEKLY, HALL, AWAKEN, FORMATION_PRESETS_MAX, TACTIC, BATTLE_TACTICS, TACTIC_SR, HALL_ACHV, TACTIC_ACHV, AWAKEN_ACHV, DRILL_ACHV, CHAOS_ACHV, CHAOS_MILESTONES, AFFIX_SETS, EXPEDITION_MUTATORS, EXPEDITION_BOONS
 };

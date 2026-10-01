@@ -447,7 +447,13 @@ export class CocosBootstrap extends Component implements ScreenContext {
     if(mode==='campaign') effects=stages.stageBattleEffects(stages.makeStageEnemies(index));
     else if(mode==='expedition') effects=stages.stageBattleEffects(enemy);
     const battleSeed=Date.now();
-    this.fighting=battleRules.createBattle(Object.assign({team:store.playerUnits(this.armedTactic,!(config.BORROW&&config.BORROW.excludedModes||[]).includes(mode)),enemy:store.enemyUnits(enemy.units),seed:battleSeed},effects||{}));
+    const teamUnits=store.playerUnits(this.armedTactic,!(config.BORROW&&config.BORROW.excludedModes||[]).includes(mode));
+    // 远征加护（研讨会十二 A1）：仅远征战斗把本周加护被动并入我方全军
+    if(mode==='expedition'){
+      const bm=store.expeditionBoonMods();
+      Object.keys(bm).forEach((k:string)=>{teamUnits.forEach((u:any)=>{u.passive=Object.assign({},u.passive);u.passive[k]=(u.passive[k]||0)+bm[k];});});
+    }
+    this.fighting=battleRules.createBattle(Object.assign({team:teamUnits,enemy:store.enemyUnits(enemy.units),seed:battleSeed},effects||{}));
     // 每场重置弹字计数（试玩 P2：跨场保留旧计数会抑制新一场的伤害数字）
     (this as any)._popupCount = 0;
     this.combatPopupDisplay = [];
