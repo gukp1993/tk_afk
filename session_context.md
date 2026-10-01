@@ -16,6 +16,20 @@
 
 ## 最近交接（新 → 旧）
 
+### F1 关卡克制推荐 · zcode · 已实施待验收
+
+时间：2026-10-01 17:00（Asia/Shanghai）；执行者：zcode；状态：已实施待验收。
+
+- `58e1b3c`（研讨会十 F1）：recommendFormation 增可选第二参 enemyFaction（缺省=现状，签名向后兼容）；反查 BEATS[x]=enemyFaction 找克制阵营（修 BEATS 方向 bug）；factionPriority 注入 powerOrder/backOrder 首位（覆盖 cls——魏辅可替代蜀辅入阵）；编队页推荐布阵自动读当前关敌阵主阵营。
+- 验证：smoke 445 全过（+3 F1a~F1c 含 6 人竞争）、镜像/tsc 过、微信包 3424KB。
+- 待验收：真机推荐布阵对特定敌阵的克制选择。
+- 研讨会十剩余：D2 个人周报（需 heroUse 计数）、S1 分享接口层（P2）；R1/好友码等用户裁决。
+
+### 章
+#### ===（正文截断保护标记，勿删）
+#### 上一条
+
+
 ### 小传补齐全 120 将 · zcode · 已实施待验收
 
 时间：2026-10-01 16:00（Asia/Shanghai）；执行者：zcode；状态：已实施待验收。
