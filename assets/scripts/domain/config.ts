@@ -158,7 +158,7 @@ const DUNGEON = {
 const BORROW = {
   enabled: true, levelFactor: 0.8, star: 3,
   pool: ['lvbu', 'zhaoyun', 'zhugeliang', 'zhouyu', 'sunce', 'simayi'],
-  excludedModes: ['arena', 'hall', 'weekboss']
+  excludedModes: ['arena', 'hall', 'weekboss', 'trial']
 };
 
 // 乱世里程碑（2026-09-30 研讨会六 A3）：每乱世章末一次性小奖（禁精铁/招募令），
@@ -182,6 +182,35 @@ const SWEEP = { enabled: true, daily: 3 };
 // 每日 Boss 首杀（2026-10-01 研讨会十一 S3）：每日首个 Boss 系内容（名将/精锐/Boss/周Boss）胜利
 // 发固定小额铜钱+三选一（碎片3/招募令1/元宝30），量级对齐精锐日宝箱。
 // 无精铁、无每胜元宝；各模式共享每日一次。回退：enabled=false。
+// 名将试炼（研讨会十二候选池 C2，规格定稿）：16 只 SSR 各一关机制解谜——主将=本人+4 同阵营副将，
+// extraPassive 只挂主将且键值全取 BOSS_MODS 七键词表（新机制键=0）。须拥有该将、不限次、仅首通发荣耀 +15
+//（16×15=240 占满觉总耗 6080 的 3.9%<5% 红线）；全通授称号「试炼·无双」。回退：enabled=false。
+const TRIALS = {
+  enabled: true,
+  levelMult: 0.90,
+  honorPerStage: 15,
+  allTitle: '试炼·无双',
+  overrides: {},
+  trials: {
+    liubei:     { name: '仁德开局', extraPassive: { firstEnergy: 50 }, mates: ['guanyu','zhangfei','zhugeliang','huangyueying'], hint: '仁德开局先奶后强——撑过开场，优先放倒军师位' },
+    guanyu:     { name: '武圣斩将', extraPassive: { vamp: 0.15 }, mates: ['liubei','zhangfei','zhaoyun','huangzhong'], hint: '武圣以战养战——治疗护盾跟上，别跟他拼血' },
+    zhangfei:   { name: '燕人棘刺', extraPassive: { thorns: 0.15 }, mates: ['liubei','guanyu','zhaoyun','zhugeliang'], hint: '虎啸之后是棘刺——带吸血或后排输出，别白挨反弹' },
+    zhaoyun:    { name: '龙胆再起', extraPassive: { cheatRevivePct: 0.3 }, mates: ['guanyu','zhangfei','zhugeliang','huangyueying'], hint: '子龙难死——别把爆发一次交完，持续伤是稳解' },
+    zhugeliang: { name: '八阵先声', extraPassive: { firstEnergy: 50 }, mates: ['guanyu','zhaoyun','huangzhong','huangyueying'], hint: '卧龙开口便是八阵图——护盾接大，或抢先手怒气' },
+    huangzhong: { name: '百步夺魄', extraPassive: { firstEnergy: 40 }, mates: ['zhaoyun','machao','fazheng','huangyueying'], hint: '老将军专射血最薄之人——奶要雨露均沾，残血即靶' },
+    caocao:     { name: '奸雄亲征', extraPassive: { armoryStartShield: 0.25, firstEnergy: 40 }, mates: ['simayi','dianwei','guojia','xunyu'], hint: '第 80 关的功课：盾期省火力，盾碎再爆发' },
+    simayi:     { name: '冢虎之忍', extraPassive: { dmgReduce: 0.15 }, mates: ['caocao','guojia','zhangliao','zhenji'], hint: '善败者不亡、皮厚者难破——减防与 dot 破龟壳' },
+    dianwei:    { name: '恶来盾刺', extraPassive: { armoryStartShield: 0.25, thorns: 0.12 }, mates: ['xuchu','caocao','zhangliao','xunyu'], hint: '恶来带盾又带刺——吸血与磨血是唯一体面解' },
+    zhangliao:  { name: '止啼死线', extraPassive: { firstEnergy: 40 }, mates: ['caocao','guojia','zhanghe','zhenji'], hint: '血过三成半即是死线——奶满再打，或速战速决' },
+    zhouyu:     { name: '赤壁先火', extraPassive: { firstEnergy: 50 }, mates: ['luxun','sunce','lusu','huanggai'], hint: '盾住开场大火——后排别叠在同一边' },
+    sunce:      { name: '霸王卸甲', extraPassive: { firstEnergy: 40 }, mates: ['zhouyu','ganning','taishici','lusu'], hint: '脆皮主公别站主将对位——坦位替他接这一刀' },
+    luxun:      { name: '书生拜将', extraPassive: { firstEnergy: 50 }, mates: ['zhouyu','sunce','lvmeng','lusu'], hint: '主线 100 关的老朋友——后排多带一口奶' },
+    lvbu:       { name: '飞将无双·极', extraPassive: { ccImmune: 1, cheatRevivePct: 0.3 }, mates: ['diaochan','dongzhuo','chengong','huaxiong'], hint: '控制队请退场——减伤、爆发、续航，三选二' },
+    diaochan:   { name: '倾国之舞', extraPassive: { firstEnergy: 40 }, mates: ['lvbu','dongzhuo','huatuo','chengong'], hint: '一舞乱军心、全队手发软——盾住削弱期，或先送貂蝉谢幕' },
+    dongzhuo:   { name: '魔王不灭', extraPassive: { armoryStartShield: 0.25, cheatRevivePct: 0.3 }, mates: ['lvbu','diaochan','huaxiong','liru'], hint: '这是一场耐力考——dot 与续航编队别带错' }
+  }
+};
+
 // 四方台 · 阵营试炼塔（研讨会十二候选池 A2，规格代理定稿）：周轮换蜀→魏→吴→群，
 // 仅本周阵营武将可上阵（战斗时过滤编队，不动玩家阵型），30 层/周每日解锁 5 层。
 // 奖励只发铜钱+印信小额+两永久称号——0 精铁/0 招募令/0 元宝/0 SSR 卡（铜钱满清 ≈周收入 6.7%<10% 自查）。
@@ -665,7 +694,7 @@ export {
   goldCost, expCost, idleRates, IDLE_CAP_HOURS, GEM_IDLE, ARMORY_IRON_PER_HOUR,
   FAST_AD, FAST_PAID,
   GACHA, factionBonus, FORMATION_ROWS, BATTLE, ARENA, DEFEAT_RX, REPLAYS, DRILL, SEVEN_DAY, FOURTEEN_DAY, DUNGEON, WEEKBOSS, BORROW, SWEEP, REPLAY_ACHV, TUTORIAL_OFF, TUTORIALS, TRAINING_DAILY_CAP, BOUNTY, ROAMER_POOL, AD,
-  FIRST_STAGE_END, CAMPAIGN_DIFFICULTY, CAMPAIGN_MILESTONES, ELITE_STAGE, STAR_RULES, CHAPTER_STAR_CHESTS, DAILY_ELITE_CHEST, DAILY_BOSS_CHEST, DAILY_AGENDA, QUAD_TOWER,
+  FIRST_STAGE_END, CAMPAIGN_DIFFICULTY, CAMPAIGN_MILESTONES, ELITE_STAGE, STAR_RULES, CHAPTER_STAR_CHESTS, DAILY_ELITE_CHEST, DAILY_BOSS_CHEST, DAILY_AGENDA, QUAD_TOWER, TRIALS,
   CAMPAIGN_MODS, BOSS_MODS, RETURN_GRANTS, SUMMON_TICKET, SUMMON_POINTS, FORGE, MOTIFS, MOTIF_COST, SMELT,
   CODEX_REWARDS, ACHV_AXES, ACHV_REWARDS, WEEKLY, HALL, AWAKEN, FORMATION_PRESETS_MAX, TACTIC, BATTLE_TACTICS, TACTIC_SR, HALL_ACHV, TACTIC_ACHV, AWAKEN_ACHV, DRILL_ACHV, CHAOS_ACHV, CHAOS_MILESTONES, AFFIX_SETS, EXPEDITION_MUTATORS, EXPEDITION_BOONS
 };

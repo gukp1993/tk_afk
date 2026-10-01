@@ -5,11 +5,13 @@ import * as store from '../domain/store';
 import * as heroData from '../domain/heroes';
 import * as items from '../domain/items';
 import * as config from '../domain/config';
+import * as stages from '../domain/stages';
 import * as fmt from '../domain/fmt';
 import * as progression from '../domain/progression';
 import { firstTimeOverlay } from './TutorialOverlay';
 import * as bios from '../domain/bios';
 
+let trialPreviewHero = ''; // 名将试炼预览弹层当前对象（C2）
 const ink=tone('#171009'), panel=tone('#2e2113'), border=tone('#5a452a');
 const gold=tone('#f0cf8a'), paper=tone('#e9d8b4'), dim=tone('#a6906c');
 const rarityNames=['','N','R','SR','SSR'];
@@ -195,7 +197,7 @@ export function heroDetail(ctx: ScreenContext) {
   const hasVoucher=(s.vouchers[h.rarity===4?'ssr':'sr']||0)>0&&h.rarity>=3;
   const awakenShown=h.rarity===4&&own.star>=5;
   const tacticShown=(h.rarity===4&&own.star>=5)||(h.rarity===3&&own.star>=4);
-  const contentH=1160+(own.cards>0?110:0)+(hasVoucher?115:0)+(ctx.heroDetailOrigin==='heroes'?90:0)+(awakenShown?130:0)+(tacticShown?130:0)+(h.rarity<=2?130:0);
+  const contentH=1160+(own.cards>0?110:0)+(hasVoucher?115:0)+(ctx.heroDetailOrigin==='heroes'?90:0)+(awakenShown?130:0)+(tacticShown?130:0)+(h.rarity<=2?130:0)+(h.rarity===4&&(config.TRIALS as any).enabled?96:0);
   const top=contentH/2, pct=(v:number)=>fmt.fmtPct(v);
   U.rect('DetailBackdrop',0,0,720,1280,tone('#122a22'));
   U.panel('DetailHeader',0,587,720,96,new Color(9,28,25,245),0,gold);
@@ -323,8 +325,45 @@ export function heroDetail(ctx: ScreenContext) {
         next=dy-64;
       }
     }
+    if(h.rarity===4&&(config.TRIALS as any).enabled){
+      const trial=(store as any).trialInfo(h.id);
+      V.button('TrialGo',trial.cleared?`试炼·已通关「${trial.name}」 · 复习`:`名将试炼 · ${trial.name}`,0,next-44,350,72,()=>{trialPreviewHero=h.id;ctx.show('heroDetail');},palette.gold);
+      next-=96;
+    }
     if(ctx.heroDetailOrigin==='heroes')V.button('ReturnHeroes','返回群英录',0,next-40,350,72,()=>ctx.back('heroes'),palette.paperDark);
   });
+  // 名将试炼开战前弹层（C2，stagePreview 模式）：敌阵/机制/奖励
+  if(trialPreviewHero){
+    const t=(store as any).trialInfo(trialPreviewHero);
+    if(t){
+      U.rect('TrialShade',0,0,720,1280,new Color(12,10,8,190));
+      U.tap('TrialShadeTap',0,0,720,1280,()=>{trialPreviewHero='';ctx.show('heroDetail');});
+      U.panel('TrialPanel',0,60,658,782,tone('#251b14'),12,gold);
+      U.tap('TrialBlock',0,60,658,782,()=>{});
+      U.text('TrialTitle',`名将试炼 · ${t.name}`,0,406,560,30,gold);
+      U.text('TrialHint',t.hint,0,372,580,17,tone('#ad9977'));
+      U.text('TrialMechHead','敌方机制',-244,336,200,20,LIGHT);
+      const mechNames:any={ccImmune:'免疫控制',cheatRevivePct:'倒地再起',armoryStartShield:'开场护盾',dmgReduce:'伤害减免',thorns:'反弹伤害',firstEnergy:'开场怒气',vamp:'攻击吸血'};
+      Object.entries(t.extraPassive).forEach(([k,v]:any,i:number)=>{
+        U.text('TrialMech'+i,`${mechNames[k]||k}（${typeof v==='number'&&v<1?Math.round(v*100)+'%':v}）`,0,306-i*34,560,18,tone('#e0856a'));
+      });
+      U.text('TrialEnemyHead','敌方阵容',-244,220,200,20,LIGHT);
+      const e=stages.makeTrialEnemies(t.heroId,store.teamPower());
+      e.units.forEach((u:any,i:number)=>{
+        const yy=180-i*46;
+        U.panel('TrialEnemy'+i,0,yy,600,40,tone('#171009'),6,tone('#5a452a'));
+        U.text('TrialEnemyName'+i,`${i===0?'主将 · ':''}${u.hero.name} Lv.${u.level}`,-190,yy,320,19,u.isBoss?gold:LIGHT);
+        U.text('TrialEnemyCls'+i,u.hero.cls==='warrior'?'武将':u.hero.cls==='archer'?'弓手':'军师',180,yy,120,17,tone('#a99778'));
+      });
+      U.text('TrialReward',t.cleared?'已通关 · 复习不发奖':`首通：荣耀 +${t.honor}（当前 ${t.clearedCount}/${t.total}，全通授「${t.allTitle}」）`,0,-188,600,19,t.cleared?tone('#a99778'):gold);
+      U.button('TrialFight','出 战',-149,-240,270,60,()=>{
+        trialPreviewHero='';
+        (ctx as any).trialHeroId=t.heroId;
+        ctx.startBattle('trial',0);
+      },palette.gold);
+      U.button('TrialClose','稍后再战',149,-240,270,60,()=>{trialPreviewHero='';ctx.show('heroDetail');},tone('#3a2b20'));
+    } else trialPreviewHero='';
+  }
   if(h.rarity<=2)firstTimeOverlay(ctx,'drill');
   U.panel('DetailActionBackground',0,-579,720,122,new Color(7,27,24,245),0,gold);
   U.panel('FormationAction',0,-568,538,82,new Color(25,87,65,255),11,gold);

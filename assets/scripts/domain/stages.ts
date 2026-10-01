@@ -183,6 +183,31 @@ function makeTowerEnemies(floor) {
   return { name: '群英塔 · 第' + floor + '层', units, isBoss: floor % 5 === 0 };
 }
 
+// 名将试炼（研讨会十二 C2）：主将=该 SSR 本人（带 extraPassive 机制）+4 同阵营副将；
+// 等级按玩家 teamPower 反推（hall 公式，levelMult 0.90），同一关天然服务新人教学与毕业解谜。
+function makeTrialEnemies(heroId, playerPower) {
+  const C = __domain_config;
+  const cfg = C.TRIALS;
+  const H2 = __domain_heroes;
+  const t = cfg.trials[heroId];
+  const hero = H2.getHero(heroId);
+  const lvMult = (cfg.overrides && cfg.overrides[heroId]) || cfg.levelMult;
+  const targetPower = (playerPower || 0) * lvMult;
+  const lv = Math.max(1, Math.round(Math.pow(targetPower / 2600, 1 / 1.35)));
+  const star = Math.min(2, Math.floor(lv / 60));
+  const ids = [heroId].concat(t.mates);
+  const units = ids.map((id, i) => {
+    const h = H2.getHero(id);
+    return {
+      hero: h, level: lv, star,
+      scale: i === 0 ? 1.05 : 0.95,
+      extraPassive: i === 0 ? Object.assign({}, t.extraPassive) : null,
+      isBoss: i === 0, row: i <= 2 ? 0 : 1
+    };
+  });
+  return { name: '名将试炼 · ' + hero.name + ' · ' + t.name, units, isBoss: true, trial: { heroId } };
+}
+
 // 四方台（研讨会十二 A2）：阵营试炼塔敌阵。同阵营将池+阵营小兵，周键+层数确定性；
 // 曲线锚定主线进度（anchor=clamp(cleared,10,120)），k 已计敌方满编同阵营光环 ≈13.5% 实效。
 function makeQuadTowerEnemies(faction, weekId, anchor, floor) {
@@ -319,4 +344,4 @@ function buildReinforceUnits(globalStage, chapterFoes, lv, star, baseScale) {
     };
   });
 }
-export { CHAPTERS, STAGES_PER_CH, stageScale, chapterOf, isEliteStage, stageStars, resolveMods, stageBattleEffects, buildReinforceUnits, makeHallEnemies, hallStars, hallWeeklyLineups, makeStageEnemies, makeTowerEnemies, makeArenaEnemies, makePracticeEnemies, makeDungeonEnemies, makeWeekBossEnemies, makeQuadTowerEnemies };
+export { CHAPTERS, STAGES_PER_CH, stageScale, chapterOf, isEliteStage, stageStars, resolveMods, stageBattleEffects, buildReinforceUnits, makeHallEnemies, hallStars, hallWeeklyLineups, makeStageEnemies, makeTowerEnemies, makeArenaEnemies, makePracticeEnemies, makeDungeonEnemies, makeWeekBossEnemies, makeQuadTowerEnemies, makeTrialEnemies };

@@ -43,6 +43,7 @@ function defaultState() {
     tower: { best: 0 },
     arena: { points: 1000, wins: 0, losses: 0, attempts: C.ARENA.DAILY, rankReached: {}, weekKey: '', weekRankReached: {}, lastFirstWinDay: null },
     quadTower: { weekId: '', best: 0 },
+    trials: { cleared: {} },
     armory: createArmory(),
     idle: { last: Date.now(), gold: 0, gem: 0, scroll: 0, ironAcc: 0 },
     gemDay: { day: F.todayStr(), claimedGem: 0 },
@@ -697,6 +698,45 @@ function winQuadTower(floor) {
   return reward;
 }
 
+function winTrial(heroId) {
+  const cfg = C.TRIALS;
+  const reward = { mode: 'trial', heroId, honor: 0, first: false, title: null, allClear: false };
+  if (!state.trials) state.trials = { cleared: {} };
+  if (!state.trials.cleared[heroId]) {
+    state.trials.cleared[heroId] = 1;
+    reward.first = true;
+    reward.honor = cfg.honorPerStage;
+    state.hall = state.hall || {};
+    state.hall.honor = (state.hall.honor || 0) + reward.honor;
+    // 全 16 关通关授称号（一次性）
+    const total = Object.keys(cfg.trials).length;
+    if (Object.keys(state.trials.cleared).length >= total) {
+      state.titles = state.titles || [];
+      if (state.titles.indexOf(cfg.allTitle) < 0) { state.titles.push(cfg.allTitle); reward.title = cfg.allTitle; }
+      reward.allClear = true;
+    }
+    // HALL 阈值称号随累计荣耀即时补授（复用 winHall 同款循环，防延迟到下次名人堂胜利）
+    (C.HALL.titles || []).forEach(t => {
+      if ((state.hall.honor || 0) >= t.honor && state.titles && state.titles.indexOf(t.title) < 0) state.titles.push(t.title);
+    });
+  }
+  return reward;
+}
+function trialInfo(heroId) {
+  checkDailyReset();
+  const cfg = C.TRIALS;
+  const t = cfg.trials[heroId];
+  if (!t) return null;
+  return {
+    enabled: !!cfg.enabled, heroId, name: t.name, hint: t.hint,
+    extraPassive: t.extraPassive, mates: t.mates,
+    cleared: !!(state.trials && state.trials.cleared[heroId]),
+    owned: !!state.roster[heroId],
+    clearedCount: Object.keys((state.trials && state.trials.cleared) || {}).length,
+    total: Object.keys(cfg.trials).length,
+    honor: cfg.honorPerStage, allTitle: cfg.allTitle
+  };
+}
 // —— 今日军务（研讨会十二 C1）：纯读评估器，直接读裸字段不调 info() 防递归/双口径 ——
 function agendaEntriesRaw(st) {
   const cfg = C.DAILY_AGENDA;
@@ -1003,6 +1043,8 @@ function normalizeState(s) {
     s.quadTower = s.quadTower || { weekId: '', best: 0 };
     if (typeof s.quadTower.weekId !== 'string') s.quadTower.weekId = '';
     s.quadTower.best = Math.max(0, Math.min((C.QUAD_TOWER && C.QUAD_TOWER.floors) || 30, Math.floor(Number(s.quadTower.best) || 0)));
+    s.trials = s.trials || { cleared: {} };
+    s.trials.cleared = s.trials.cleared || {};
   s.sevenDay = s.sevenDay || { start: F.todayStr(), claimed: [] };
   if (!Array.isArray(s.sevenDay.claimed)) s.sevenDay.claimed = [];
   s.sevenDay.claimed = s.sevenDay.claimed.map(n => Math.floor(Number(n) || 0)).filter(n => n >= 1 && n <= 7);
@@ -2617,6 +2659,11 @@ function beginBattle(spec) {
     if (spec.index > (state.quadTower.best || 0) + 1) return { ok: false, msg: '需先通过第 ' + ((state.quadTower.best || 0) + 1) + ' 层' };
     if (spec.index > info.unlocked && spec.index > (state.quadTower.best || 0)) return { ok: false, msg: '第 ' + spec.index + ' 层明日解锁（每日 +5 层）' };
   }
+  if (spec.mode === 'trial') {
+    if (!C.TRIALS || !C.TRIALS.enabled) return { ok: false, msg: '名将试炼未开放' };
+    if (!spec.trialHero || !C.TRIALS.trials[spec.trialHero]) return { ok: false, msg: '试炼对象无效' };
+    if (!state.roster[spec.trialHero]) return { ok: false, msg: '须拥有该名将方可试炼' };
+  }
   if (spec.mode === 'weekboss') {
     if (!C.WEEKBOSS || !C.WEEKBOSS.enabled) return { ok: false, msg: '魔王讨伐未开放' };
     const wbInfo = weekBossInfo();
@@ -2643,11 +2690,13 @@ function beginBattle(spec) {
     : mode === 'tower' ? index === state.tower.best + 1
     : mode === 'expedition' ? index === ((state.week && state.week.trial.best) || 0) + 1
     : mode === 'quad' ? index === ((state.quadTower && state.quadTower.best) || 0) + 1
+    : mode === 'trial' ? !state.trials.cleared[spec.trialHero]
     : mode === 'dungeon' ? index === ((spec.dungeonKind === 'train' ? state.dungeon.bestTrain : state.dungeon.bestGold) || 0) + 1 : false;
   state.battle.pending = {
     id, mode, index,
     dungeonKind: spec.dungeonKind || null, first,
     hallLineup: spec.hallLineup || null,
+    trialHero: spec.trialHero || null,
     hallWeek: (state.week && state.week.weekId) || null,
     referenceLevel: Math.max(1, Math.floor(spec.referenceLevel || state.player.level)),
     levelAtStart: state.player.level, first,
@@ -2693,6 +2742,7 @@ function battleXP(pending, win) {
   if (pending.mode === 'dungeon') return 0;
   if (pending.mode === 'weekboss') return 0;
   if (pending.mode === 'quad') return 0; // 四方台零经验（A2 败北/胜利都不给，不碰经验溢出裁决）
+  if (pending.mode === 'trial') return 0; // 名将试炼零经验（C2 同口径）
   if (pending.mode === 'training') {
     // 练兵经验每日上限：前 N 场全额，之后 0（切断"无限练兵=免费等级"）
     const done = (state.daily.trainingWins || 0);
@@ -2734,6 +2784,8 @@ function settleBattle(battleId, outcome) {
       if (win) reward = winExpedition(pending.index);
     } else if (pending.mode === 'quad') {
       if (win) reward = winQuadTower(pending.index);
+    } else if (pending.mode === 'trial') {
+      if (win) reward = winTrial(pending.trialHero);
     } else if (pending.mode === 'hall') {
       reward = { seat: pending.index, lineupId: pending.hallLineup ? pending.hallLineup.id : null, stars: 0, hallReward: null };
       if (win) {
@@ -3355,7 +3407,7 @@ export {
   exchangeQualityShard, qualityShardInfo, drillInfo, drillHero,
   getFormationCalc, setFormationSlot, applyFormation, formationFactionBonus, teamPower, playerUnits, enemyUnits, activeBonds, bondMods, bondComboMods,
   getArmoryBonuses, getArmoryState, armoryUnlock, armorySelect, armoryUpgrade, armoryUpgradeToNode, armoryClaimBox, grantArmoryItem, applyArmoryRecommendations, armoryAffixBadges, forgeInfo, forgeReroll, forgeSetDir, forgeToggleLock, forgeGateOpen, motifInfo, motifActivate, smeltInfo, smeltMelt, smeltCombine,
-  codexInfo, claimCodex, useUniversalSr, achvInfo, claimAchv, weekInfo, claimWeekQuest, claimWeekActive, buyWeekly, makeExpeditionFloor, bumpWeek, dailyAgendaInfo, quadFactionOfWeek, quadTowerInfo, winQuadTower, weekMutatorIds, expeditionBoonOffer, pickExpeditionBoon, expeditionBoonMods, beginHall, winHall, hallInfo, saveReplay, replaysInfo, awakenInfo, awakenHero, formationPresetsInfo, saveFormationPreset, applyFormationPreset, delFormationPreset, tacticInfo, tacticUpgrade,
+  codexInfo, claimCodex, useUniversalSr, achvInfo, claimAchv, weekInfo, claimWeekQuest, claimWeekActive, buyWeekly, makeExpeditionFloor, bumpWeek, dailyAgendaInfo, quadFactionOfWeek, quadTowerInfo, winQuadTower, winTrial, trialInfo, weekMutatorIds, expeditionBoonOffer, pickExpeditionBoon, expeditionBoonMods, beginHall, winHall, hallInfo, saveReplay, replaysInfo, awakenInfo, awakenHero, formationPresetsInfo, saveFormationPreset, applyFormationPreset, delFormationPreset, tacticInfo, tacticUpgrade,
   migrateSaveV1, migrateSaveV2, migrateSaveV3, migrateSaveV4, migrateSaveV5, migrateSaveV6, migrateSaveV7, normalizeState,
   idlePending, idleTick, gemQuotaInfo, claimIdle, claimIdleInternal, fastReward, fastRewardMutation, fastRewardAdMutation, adReward,
   doSummon, rollRarity, pickHeroOfRarity, summonPityInfo, setSummonFocus, summonTicketInfo, summonPointsInfo, claimSummonPoints, useUniversalSsr,

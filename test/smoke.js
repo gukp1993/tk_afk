@@ -1908,4 +1908,37 @@ const storeP2 = freshStore(); storeP2.load();
   check('Q12 旧档 quadTower 兜底且 v8', sQ.v === 8 && typeof sQ.quadTower.weekId === 'string');
 }
 
+// 名将试炼（研讨会十二 C2）：机制解谜关
+{
+  global.wx._map.delete(SAVE_KEY);
+  const storeT = freshStore(); storeT.load();
+  const sT = storeT.getState();
+  const ids = Object.keys(C.TRIALS.trials);
+  const ssr = H.HEROES.filter(h => h.rarity === 4).map(h => h.id);
+  check('T1 16 关且恰好覆盖全部 SSR', ids.length === 16 && ssr.length === 16 && ids.every(id => ssr.includes(id)) && ssr.every(id => ids.includes(id)));
+  const KEYS = ['ccImmune','cheatRevivePct','armoryStartShield','dmgReduce','thorns','firstEnergy','vamp'];
+  check('T2 被动键全在 BOSS_MODS 词表（新机制键=0）', ids.every(id => Object.keys(C.TRIALS.trials[id].extraPassive).every(k => KEYS.includes(k))));
+  const e = stages.makeTrialEnemies('lvbu', 60000);
+  check('T3 敌阵 5 人主将即本人仅主将带被动', e.units.length === 5 && e.units[0].hero.id === 'lvbu' && e.units[0].isBoss && e.units.slice(1).every(u => !u.isBoss && !u.extraPassive));
+  // 未拥有拒绝
+  const rb0 = storeT.beginBattle({ mode: 'trial', trialHero: 'lvbu', referenceLevel: 20 });
+  check('T4 未拥有拒绝', rb0.ok === false && !storeT.getState().battle.pending);
+  // 拥有后开战+首胜
+  storeT.grantCard('lvbu');
+  const rb = storeT.beginBattle({ mode: 'trial', trialHero: 'lvbu', referenceLevel: 20 });
+  check('T5 拥有后开战且 first', rb.ok && rb.first);
+  const resBefore = { gold: sT.res.gold, gem: sT.res.gem, scroll: sT.res.scroll, iron: sT.res.iron, shard: sT.res.shard, token: sT.res.token };
+  const rT = storeT.winTrial('lvbu');
+  check('T6 首通荣耀 +15 且资源零变动', rT.first && rT.honor === 15 && sT.hall.honor === 15
+    && Object.keys(resBefore).every(k => sT.res[k] === resBefore[k]));
+  check('T7 复打幂等', storeT.winTrial('lvbu').honor === 0 && Object.keys(sT.trials.cleared).length === 1);
+  // 16 关全清 → 称号
+  ids.filter(id => id !== 'lvbu').forEach(id => { storeT.grantCard(id); storeT.winTrial(id); });
+  check('T8 全通授「试炼·无双」且不重复授', sT.titles.indexOf('试炼·无双') >= 0 && storeT.winTrial('lvbu').title === null);
+  // 旧档兜底：删字段后 normalize 原位补齐
+  delete sT.trials;
+  storeT.normalizeState(sT);
+  check('T9 normalize 兜底 trials', !!sT.trials && !!sT.trials.cleared);
+}
+
 console.log('\nsmoke: ' + passed + ' passed, ' + failed + ' failed');process.exit(failed ? 1 : 0);

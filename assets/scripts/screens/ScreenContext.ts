@@ -18,6 +18,7 @@ export interface ScreenContext {
   battleId: string;
   battleMode: string;
   battleIndex: number;
+  trialHeroId: string;
   battleDiff: number;
   battleArenaSeed: number;
   outcome: any;

@@ -30,6 +30,7 @@ export class CocosBootstrap extends Component implements ScreenContext {
   public formationPageIndex = 0;
   public selectedBoxQ = 1;
   public fighting: any = null;
+  public trialHeroId = ''; // 名将试炼当前对象（C2）
   public battleId = '';
   public battleMode = 'campaign';
   public lastUltDisplay = '';
@@ -441,8 +442,8 @@ export class CocosBootstrap extends Component implements ScreenContext {
     const effectiveArenaSeed=arenaSeed||Date.now();
     let _hallLineup:any=null;
     if(mode==='hall'){const bh=store.beginHall(index);if(!bh.ok)return this.tell(bh,'');_hallLineup=bh.lineup;}
-    const enemy=mode==='campaign'?stages.makeStageEnemies(index):mode==='tower'?stages.makeTowerEnemies(index):mode==='training'?stages.makePracticeEnemies(store.playerLevel(),Date.now()):mode==='expedition'?store.makeExpeditionFloor(index):mode==='quad'?(():any=>{const qi=store.quadTowerInfo();const anchor=Math.max(10,Math.min(120,store.getState().campaign.cleared||0));return stages.makeQuadTowerEnemies(qi.faction,qi.weekId,anchor,index);})():mode==='dungeon'?stages.makeDungeonEnemies(dungeonKind==='train'?'train':'gold',index,store.playerLevel()):mode==='hall'?(():any=>{const bh=store.beginHall(index);if(!bh.ok)return null;return stages.makeHallEnemies(bh.lineup,store.teamPower(),index);})():stages.makeArenaEnemies(store.teamPower(),effectiveArenaSeed,diff);
-    const started=store.beginBattle({mode,index,diff,referenceLevel:enemy.units[0]?.level||store.playerLevel(),hallLineup:_hallLineup,hallWeek:(store.getState().week||{}).weekId||null,dungeonKind});
+    const enemy=mode==='campaign'?stages.makeStageEnemies(index):mode==='tower'?stages.makeTowerEnemies(index):mode==='training'?stages.makePracticeEnemies(store.playerLevel(),Date.now()):mode==='expedition'?store.makeExpeditionFloor(index):mode==='trial'?stages.makeTrialEnemies(this.trialHeroId,store.teamPower()):mode==='quad'?(():any=>{const qi=store.quadTowerInfo();const anchor=Math.max(10,Math.min(120,store.getState().campaign.cleared||0));return stages.makeQuadTowerEnemies(qi.faction,qi.weekId,anchor,index);})():mode==='dungeon'?stages.makeDungeonEnemies(dungeonKind==='train'?'train':'gold',index,store.playerLevel()):mode==='hall'?(():any=>{const bh=store.beginHall(index);if(!bh.ok)return null;return stages.makeHallEnemies(bh.lineup,store.teamPower(),index);})():stages.makeArenaEnemies(store.teamPower(),effectiveArenaSeed,diff);
+    const started=store.beginBattle({mode,index,diff,referenceLevel:enemy.units[0]?.level||store.playerLevel(),hallLineup:_hallLineup,hallWeek:(store.getState().week||{}).weekId||null,dungeonKind,trialHero:mode==='trial'?(this.trialHeroId||null):null});
     this.battleDungeonKind=dungeonKind||'';
     if(!started.ok){
       if(fromAuto) this.autoAction(this.autoSession.battleStarted(false,undefined,started.msg));

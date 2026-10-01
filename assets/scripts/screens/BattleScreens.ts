@@ -28,12 +28,17 @@ function battleTitle(ctx: ScreenContext) {
     return `第 ${ctx.battleIndex} 关 · ${stage.name}`;
   }
   if(ctx.battleMode==='expedition')return '远征 · 第 '+ctx.battleIndex+' 层';
+  if(ctx.battleMode==='quad')return '四方台 · 第 '+ctx.battleIndex+' 层';
+  if(ctx.battleMode==='trial'){
+    const t=(store as any).trialInfo((ctx as any).trialHeroId||'');
+    return '名将试炼 · '+(t?t.name:'');
+  }
   if(ctx.battleMode==='hall')return '名人堂挑战';
   return ({tower:'群英塔',training:'连续练兵',arena:'演武场'} as Record<string,string>)[ctx.battleMode] || '战斗';
 }
 
 function returnPage(ctx: ScreenContext) {
-  return ctx.battleMode==='arena'?'arena':ctx.battleMode==='tower'?'tower':ctx.battleMode==='expedition'||ctx.battleMode==='hall'?'journey':'campaign';
+  return ctx.battleMode==='arena'?'arena':ctx.battleMode==='tower'?'tower':ctx.battleMode==='quad'?'journey':ctx.battleMode==='trial'?'heroes':ctx.battleMode==='expedition'||ctx.battleMode==='hall'?'journey':'campaign';
 }
 
 function drawFighter(U: CocosUi, unit: any, index: number) {
@@ -210,6 +215,10 @@ export function resultView(ctx: ScreenContext) {
     const dr=reward||{};
     lines=r?.win?(dr.kind==='gold'?[`屯金第 ${dr.floor} 层通关 · 铜钱 +${fmt.fmtNum(dr.gold||0)}`]:[`屯兵第 ${dr.floor} 层通关 · 主公经验 +${dr.xpDirect||0}${r.levelAfter>r.levelBefore?` · 升至 Lv.${r.levelAfter}`:''}`]):[defeatDiag(ctx,r),'军屯不计入主线进度 · 明日再来'];
   }
+  else if(ctx.battleMode==='trial'){
+    const tr=reward||{};
+    lines=r?.win?(tr.first?[`首通荣耀 +${tr.honor||0} · 试炼「${(store as any).trialInfo((ctx as any).trialHeroId||'').name}」达成`,`当前荣耀 ${(store as any).hallInfo().honor}`]:['试炼成功（复习不发奖）']):['试炼不限次 · 调整编队再战',defeatDiag(ctx,r)];
+  }
   else if(ctx.battleMode==='expedition'){
     const er=reward||{};
     lines=r?.win?[`远征第 ${er.floor||ctx.battleIndex} 层通关${er.first?' · 首通':''} · 印信 +${er.seals||0}`,
@@ -295,7 +304,7 @@ export function resultView(ctx: ScreenContext) {
         // 演武败北：'再战'已可重打，不再重复渲染'重新挑战'
         U.text('ResultArenaTip','调整布阵或升级军械后再来切磋',139,-228,232,20,DIM);
       } else {
-        U.button('ResultNext',r?.win&&['campaign','tower'].includes(ctx.battleMode)?'挑战下一关':r?.win?'返回玩法':'重新挑战',139,-228,232,53,()=>{
+        U.button('ResultNext',r?.win&&['campaign','tower'].includes(ctx.battleMode)?'挑战下一关':r?.win&&ctx.battleMode==='trial'?'返回英雄':r?.win?'返回玩法':'重新挑战',139,-228,232,53,()=>{
           if(r?.win&&ctx.battleMode==='campaign')ctx.startBattle('campaign',ctx.battleIndex+1);
           else if(r?.win&&ctx.battleMode==='tower')ctx.startBattle('tower',ctx.battleIndex+1);
           else if(r?.win)ctx.go(returnPage(ctx));
