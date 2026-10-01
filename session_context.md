@@ -16,6 +16,14 @@
 
 ## 最近交接（新 → 旧）
 
+### 研讨会十一批次 2：每日 Boss 首杀宝箱（S3）· zcode · 已实施待验收
+
+时间：2026-10-02 12:00（Asia/Shanghai）；执行者：zcode；状态：已实施待验收。
+
+- `4024b1c`：名将关（stageIdx 尾号 0）胜利时每日一次发 Boss 日宝箱——15000 铜钱 + 三选一（碎片3/招募令1/元宝30），量级对齐精锐日宝箱（DAILY_ELITE_CHEST）；同日去重用 `daily.bossChestClaimed`（每日重置时清空）。修复接线缺口：`DAILY_BOSS_CHEST` 已在 config 定义但漏出 `module.exports`，分支此前永不触发。
+- 验证：smoke 454 通过（新增 BC1 首杀发箱、BC2 金入账、BC3 同日不重发）、规则镜像检查、tsc、微信包 3428KB 构建成功。
+- 下一步：结果页展示 bossChest 掉落行（BattleScreens）；S4 缘分组合技需仿真裁决量级。
+
 ### 研讨会十一批次 1：词条套装 + Boss 开场大字 · zcode · 已实施待验收
 
 时间：2026-10-02 11:30（Asia/Shanghai）；执行者：zcode；状态：已实施待验收。
