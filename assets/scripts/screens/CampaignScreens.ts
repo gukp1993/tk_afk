@@ -171,9 +171,9 @@ export function campaign(ctx: ScreenContext) {
     const sw=store.sweepInfo();
     U.text('ChapterMapSweepInfo',sw.enabled?`扫荡 ${sw.left}/${sw.daily} 次 · 三星关可免战速通`:'',0,366,620,16,tone('#a99778'));
     const first=viewIdx*stages.STAGES_PER_CH+1;
-    U.scroll('ChapterMapList',0,-30,612,700,10*73+12,(V)=>{
+    U.scroll('ChapterMapList',0,-30,612,740,10*72+12,(V)=>{
       for(let i=0;i<stages.STAGES_PER_CH;i++){
-        const n=first+i,y=(10*73+12)/2-37-i*73,current=(n===stage&&viewIdx===chapter.idx),cleared=n<stage;
+        const n=first+i,y=(10*72+12)/2-36-i*72,current=(n===stage&&viewIdx===chapter.idx),cleared=n<stage;
         const title=stages.makeStageEnemies(n).story?.stage?.name || stages.chapterOf(n).name;
         const stars=(s.campaign.stars||{})[n]||0;
         const sweepable=cleared&&stars>=3;
@@ -381,6 +381,20 @@ export function journey(ctx: ScreenContext) {
     U.tap('JourneyWeeklyReplayTap',110,-330,240,34,()=>ctx.go('hall'));
     U.tap('JourneyWeeklyTap',0,-280,682,60,()=>ctx.go('expedition'));
     // 军屯双本入口（研讨会四 P2）
+    // 今日军务折叠带（研讨会十二 C1）：单行入口，红点只挂可领取
+    {
+      const ag=store.dailyAgendaInfo();
+      if(ag.enabled&&ag.total>0){
+        const ns=ag.nextStep?(ag.entries as any[]).find(e=>e.key===ag.nextStep!.key):null;
+        const txt=ag.count>=ag.total?`今日军务 ${ag.count}/${ag.total} · 已清 · 勤勉 ${ag.agendaDays} 天 ›`
+          :`今日军务 ${ag.count}/${ag.total} · 下一步：${ns?ns.label:'稍后再来'} ›`;
+        const allDone=ag.count>=ag.total;
+        U.panel('AgendaBand',0,-368,682,36,allDone?tone('#26301f'):tone('#2b2118'),8,allDone?tone('#6f8a5f'):GOLD);
+        U.text('AgendaBandTxt',txt,0,-368,640,17,allDone?tone('#a99778'):GOLD);
+        if(ag.nextStep&&ag.nextStep.tier==='claim')U.dot('AgendaDot',296,-376);
+        U.tap('AgendaBandTap',0,-368,682,36,()=>{agendaOpen=true;ctx.show('journey');});
+      }
+    }
     const dg=store.dungeonInfo();
     if(dg.enabled){
       U.panel('JourneyDungeon',0,-430,682,70,tone('#312218'),10,tone('#a17b40'));
@@ -397,6 +411,30 @@ export function journey(ctx: ScreenContext) {
       U.text('JourneyWeekBossText',`本周魔王 · ${wb.bossName} · 最高伤害 ${(wb.bestPct*100).toFixed(1)}% · 剩 ${wb.attemptsLeft} 次 ›`,0,-500,650,17,wb.attemptsLeft>0?GOLD:LIGHT);
       U.tap('JourneyWeekBossTap',0,-500,682,44,()=>ctx.go('weekboss'));
     }
+  // 今日军务展开弹层（研讨会十二 C1）：11 条清单+勤勉进度+一键前往
+  if(agendaOpen){
+    const ag=store.dailyAgendaInfo();
+    if(ag.enabled&&ag.total>0){
+      U.rect('AgendaShade',0,0,720,1280,new Color(12,10,8,190));
+      U.tap('AgendaShadeTap',0,0,720,1280,()=>{agendaOpen=false;ctx.show('journey');});
+      U.panel('AgendaPanel',0,0,658,974,tone('#251b14'),12,GOLD);
+      U.tap('AgendaBlock',0,0,658,974,()=>{});
+      U.text('AgendaTitle','今 日 军 务',0,437,440,29,GOLD);
+      U.text('AgendaSub',`今日 ${ag.count}/${ag.total} · 满 ${ag.fullCount} 项记勤勉 · 已累计 ${ag.agendaDays} 天${ag.titled?` · 已获「${ag.titleName}」`:''}`,0,393,600,17,ag.titled?GOLD:tone('#ad9977'));
+      const rows=ag.entries.length,contentH=rows*64+16;
+      U.scroll('AgendaScroll',0,-30,612,700,contentH,(V)=>{
+        ag.entries.forEach((e:any,i:number)=>{
+          const y=contentH/2-32-i*64;
+          V.panel('AgendaRow'+i,0,y,600,56,e.done?tone('#26301f'):tone('#302b1c'),7,e.done?tone('#6f8a5f'):tone('#3f3424'));
+          V.text('AgendaDotMark'+i,e.done?'●':'○',-266,y,30,22,e.done?GOLD:tone('#7a6c52'));
+          V.text('AgendaLabel'+i,`${e.label} ${e.cur}/${e.target}`,-150,y,360,19,e.done?tone('#a99778'):LIGHT);
+          V.text('AgendaGo'+i,'前往 ›',250,y,120,18,e.done?tone('#6f8a5f'):GOLD);
+          V.tap('AgendaRowTap'+i,0,y,600,56,()=>{agendaOpen=false;ctx.go(e.page as any);});
+        });
+      });
+      U.button('AgendaClose','返 回',0,-443,270,55,()=>{agendaOpen=false;ctx.show('journey');},palette.paperDark);
+    } else agendaOpen=false;
+  }
   }
 
 // 周常 Boss（研讨会四 P3）：每周 SSR 魔王，3 次挑战按最高伤害百分比定档
@@ -1122,6 +1160,7 @@ export function expeditionView(ctx: ScreenContext) {
 
 let bountyPickIdx = -1;
 let expBoonDismissedFloor = -1; // 加护弹层「稍后再选」标记：同层不再弹，新一层 offer 再弹
+let agendaOpen = false; // 今日军务展开弹层（研讨会十二 C1）
 
 export function bountyView(ctx: ScreenContext) {
   const info=store.bountyInfo(),U=ctx.ui,s=store.getState();
@@ -1146,7 +1185,7 @@ export function bountyView(ctx: ScreenContext) {
         const pct=Math.round((b.bonusPct||0)*100);
         U.text('BountyWant'+i,`征${fname}将 · 该单 +${pct}%`,-160,y-40,260,16,GOLD);
       }
-      U.button('BountyAct'+i,'派 遣',240,y-38,150,52,()=>{bountyPickIdx=i;ctx.show('bounty');},palette.gold);
+      U.button('BountyAct'+i,'派 遣',240,y-28,150,52,()=>{bountyPickIdx=i;ctx.show('bounty');},palette.gold);
     }else if(b.state==='running'){
       const h=Math.floor(b.remainMs/3600000),m=Math.floor(b.remainMs%3600000/60000);
       U.text('BountyAct'+i,`${heroName} · 归来还需 ${h}时${m}分`,110,y-38,340,18,tone('#ad9977'));
@@ -1155,7 +1194,7 @@ export function bountyView(ctx: ScreenContext) {
         U.text('BountyWant'+i,b.bonusActive?`已生效 +${b.realizedPct||20}%`:`非${fname}将`, -160,y-40,250,16,b.bonusActive?tone('#6f8a5f'):tone('#7a6c52'));
       }
     }else if(b.state==='done'){
-      U.button('BountyAct'+i,'领 赏',240,y-38,150,52,()=>ctx.tell(store.claimBounty(i),`已领赏：${b.name}`),palette.red);
+      U.button('BountyAct'+i,'领 赏',240,y-28,150,52,()=>ctx.tell(store.claimBounty(i),`已领赏：${b.name}`),palette.red);
       U.text('BountyHero'+i,`${heroName}${b.bonusActive&&b.realizedPct?` · 加成+${b.realizedPct}%`:''}`,-180,y-38,300,17,tone('#ad9977'));
     }else{
       U.text('BountyAct'+i,'已完成 · 已领赏',150,y-38,360,18,tone('#6f8a5f'));

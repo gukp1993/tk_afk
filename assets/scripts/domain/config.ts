@@ -182,6 +182,27 @@ const SWEEP = { enabled: true, daily: 3 };
 // 每日 Boss 首杀（2026-10-01 研讨会十一 S3）：每日首个 Boss 系内容（名将/精锐/Boss/周Boss）胜利
 // 发固定小额铜钱+三选一（碎片3/招募令1/元宝30），量级对齐精锐日宝箱。
 // 无精铁、无每胜元宝；各模式共享每日一次。回退：enabled=false。
+// 今日军务（研讨会十二 Top3-C1）：只读聚合清单+勤勉计数。零经济：仅 30 天称号，不动任何数值锚。
+// 回退旋钮：enabled=false 隐入口（store 返回空结构、UI 不渲染）。
+const DAILY_AGENDA = {
+  enabled: true,
+  fullCount: 8,
+  titleDays: 30,
+  titleName: '勤勉·恪尽军务',
+  entries: [
+    { key: 'idle', label: '领取挂机收益', page: 'campaign', prio: 1 },
+    { key: 'fast', label: '快速收获 ×3', page: 'campaign', prio: 2 },
+    { key: 'bounty', label: '悬赏派遣 4 单', page: 'bounty', prio: 3 },
+    { key: 'dungeon', label: '军屯双本 ×2', page: 'dungeon', prio: 4 },
+    { key: 'arena', label: '演武切磋 ×5', page: 'arena', prio: 5 },
+    { key: 'weekboss', label: '魔王讨伐 1 次', page: 'weekboss', prio: 6 },
+    { key: 'sweep', label: '扫荡 ×3', page: 'campaign', prio: 7 },
+    { key: 'tower', label: '群英塔 1 战', page: 'tower', prio: 8 },
+    { key: 'wins3', label: '任意三胜', page: 'campaign', prio: 9 },
+    { key: 'summonAd', label: '免费招募令', page: 'summon', prio: 10 },
+    { key: 'quests', label: '每日任务全领', page: 'quests', prio: 11 }
+  ]
+};
 const DAILY_BOSS_CHEST = {
   enabled: true, gold: 15000,
   pick: [{ shard: 3 }, { scroll: 1 }, { gem: 30 }]
@@ -616,7 +637,7 @@ export {
   goldCost, expCost, idleRates, IDLE_CAP_HOURS, GEM_IDLE, ARMORY_IRON_PER_HOUR,
   FAST_AD, FAST_PAID,
   GACHA, factionBonus, FORMATION_ROWS, BATTLE, ARENA, DEFEAT_RX, REPLAYS, DRILL, SEVEN_DAY, FOURTEEN_DAY, DUNGEON, WEEKBOSS, BORROW, SWEEP, REPLAY_ACHV, TUTORIAL_OFF, TUTORIALS, TRAINING_DAILY_CAP, BOUNTY, ROAMER_POOL, AD,
-  FIRST_STAGE_END, CAMPAIGN_DIFFICULTY, CAMPAIGN_MILESTONES, ELITE_STAGE, STAR_RULES, CHAPTER_STAR_CHESTS, DAILY_ELITE_CHEST, DAILY_BOSS_CHEST,
+  FIRST_STAGE_END, CAMPAIGN_DIFFICULTY, CAMPAIGN_MILESTONES, ELITE_STAGE, STAR_RULES, CHAPTER_STAR_CHESTS, DAILY_ELITE_CHEST, DAILY_BOSS_CHEST, DAILY_AGENDA,
   CAMPAIGN_MODS, BOSS_MODS, RETURN_GRANTS, SUMMON_TICKET, SUMMON_POINTS, FORGE, MOTIFS, MOTIF_COST, SMELT,
   CODEX_REWARDS, ACHV_AXES, ACHV_REWARDS, WEEKLY, HALL, AWAKEN, FORMATION_PRESETS_MAX, TACTIC, BATTLE_TACTICS, TACTIC_SR, HALL_ACHV, TACTIC_ACHV, AWAKEN_ACHV, DRILL_ACHV, CHAOS_ACHV, CHAOS_MILESTONES, AFFIX_SETS, EXPEDITION_MUTATORS, EXPEDITION_BOONS
 };

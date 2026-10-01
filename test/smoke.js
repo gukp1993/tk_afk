@@ -1817,4 +1817,51 @@ const storeP2 = freshStore(); storeP2.load();
   check('A1 加护聚合 ≤6 条被动叠加', Object.values(storeEM.expeditionBoonMods()).every(v => v > 0));
 }
 
+// 今日军务（研讨会十二 C1）：聚合清单/勤勉计数/称号
+{
+  global.wx._map.delete(SAVE_KEY);
+  const storeAG = freshStore(); storeAG.load();
+  const sAG = storeAG.getState();
+  const a0 = storeAG.dailyAgendaInfo();
+  check('C1 新档 10 条（sweep 被 cleared=0 隐藏）', a0.enabled && a0.total === 10 && a0.count === 0);
+  // 逐项判定（先触发一次日切治愈各 day 字段，再改当日计数）
+  sAG.fast.count = 3; sAG.arena.attempts = 0; sAG.dungeon.runs = 2; sAG.ads.counts.summon = 1;
+  sAG.campaign.cleared = 10; // 解锁 sweep
+  const a1 = storeAG.dailyAgendaInfo();
+  check('C1 逐项判定 fast/arena/dungeon/summonAd', ['fast','arena','dungeon','summonAd'].every(k => a1.entries.find(e => e.key === k).done));
+  check('C1 sweep 解锁后出现且未完成', a1.total === 11 && !a1.entries.find(e => e.key === 'sweep').done);
+  // 每日任务全领
+  const ITq = IT.QUESTS || [];
+  ITq.forEach(q => { sAG.daily.quests[q.id] = q.target; sAG.daily.claimed.push(q.id); });
+  const a2 = storeAG.dailyAgendaInfo();
+  check('C1 任务全领 done', a2.entries.find(e => e.key === 'quests').done);
+  check('C1 勤勉达标（≥8）', a2.full && a2.count >= a2.fullCount);
+  // weekboss 计数（日口径）——先测再清，防全清块置 1 干扰
+  sAG.campaign.cleared = Math.max(sAG.campaign.cleared, 10);
+  const rbAG = storeAG.beginBattle({ mode: 'weekboss', referenceLevel: 20 });
+  check('C1 weekboss 日计数', rbAG.ok && sAG.daily.weekBossPlays === 1);
+  storeAG.interruptBattle(rbAG.id, 'test');
+  // 全清 11 条 → nextStep null（悬赏走真实派遣，canClaim 才不会误报）
+  ['liaohua','mengda','zhangfei','guanyu'].forEach((hid,i)=>{ if(sAG.bounty.list[i]) storeAG.dispatchBounty(i,hid); });
+  sAG.daily.weekBossPlays = 1; sAG.sweep.used = 3;
+  sAG.daily.quests.q_tower1 = 1; sAG.daily.quests.q_win3 = 3; sAG.daily.quests.q_idle1 = 1;
+  const a3 = storeAG.dailyAgendaInfo();
+  check('C1 全清 11 条 nextStep null', a3.count === a3.total && a3.nextStep === null);
+  // 跨日勤勉结算：满 8 项跨日 +1（各 day 字段同步回昨日，模拟真实隔夜终态）
+  sAG.daily.day = '2020-01-01';
+  sAG.fast.day = '2020-01-01'; sAG.dungeon.day = '2020-01-01'; sAG.ads.day = '2020-01-01'; sAG.sweep.day = '2020-01-01'; sAG.bounty.day = '2020-01-01';
+  sAG.arena.attempts = 0; sAG.fast.count = 3; sAG.dungeon.runs = 2; sAG.ads.counts.summon = 1;
+  ITq.forEach(q => { sAG.daily.quests[q.id] = q.target; if (sAG.daily.claimed.indexOf(q.id) < 0) sAG.daily.claimed.push(q.id); });
+  storeAG.dailyAgendaInfo(); // 触发日切结算
+  check('C1 跨日勤勉 +1', sAG.agendaDays === 1);
+  check('C1 跨日条目回未完成', storeAG.dailyAgendaInfo().count <= 2);
+  // 旧档兜底
+  check('C1 旧档 agendaDays 兜底', Number.isFinite(sAG.agendaDays));
+  // enabled=false 旋钮
+  C.DAILY_AGENDA.enabled = false;
+  const aOff = storeAG.dailyAgendaInfo();
+  check('C1 enabled=false 空结构', aOff.enabled === false && aOff.total === 0);
+  C.DAILY_AGENDA.enabled = true;
+}
+
 console.log('\nsmoke: ' + passed + ' passed, ' + failed + ' failed');process.exit(failed ? 1 : 0);

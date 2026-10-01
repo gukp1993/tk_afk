@@ -636,6 +636,82 @@ function replaysInfo() {
 
 // 远征无限层：敌人=塔生成器锚定主线进度 + 当周词缀 + 层数递增倍率（无上限）
 
+
+// —— 今日军务（研讨会十二 C1）：纯读评估器，直接读裸字段不调 info() 防递归/双口径 ——
+function agendaEntriesRaw(st) {
+  const cfg = C.DAILY_AGENDA;
+  const out = [];
+  if (!cfg || !cfg.enabled) return out;
+  const q = (st.daily && st.daily.quests) || {};
+  const claimed = (st.daily && st.daily.claimed) || [];
+  cfg.entries.forEach(e => {
+    let cur = 0, target = 1, gate = true;
+    switch (e.key) {
+      case 'idle': cur = (q.q_idle1 || 0) >= 1 ? 1 : 0; target = 1; break;
+      case 'fast': cur = (st.fast && st.fast.count) || 0; target = (C.FAST_AD && C.FAST_AD.daily) || 3; break;
+      case 'bounty': cur = ((st.bounty && st.bounty.list) || []).filter(b => b.heroId).length; target = (C.BOUNTY && C.BOUNTY.slots) || 4; break;
+      case 'dungeon': gate = !!(C.DUNGEON && C.DUNGEON.enabled); cur = (st.dungeon && st.dungeon.runs) || 0; target = (C.DUNGEON && C.DUNGEON.daily) || 2; break;
+      case 'arena': cur = Math.max(0, (C.ARENA.DAILY || 5) - (st.arena ? st.arena.attempts : 0)); target = C.ARENA.DAILY || 5; break;
+      case 'weekboss': gate = !!(C.WEEKBOSS && C.WEEKBOSS.enabled); cur = (st.daily && st.daily.weekBossPlays) || 0; target = 1; break;
+      case 'sweep': gate = !!(C.SWEEP && C.SWEEP.enabled) && (st.campaign ? st.campaign.cleared : 0) >= 1; cur = (st.sweep && st.sweep.used) || 0; target = (C.SWEEP && C.SWEEP.daily) || 3; break;
+      case 'tower': cur = (q.q_tower1 || 0) >= 1 ? 1 : 0; target = 1; break;
+      case 'wins3': cur = q.q_win3 || 0; target = 3; break;
+      case 'summonAd': cur = adCount('summon'); target = (C.AD.placements.summon && C.AD.placements.summon.limit) || 1; break;
+      case 'quests': {
+        const list = (typeof questList === 'function') ? questList() : [];
+        cur = list.filter(qq => claimed.indexOf(qq.id) >= 0).length; target = list.length || 1; break;
+      }
+      default: gate = false;
+    }
+    if (!gate) return;
+    out.push({ key: e.key, label: e.label, page: e.page, prio: e.prio, cur: Math.min(cur, target), target, done: cur >= target });
+  });
+  return out;
+}
+function pickAgendaNextStep(entries) {
+  const claimableQuests = (() => {
+    const claimed = (state.daily && state.daily.claimed) || [];
+    return (typeof questList === 'function') ? questList().some(qq => claimed.indexOf(qq.id) < 0 && ((state.daily.quests||{})[qq.id] || 0) >= qq.target) : false;
+  })();
+  const bountyCanClaim = (() => {
+    try { return bountyInfo().canClaim; } catch (e) { return false; }
+  })();
+  const idleReady = ((state.daily.quests.q_idle1 || 0) < 1) && (() => { try { const p = idlePending(); return (p.gold || 0) > 0 || (p.gem || 0) > 0; } catch (e) { return false; } })();
+  const by = k => entries.find(e => e.key === k && !e.done);
+  if (claimableQuests) return { key: 'quests', tier: 'claim' };
+  if (bountyCanClaim) return { key: 'bounty', tier: 'claim' };
+  if (idleReady) return { key: 'idle', tier: 'claim' };
+  const bountyTodo = by('bounty');
+  if (bountyTodo) return { key: 'bounty', tier: 'high' };
+  const dungeonTodo = by('dungeon');
+  if (dungeonTodo) return { key: 'dungeon', tier: 'high' };
+  const wbTodo = by('weekboss');
+  if (wbTodo) return { key: 'weekboss', tier: 'high' };
+  const arenaTodo = by('arena');
+  if (arenaTodo) return { key: 'arena', tier: 'high' };
+  const order = ['fast', 'summonAd', 'sweep', 'tower', 'wins3', 'quests'];
+  for (const k of order) { const e = by(k); if (e) return { key: k, tier: 'low' }; }
+  return null;
+}
+function dailyAgendaInfo() {
+  checkDailyReset();
+  const cfg = C.DAILY_AGENDA;
+  const agendaDays = state.agendaDays || 0;
+  if (!cfg || !cfg.enabled) return { enabled: false, entries: [], count: 0, total: 0, full: false, nextStep: null, agendaDays, titleName: cfg ? cfg.titleName : '', titled: false };
+  const entries = agendaEntriesRaw(state).slice().sort((a, b) => a.prio - b.prio);
+  const count = entries.filter(e => e.done).length;
+  // 读路径回写当日完成数缓存（幂等元数据，判定不依赖）
+  if (state.daily && state.daily.agendaCount !== count) state.daily.agendaCount = count;
+  return {
+    enabled: true, day: state.daily.day, entries,
+    count, total: entries.length,
+    fullCount: cfg.fullCount, full: count >= cfg.fullCount,
+    agendaDays, titleName: cfg.titleName,
+    titled: (state.titles || []).indexOf(cfg.titleName) >= 0,
+    nextStep: pickAgendaNextStep(entries)
+  };
+}
+
 // 远征周词缀（研讨会十二 A1）：按周键确定性取 count 条不重复词缀
 function weekMutatorIds() {
   const cfg = C.EXPEDITION_MUTATORS;
@@ -863,6 +939,7 @@ function normalizeState(s) {
   if (!s.arena.weekKey) s.arena.weekKey = F.isoWeekKey();
   s.arena.weekRankReached = s.arena.weekRankReached || {};
     if (s.arena.lastFirstWinDay === undefined) s.arena.lastFirstWinDay = null;
+    if (!Number.isFinite(s.agendaDays)) s.agendaDays = 0;
   s.sevenDay = s.sevenDay || { start: F.todayStr(), claimed: [] };
   if (!Array.isArray(s.sevenDay.claimed)) s.sevenDay.claimed = [];
   s.sevenDay.claimed = s.sevenDay.claimed.map(n => Math.floor(Number(n) || 0)).filter(n => n >= 1 && n <= 7);
@@ -1002,6 +1079,18 @@ function checkDailyReset() {
   if (state.lastSeenTs && now + 1000 < state.lastSeenTs) return;
   const today = F.todayStr();
   if (state.daily.day !== today) {
+    // 勤勉结算（研讨会十二 C1）：用昨日终态判定，零经济——只记天数与 30 天称号
+    if (C.DAILY_AGENDA && C.DAILY_AGENDA.enabled) {
+      const done = agendaEntriesRaw(state).filter(e => e.done).length;
+      state.daily.agendaCount = done;
+      if (done >= (C.DAILY_AGENDA.fullCount || 8)) {
+        state.agendaDays = (state.agendaDays || 0) + 1;
+        if (state.agendaDays >= (C.DAILY_AGENDA.titleDays || 30)) {
+          state.titles = state.titles || [];
+          if (state.titles.indexOf(C.DAILY_AGENDA.titleName) < 0) state.titles.push(C.DAILY_AGENDA.titleName);
+        }
+      }
+    }
     state.daily = { day: today, quests: {}, claimed: [], active: [] }; // trainingWins 练兵计数随日重置
     state.arena.attempts = C.ARENA.DAILY;
   }
@@ -2462,6 +2551,7 @@ function beginBattle(spec) {
     if (!wbInfo.enabled) return { ok: false, msg: '魔王讨伐未开放' };
     if (wbInfo.attemptsLeft <= 0) return { ok: false, msg: '本周讨伐次数已用完' };
     state.weekBoss.attempts = (state.weekBoss.attempts || 0) + 1;
+    state.daily.weekBossPlays = (state.daily.weekBossPlays || 0) + 1; // 今日军务口径（日切自动清零）
   }
   if (spec.mode === 'dungeon') {
     if (!C.DUNGEON || !C.DUNGEON.enabled) return { ok: false, msg: '军屯未开放' };
@@ -3189,7 +3279,7 @@ export {
   exchangeQualityShard, qualityShardInfo, drillInfo, drillHero,
   getFormationCalc, setFormationSlot, applyFormation, formationFactionBonus, teamPower, playerUnits, enemyUnits, activeBonds, bondMods, bondComboMods,
   getArmoryBonuses, getArmoryState, armoryUnlock, armorySelect, armoryUpgrade, armoryUpgradeToNode, armoryClaimBox, grantArmoryItem, applyArmoryRecommendations, armoryAffixBadges, forgeInfo, forgeReroll, forgeSetDir, forgeToggleLock, forgeGateOpen, motifInfo, motifActivate, smeltInfo, smeltMelt, smeltCombine,
-  codexInfo, claimCodex, useUniversalSr, achvInfo, claimAchv, weekInfo, claimWeekQuest, claimWeekActive, buyWeekly, makeExpeditionFloor, bumpWeek, weekMutatorIds, expeditionBoonOffer, pickExpeditionBoon, expeditionBoonMods, beginHall, winHall, hallInfo, saveReplay, replaysInfo, awakenInfo, awakenHero, formationPresetsInfo, saveFormationPreset, applyFormationPreset, delFormationPreset, tacticInfo, tacticUpgrade,
+  codexInfo, claimCodex, useUniversalSr, achvInfo, claimAchv, weekInfo, claimWeekQuest, claimWeekActive, buyWeekly, makeExpeditionFloor, bumpWeek, dailyAgendaInfo, weekMutatorIds, expeditionBoonOffer, pickExpeditionBoon, expeditionBoonMods, beginHall, winHall, hallInfo, saveReplay, replaysInfo, awakenInfo, awakenHero, formationPresetsInfo, saveFormationPreset, applyFormationPreset, delFormationPreset, tacticInfo, tacticUpgrade,
   migrateSaveV1, migrateSaveV2, migrateSaveV3, migrateSaveV4, migrateSaveV5, migrateSaveV6, migrateSaveV7, normalizeState,
   idlePending, idleTick, gemQuotaInfo, claimIdle, claimIdleInternal, fastReward, fastRewardMutation, fastRewardAdMutation, adReward,
   doSummon, rollRarity, pickHeroOfRarity, summonPityInfo, setSummonFocus, summonTicketInfo, summonPointsInfo, claimSummonPoints, useUniversalSsr,
