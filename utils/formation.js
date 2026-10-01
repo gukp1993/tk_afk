@@ -1,13 +1,19 @@
 // 确定性均衡编队建议，不修改传入阵容。
 // 前排取坦度（坦克/战士按战力），后排取输出（法师/神射按攻击，战士次之，辅助兜底），
 // 避免按总战力挑选时凑出五坦克的零输出阵容（输出不足会打满 90 秒超时判负）。
-function recommendFormation(roster) {
+// enemyFaction（研讨会十 F1）：可选敌阵主阵营；传入时优先选克制阵营（wei→shu→wu→qun→wei 环）
+// 的人选填充同档位，缺员回落均衡——只改选择顺序，不改任何难度数值。
+function recommendFormation(roster, enemyFaction) {
   const all = (roster || []).filter(Boolean).slice();
+  // 反查：敌=shu → 找 BEATS[x]='shu' 的 x（wei 克 shu）→ 我方优先选 wei 阵营
+  const beats = enemyFaction ? (Object.keys(require('./config').BEATS || {}).find(k => (require('./config').BEATS || {})[k] === enemyFaction) || null) : null;
+  // 克制优先比较器：注入后续各排序，克制阵营在同战力时前移
+  const factionPriority = beats ? (h) => (h.faction === beats ? -1 : 0) : () => 0;
   if (!all.length) return [null, null, null, null, null];
-  const powerOrder = (a, b) => (Number(b.power) || 0) - (Number(a.power) || 0) || String(a.id).localeCompare(String(b.id));
+  const powerOrder = (a, b) => (factionPriority(a) - factionPriority(b)) || (Number(b.power) || 0) - (Number(a.power) || 0) || String(a.id).localeCompare(String(b.id));
   const atkOf = h => (Number(h.stats && h.stats.atk) || 0);
   const backRank = h => (h.cls === 'mage' || h.cls === 'archer' ? 0 : h.cls === 'support' ? 2 : 1);
-  const backOrder = (a, b) => backRank(a) - backRank(b) || atkOf(b) - atkOf(a) || powerOrder(a, b);
+  const backOrder = (a, b) => (factionPriority(a) - factionPriority(b)) || backRank(a) - backRank(b) || atkOf(b) - atkOf(a) || powerOrder(a, b);
 
   // 前排：坦克/战士按战力取前三
   const front = all.filter(h => h.cls === 'tank' || h.cls === 'warrior').sort(powerOrder).slice(0, 3);

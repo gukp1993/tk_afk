@@ -1682,4 +1682,25 @@ const storeP2 = freshStore(); storeP2.load();
   global.wx._map.delete(SAVE_KEY);
 }
 
+
+// F1 关卡克制推荐（研讨会十）：敌情参数向后兼容+克制前移
+{
+  const F2 = require('../utils/formation');
+  const roster=[
+    {id:'shu1',name:'蜀坦',faction:'shu',cls:'tank',power:3000,stats:{atk:100}},
+    {id:'shu2',name:'蜀战',faction:'shu',cls:'warrior',power:2800,stats:{atk:100}},
+    {id:'shu3',name:'蜀射',faction:'shu',cls:'archer',power:2600,stats:{atk:200}},
+    {id:'shu4',name:'蜀法',faction:'shu',cls:'mage',power:2400,stats:{atk:180}},
+    {id:'wei1',name:'魏辅',faction:'wei',cls:'support',power:1000,stats:{atk:50}},
+  ];
+  const noEnemy = F2.recommendFormation(roster);
+  const vsShu = F2.recommendFormation(roster,'shu');
+  check('F1a 无敌情向后兼容（签名不变）', JSON.stringify(noEnemy) === JSON.stringify(F2.recommendFormation(roster)));
+  // 6 人竞争：加第 6 人（shu 辅助），wei 辅助在敌=shu 时应替代 shu 辅助入阵
+  roster.push({id:'shu5',name:'蜀辅2',faction:'shu',cls:'support',power:2000,stats:{atk:80}});
+  const vsShu6 = F2.recommendFormation(roster,'shu');
+  check('F1b 敌=shu 时 wei 辅助前移入阵（6 人竞争）', vsShu6.indexOf('wei1') >= 0 && vsShu6.indexOf('shu5') < 0);
+  check('F1c 5 槽不满补 null', F2.recommendFormation([]).length === 5 && F2.recommendFormation([]).every(x => x === null));
+}
+
 console.log('\nsmoke: ' + passed + ' passed, ' + failed + ' failed');process.exit(failed ? 1 : 0);

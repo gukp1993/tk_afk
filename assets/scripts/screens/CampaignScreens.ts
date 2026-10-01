@@ -685,7 +685,12 @@ export function formation(ctx: ScreenContext) {
   const overviewText=[`军械 攻+${Math.round(ab.atk*100)}%/体+${Math.round(ab.hp*100)}%`,`羁绊 ${bondCount}/8`].join(' · ');
   U.text('FormationOverview',overviewText,190,478,290,17,GOLD);
   U.button('FormationRecommend','推荐布阵',244,514,170,55,()=>{
-    formationRecommended=recommendFormation(store.allRoster());ctx.show('formation');
+    const stage2=store.getState().campaign.cleared+1;
+    const fCount2:any={};
+    stages.makeStageEnemies(stage2).units.forEach((u2:any)=>{if(u2.hero)fCount2[u2.hero.faction]=(fCount2[u2.hero.faction]||0)+1;});
+    const dom2=Object.keys(fCount2).sort((a2:string,b2:string)=>fCount2[b2]-fCount2[a2])[0]||null;
+    formationRecommended=recommendFormation(store.allRoster(),dom2||undefined);
+    ctx.show('formation');
   },palette.gold);
   U.text('FormationBackLabel','后 排（远程输出 / 辅助）',0,444,540,19,tone('#ad9977'));
   U.text('FormationFrontLabel','前 排（承伤 / 近战）',0,230,540,19,tone('#ad9977'));
