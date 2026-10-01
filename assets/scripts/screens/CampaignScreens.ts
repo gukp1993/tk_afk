@@ -165,7 +165,7 @@ export function campaign(ctx: ScreenContext) {
     chapterMapCh=viewIdx;
     const viewCh=stages.chapterOf(viewIdx*stages.STAGES_PER_CH+1);
     U.text('ChapterMapTitle',viewCh.name,0,437,440,29,GOLD);
-    U.text('ChapterMapCount',`第${viewIdx+1}章 · 已通关 ${viewCh.inCh}/${stages.STAGES_PER_CH}`,0,393,580,19,LIGHT);
+    U.text('ChapterMapCount',`第${viewIdx+1}章 · 已通关 ${Math.max(0,Math.min(stages.STAGES_PER_CH,s.campaign.cleared-viewIdx*stages.STAGES_PER_CH))}/${stages.STAGES_PER_CH}`,0,393,580,19,LIGHT);
     U.button('ChapterMapPrev','‹',-284,415,56,44,()=>{chapterMapCh=Math.max(0,viewIdx-1);ctx.show('campaign');},viewIdx>0?tone('#5a452a'):tone('#332a1e'));
     U.button('ChapterMapNext','›',284,415,56,44,()=>{chapterMapCh=Math.min(maxCh,viewIdx+1);ctx.show('campaign');},viewIdx<maxCh?tone('#5a452a'):tone('#332a1e'));
     const sw=store.sweepInfo();

@@ -611,7 +611,7 @@ export function codexView(ctx: ScreenContext) {
     const y=375-i*88;
     U.panel('CodexRow'+i,0,y,640,78,r.claimed?tone('#26301f'):r.claimable?tone('#3a2c17'):ink,8,r.claimable?gold:border);
     U.text('CodexName'+i,r.name,-180,y+16,340,21,r.claimable?gold:LIGHT);
-    if(r.key==='all-ssr')U.text('CodexSsrSrc'+i,'来源：招募 · 自选券 · 碎片兑换 · 招贤值',148,y-33,340,12,tone('#8a7c5f'));
+    if(r.key==='all-ssr')U.text('CodexSsrSrc'+i,'来源：招募/券/碎片/招贤值',50,y+16,200,12,tone('#8a7c5f'));
     let lackText=`${r.have}/${r.need}`;
     if(!r.done){const H3=heroData;
       // 从 key 反推缺谁：阵营行（f-nr/f-sr）与 all-sr/all-ssr

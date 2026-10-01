@@ -21,6 +21,7 @@ export class CocosBootstrap extends Component implements ScreenContext {
   private content!: Node;
   public ui!: CocosUi;
   public notice = '';
+  private noticeAt = 0;
   public pageIndex = 0;
   public selectedHeroId = 'liubei';
   public heroDetailOrigin: Page = 'heroes';
@@ -145,6 +146,10 @@ export class CocosBootstrap extends Component implements ScreenContext {
       this.bountyRefresh += dt;
       if (this.bountyRefresh > 10) { this.bountyRefresh = 0; this.show('bounty'); }
     }
+    // Notice 4 秒自动消隐（体验官复扫 P2：toast 常驻叠印下方内容）
+    if (this.notice && this.noticeAt && Date.now() - this.noticeAt > 4000) {
+      this.notice = ''; this.noticeAt = 0; this.show(this.page);
+    }
   }
 
   private diagHooked = false;
@@ -195,7 +200,7 @@ export class CocosBootstrap extends Component implements ScreenContext {
   public go(page: Page) {
     if (this.page==='battle' && page!=='battle' && this.fighting && !this.auto) {
       const stopped=store.interruptBattle(this.battleId,'navigate-away');
-      if (!stopped.ok) { this.notice=stopped.msg; this.show('battle'); return; }
+      if (!stopped.ok) { this.notice=stopped.msg; this.noticeAt=Date.now(); this.show('battle'); return; }
       this.fighting=null;
       this.battleId='';
     }
@@ -210,6 +215,7 @@ export class CocosBootstrap extends Component implements ScreenContext {
   public back(fallback: Page = 'campaign') { this.go(this.navigation[this.navigation.length-1] || fallback); }
   public tell(result: any, good: string) {
     this.notice = result?.ok ? good : (result?.msg || '操作失败');
+    this.noticeAt = Date.now();
     this.show(this.page);
     // 领取飞字（研讨会七 P4）：成功且有奖励数据时在屏幕中央偏上飘字
     if (result?.ok && result?.reward && typeof result.reward === 'object') {

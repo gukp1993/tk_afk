@@ -210,6 +210,11 @@ export function resultView(ctx: ScreenContext) {
     const dr=reward||{};
     lines=r?.win?(dr.kind==='gold'?[`屯金第 ${dr.floor} 层通关 · 铜钱 +${fmt.fmtNum(dr.gold||0)}`]:[`屯兵第 ${dr.floor} 层通关 · 主公经验 +${dr.xpDirect||0}${r.levelAfter>r.levelBefore?` · 升至 Lv.${r.levelAfter}`:''}`]):[defeatDiag(ctx,r),'军屯不计入主线进度 · 明日再来'];
   }
+  else if(ctx.battleMode==='expedition'){
+    const er=reward||{};
+    lines=r?.win?[`远征第 ${er.floor||ctx.battleIndex} 层通关${er.first?' · 首通':''} · 印信 +${er.seals||0}`,
+      er.milestoneSeals?`里程碑额外印信 +${er.milestoneSeals}`:'加护与词缀按周刷新 · 越深越厚']:['远征败北不发印信 · 调整编队再试',defeatDiag(ctx,r)];
+  }
   else if(r?.win){
     if(reward.first){
       lines=[`元宝 +${reward.gem||0} · 铜钱 +${fmt.fmtNum(reward.gold||0)}${reward.scroll?` · 招募令 +${reward.scroll}`:''}`,
@@ -237,7 +242,7 @@ export function resultView(ctx: ScreenContext) {
     U.text('ResultMilestone',`里程碑：${msLabels.join('；')} ›`,0,14,515,19,GOLD);
     U.tap('ResultMilestoneTap',0,14,515,30,()=>ctx.go(reward.milestones.some((m:any)=>m.kind==='armoryBox')?'armory':'bag'));
   }
-  if(r?.win&&reward.first){
+  if(r?.win&&reward.first&&ctx.battleMode==='campaign'){
     const dropName=reward.armory&&!reward.armory.duplicate
       ?(items.CATALOG.find((x:any)=>x.id===reward.armory.itemId)?.name||'随机军械'):null;
     U.text('ResultDrop',dropName?`掉落军械：${dropName}`
