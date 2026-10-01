@@ -10,6 +10,7 @@ import * as progression from '../domain/progression';
 import { firstTimeOverlay } from './TutorialOverlay';
 import { AutoSummary } from '../services/AutoBattleSession';
 
+let battleDetailOpen=false;
 const GOLD=tone('#e3ba70'), PAPER=tone('#f0dfbd'), DIM=tone('#a69776');
 const BG=tone('#1d120b'), CARD=tone('#2a1a18'), BLUE=tone('#4d91bd');
 const PURPLE=tone('#a678c5'), GREEN=tone('#7fbd94'), RED=tone('#bb614c');
@@ -250,7 +251,8 @@ export function resultView(ctx: ScreenContext) {
         const u=names.find((n:any)=>n.uid===uid);
         return (u?u.name:uid)+' '+fmt.fmtNum(st.dmg);
       }).join(' · ');
-      U.text('ResultDPS','输出前三：'+dpsText,0,-66,540,16,DIM);
+      U.text('ResultDPS','输出前三：'+dpsText+' · 点击查看详情 ›',0,-66,540,16,GOLD);
+      U.tap('ResultDPSTap',0,-66,540,30,()=>{battleDetailOpen=true;ctx.show('result');});
     }
   }
   if(r&&r.replay){
@@ -292,7 +294,30 @@ export function resultView(ctx: ScreenContext) {
       }
     }
   }else U.text('NextAuto','自动出征 · 即将继续',0,-218,500,22,GOLD);
+  // 战斗详情弹层（研讨会十）：点击 DPS 榜展开完整战报
+  if(battleDetailOpen&&r?.stats){
+    U.rect('BDShade',0,0,720,1280,new Color(10,8,6,220));
+    U.tap('BDShadeTap',0,0,720,1280,()=>{battleDetailOpen=false;ctx.show('result');});
+    U.panel('BDPanel',0,0,660,1000,tone('#2a1e12'),14,GOLD);
+    U.text('BDTitle','战 斗 详 报',0,440,600,30,GOLD);
+    const allStats=Object.entries(r.stats as Record<string,{dmg:number,heal:number}>)
+      .filter(([uid])=>uid.charAt(0)==='A')
+      .sort((a,b)=>b[1].dmg-a[1].dmg);
+    allStats.forEach(([uid,st],i)=>{
+      const y=380-i*52;
+      if(y<-420)return;
+      const unit=(ctx.lastBattleSnapshot||[]).find((u:any)=>u.uid===uid);
+      const nm=unit?unit.name:uid;
+      U.panel('BDRow'+i,0,y,620,44,tone('#1f1812'),6);
+      U.text('BDName'+i,nm,-190,y,180,19,PAPER);
+      U.text('BDDmg'+i,'输出 '+fmt.fmtNum(st.dmg),40,y,200,18,tone('#e8c47a'));
+      U.text('BDHeal'+i,'治疗 '+fmt.fmtNum(st.heal),240,y,200,18,tone('#8fce9a'));
+    });
+    U.text('BDClose','点击任意处关闭',0,-440,500,18,DIM);
+  }
+
 }
+
 
 export function autoSummary(ctx: ScreenContext, summary: AutoSummary) {
   const reason: Record<string,string>={
