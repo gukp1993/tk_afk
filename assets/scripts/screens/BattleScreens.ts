@@ -256,7 +256,8 @@ export function resultView(ctx: ScreenContext) {
   if(r&&r.replay){
     U.button('ResultCloseReplay','关闭回放',0,-165,478,59,()=>ctx.go('hall'),tone('#3a2b20'));
   } else {
-    U.button('ResultBack','返回',-139,-165,232,59,()=>ctx.go(returnPage(ctx)),tone('#3a2b20'));
+    U.button('ResultShare','分享',-139,-228,232,53,()=>{const st2=stages.makeStageEnemies(ctx.battleIndex);ctx.shareResult('我在挂机定三国打到第'+ctx.battleIndex+'关·'+(st2.name||'')+'！');},tone('#5a7a4c'));
+  U.button('ResultBack','返回',-139,-165,232,59,()=>ctx.go(returnPage(ctx)),tone('#3a2b20'));
     U.button('ResultRetry','再战',139,-165,232,59,()=>ctx.battleMode==='arena'?ctx.startArenaBattle(ctx.battleDiff,ctx.battleArenaSeed):ctx.startBattle(ctx.battleMode,ctx.battleIndex,ctx.battleDiff),tone('#3a2b20'));
   }
   if(!ctx.auto){

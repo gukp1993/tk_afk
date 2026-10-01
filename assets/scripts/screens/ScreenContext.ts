@@ -41,6 +41,7 @@ export interface ScreenContext {
   startArenaBattle(diff: number, seed: number): void;
   startDungeonBattle(kind: string, floor: number): void;
   startWeekBoss(): void;
+  shareResult(title: string): void;
   startAuto(mode: 'campaign'|'training'): void;
   stopAuto(afterBattle?: boolean): void;
   skipBattle(): void;

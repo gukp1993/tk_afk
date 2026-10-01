@@ -234,6 +234,15 @@ export class CocosBootstrap extends Component implements ScreenContext {
     CocosUi.floatText(this.content, 0, -80, text, color);
   }
   private ccColor() { return Color; }
+  /** 分享战绩（研讨会十 S1）：wx.shareAppMessage 被动分享，不发奖励（合规）。 */
+  public shareResult(title: string) {
+    try {
+      const g = globalThis as any;
+      if (g.wx && g.wx.shareAppMessage) {
+        g.wx.shareAppMessage({ title: title || '挂机定三国 · 三国放置卡牌' });
+      }
+    } catch (e) { /* 平台不支持静默 */ }
+  }
   public confirm(title: string, detail: string, act: () => void) {
     const U = this.ui;
     const mask = U.rect('ConfirmMask', 0, 0, 720, 1280, new Color(12, 10, 8, 190));
