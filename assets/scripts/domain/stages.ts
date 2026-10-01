@@ -192,7 +192,7 @@ function makeQuadTowerEnemies(faction, weekId, anchor, floor) {
   const soldiers = __domain_soldiers;
   const pool = heroes.HEROES.filter(h => h.faction === faction);
   const rng = __domain_rng.makeRng(String(weekId) + ':' + faction + ':' + floor);
-  const lv = Math.max(1, Math.round(2 + (anchor + floor - 1) * 1.8));
+  const lv = Math.max(1, cfg.levelOf ? cfg.levelOf(anchor, floor) : Math.round(2 + (anchor + floor - 1) * 1.8));
   const star = Math.min(3, Math.floor(floor / 10));
   const isBoss = floor % 10 === 0;
   const kMul = (cfg.overrides && cfg.overrides[floor]) || 1;

@@ -195,6 +195,9 @@ const QUAD_TOWER = {
   k: 0.80,
   overrides: {},
   copper: (f) => 4000 + 700 * f,
+  // 敌等级：楼层数主导的爬梯 + 进度锚轻偏置（旧公式 2+(anchor+floor)*1.8 会让 30 层达 Lv270 全员不可通，
+  //   k 校准 2026-10-02：改为 5+anchor×0.35+floor×3.5——日14 Lv100 第 15 层 ≈对半、毕业 Lv160 第 30 层落目标带）
+  levelOf: (anchor, floor) => Math.round(5 + anchor * 0.35 + floor * 3.5),
   smallMilestone: { every: 5, seals: 6 },
   bigMilestone: { every: 10, seals: 12, gold: 80000 },
   titles: { 15: '四方先锋', 30: '四方都督' },
