@@ -174,6 +174,14 @@ const CHAOS_MILESTONES = {
 // 每日 3 次；不产元宝/精铁/招募令/碎片/军械，不计首通/战报/日常任务。回退：enabled=false。
 const SWEEP = { enabled: true, daily: 3 };
 
+// 每日 Boss 首杀（2026-10-01 研讨会十一 S3）：每日首个 Boss 系内容（名将/精锐/Boss/周Boss）胜利
+// 发固定小额铜钱+三选一（碎片3/招募令1/元宝30），量级对齐精锐日宝箱。
+// 无精铁、无每胜元宝；各模式共享每日一次。回退：enabled=false。
+const DAILY_BOSS_CHEST = {
+  enabled: true, gold: 15000,
+  pick: [{ shard: 3 }, { scroll: 1 }, { gem: 30 }]
+};
+
 // 新手首见浮层（2026-09-30 研讨会四 P1）：每场景首次进入弹一次图文说明。
 // 老档（无 tutorial 字段）视为全部已见，防浮层雨；TUTORIAL_OFF=true 全局关闭。
 const TUTORIAL_OFF = false;
@@ -410,6 +418,10 @@ const AFFIX_SETS = [
     desc: '任意槽位 2 条怒气获取紫词条 → 开场怒气 +2' }
 ];
 
+// 每日 Boss 首杀（2026-10-01 研讨会十一 S3）：每日首个 Boss 系内容（名将/精锐/Boss/周Boss）胜利
+// 发固定小额铜钱+三选一（碎片3/招募令1/元宝30），量级对齐精锐日宝箱。
+// 无精铁、无每胜元宝；各模式共享每日一次。回退：enabled=false。
+
 // 新手首见浮层（2026-09-30 研讨会四 P1）
 const MOTIFS = [
   { id: 'huxiao', name: '虎啸阵', slots: ['weapon', 'seal', 'helm', 'jade'],
@@ -575,7 +587,7 @@ module.exports = {
   goldCost, expCost, idleRates, IDLE_CAP_HOURS, GEM_IDLE, ARMORY_IRON_PER_HOUR,
   FAST_AD, FAST_PAID,
   GACHA, factionBonus, FORMATION_ROWS, BATTLE, ARENA, DEFEAT_RX, REPLAYS, DRILL, SEVEN_DAY, FOURTEEN_DAY, DUNGEON, WEEKBOSS, BORROW, SWEEP, REPLAY_ACHV, TUTORIAL_OFF, TUTORIALS, TRAINING_DAILY_CAP, BOUNTY, ROAMER_POOL, AD,
-  FIRST_STAGE_END, CAMPAIGN_DIFFICULTY, CAMPAIGN_MILESTONES, ELITE_STAGE, STAR_RULES, CHAPTER_STAR_CHESTS, DAILY_ELITE_CHEST,
+  FIRST_STAGE_END, CAMPAIGN_DIFFICULTY, CAMPAIGN_MILESTONES, ELITE_STAGE, STAR_RULES, CHAPTER_STAR_CHESTS, DAILY_ELITE_CHEST, DAILY_BOSS_CHEST,
   CAMPAIGN_MODS, BOSS_MODS, RETURN_GRANTS, SUMMON_TICKET, SUMMON_POINTS, FORGE, MOTIFS, MOTIF_COST, SMELT,
   CODEX_REWARDS, ACHV_AXES, ACHV_REWARDS, WEEKLY, HALL, AWAKEN, FORMATION_PRESETS_MAX, TACTIC, BATTLE_TACTICS, TACTIC_SR, HALL_ACHV, TACTIC_ACHV, AWAKEN_ACHV, DRILL_ACHV, CHAOS_ACHV, CHAOS_MILESTONES, AFFIX_SETS
 };

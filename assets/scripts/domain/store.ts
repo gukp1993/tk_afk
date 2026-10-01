@@ -2158,6 +2158,15 @@ function winCampaign(stageIdx, result) {
   }
   // 精锐关首通：额外一次随机军械掉落（评审团波次 1，新增精铁经重复转化 ≤600/30 天红线内）
   if (reward.elite) reward.eliteDrop = rollArmoryDrop(stageIdx);
+  // 每日 Boss 首杀（研讨会十一 S3）：名将关/精锐关胜利时发 Boss 日宝箱
+  if (stageIdx % 10 === 0 && C.DAILY_BOSS_CHEST && C.DAILY_BOSS_CHEST.enabled && !state.daily.bossChestClaimed) {
+    state.daily.bossChestClaimed = true;
+    const bp = C.DAILY_BOSS_CHEST.pick[Math.floor(Math.random() * C.DAILY_BOSS_CHEST.pick.length)];
+    const bg = C.DAILY_BOSS_CHEST.gold;
+    state.res.gold += bg;
+    applyReward(bp);
+    reward.bossChest = { gold: bg, pick: bp };
+  }
   // 今日目标关：每日首个精锐关胜利发日宝箱（铜钱+三选一随机）
   if (reward.elite && !state.daily.eliteChestClaimed) {
     state.daily.eliteChestClaimed = true;

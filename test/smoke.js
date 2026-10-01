@@ -1739,4 +1739,20 @@ const storeP2 = freshStore(); storeP2.load();
   check('AS3 单紫不触发刀意（0.14=基础值，无 +0.04 套装）', Math.abs((b2.critDmg || 0) - 0.14) < 0.001);
 }
 
+
+// 每日 Boss 首杀（研讨会十一 S3）：名将关首杀发 Boss 日宝箱
+{
+  global.wx._map.delete(SAVE_KEY);
+  const storeBC = freshStore(); storeBC.load();
+  const sBC = storeBC.getState();
+  sBC.campaign.cleared = 8;
+  const g0 = sBC.res.gold, sc0 = sBC.res.shard;
+  // 打第 10 关（名将关张角）
+  sBC.campaign.cleared = 9;
+  const r = storeBC.winCampaign(10, { stars: 1 });
+  check('BC1 名将关首杀触发 Boss 日宝箱', !!r.bossChest && r.bossChest.gold === 15000);
+  check('BC2 Boss 宝箱金已入账', sBC.res.gold > g0);
+  check('BC3 同日再打不发', (() => { sBC.campaign.cleared = 9; const r2 = storeBC.winCampaign(10, { stars: 1 }); return !r2.bossChest; })());
+}
+
 console.log('\nsmoke: ' + passed + ' passed, ' + failed + ' failed');process.exit(failed ? 1 : 0);
