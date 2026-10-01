@@ -410,19 +410,30 @@ export function journey(ctx: ScreenContext) {
     }
     const dg=store.dungeonInfo();
     if(dg.enabled){
-      U.panel('JourneyDungeon',0,-430,682,70,tone('#312218'),10,tone('#a17b40'));
-      U.text('JourneyDungeonGlyph','屯',-272,-415,59,49,GOLD);
-      U.text('JourneyDungeonName','军屯双本',-158,-415,180,26,LIGHT);
-      U.text('JourneyDungeonStat',dg.runsLeft>0?`剩 ${dg.runsLeft} 次 · 屯金 ${dg.gold.best}/10 · 屯兵 ${dg.train.best}/10`:dg.runsLeft<=0&&dg.runs>=dg.daily?'今日次数已用完':'',120,-414,280,18,GOLD);
-      U.text('JourneyDungeonDesc','屯金得铜钱 · 屯兵得主公经验 · 每日各 2 次',-58,-450,470,17,tone('#ad9977'));
-      U.tap('JourneyDungeonTap',0,-430,682,70,()=>ctx.go('dungeon'));
+      // 单行带（研讨会十三案一：为赛季带腾位）
+      U.panel('JourneyDungeon',0,-412,682,36,dg.runsLeft>0?tone('#312218'):tone('#26201a'),8,tone('#795b34'));
+      U.text('JourneyDungeonText',`军屯双本 · 剩 ${dg.runsLeft} 次 · 屯金 ${dg.gold.best}/10 · 屯兵 ${dg.train.best}/10 ›`,0,-412,650,17,dg.runsLeft>0?GOLD:tone('#a99778'));
+      U.tap('JourneyDungeonTap',0,-412,682,36,()=>ctx.go('dungeon'));
+    }
+    // 四时战纪赛季带（研讨会十三案一）
+    {
+      const si=store.seasonInfo();
+      if(si.enabled){
+        const trackNext=(si.track as any[]).find(t=>t.claimable);
+        const txt=`四时战纪 · 第${si.seasonNo}季 卷${si.vol}·${si.volName} · 军资簿 Lv${(si.track as any[]).filter(t=>t.claimed).length}${si.claimable?' · 有赏可领':''} ›`;
+        U.panel('JourneySeason',0,-458,682,44,si.claimable?tone('#3a2c17'):tone('#2b2118'),8,si.claimable?GOLD:tone('#6b5837'));
+        U.text('JourneySeasonGlyph','季',-282,-458,40,30,GOLD);
+        U.text('JourneySeasonText',txt,-20,-458,600,17,si.claimable?GOLD:LIGHT);
+        if(si.claimable)U.dot('JourneySeasonDot',296,-466);
+        U.tap('JourneySeasonTap',0,-458,682,44,()=>ctx.go('season'));
+      }
     }
     // 周常 Boss 横幅（研讨会四 P3）：导航红线上方窄带
     const wb=store.weekBossInfo();
     if(wb.enabled){
-      U.panel('JourneyWeekBoss',0,-500,682,44,wb.attemptsLeft>0?tone('#3a2c17'):tone('#2b2118'),8,wb.attemptsLeft>0?GOLD:tone('#6b5837'));
-      U.text('JourneyWeekBossText',`本周魔王 · ${wb.bossName} · 最高伤害 ${(wb.bestPct*100).toFixed(1)}% · 剩 ${wb.attemptsLeft} 次 ›`,0,-500,650,17,wb.attemptsLeft>0?GOLD:LIGHT);
-      U.tap('JourneyWeekBossTap',0,-500,682,44,()=>ctx.go('weekboss'));
+      U.panel('JourneyWeekBoss',0,-516,682,44,wb.attemptsLeft>0?tone('#3a2c17'):tone('#2b2118'),8,wb.attemptsLeft>0?GOLD:tone('#6b5837'));
+      U.text('JourneyWeekBossText',`本周魔王 · ${wb.bossName} · 最高伤害 ${(wb.bestPct*100).toFixed(1)}% · 剩 ${wb.attemptsLeft} 次 ›`,0,-516,650,17,wb.attemptsLeft>0?GOLD:LIGHT);
+      U.tap('JourneyWeekBossTap',0,-516,682,44,()=>ctx.go('weekboss'));
     }
   firstTimeOverlay(ctx,'agenda');
   // 今日军务展开弹层（研讨会十二 C1）：11 条清单+勤勉进度+一键前往
@@ -1218,6 +1229,85 @@ export function quadTowerView(ctx: ScreenContext) {
   U.text('QuadRule','仅本周阵营武将可上阵 · 败北无损失 · 周一换国',0,-510,640,16,tone('#7a6c52'));
   firstTimeOverlay(ctx,'quad');
 }
+
+// 四时战纪·赛季页（研讨会十三案一第一批）：卷幕/幕任务/卷志/军资簿/战功商店
+export function seasonView(ctx: ScreenContext) {
+  const U=ctx.ui,info=store.seasonInfo();
+  ctx.title('四 时 战 纪');
+  U.text('SeasonBack','‹ 返回',-291,484,130,22,GOLD);
+  U.tap('SeasonBackTap',-291,484,136,52,()=>ctx.back('journey'));
+  if(!info.enabled){U.text('SeasonClosed','赛季休整中',0,200,600,20,LIGHT);return;}
+  U.text('SeasonHead',`第${info.seasonNo}季 · 卷${info.vol}「${info.volName}」· ${info.actName} · 战功 ${info.medal}`,0,443,640,20,GOLD);
+  // 卷志卡（本卷 2 页）
+  U.panel('SeasonZhiCard',0,352,640,104,tone('#3a2c17'),8,GOLD);
+  U.text('SeasonZhiTitle','卷志 · 本卷叙事（页一随卷解锁 · 页二幕任务全清）',0,394,600,18,LIGHT);
+  U.text('SeasonZhiSub',' ',0,308,420,15,tone('#ad9977'));
+  info.zhi.forEach((z:any,i:number)=>{
+    const zx=i===0?-150:150;
+    U.panel('SeasonZhiPg'+i,zx,348,190,64,z.unlocked?tone('#39291a'):tone('#171009'),7,z.unlocked?GOLD:tone('#5a452a'));
+    U.text('SeasonZhiPgT'+i,`页${i+1} · ${z.title}`,zx,362,180,17,z.unlocked?(z.seen?LIGHT:GOLD):tone('#7a6c52'));
+    U.text('SeasonZhiPgS'+i,z.unlocked?(z.seen?'已读 · 重读 ›':'可读 ›'):'未解锁',zx,340,180,15,z.unlocked?GOLD:tone('#7a6c52'));
+    if(z.unlocked&&!z.seen)U.dot('SeasonZhiDot'+i,zx+80,368);
+    U.tap('SeasonZhiTap'+i,zx,348,190,64,()=>{seasonZhiOpen=z;ctx.show('season');});
+  });
+  // 幕任务
+  U.text('SeasonActTitle','幕任务 · 战功主要来源（本周 3 条）',0,196,640,18,LIGHT);
+  info.acts.forEach((a:any,i:number)=>{
+    const y=140-i*56;
+    U.panel('SeasonAct'+i,0,y,640,58,tone('#171009'),7,tone('#5a452a'));
+    U.text('SeasonActLabel'+i,a.label,-160,y+10,420,18,LIGHT);
+    U.text('SeasonActProg'+i,`${a.prog}/${a.target}`,70,y-16,110,15,tone('#a6906c'));
+    U.button('SeasonActGo'+i,a.claimed?'已领':a.claimable?`领 ${a.medal} 战功`:'未完成',235,y,150,46,()=>{
+      if(!a.claimable)return;
+      const r=store.claimSeasonAct(a.idx);
+      ctx.tell(r,r.ok?`战功 +${r.medal}`:'');
+      if(r.ok)ctx.show('season');
+    },a.claimable?GOLD:tone('#423022'));
+  });
+  // 战功商店
+  U.text('SeasonShopTitle','战功商店 · 战功直购，不与元宝印信互通',0,-20,640,18,LIGHT);
+  info.shop.forEach((g:any,i:number)=>{
+    const x=-230+(i%3)*230, y=-66-Math.floor(i/3)*62;
+    const soldOut=g.weekly>0&&g.bought>=g.weekly, seasonSold=g.weekly===0&&((store.getState().season as any).titleBought);
+    U.panel('SeasonShop'+i,x,y,210,54,soldOut||seasonSold?tone('#171009'):tone('#3a2c17'),7,soldOut||seasonSold?tone('#5a452a'):GOLD);
+    U.text('SeasonShopName'+i,g.name,x,y+10,200,15,LIGHT);
+    U.text('SeasonShopCost'+i,`${g.medal} 战功`+(soldOut?' · 本周已兑':seasonSold?' · 本季已购':''),x,y-14,200,13,soldOut||seasonSold?tone('#6f8a5f'):tone('#d9b06a'));
+    U.tap('SeasonShopTap'+i,x,y,210,54,()=>{const r=store.buySeasonGood(g.id);ctx.tell(r,r.ok?'兑换 '+r.name:'');if(r.ok)ctx.show('season');});
+  });
+  // 军资簿
+  U.text('SeasonTrackTitle','军资簿 · 按本季累计战功领奖',0,-184,640,18,LIGHT);
+  U.text('SeasonTrackEarned',`本季累计 ${info.medalEarned}`,220,-184,220,18,GOLD);
+  const contentH=20*66+16;
+  U.scroll('SeasonTrack',0,-352,688,300,contentH,(V)=>{
+    info.track.forEach((t:any,i:number)=>{
+      const y=contentH/2-33-i*66;
+      V.panel('SeasonTrackRow'+i,0,y,656,56,t.claimed?tone('#26301f'):t.claimable?tone('#3a2c17'):tone('#171009'),7,t.claimed?tone('#6f8a5f'):t.claimable?GOLD:tone('#5a452a'));
+      V.text('SeasonTrackLv'+i,`军资 Lv.${t.level}`,-250,y,150,19,t.claimed?tone('#a99778'):t.claimable?GOLD:LIGHT);
+      V.text('SeasonTrackNeed'+i,`累计 ${t.need}`,-100,y,140,15,tone('#a99778'));
+      const giveTxt=Object.entries(t.give).map(([k,n]:any)=>`${({gold:'铜钱',shard:'通用碎片',stones:'淬火石',title:'称号'} as any)[k]||k}×${n}`).join(' · ');
+      V.text('SeasonTrackGive'+i,giveTxt,30,y,320,17,t.claimed?tone('#6f8a5f'):LIGHT);
+      if(t.claimed)V.text('SeasonTrackGo'+i,'已 领',244,y,120,19,tone('#6f8a5f'));
+      else if(t.claimable)V.button('SeasonTrackGo'+i,'领 取',244,y,120,44,()=>{
+        const r=store.claimSeasonTrack(t.level);
+        ctx.tell(r,r.ok?'军资已领取':'');
+        if(r.ok)ctx.show('season');
+      },GOLD);
+      else V.text('SeasonTrackGo'+i,`还差 ${t.need-info.medalEarned}`,244,y,120,16,tone('#7a6c52'));
+    });
+  });
+  firstTimeOverlay(ctx,'season');
+  // 卷志弹层
+  if(seasonZhiOpen){
+    U.rect('SeasonZhiShade',0,0,720,1280,new Color(12,10,8,190));
+    U.tap('SeasonZhiShadeTap',0,0,720,1280,()=>{seasonZhiOpen=null;ctx.show('season');});
+    U.panel('SeasonZhiPanel',0,60,658,782,tone('#251b14'),12,GOLD);
+    U.tap('SeasonZhiBlock',0,60,658,782,()=>{});
+    U.text('SeasonZhiPgTitle',`卷志 · ${seasonZhiOpen.title}`,0,346,560,30,GOLD);
+    U.text('SeasonZhiBody',seasonZhiOpen.text,0,180,540,20,tone('#f0e6cd'));
+    U.button('SeasonZhiClose','合 上',0,-243,270,55,()=>{seasonZhiOpen=null;ctx.show('season');},tone('#3a2b20'));
+  }
+}
+let seasonZhiOpen:any=null;
 
 let bountyPickIdx = -1;
 let expBoonDismissedFloor = -1; // 加护弹层「稍后再选」标记：同层不再弹，新一层 offer 再弹

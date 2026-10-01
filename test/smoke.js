@@ -1978,4 +1978,52 @@ const storeP2 = freshStore(); storeP2.load();
   check('R11 同周不重复发', sRS.relics.stones === 20);
 }
 
+// 四时战纪（研讨会十三案一第一批）：赛季壳/幕任务/军资簿/商店
+{
+  global.wx._map.delete(SAVE_KEY);
+  const storeS = freshStore(); storeS.load();
+  const sS = storeS.getState();
+  check('S1 映射纯函数', JSON.stringify(C.SEASON.mapWeek('2026-W40')) === '{"seasonNo":1,"vol":1,"act":1}'
+    && C.SEASON.mapWeek('2026-W43').vol === 2 && C.SEASON.mapWeek('2026-W51').vol === 4
+    && C.SEASON.mapWeek('2026-W52').seasonNo === 2 && C.SEASON.mapWeek('2027-W01').act === 3);
+  check('S2 剧本表完整', C.SEASON.vols.length === 4 && C.SEASON.vols.every(v => v.acts.length === 3)
+    && C.SEASON.zhi.length === 8 && C.SEASON.zhi.every(z => z.text && z.title));
+  check('S3 老档兜底不升版', sS.v === 8 && typeof sS.seasonMedal === 'number' && !!sS.season);
+  const info = storeS.seasonInfo();
+  check('S4 seasonInfo 形状与满勤自洽', info.enabled && info.acts.length === 3
+    && C.SEASON.track.length === 20 && C.SEASON.track[19].need === 4900 && 4900 <= 480 * 12);
+  check('S5 幕任务不足拒绝', storeS.claimSeasonAct(0).ok === false);
+  sS.week.counters.wins = 40; sS.week.counters.arenaWins = 12; sS.week.counters.bounty = 16;
+  const c0 = storeS.claimSeasonAct(0);
+  check('S5b 领取战功入账', c0.ok && sS.seasonMedal === 200 && sS.season.medalEarned === 200 && sS.week.seasonClaimed.indexOf(0) >= 0);
+  check('S5c 重复领取拒绝', storeS.claimSeasonAct(0).ok === false);
+  // 幕重置：换周键
+  sS.week.weekId = '2026-W99';
+  storeS.checkDailyReset();
+  check('S6 幕重置清领取记录', (sS.week.seasonClaimed || []).length === 0);
+  // 军资簿
+  sS.week.counters.wins = 40; sS.week.counters.arenaWins = 12; sS.week.counters.bounty = 16;
+  storeS.claimSeasonAct(0); storeS.claimSeasonAct(1); storeS.claimSeasonAct(2);
+  const goldBefore = sS.res.gold;
+  const tr = storeS.claimSeasonTrack(1);
+  check('S7 军资 Lv1 铜钱 +1 万', tr.ok && sS.res.gold === goldBefore + 10000 && storeS.claimSeasonTrack(1).ok === false);
+  // S8 奖励红线
+  const allowed = ['gold', 'shard', 'stones', 'title'];
+  const allGives = [...C.SEASON.track.map(t => t.give), ...C.SEASON.shop.map(g => g.give)];
+  check('S8 奖励键集红线', allGives.every(g => Object.keys(g).every(k => allowed.includes(k))));
+  // S9 特殊落点
+  sS.seasonMedal = 240;
+  storeS.buySeasonGood('s_stone');
+  check('S9 商店淬火石入 relics', sS.relics.stones === 5 && sS.seasonMedal === 0);
+  check('S9b 商店周限购', storeS.buySeasonGood('s_stone').ok === false);
+  // S12 跨季结算：临时改周键函数到 2026-W52（第 2 季）
+  const fmtMod = require('../utils/fmt');
+  const realIso = fmtMod.isoWeekKey;
+  sS.seasonMedal = 500;
+  fmtMod.isoWeekKey = () => '2026-W52';
+  storeS.checkDailyReset();
+  fmtMod.isoWeekKey = realIso;
+  check('S12 跨季清零', sS.season.seasonNo === 2 && sS.season.medalEarned === 0 && sS.seasonMedal === 500 && sS.season.trackClaimed.length === 0);
+}
+
 console.log('\nsmoke: ' + passed + ' passed, ' + failed + ' failed');process.exit(failed ? 1 : 0);

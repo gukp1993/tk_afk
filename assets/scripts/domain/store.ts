@@ -45,6 +45,8 @@ function defaultState() {
     quadTower: { weekId: '', best: 0 },
     trials: { cleared: {} },
     relics: { stones: 0, owned: {}, levels: {}, equipped: null },
+    seasonMedal: 0,
+    season: { seasonNo: 1, medalEarned: 0, trackClaimed: [], zhiSeen: [], titleBought: false },
     armory: createArmory(),
     idle: { last: Date.now(), gold: 0, gem: 0, scroll: 0, ironAcc: 0 },
     gemDay: { day: F.todayStr(), claimedGem: 0 },
@@ -338,7 +340,9 @@ function checkWeeklyReset(today) {
     activeClaimed: [],
     sealsEarned: 0,
     shopBought: {},
-    trial: { best: 0, chestClaimed: false, boons: [], boonFloors: [], stonesGiven: false }
+    trial: { best: 0, chestClaimed: false, boons: [], boonFloors: [], stonesGiven: false },
+    seasonClaimed: [],
+    seasonBought: {}
   };
   // 修剪旧周名人堂键（防存档无限增长）
   ['kills', 'stars', 'threeClaimed'].forEach(f => {
@@ -349,6 +353,14 @@ function checkWeeklyReset(today) {
       const p = state.formationPresets[k];
       if (!p || !Array.isArray(p.slots) || p.slots.length !== 5) delete state.formationPresets[k];
     });
+  }
+  // 四时战纪赛季对齐（研讨会十三案一）：weekId 派生赛季号；跨季清轨道与累计（未领作废，免费轨道语义）
+  if (C.SEASON && C.SEASON.enabled) {
+    const mapped = C.SEASON.mapWeek(weekKey);
+    state.season = state.season || { seasonNo: 1, medalEarned: 0, trackClaimed: [], zhiSeen: [], titleBought: false };
+    if (state.season.seasonNo !== mapped.seasonNo) {
+      state.season = { seasonNo: mapped.seasonNo, medalEarned: 0, trackClaimed: [], zhiSeen: state.season.zhiSeen || [], titleBought: false };
+    }
   }
 }
 function bumpWeek(key, n) {
@@ -784,6 +796,91 @@ function relicMods() {
   return out;
 }
 
+
+// —— 四时战纪（研讨会十三案一）——
+function seasonInfo() {
+  checkDailyReset();
+  const cfg = C.SEASON;
+  if (!cfg || !cfg.enabled) return { enabled: false };
+  const weekKey = (state.week && state.week.weekId) || F.isoWeekKey();
+  const mapped = cfg.mapWeek(weekKey);
+  const vol = cfg.vols[mapped.vol - 1];
+  const w = state.week || {};
+  const claimed = w.seasonClaimed || [];
+  const acts = cfg.acts.map((a, i) => {
+    const prog = Math.min((w.counters || {})[a.counter] || 0, a.target);
+    return { idx: i, label: a.label, prog, target: a.target, medal: a.medal,
+      claimable: prog >= a.target && claimed.indexOf(i) < 0, claimed: claimed.indexOf(i) >= 0 };
+  });
+  const earned = state.season.medalEarned || 0;
+  const track = cfg.track.map((t, i) => ({
+    level: i + 1, need: t.need, give: t.give,
+    claimable: earned >= t.need && (state.season.trackClaimed || []).indexOf(i + 1) < 0,
+    claimed: (state.season.trackClaimed || []).indexOf(i + 1) >= 0
+  }));
+  return {
+    enabled: true, seasonNo: Math.max(1, mapped.seasonNo), vol: mapped.vol, act: mapped.act,
+    volName: vol.name, actName: vol.acts[mapped.act - 1],
+    medal: state.seasonMedal || 0, medalEarned: earned,
+    acts, track,
+    zhi: cfg.zhi.filter(z => z.key.charAt(0) === String(mapped.vol)).map(z => {
+      const p = Number(z.key.charAt(2));
+      return { ...z, unlocked: p === 1 || acts.every(a => a.claimed), seen: (state.season.zhiSeen || []).indexOf(z.key) >= 0 };
+    }),
+    shop: cfg.shop.map(g => ({ ...g, bought: (w.seasonBought || {})[g.id] || 0 })),
+    claimable: acts.some(a => a.claimable) || track.some(t => t.claimable)
+  };
+}
+function claimSeasonAct(idx) {
+  return withSavedMutation(() => {
+    const info = seasonInfo();
+    if (!info.enabled) return { ok: false, msg: '赛季休整中' };
+    const act = info.acts.find(a => a.idx === idx);
+    if (!act) return { ok: false, msg: '幕任务不存在' };
+    if (act.claimed) return { ok: false, msg: '本周已领取' };
+    if (act.prog < act.target) return { ok: false, msg: '尚未完成' };
+    const a = C.SEASON.acts[idx];
+    weekInfo();
+    state.week.seasonClaimed = state.week.seasonClaimed || [];
+    state.week.seasonClaimed.push(idx);
+    state.seasonMedal = (state.seasonMedal || 0) + a.medal;
+    state.season.medalEarned = (state.season.medalEarned || 0) + a.medal;
+    return { ok: true, medal: a.medal };
+  });
+}
+function claimSeasonTrack(level) {
+  return withSavedMutation(() => {
+    const info = seasonInfo();
+    if (!info.enabled) return { ok: false, msg: '赛季休整中' };
+    const t = C.SEASON.track[level - 1];
+    if (!t) return { ok: false, msg: '军资等级无效' };
+    if ((state.season.trackClaimed || []).indexOf(level) >= 0) return { ok: false, msg: '该级已领取' };
+    if ((state.season.medalEarned || 0) < t.need) return { ok: false, msg: '战功累计不足' };
+    state.season.trackClaimed = state.season.trackClaimed || [];
+    state.season.trackClaimed.push(level);
+    applyReward(t.give);
+    return { ok: true, give: t.give };
+  });
+}
+function buySeasonGood(id) {
+  return withSavedMutation(() => {
+    const info = seasonInfo();
+    if (!info.enabled) return { ok: false, msg: '赛季休整中' };
+    const g = C.SEASON.shop.find(x => x.id === id);
+    if (!g) return { ok: false, msg: '商品不存在' };
+    state.week.seasonBought = state.week.seasonBought || {};
+    const bought = state.week.seasonBought[id] || 0;
+    if (g.weekly > 0 && bought >= g.weekly) return { ok: false, msg: '本周已兑完' };
+    if (g.weekly === 0 && state.season.titleBought) return { ok: false, msg: '本季已购' };
+    if ((state.seasonMedal || 0) < g.medal) return { ok: false, msg: '战功不足' };
+    state.seasonMedal -= g.medal;
+    if (g.weekly > 0) state.week.seasonBought[id] = bought + 1;
+    else state.season.titleBought = true;
+    applyReward(g.give);
+    return { ok: true, name: g.name };
+  });
+}
+
 function winTrial(heroId) {
   const cfg = C.TRIALS;
   const reward = { mode: 'trial', heroId, honor: 0, first: false, title: null, allClear: false };
@@ -1143,6 +1240,13 @@ function normalizeState(s) {
     s.relics.owned = s.relics.owned || {};
     s.relics.levels = s.relics.levels || {};
     if (s.relics.equipped !== null && !s.relics.owned[s.relics.equipped]) s.relics.equipped = null;
+    if (typeof s.seasonMedal !== 'number' || !Number.isFinite(s.seasonMedal)) s.seasonMedal = 0;
+    s.seasonMedal = Math.max(0, Math.floor(s.seasonMedal));
+    s.season = s.season || { seasonNo: 1, medalEarned: 0, trackClaimed: [], zhiSeen: [], titleBought: false };
+    s.season.medalEarned = Math.max(0, Math.floor(Number(s.season.medalEarned) || 0));
+    s.season.trackClaimed = (s.season.trackClaimed || []).filter(n => Number.isInteger(n) && n >= 1 && n <= 20).filter((n, i, a) => a.indexOf(n) === i);
+    s.season.zhiSeen = (s.season.zhiSeen || []).filter(k => typeof k === 'string' && /^\d-\d$/.test(k));
+    s.season.titleBought = !!s.season.titleBought;
   s.sevenDay = s.sevenDay || { start: F.todayStr(), claimed: [] };
   if (!Array.isArray(s.sevenDay.claimed)) s.sevenDay.claimed = [];
   s.sevenDay.claimed = s.sevenDay.claimed.map(n => Math.floor(Number(n) || 0)).filter(n => n >= 1 && n <= 7);
@@ -3275,8 +3379,11 @@ function navBadges() {
     (state.week.sealsEarned || 0) >= t.need && (state.week.activeClaimed || []).indexOf(i) < 0);
   const weekQuestClaimable = weekInfo().quests.some(q => q.claimable);
   const bountyClaimable = bountyInfo().canClaim;
+  // 四时战纪红点（研讨会十三案一）：幕任务/军资簿可领才算，与领取条件同源
+  let seasonClaimable = false;
+  try { const si = seasonInfo(); seasonClaimable = !!(si.enabled && si.claimable); } catch (e) { /* 赛季关闭 */ }
   return {
-    journey: bountyClaimable || weekQuestClaimable || activeClaimable,
+    journey: bountyClaimable || weekQuestClaimable || activeClaimable || seasonClaimable,
     campaign: questClaimable || sevenDayInfo().canClaim || campaignStarChestInfo().claimable || retroGrants() || !!state.forgeOpenNotice,
     bag: achvInfo().claimable || codexInfo().canClaim
   };
@@ -3478,6 +3585,8 @@ function applyReward(r) {
   if (r.univSr) state.res.univSr = (state.res.univSr || 0) + Math.floor(r.univSr);
   if (r.shard4) state.qualityShards[4] = (state.qualityShards[4] || 0) + Math.floor(r.shard4);
   if (r.seals) state.seals = (state.seals || 0) + Math.floor(r.seals);
+  if (r.medal) state.seasonMedal = (state.seasonMedal || 0) + Math.floor(r.medal);
+  if (r.stones) { state.relics = state.relics || { stones: 0, owned: {}, levels: {}, equipped: null }; state.relics.stones += Math.floor(r.stones); }
   if (r.title) state.titles = state.titles || []; if (r.title && state.titles.indexOf(r.title) < 0) state.titles.push(r.title);
   if (r.srPick) addChoiceVoucher('sr', r.srPick);
   if (r.ssrPick) addChoiceVoucher('ssr', r.ssrPick);
@@ -3507,7 +3616,7 @@ export {
   exchangeQualityShard, qualityShardInfo, drillInfo, drillHero,
   getFormationCalc, setFormationSlot, applyFormation, formationFactionBonus, teamPower, playerUnits, enemyUnits, activeBonds, bondMods, bondComboMods,
   getArmoryBonuses, getArmoryState, armoryUnlock, armorySelect, armoryUpgrade, armoryUpgradeToNode, armoryClaimBox, grantArmoryItem, applyArmoryRecommendations, armoryAffixBadges, forgeInfo, forgeReroll, forgeSetDir, forgeToggleLock, forgeGateOpen, motifInfo, motifActivate, smeltInfo, smeltMelt, smeltCombine,
-  codexInfo, claimCodex, useUniversalSr, achvInfo, claimAchv, weekInfo, claimWeekQuest, claimWeekActive, buyWeekly, makeExpeditionFloor, bumpWeek, dailyAgendaInfo, quadFactionOfWeek, quadTowerInfo, winQuadTower, winTrial, trialInfo, winExpedition, relicInfo, claimRelic, upgradeRelic, equipRelic, relicMods, weekMutatorIds, expeditionBoonOffer, pickExpeditionBoon, expeditionBoonMods, beginHall, winHall, hallInfo, saveReplay, replaysInfo, awakenInfo, awakenHero, formationPresetsInfo, saveFormationPreset, applyFormationPreset, delFormationPreset, tacticInfo, tacticUpgrade,
+  codexInfo, claimCodex, useUniversalSr, achvInfo, claimAchv, weekInfo, claimWeekQuest, claimWeekActive, buyWeekly, makeExpeditionFloor, bumpWeek, dailyAgendaInfo, quadFactionOfWeek, quadTowerInfo, winQuadTower, winTrial, trialInfo, winExpedition, seasonInfo, claimSeasonAct, claimSeasonTrack, buySeasonGood, relicInfo, claimRelic, upgradeRelic, equipRelic, relicMods, weekMutatorIds, expeditionBoonOffer, pickExpeditionBoon, expeditionBoonMods, beginHall, winHall, hallInfo, saveReplay, replaysInfo, awakenInfo, awakenHero, formationPresetsInfo, saveFormationPreset, applyFormationPreset, delFormationPreset, tacticInfo, tacticUpgrade,
   migrateSaveV1, migrateSaveV2, migrateSaveV3, migrateSaveV4, migrateSaveV5, migrateSaveV6, migrateSaveV7, normalizeState,
   idlePending, idleTick, gemQuotaInfo, claimIdle, claimIdleInternal, fastReward, fastRewardMutation, fastRewardAdMutation, adReward,
   doSummon, rollRarity, pickHeroOfRarity, summonPityInfo, setSummonFocus, summonTicketInfo, summonPointsInfo, claimSummonPoints, useUniversalSsr,

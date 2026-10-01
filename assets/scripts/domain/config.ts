@@ -182,6 +182,72 @@ const SWEEP = { enabled: true, daily: 3 };
 // 每日 Boss 首杀（2026-10-01 研讨会十一 S3）：每日首个 Boss 系内容（名将/精锐/Boss/周Boss）胜利
 // 发固定小额铜钱+三选一（碎片3/招募令1/元宝30），量级对齐精锐日宝箱。
 // 无精铁、无每胜元宝；各模式共享每日一次。回退：enabled=false。
+// 四时战纪·赛季剧本（研讨会十三案一，第一批赛季壳）：12 幕=4 卷×3 幕，锚 EPOCH_WEEK。
+// 幕任务读既有 week.counters（零新埋点）、奖励发战功（独立货币不与元宝/印信互兑）；
+// 军资簿 20 级免费轨道只卖 淬火石/通用碎片/铜钱包/称号 四类（零精铁/零招募令/零元宝/零 SSR）。
+// 回退：enabled=false 三处收口（入口/赛季页/navBadges）。
+const SEASON = {
+  enabled: true,
+  EPOCH_WEEK: '2026-W40',
+  WEEKS_PER_SEASON: 12,
+  weekSeq(weekId) { return parseInt(weekId.slice(0, 4), 10) * 53 + parseInt(weekId.slice(6), 10); },
+  mapWeek(weekId) {
+    const n = this.weekSeq(weekId) - this.weekSeq(this.EPOCH_WEEK);
+    const seasonNo = Math.floor(n / this.WEEKS_PER_SEASON) + 1;
+    const pos = ((n % this.WEEKS_PER_SEASON) + this.WEEKS_PER_SEASON) % this.WEEKS_PER_SEASON;
+    return { seasonNo, vol: Math.floor(pos / 3) + 1, act: pos % 3 + 1 };
+  },
+  vols: [
+    { name: '黄巾乱世', acts: ['桃园祭旗', '颍川破阵', '广宗围城'] },
+    { name: '官渡相持', acts: ['白马延津', '夜袭乌巢', '仓亭定势'] },
+    { name: '赤壁纵火', acts: ['舌战江东', '七星借风', '华容雾雨'] },
+    { name: '鼎足归尘', acts: ['水淹七军', '白帝托孤', '灯落五丈原'] }
+  ],
+  zhi: [
+    { key: '1-1', title: '桃园祭旗', text: '大雾锁桃园，三炷香未燃尽，刘备按住关羽按刀的手。张飞的嗓门盖过誓言滚下山去——乱世始于此，义气也始于此。' },
+    { key: '1-2', title: '广宗尘定', text: '黄巾百万散如退潮，广宗城头旗换了一面又一面。有士卒问仗打完了没有，刘备望着焦土摇头：这才是头一卷。' },
+    { key: '2-1', title: '赤脚迎谋', text: '乌巢火起前夜，曹操听完粮草军情，赤着脚奔出大帐。天下人心，有时就系在一双来不及穿鞋的脚上。' },
+    { key: '2-2', title: '一夜焚十万', text: '袁军十万溃于一夜大火。清点战场的士兵捡到半册兵书，扉页四个字：兵不在多。他把书收进怀里，替后人留了答案。' },
+    { key: '3-1', title: '东风未至', text: '秋风起于江北，周瑜把杯中酒泼进大江：敬即将烧起来的秋天。孔明借的东风，还在七星坛上走着最后一步。' },
+    { key: '3-2', title: '火烧连环', text: '火船撞进连环战船，铁索烧断声脆如爆竹。曹操败走华容回望江面：此生用兵，输给一场秋风，不冤。' },
+    { key: '4-1', title: '灯落五丈原', text: '大雪压营，五丈原的灯次第熄灭。姜维收起丞相留下的地图，墨迹未干——北伐的路，早画到了二十年后。' },
+    { key: '4-2', title: '四时未终', text: '史官合上竹简：四时轮转，战事未终。旧将卸甲，新兵入列——下一卷的战场，留给还在读这段故事的你。' }
+  ],
+  acts: [
+    { counter: 'wins', target: 40, medal: 200, label: '本周任意战斗胜利 40 场' },
+    { counter: 'arenaWins', target: 12, medal: 160, label: '本周演武获胜 12 场' },
+    { counter: 'bounty', target: 16, medal: 120, label: '本周派遣悬赏 16 单' }
+  ],
+  track: [
+    { need: 100, give: { gold: 10000 } },
+    { need: 220, give: { shard: 10 } },
+    { need: 360, give: { stones: 5 } },
+    { need: 520, give: { gold: 15000 } },
+    { need: 700, give: { shard: 15 } },
+    { need: 900, give: { stones: 5 } },
+    { need: 1120, give: { gold: 25000 } },
+    { need: 1360, give: { shard: 15 } },
+    { need: 1620, give: { gold: 25000 } },
+    { need: 1900, give: { title: '四时·执笔' } },
+    { need: 2200, give: { shard: 20 } },
+    { need: 2500, give: { stones: 10 } },
+    { need: 2800, give: { gold: 40000 } },
+    { need: 3100, give: { shard: 20 } },
+    { need: 3400, give: { gold: 40000 } },
+    { need: 3700, give: { stones: 10 } },
+    { need: 4000, give: { shard: 25 } },
+    { need: 4300, give: { gold: 50000 } },
+    { need: 4600, give: { shard: 25 } },
+    { need: 4900, give: { title: '四时·太史令', stones: 10 } }
+  ],
+  shop: [
+    { id: 's_stone', name: '淬火石 ×5', medal: 240, weekly: 1, give: { stones: 5 } },
+    { id: 's_shard', name: '通用碎片 ×20', medal: 100, weekly: 2, give: { shard: 20 } },
+    { id: 's_gold', name: '铜钱 ×80000', medal: 80, weekly: 1, give: { gold: 80000 } },
+    { id: 's_title', name: '称号「四时·行商」', medal: 600, weekly: 0, give: { title: '四时·行商' } }
+  ]
+};
+
 // 传世神兵（研讨会十三案二）：通关 160 关开启神兵阁，8 件宝物认主条件=对应名将试炼已通（零随机），
 // 每件一条全军被动（复用既有机制键），上阵仅 1 件；8 件集齐全军三维 +3%。
 // 升级材料=淬火石（远征每周达 20 层 +20、后续战功商店）+大额铜钱——铜钱沉没的正解。回退：enabled=false。
@@ -717,7 +783,7 @@ export {
   goldCost, expCost, idleRates, IDLE_CAP_HOURS, GEM_IDLE, ARMORY_IRON_PER_HOUR,
   FAST_AD, FAST_PAID,
   GACHA, factionBonus, FORMATION_ROWS, BATTLE, ARENA, DEFEAT_RX, REPLAYS, DRILL, SEVEN_DAY, FOURTEEN_DAY, DUNGEON, WEEKBOSS, BORROW, SWEEP, REPLAY_ACHV, TUTORIAL_OFF, TUTORIALS, TRAINING_DAILY_CAP, BOUNTY, ROAMER_POOL, AD,
-  FIRST_STAGE_END, CAMPAIGN_DIFFICULTY, CAMPAIGN_MILESTONES, ELITE_STAGE, STAR_RULES, CHAPTER_STAR_CHESTS, DAILY_ELITE_CHEST, DAILY_BOSS_CHEST, DAILY_AGENDA, QUAD_TOWER, TRIALS, RELICS,
+  FIRST_STAGE_END, CAMPAIGN_DIFFICULTY, CAMPAIGN_MILESTONES, ELITE_STAGE, STAR_RULES, CHAPTER_STAR_CHESTS, DAILY_ELITE_CHEST, DAILY_BOSS_CHEST, DAILY_AGENDA, QUAD_TOWER, TRIALS, RELICS, SEASON,
   CAMPAIGN_MODS, BOSS_MODS, RETURN_GRANTS, SUMMON_TICKET, SUMMON_POINTS, FORGE, MOTIFS, MOTIF_COST, SMELT,
   CODEX_REWARDS, ACHV_AXES, ACHV_REWARDS, WEEKLY, HALL, AWAKEN, FORMATION_PRESETS_MAX, TACTIC, BATTLE_TACTICS, TACTIC_SR, HALL_ACHV, TACTIC_ACHV, AWAKEN_ACHV, DRILL_ACHV, CHAOS_ACHV, CHAOS_MILESTONES, AFFIX_SETS, EXPEDITION_MUTATORS, EXPEDITION_BOONS
 };

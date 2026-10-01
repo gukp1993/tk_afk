@@ -178,7 +178,7 @@ export class CocosBootstrap extends Component implements ScreenContext {
       campaign: () => campaignScreens.campaign(this), stagePreview: () => campaignScreens.stagePreview(this), home: () => campaignScreens.home(this), journey: () => campaignScreens.journey(this),
       heroes: () => heroScreens.heroes(this), heroDetail: () => heroScreens.heroDetail(this), summon: () => heroScreens.summon(this), summonResults: () => heroScreens.summonResults(this), bag: () => campaignScreens.bag(this),
       armory: () => heroScreens.armory(this), armoryCatalog: () => heroScreens.armoryCatalog(this), armoryBox: () => heroScreens.armoryBox(this), shop: () => campaignScreens.shop(this), formation: () => campaignScreens.formation(this), formationPick: () => campaignScreens.formationPick(this), quests: () => campaignScreens.quests(this),
-      tower: () => campaignScreens.tower(this), arena: () => campaignScreens.arena(this), arenaBoard: () => campaignScreens.arenaBoard(this), dungeon: () => campaignScreens.dungeonView(this), weekboss: () => campaignScreens.weekBossView(this), settings: () => campaignScreens.settingsView(this), story: () => campaignScreens.storyView(this), storyArchive: () => campaignScreens.storyArchiveView(this), sevenDay: () => campaignScreens.sevenDayView(this), bounty: () => campaignScreens.bountyView(this), forge: () => heroScreens.forgeView(this), codex: () => heroScreens.codexView(this), achv: () => heroScreens.achvView(this), expedition: () => campaignScreens.expeditionView(this), hall: () => campaignScreens.hallView(this), quad: () => campaignScreens.quadTowerView(this), relics: () => heroScreens.relicsView(this),
+      tower: () => campaignScreens.tower(this), arena: () => campaignScreens.arena(this), arenaBoard: () => campaignScreens.arenaBoard(this), dungeon: () => campaignScreens.dungeonView(this), weekboss: () => campaignScreens.weekBossView(this), settings: () => campaignScreens.settingsView(this), story: () => campaignScreens.storyView(this), storyArchive: () => campaignScreens.storyArchiveView(this), sevenDay: () => campaignScreens.sevenDayView(this), bounty: () => campaignScreens.bountyView(this), forge: () => heroScreens.forgeView(this), codex: () => heroScreens.codexView(this), achv: () => heroScreens.achvView(this), expedition: () => campaignScreens.expeditionView(this), hall: () => campaignScreens.hallView(this), quad: () => campaignScreens.quadTowerView(this), relics: () => heroScreens.relicsView(this), season: () => campaignScreens.seasonView(this),
       battle: () => battleScreens.battleView(this), result: () => battleScreens.resultView(this), autoSummary: () => battleScreens.autoSummary(this, this.autoSession.summary), ad: () => this.adView()
     };
     render[page]();
@@ -226,7 +226,7 @@ export class CocosBootstrap extends Component implements ScreenContext {
     }
   }
   private spawnRewardFloater(reward: object) {
-    const CN: Record<string,string> = {gold:'铜钱',gem:'元宝',scroll:'令',token:'演武令',shard:'碎片',iron:'精铁',seals:'印信'};
+    const CN: Record<string,string> = {gold:'铜钱',gem:'元宝',scroll:'令',token:'演武令',shard:'碎片',iron:'精铁',seals:'印信',medal:'战功',stones:'淬火石'};
     const parts = Object.entries(reward)
       .filter(([k]) => k in CN)
       .map(([k, v]) => `${CN[k]}+${v}`);
