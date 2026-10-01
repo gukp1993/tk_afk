@@ -69,7 +69,7 @@ function drawField(U: CocosUi, ctx: ScreenContext, snapshot: any[]) {
   U.text('BattleLegend','绿条 生命 · 金条 怒气 · 卡边颜色=品质',-140,560,360,15,tone('#7c6a4e'));
   // 实时输出对比条（研讨会十 D1）：底部细条按双方累计输出占比
   {
-    const tt=((ctx.fighting as any).sideTotals?((ctx.fighting as any).sideTotals()):null);
+    const tt=(ctx.fighting&&(ctx.fighting as any).sideTotals)?((ctx.fighting as any).sideTotals()):null;
     if(tt&&(tt.a>0||tt.b>0)){
       const total=Math.max(1,tt.a+tt.b);
       const wA=Math.max(0.06,tt.a/total), wB=1-wA;
@@ -222,7 +222,14 @@ export function resultView(ctx: ScreenContext) {
   if(r?.win&&!r.replay&&ctx.battleMode==='campaign'&&reward.first&&stages.makeStageEnemies(ctx.battleIndex).isBoss){
     const bossName=stages.makeStageEnemies(ctx.battleIndex).units[0]?.hero?.name||'名将';
     const FLAVOR=[`${bossName}阵前授首 · 此关首破，威名入册`,`一战破${bossName} · 鼓角暂歇，前路已开`,`阵斩${bossName} · 首功记于麾下，三军喝彩`,`${bossName}授首 · 千军让道，此捷入青史`,`攻陷${bossName}大纛 · 关隘既克，声震此方`];
-    U.text('ResultGlory',FLAVOR[ctx.battleIndex%FLAVOR.length],0,130,514,18,GOLD);
+    let gloryText=FLAVOR[ctx.battleIndex%FLAVOR.length];
+    // 每日 Boss 首杀宝箱（研讨会十一 S3）：与名将首通同触发，并入同一行避免占位
+    if(reward.bossChest){
+      const pkMap:any={shard:'武将碎片',scroll:'招募令',gem:'元宝'};
+      const pkText=Object.entries(reward.bossChest.pick||{}).map(([k,n]:any)=>pkMap[k]?`${pkMap[k]}×${n}`:'').filter(Boolean).join('·');
+      gloryText=`名将日宝箱：铜钱 +${fmt.fmtNum(reward.bossChest.gold)}${pkText?` · ${pkText}`:''} · 每日一次`;
+    }
+    U.text('ResultGlory',gloryText,0,130,514,18,GOLD);
   }
   const msLabels=(reward.milestones||[]).map((m:any)=>m.label);
   if(r?.win&&reward.finale)U.text('ResultFinale','第一期主线完成 · 主线 120/120',0,14,500,24,GOLD);
@@ -235,9 +242,9 @@ export function resultView(ctx: ScreenContext) {
       ?(items.CATALOG.find((x:any)=>x.id===reward.armory.itemId)?.name||'随机军械'):null;
     U.text('ResultDrop',dropName?`掉落军械：${dropName}`
       :reward.armory&&reward.armory.duplicate?(reward.armory.iron?`重复军械折算精铁 +${reward.armory.iron}`:'重复军械已入熔炉库存（可熔回/合成）')
-      :'随机军械：本次未掉落（65% 概率）',0,-24,515,18,DIM);
+      :'随机军械：本次未掉落（65% 概率）',0,-20,515,18,DIM);
   }
-  if(r?.win&&reward.armoryBox)U.text('ResultBox',`${['','R','SR','SSR'][reward.armoryBox]||''}军械自选箱 ×1 · 待选择`,0,-58,480,19,GOLD);
+  if(r?.win&&reward.armoryBox)U.text('ResultBox',`${['','R','SR','SSR'][reward.armoryBox]||''}军械自选箱 ×1 · 待选择`,0,-46,480,19,GOLD);
   const starText=ctx.battleMode==='campaign'&&r?.win?`评星 ${'★'.repeat(Math.max(1,Math.min(3,r.stars||1)))} · `:'';
   U.text('ResultDuration',`${starText}用时 ${Math.round((r?.duration||0)*10)/10} 秒`,0,-96,470,19,DIM);
   // DPS 结算榜（研讨会八方案 5）：数据已就绪，复用 settled.stats 按输出排序 TOP3
@@ -278,8 +285,7 @@ export function resultView(ctx: ScreenContext) {
         U.button('ResultNext','升级军械',139,-228,232,53,()=>ctx.go('armory'),tone('#4c6e57'));
       }
     } else {
-      if(r?.win)U.text('ResultDoneText','已 凯 旋',-139,-228,232,30,DIM);
-      else U.button('ResultGrowth','查看武将',-139,-228,232,53,()=>ctx.go('heroes'),tone('#4c6e57'));
+      if(!r?.win)U.button('ResultGrowth','查看武将',-139,-228,232,53,()=>ctx.go('heroes'),tone('#4c6e57'));
       if(!r?.win&&ctx.battleMode==='arena'){
         // 演武败北：'再战'已可重打，不再重复渲染'重新挑战'
         U.text('ResultArenaTip','调整布阵或升级军械后再来切磋',139,-228,232,20,DIM);
