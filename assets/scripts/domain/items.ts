@@ -129,7 +129,7 @@ const ACTIVE_CHESTS = [
 // 演武场积分段位
 const ARENA_RANKS = [
   { min: 0, name: '新兵' }, { min: 800, name: '校尉' }, { min: 1000, name: '都尉' },
-  { min: 1200, name: '偏将军' }, { min: 1400, name: '裨将军' }, { min: 1600, name: '四征将军' },
+  { min: 1100, name: '偏将军' }, { min: 1400, name: '裨将军' }, { min: 1600, name: '四征将军' },
   { min: 1800, name: '车骑将军' }, { min: 2000, name: '大将军' }
 ];
 function arenaRank(points) {

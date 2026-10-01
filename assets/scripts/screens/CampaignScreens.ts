@@ -426,6 +426,15 @@ export function weekBossView(ctx: ScreenContext) {
     U.text('WbTierReward'+i,(t.reached?'已达标 · ':'')+rw,150,y,300,17,t.reached?GOLD:tone('#ad9977'));
   });
   U.text('WbHint','伤害 = 全队对魔王输出占其血量比例；魔王强度随主公等级',0,-260,640,16,tone('#7a6c52'));
+  // 升档进度条（研讨会十二 B1）：当前纪录相对下一档的达成度 + 差值文案
+  {
+    const topPct=(wb.tiers[0]&&wb.tiers[0].pct)||0.06;
+    const next=(wb.tiers as any[]).find(t=>t.pct>0&&!t.reached);
+    const frac=Math.max(0.02,Math.min(1,(wb.bestPct||0)/(next?next.pct:topPct)));
+    U.rect('WbProgBkg',0,-200,600,12,new Color(20,14,10,220));
+    U.rect('WbProgFill',-300+300*frac,-200,600*frac,12,new Color(150,90,70,235));
+    U.text('WbProgTxt',next?`距下一档（>${(next.pct*100).toFixed(1)}%）还差 ${Math.max(0.1,(next.pct-(wb.bestPct||0))*100).toFixed(1)}% 伤害`:'已达最高档 · 本周纪录待刷新',0,-220,620,17,GOLD);
+  }
   U.button('WbBackBtn','返 回',0,-500,295,52,()=>ctx.back('journey'),palette.paperDark);
   firstTimeOverlay(ctx,'weekboss');
 }

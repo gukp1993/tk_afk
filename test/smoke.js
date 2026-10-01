@@ -196,6 +196,20 @@ const af1 = store4b.arenaFight(true, 1.35, true);
 check('演武凶险档胜 4 令', af1.tokens === 4);
 check('段位首达一次性奖励', !!af1.rankUp && af1.rankUp.name === '都尉' && s4b.res.gem >= 100);
 check('段位奖励不重复', store4b.arenaFight(true, 1.35, true).rankUp === null);
+// 轻参与校准（研讨会十二 B1）：每日首胜积分 ×1.5、偏将门槛 1100、周Boss 新档位
+{
+  global.wx._map.delete(SAVE_KEY); // 清共享桩存储，防上一块存档带入今日首胜标记
+  const storeB1 = freshStore(); storeB1.load();
+  const sB1 = storeB1.getState();
+  check('B1 周Boss hpK=220 顶档 6% 印信25', C.WEEKBOSS.hpK === 220 && C.WEEKBOSS.tiers[0].pct === 0.06 && C.WEEKBOSS.tiers[0].reward.seals === 25);
+  const f1 = storeB1.arenaFight(true, 1.35, true);
+  const f2 = storeB1.arenaFight(true, 1.35, true);
+    check('B1 首胜积分 ×1.5（25→38）', f1.delta === Math.round(Math.round(14 + 8 * 1.35) * 1.5));
+  check('B1 同日第二胜无加成', f2.delta === Math.round(14 + 8 * 1.35));
+  check('B1 首胜只加积分不加令', f1.tokens === 4);
+  sB1.arena.points = 1100;
+  check('B1 偏将门槛 1100', (IT.ARENA_RANKS.find(r => r.name === '偏将军') || {}).min === 1100);
+}
 // 塔：首通带精铁
 const tw1 = store4b.winTower(1);
 check('塔首通 元宝32 · 精铁2', tw1.gem === 32 && tw1.iron === 2);
@@ -1396,7 +1410,7 @@ const storeP2 = freshStore(); storeP2.load();
   // 模拟 60% 伤害结算（stats A 侧求和）
   const st1 = storeWB.settleBattle(rb.id, { win: false, duration: 90, aliveCount: 0,
     stats: { A0: { dmg: 30000, heal: 0 }, A1: { dmg: 30000, heal: 0 }, B0: { dmg: 5000, heal: 0 } }, maxHp: 100000 });
-  check('WB3 伤害 60% 结算最高档（印信30+令10）', st1.ok && st1.reward.pct > 0.55 && st1.reward.reward.seals === 30
+  check('WB3 伤害 60% 结算最高档（印信25+令10，B1 校准后）', st1.ok && st1.reward.pct > 0.55 && st1.reward.reward.seals === 25
     && sWB.weekBoss.bestPct > 0.55 && sWB.weekBoss.bestDamage === 60000);
   const rb2 = storeWB.beginWeekBoss();
   const st2 = storeWB.settleBattle(rb2.id, { win: false, duration: 90, aliveCount: 0,

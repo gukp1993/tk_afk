@@ -29,7 +29,7 @@ function defaultState() {
     formation: ['zhangfei', 'guanyu', 'liaohua', 'liubei', 'mengda'],
     campaign: { cleared: 0, storySeen: {}, milestones: {}, retroGrants: null, retroGrantsSeen: false, stars: {}, starChests: {} },
     tower: { best: 0 },
-    arena: { points: 1000, wins: 0, losses: 0, attempts: C.ARENA.DAILY, rankReached: {}, weekKey: '', weekRankReached: {} },
+    arena: { points: 1000, wins: 0, losses: 0, attempts: C.ARENA.DAILY, rankReached: {}, weekKey: '', weekRankReached: {}, lastFirstWinDay: null },
     armory: createArmory(),
     idle: { last: Date.now(), gold: 0, gem: 0, scroll: 0, ironAcc: 0 },
     gemDay: { day: F.todayStr(), claimedGem: 0 },
@@ -783,6 +783,7 @@ function normalizeState(s) {
   // 演武赛季字段（v8 增量）：旧档首周按 100% 保留积分，不做追溯重置
   if (!s.arena.weekKey) s.arena.weekKey = F.isoWeekKey();
   s.arena.weekRankReached = s.arena.weekRankReached || {};
+    if (s.arena.lastFirstWinDay === undefined) s.arena.lastFirstWinDay = null;
   s.sevenDay = s.sevenDay || { start: F.todayStr(), claimed: [] };
   if (!Array.isArray(s.sevenDay.claimed)) s.sevenDay.claimed = [];
   s.sevenDay.claimed = s.sevenDay.claimed.map(n => Math.floor(Number(n) || 0)).filter(n => n >= 1 && n <= 7);
@@ -2294,6 +2295,12 @@ function arenaFight(win, diff, reserved) {
   let delta = 0, tokens = 0;
   if (win) {
     delta = Math.round(14 + 8 * diff);
+    // 每日首胜积分 ×1.5（研讨会十二 B1）：只加成积分不动令牌，按自然日判定
+    const fw = C.ARENA.FIRST_WIN_POINTS_BONUS || 0;
+    if (fw > 1 && state.arena.lastFirstWinDay !== F.todayStr()) {
+      delta = Math.round(delta * fw);
+      state.arena.lastFirstWinDay = F.todayStr();
+    }
     tokens = C.ARENA.winTokens ? C.ARENA.winTokens(diff) : C.ARENA.WIN_TOKENS;
     state.arena.wins += 1;
     bumpWeek('arenaWins', 1);

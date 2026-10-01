@@ -129,14 +129,16 @@ const REPLAYS = { max: 20, arenaHighDiff: 1.2,
 // HP/阈值待专项仿真校准（docs/reviews/周Boss仿真-*.md），当前为草案值。回退：enabled=false。
 const WEEKBOSS = {
   enabled: true, attempts: 3,
-  // 巨血口径（周Boss仿真 2026-09-30）：MaxHp = hpK × 同等星等级关羽体魄；阈值 >7/5.5/4/2/0%
-  hpK: 350,
+  // 巨血口径：MaxHp = hpK × 同等星等级关羽体魄；阈值 >6/4.5/3/1.5/0%
+  // （研讨会十二 B1 轻参与校准 2026-10-02：97% 挑战落 0%/2% 档→阈值前移+顶部印信平移中间档，
+  //   hpK 350→220 让中练度玩家当周可升档；回退：hpK/tiers 单字段还原）
+  hpK: 220,
   tiers: [
-    { pct: 0.07, reward: { seals: 30, token: 10 } },
-    { pct: 0.055, reward: { seals: 20, token: 6 } },
-    { pct: 0.04, reward: { seals: 12, token: 4 } },
-    { pct: 0.02, reward: { seals: 8, token: 2 } },
-    { pct: 0, reward: { seals: 5 } }
+    { pct: 0.06, reward: { seals: 25, token: 10 } },
+    { pct: 0.045, reward: { seals: 18, token: 8 } },
+    { pct: 0.03, reward: { seals: 12, token: 5 } },
+    { pct: 0.015, reward: { seals: 8, token: 3 } },
+    { pct: 0, reward: { seals: 5, token: 2 } }
   ]
 };
 
@@ -222,6 +224,8 @@ const DRILL = { maxLevel: 5, pctPerLevel: 0.04, totalCap: 0.4,
 const ARENA = {
   DAILY: 5,
   LOSE_TOKENS: 1,
+  // 每日首胜积分 ×1.5（研讨会十二 B1：只动积分不动令牌，让 1~2 场/日的轻参与玩家 2~3 周内够到偏将周奖门槛）
+  FIRST_WIN_POINTS_BONUS: 1.5,
   winTokens: (diff) => (diff > 1.2 ? 4 : diff >= 1 ? 3 : 2),
   rankBonus: { gem: 100, iron: 50 },
   WEEK_CARRY: 0.5,
