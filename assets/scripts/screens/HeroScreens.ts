@@ -233,7 +233,7 @@ export function heroDetail(ctx: ScreenContext) {
     const bioLines=(bios.BIOS as any)[h.id];
     if(bioLines)V.tap('BioTap',0,top-248,684,26,()=>heroInfoModal(ctx,'武将小传 · '+h.name,bioLines));
     if(h.quote)V.text('DetailQuote','「'+h.quote+'」'+(bioLines?'  ·  小传 ›':''),0,top-248,560,19,tone('#c9b489'));
-    V.text('SkillsHeading','武将技能',-242,top-555,195,29,gold);
+    V.text('SkillsHeading','武将技能',-242,top-535,195,29,gold);
     const skills=[{name:h.ult.name,desc:h.ult.desc,glyph:'杀',fill:palette.red,kind:'必杀技能'},
       {name:h.passiveDef.name,desc:h.passiveDef.desc,glyph:'守',fill:palette.green,kind:'被动技能'}];
     skills.forEach((skill,i)=>{const x=i===0?-169:169,y=top-673;V.panel('SkillTile'+i,x,y,328,216,new Color(19,38,33,247),7,gold);
@@ -353,7 +353,7 @@ export function heroDetail(ctx: ScreenContext) {
         const yy=180-i*46;
         U.panel('TrialEnemy'+i,0,yy,600,40,tone('#171009'),6,tone('#5a452a'));
         U.text('TrialEnemyName'+i,`${i===0?'主将 · ':''}${u.hero.name} Lv.${u.level}`,-190,yy,320,19,u.isBoss?gold:LIGHT);
-        U.text('TrialEnemyCls'+i,u.hero.cls==='warrior'?'武将':u.hero.cls==='archer'?'弓手':'军师',180,yy,120,17,tone('#a99778'));
+        U.text('TrialEnemyCls'+i,((config.CLASSES as any)[u.hero.cls]&&((config.CLASSES as any)[u.hero.cls].name))||'武将',180,yy,120,17,tone('#a99778'));
       });
       U.text('TrialReward',t.cleared?'已通关 · 复习不发奖':`首通：荣耀 +${t.honor}（当前 ${t.clearedCount}/${t.total}，全通授「${t.allTitle}」）`,0,-188,600,19,t.cleared?tone('#a99778'):gold);
       U.button('TrialFight','出 战',-149,-240,270,60,()=>{

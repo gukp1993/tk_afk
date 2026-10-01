@@ -389,7 +389,7 @@ export function journey(ctx: ScreenContext) {
         const qStat=q.owned>0?`已登 ${q.best}/${q.floors} · 本国可战 ${q.owned} 将 ›`:`本周${qname}台 · 暂无${qname}将（召唤/定向券可补）›`;
         U.panel('QuadEntry',0,56,682,84,tone('#312218'),10,tone('#a17b40'));
         U.text('QuadEntryGlyph','四',-272,71,59,49,GOLD);
-        U.text('QuadEntryName',`四方台 · ${qname}·${q.theme}`,-140,71,400,26,LIGHT);
+        U.text('QuadEntryName',`四方台 · ${qname}·${q.theme}`,-52,71,360,25,LIGHT);
         U.text('QuadEntryStat',qStat,30,36,520,18,GOLD);
         U.tap('QuadEntryTap',0,56,682,84,()=>ctx.go('quad' as any));
       }
