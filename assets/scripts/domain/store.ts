@@ -44,6 +44,7 @@ function defaultState() {
     arena: { points: 1000, wins: 0, losses: 0, attempts: C.ARENA.DAILY, rankReached: {}, weekKey: '', weekRankReached: {}, lastFirstWinDay: null },
     quadTower: { weekId: '', best: 0 },
     trials: { cleared: {} },
+    relics: { stones: 0, owned: {}, levels: {}, equipped: null },
     armory: createArmory(),
     idle: { last: Date.now(), gold: 0, gem: 0, scroll: 0, ironAcc: 0 },
     gemDay: { day: F.todayStr(), claimedGem: 0 },
@@ -337,7 +338,7 @@ function checkWeeklyReset(today) {
     activeClaimed: [],
     sealsEarned: 0,
     shopBought: {},
-    trial: { best: 0, chestClaimed: false, boons: [], boonFloors: [] }
+    trial: { best: 0, chestClaimed: false, boons: [], boonFloors: [], stonesGiven: false }
   };
   // 修剪旧周名人堂键（防存档无限增长）
   ['kills', 'stars', 'threeClaimed'].forEach(f => {
@@ -369,9 +370,10 @@ function weekInfo() {
     need: t.need, reward: t.reward, claimed: w.activeClaimed.indexOf(i) >= 0,
     claimable: sealsEarned >= t.need && w.activeClaimed.indexOf(i) < 0
   }));
-  const trial = w.trial || { best: 0, chestClaimed: false, boons: [], boonFloors: [] };
+  const trial = w.trial || { best: 0, chestClaimed: false, boons: [], boonFloors: [], stonesGiven: false };
   if (!Array.isArray(trial.boons)) trial.boons = [];
   if (!Array.isArray(trial.boonFloors)) trial.boonFloors = [];
+  if (trial.stonesGiven === undefined) trial.stonesGiven = false;
   return { weekId: w.weekId, quests, active, sealsEarned, seals: state.seals || 0, trial,
     canClaim: quests.some(q => q.claimable) || active.some(a => a.claimable) };
 }
@@ -698,6 +700,90 @@ function winQuadTower(floor) {
   return reward;
 }
 
+
+// —— 传世神兵（研讨会十三案二）——
+function relicVal(r, level) { return r.base + r.step * (level - 1); }
+function relicInfo() {
+  checkDailyReset();
+  const cfg = C.RELICS;
+  const R = state.relics || { stones: 0, owned: {}, levels: {}, equipped: null };
+  const unlocked = (state.campaign.cleared || 0) >= cfg.unlockCleared;
+  const list = cfg.list.map(r => {
+    const owned = !!R.owned[r.id];
+    const level = R.levels[r.id] || (owned ? 1 : 0);
+    const nextStone = cfg.stoneCosts[level] || 0;
+    const nextGold = cfg.goldCosts[level] || 0;
+    return {
+      id: r.id, name: r.name, key: r.key, owner: r.owner, fmt: r.fmt,
+      owned, level, maxLevel: cfg.stoneCosts.length,
+      claimable: unlocked && !!state.trials.cleared[r.owner] && !owned,
+      locked: !state.trials.cleared[r.owner],
+      val: owned ? relicVal(r, level) : 0, nextVal: relicVal(r, level + 1),
+      nextStone, nextGold, canUpgrade: owned && level < cfg.stoneCosts.length && R.stones >= nextStone && state.res.gold >= nextGold,
+      equipped: R.equipped === r.id
+    };
+  });
+  const ownedCount = list.filter(r => r.owned).length;
+  return {
+    enabled: !!cfg.enabled, unlocked, stones: R.stones,
+    equipped: R.equipped, list, ownedCount, total: cfg.list.length,
+    setOwned: ownedCount >= cfg.list.length, setBonus: cfg.setBonus
+  };
+}
+function claimRelic(id) {
+  return withSavedMutation(() => {
+    const cfg = C.RELICS;
+    const r = cfg.list.find(x => x.id === id);
+    if (!r) return { ok: false, msg: '神兵不存在' };
+    if (!state.relics) state.relics = { stones: 0, owned: {}, levels: {}, equipped: null };
+    if (state.relics.owned[id]) return { ok: false, msg: '已认主' };
+    if ((state.campaign.cleared || 0) < cfg.unlockCleared) return { ok: false, msg: '通关第 160 关后开启神兵阁' };
+    if (!state.trials.cleared[r.owner]) return { ok: false, msg: '认主条件未达成：需通过该名将试炼' };
+    state.relics.owned[id] = 1;
+    state.relics.levels[id] = 1;
+    return { ok: true, name: r.name };
+  });
+}
+function upgradeRelic(id) {
+  return withSavedMutation(() => {
+    const cfg = C.RELICS;
+    const r = cfg.list.find(x => x.id === id);
+    if (!r || !state.relics.owned[id]) return { ok: false, msg: '尚未认主' };
+    const lv = state.relics.levels[id] || 1;
+    if (lv >= cfg.stoneCosts.length) return { ok: false, msg: '已达满级' };
+    const stone = cfg.stoneCosts[lv], gold = cfg.goldCosts[lv];
+    if ((state.relics.stones || 0) < stone) return { ok: false, msg: '淬火石不足（远征每周达 20 层可得）' };
+    if (state.res.gold < gold) return { ok: false, msg: '铜钱不足' };
+    state.relics.stones -= stone;
+    state.res.gold -= gold;
+    state.relics.levels[id] = lv + 1;
+    return { ok: true, level: lv + 1, name: r.name };
+  });
+}
+function equipRelic(id) {
+  return withSavedMutation(() => {
+    if (id === null) { state.relics.equipped = null; return { ok: true, name: null }; }
+    const r = C.RELICS.list.find(x => x.id === id);
+    if (!r || !state.relics.owned[id]) return { ok: false, msg: '尚未认主' };
+    state.relics.equipped = state.relics.equipped === id ? null : id;
+    return { ok: true, name: state.relics.equipped ? r.name : null };
+  });
+}
+// 全军被动注入：上阵神兵一条 + 8 件集齐套装三维
+function relicMods() {
+  const out = {};
+  if (!C.RELICS || !C.RELICS.enabled || !state.relics) return out;
+  const eq = state.relics.equipped;
+  if (eq) {
+    const r = C.RELICS.list.find(x => x.id === eq);
+    if (r) out[r.key] = relicVal(r, state.relics.levels[r.id] || 1);
+  }
+  if (C.RELICS.list.every(x => state.relics.owned[x.id])) {
+    Object.keys(C.RELICS.setBonus).forEach(k => { out[k] = (out[k] || 0) + C.RELICS.setBonus[k]; });
+  }
+  return out;
+}
+
 function winTrial(heroId) {
   const cfg = C.TRIALS;
   const reward = { mode: 'trial', heroId, honor: 0, first: false, title: null, allClear: false };
@@ -908,6 +994,13 @@ function winExpedition(floor) {
     w.trial.best = floor;
     reward.seals = Math.max(trial.sealFloor, trial.sealBase + trial.sealStep * (floor - 1));
     state.seals = (state.seals || 0) + reward.seals;
+    // 淬火石（研讨会十三案二）：每周远征首达 20 层发 +20，神兵阁升级材料
+    if (C.RELICS && C.RELICS.enabled && floor >= 20 && !w.trial.stonesGiven) {
+      w.trial.stonesGiven = true;
+      state.relics = state.relics || { stones: 0, owned: {}, levels: {}, equipped: null };
+      state.relics.stones += 20;
+      reward.stones = 20;
+    }
     w.sealsEarned = (w.sealsEarned || 0) + reward.seals;
     // 里程碑一次性奖励
     w.trial.milestoneClaimed = w.trial.milestoneClaimed || [];
@@ -1045,6 +1138,11 @@ function normalizeState(s) {
     s.quadTower.best = Math.max(0, Math.min((C.QUAD_TOWER && C.QUAD_TOWER.floors) || 30, Math.floor(Number(s.quadTower.best) || 0)));
     s.trials = s.trials || { cleared: {} };
     s.trials.cleared = s.trials.cleared || {};
+    s.relics = s.relics || { stones: 0, owned: {}, levels: {}, equipped: null };
+    s.relics.stones = Math.max(0, Math.floor(Number(s.relics.stones) || 0));
+    s.relics.owned = s.relics.owned || {};
+    s.relics.levels = s.relics.levels || {};
+    if (s.relics.equipped !== null && !s.relics.owned[s.relics.equipped]) s.relics.equipped = null;
   s.sevenDay = s.sevenDay || { start: F.todayStr(), claimed: [] };
   if (!Array.isArray(s.sevenDay.claimed)) s.sevenDay.claimed = [];
   s.sevenDay.claimed = s.sevenDay.claimed.map(n => Math.floor(Number(n) || 0)).filter(n => n >= 1 && n <= 7);
@@ -1777,6 +1875,8 @@ function playerUnits(tacticId, includeBorrow) {
   const extra = bondMods();
   const combo = bondComboMods();
   Object.keys(combo).forEach(k => { extra[k] = (extra[k] || 0) + combo[k]; });
+  const relic = relicMods();
+  Object.keys(relic).forEach(k => { extra[k] = (extra[k] || 0) + relic[k]; });
   const tactic = tacticId ? (C.BATTLE_TACTICS || []).find(t => t.id === tacticId) : null;
   const tm = tactic ? tactic.mods : null;
   const base = calc.map((x, i) => {
@@ -3407,7 +3507,7 @@ export {
   exchangeQualityShard, qualityShardInfo, drillInfo, drillHero,
   getFormationCalc, setFormationSlot, applyFormation, formationFactionBonus, teamPower, playerUnits, enemyUnits, activeBonds, bondMods, bondComboMods,
   getArmoryBonuses, getArmoryState, armoryUnlock, armorySelect, armoryUpgrade, armoryUpgradeToNode, armoryClaimBox, grantArmoryItem, applyArmoryRecommendations, armoryAffixBadges, forgeInfo, forgeReroll, forgeSetDir, forgeToggleLock, forgeGateOpen, motifInfo, motifActivate, smeltInfo, smeltMelt, smeltCombine,
-  codexInfo, claimCodex, useUniversalSr, achvInfo, claimAchv, weekInfo, claimWeekQuest, claimWeekActive, buyWeekly, makeExpeditionFloor, bumpWeek, dailyAgendaInfo, quadFactionOfWeek, quadTowerInfo, winQuadTower, winTrial, trialInfo, weekMutatorIds, expeditionBoonOffer, pickExpeditionBoon, expeditionBoonMods, beginHall, winHall, hallInfo, saveReplay, replaysInfo, awakenInfo, awakenHero, formationPresetsInfo, saveFormationPreset, applyFormationPreset, delFormationPreset, tacticInfo, tacticUpgrade,
+  codexInfo, claimCodex, useUniversalSr, achvInfo, claimAchv, weekInfo, claimWeekQuest, claimWeekActive, buyWeekly, makeExpeditionFloor, bumpWeek, dailyAgendaInfo, quadFactionOfWeek, quadTowerInfo, winQuadTower, winTrial, trialInfo, winExpedition, relicInfo, claimRelic, upgradeRelic, equipRelic, relicMods, weekMutatorIds, expeditionBoonOffer, pickExpeditionBoon, expeditionBoonMods, beginHall, winHall, hallInfo, saveReplay, replaysInfo, awakenInfo, awakenHero, formationPresetsInfo, saveFormationPreset, applyFormationPreset, delFormationPreset, tacticInfo, tacticUpgrade,
   migrateSaveV1, migrateSaveV2, migrateSaveV3, migrateSaveV4, migrateSaveV5, migrateSaveV6, migrateSaveV7, normalizeState,
   idlePending, idleTick, gemQuotaInfo, claimIdle, claimIdleInternal, fastReward, fastRewardMutation, fastRewardAdMutation, adReward,
   doSummon, rollRarity, pickHeroOfRarity, summonPityInfo, setSummonFocus, summonTicketInfo, summonPointsInfo, claimSummonPoints, useUniversalSsr,

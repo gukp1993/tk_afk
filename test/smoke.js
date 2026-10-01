@@ -1941,4 +1941,41 @@ const storeP2 = freshStore(); storeP2.load();
   check('T9 normalize 兜底 trials', !!sT.trials && !!sT.trials.cleared);
 }
 
+// 传世神兵（研讨会十三案二）：认主/淬炼/上阵/套装
+{
+  global.wx._map.delete(SAVE_KEY);
+  const storeR = freshStore(); storeR.load();
+  const sR = storeR.getState();
+  check('R0 未达 160 关神兵阁未解锁', storeR.relicInfo().unlocked === false);
+  sR.campaign.cleared = 160;
+  check('R1 通关 160 后解锁', storeR.relicInfo().unlocked === true);
+  const rF = storeR.relicInfo().list.find(r => r.id === 'fangtian');
+  check('R2 认主条件=试炼未通则不可领', rF.claimable === false && rF.locked === true);
+  storeR.grantCard('lvbu'); storeR.winTrial('lvbu');
+  check('R3 试炼已通后可认主', storeR.relicInfo().list.find(r => r.id === 'fangtian').claimable === true);
+  check('R4 认主入列 1 级', storeR.claimRelic('fangtian').ok && storeR.relicInfo().list.find(r => r.id === 'fangtian').level === 1);
+  storeR.equipRelic('fangtian');
+  check('R5 上阵注入全军被动（暴伤 +6%）', Math.abs((storeR.relicMods().critDmg || 0) - 0.06) < 1e-9);
+  sR.res.gold = 10000000; sR.relics.stones = 25;
+  storeR.upgradeRelic('fangtian');
+  check('R6 淬炼 2 级消耗淬火石25+铜钱5万', storeR.relicInfo().list.find(r => r.id === 'fangtian').level === 2 && sR.relics.stones === 0 && Math.abs(storeR.relicMods().critDmg - 0.08) < 1e-9);
+  check('R7 材料不足拒绝', storeR.upgradeRelic('fangtian').ok === false);
+  // 套装：8 件全认主
+  C.RELICS.list.forEach(r => { if (r.id !== 'fangtian') { storeR.grantCard(r.owner); storeR.winTrial(r.owner); storeR.claimRelic(r.id); } });
+  const mods = storeR.relicMods();
+  check('R8 集齐全军三维 +3%', Math.abs((mods.atk || 0) - 0.03) < 1e-9 && Math.abs((mods.hp || 0) - 0.03) < 1e-9 && Math.abs((mods.def || 0) - 0.03) < 1e-9);
+  check('R9 旧档 relics 兜底且 v8', sR.v === 8 && typeof sR.relics.stones === 'number');
+  // 远征 20 层淬火石
+  global.wx._map.delete(SAVE_KEY);
+  const storeRS = freshStore(); storeRS.load();
+  const sRS = storeRS.getState();
+  sRS.campaign.cleared = 120;
+  storeRS.weekInfo(); // 初始化周结构（真实流程由 beginBattle 链触发）
+  sRS.week.trial.best = 19; // 阶梯直通（first 仅 best+1）
+  storeRS.winExpedition(20);
+  check('R10 远征首达 20 层淬火石 +20', sRS.relics.stones === 20 && !!sRS.week.trial.stonesGiven);
+  storeRS.winExpedition(21);
+  check('R11 同周不重复发', sRS.relics.stones === 20);
+}
+
 console.log('\nsmoke: ' + passed + ' passed, ' + failed + ' failed');process.exit(failed ? 1 : 0);

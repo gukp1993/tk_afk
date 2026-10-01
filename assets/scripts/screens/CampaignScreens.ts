@@ -592,14 +592,19 @@ export function bag(ctx: ScreenContext) {
       U.text('BagCardLink'+i,action+' ›',x,y-70,275,18,GOLD);
       U.tap('BagCardTap'+i,x,y,310,193,()=>ctx.go(page));
     });
-    U.text('BagGuide','点击物资卡片，前往对应功能使用',0,-332,620,18,tone('#ad9977'));
-    [['典','图鉴收集 · 集齐阵营领厚礼','codex'],['勋','主公成就 · 十一轴长线目标','achv'],['远','远征周 · 周任务与词缀挑战','expedition']].forEach(([glyph,label,page]:any,i:number)=>{
-      const ey=-372-i*64;
-      U.panel('BagEntry'+i,0,ey,682,52,tone('#312218'),8,tone('#795b34'));
+    // 神兵阁（研讨会十三案二）：通关 160 关解锁后追加第四入口行（行距收紧保 -548 红线）
+    const relicUnlocked=(config.RELICS as any).enabled&&(store.relicInfo() as any).unlocked;
+    U.text('BagGuide','点击物资卡片，前往对应功能使用',0,relicUnlocked?-290:-332,620,18,tone('#ad9977'));
+    const entries:[string,string,string][]=[['典','图鉴收集 · 集齐阵营领厚礼','codex'],['勋','主公成就 · 十一轴长线目标','achv'],['远','远征周 · 周任务与词缀挑战','expedition']];
+    if(relicUnlocked)entries.push(['神','神兵阁 · 传世宝物认主与淬炼','relics']);
+    const eStep=relicUnlocked?56:64, eStart=relicUnlocked?-350:-372, eH=relicUnlocked?48:52;
+    entries.forEach(([glyph,label,page]:any,i:number)=>{
+      const ey=eStart-i*eStep;
+      U.panel('BagEntry'+i,0,ey,682,eH,tone('#312218'),8,tone('#795b34'));
       U.text('BagEntryGlyph'+i,String(glyph),-290,ey,44,30,GOLD);
       U.text('BagEntryLabel'+i,String(label),-128,ey,400,19,LIGHT);
       U.text('BagEntryGo'+i,'›',290,ey,40,19,GOLD);
-      U.tap('BagEntryTap'+i,0,ey,682,52,()=>ctx.go(page as Page));
+      U.tap('BagEntryTap'+i,0,ey,682,eH,()=>ctx.go(page as Page));
     });
   }
 

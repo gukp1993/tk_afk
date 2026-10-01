@@ -672,6 +672,60 @@ export function codexView(ctx: ScreenContext) {
   });
 }
 
+// 神兵阁（研讨会十三案二）：传世宝物认主/淬炼/上阵（全军 1 件）
+export function relicsView(ctx: ScreenContext) {
+  const U=ctx.ui,info=(store as any).relicInfo();
+  ctx.title('神 兵 阁');
+  U.text('RelicBack','‹ 返回',-291,484,130,22,gold);
+  U.tap('RelicBackTap',-291,484,136,52,()=>ctx.back('bag'));
+  if(!info.enabled){U.text('RelicClosed','神兵阁暂未开放',0,200,600,20,LIGHT);return;}
+  if(!info.unlocked){
+    U.panel('RelicLockPanel',0,200,620,180,tone('#251b14'),12,gold);
+    U.text('RelicLockTitle','神兵阁 封印中',0,246,560,30,gold);
+    U.text('RelicLockDesc','通关主线第 160 关后开启',0,206,560,20,LIGHT);
+    U.text('RelicLockProg',`当前进度：第 ${store.getState().campaign.cleared||0} 关`,0,168,560,18,tone('#ad9977'));
+    return;
+  }
+  U.panel('RelicHeader',0,424,682,72,tone('#3a2c17'),10,gold);
+  U.text('RelicStones',`淬火石 ${info.stones}`,150,444,200,24,gold);
+  U.text('RelicSource',`来源：远征每周达 20 层 +20`,150,414,300,15,tone('#ad9977'));
+  U.text('RelicSetTitle',info.setOwned?'传世套装已激活 · 全军三维 +3%':`传世套装：集齐 8 件（${info.ownedCount}/${info.total}）`, -160,444,340,20,info.setOwned?gold:LIGHT);
+  U.text('RelicSetSub',info.setOwned?'':'认主条件：通过对应名将试炼',-160,414,340,15,tone('#ad9977'));
+  const mechNames:any={ccImmune:'免疫控制',cheatRevivePct:'倒地再起',armoryStartShield:'开场护盾',dmgReduce:'伤害减免',thorns:'反弹伤害',firstEnergy:'开场怒气',vamp:'攻击吸血',critDmg:'暴击伤害',energyGain:'怒气获取',recvHeal:'受疗提升'};
+  info.list.forEach((r:any,i:number)=>{
+    const y=330-i*112;
+    U.panel('RelicCard'+i,0,y,640,100,r.owned?(r.equipped?tone('#3a2c17'):tone('#312218')):tone('#171009'),9,r.equipped?gold:tone('#795b34'));
+    U.text('RelicName'+i,r.name,-200,y+26,240,24,r.owned?gold:LIGHT);
+    U.seal('RelicSeal'+i,-288,y+26,40,r.name[0],r.owned?gold:palette.ink,tone('#795b34'),r.owned?palette.ink:tone('#7a6c52'),20);
+    const valTxt=r.owned?`${mechNames[r.key]||r.key} ${(r.fmt==='pct'?'+':'+')}${r.fmt==='pct'?Math.round(r.val*100)+'%':r.val}`:'认主条件：通过对应名将试炼';
+    U.text('RelicVal'+i,valTxt+(r.owned&&r.level<r.maxLevel?`（${r.level}/5 级）`:r.owned?'（满级）':''),-170,y-8,440,17,r.owned?tone('#d9b06a'):tone('#7a6c52'));
+    if(r.equipped)U.text('RelicEq'+i,'上阵中',240,y+26,140,18,gold);
+    if(!r.owned){
+      U.button('RelicAct'+i,r.locked?'试炼未通':'认 主',240,y-10,150,48,()=>{
+        const res=(store as any).claimRelic(r.id);
+        ctx.tell(res,res.ok?`「${res.name}」已认主`:'');
+        if(res.ok)ctx.show('relics');
+      },r.locked?tone('#423022'):palette.gold);
+    }else{
+      U.button('RelicEq'+i+'_Go',r.equipped?'卸 下':'上 阵',240,y+22,150,40,()=>{
+        const res=(store as any).equipRelic(r.id);
+        ctx.tell(res,res.ok?(res.name?`「${res.name}」上阵`:'已卸下'):'');
+        if(res.ok)ctx.show('relics');
+      },r.equipped?tone('#423022'):palette.gold);
+      if(r.level<r.maxLevel){
+        const can=r.canUpgrade;
+        U.button('RelicUp'+i,`淬 炼 ${r.level}→${r.level+1}`,240,y-26,150,40,()=>{
+          const res=(store as any).upgradeRelic(r.id);
+          ctx.tell(res,res.ok?`「${res.name}」淬炼至 ${res.level} 级`:'');
+          if(res.ok)ctx.show('relics');
+        },can?palette.gold:tone('#423022'));
+        U.text('RelicCost'+i,`淬火石${r.nextStone}+铜钱${fmt.fmtNum(r.nextGold)}`,60,y-38,300,13,can?tone('#d9b06a'):tone('#bb614c'));
+      }
+    }
+  });
+  firstTimeOverlay(ctx,'relics');
+}
+
 export function achvView(ctx: ScreenContext) {
   const U=ctx.ui,info=store.achvInfo();
   ctx.title('主 公 成 就');

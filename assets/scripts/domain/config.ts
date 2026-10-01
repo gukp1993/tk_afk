@@ -182,6 +182,27 @@ const SWEEP = { enabled: true, daily: 3 };
 // 每日 Boss 首杀（2026-10-01 研讨会十一 S3）：每日首个 Boss 系内容（名将/精锐/Boss/周Boss）胜利
 // 发固定小额铜钱+三选一（碎片3/招募令1/元宝30），量级对齐精锐日宝箱。
 // 无精铁、无每胜元宝；各模式共享每日一次。回退：enabled=false。
+// 传世神兵（研讨会十三案二）：通关 160 关开启神兵阁，8 件宝物认主条件=对应名将试炼已通（零随机），
+// 每件一条全军被动（复用既有机制键），上阵仅 1 件；8 件集齐全军三维 +3%。
+// 升级材料=淬火石（远征每周达 20 层 +20、后续战功商店）+大额铜钱——铜钱沉没的正解。回退：enabled=false。
+const RELICS = {
+  enabled: true,
+  unlockCleared: 160,
+  setBonus: { atk: 0.03, hp: 0.03, def: 0.03 },
+  stoneCosts: [15, 25, 40, 60], // 1→5 级共 4 次淬炼，累计 140/件
+  goldCosts: [50000, 100000, 150000, 200000],
+  list: [
+    { id: 'fangtian',  name: '方天画戟', owner: 'lvbu',       key: 'critDmg',   base: 0.06, step: 0.02, fmt: 'pct' },
+    { id: 'shemao',    name: '丈八蛇矛', owner: 'zhangfei',   key: 'thorns',    base: 0.05, step: 0.015, fmt: 'pct' },
+    { id: 'qinggang',  name: '青釭剑',   owner: 'zhaoyun',    key: 'vamp',      base: 0.03, step: 0.01, fmt: 'pct' },
+    { id: 'shuanggu',  name: '双股剑',   owner: 'liubei',     key: 'recvHeal',  base: 0.08, step: 0.02, fmt: 'pct' },
+    { id: 'qixing',    name: '七星宝刀', owner: 'caocao',     key: 'armoryStartShield', base: 0.06, step: 0.015, fmt: 'pct' },
+    { id: 'yushan',    name: '卧龙羽扇', owner: 'zhugeliang', key: 'energyGain', base: 0.05, step: 0.012, fmt: 'pct' },
+    { id: 'tiebian',   name: '烈弓铁胎', owner: 'huangzhong', key: 'firstEnergy', base: 8, step: 2, fmt: 'flat' },
+    { id: 'yitian',    name: '倚天剑',   owner: 'simayi',     key: 'dmgReduce', base: 0.04, step: 0.01, fmt: 'pct' }
+  ]
+};
+
 // 名将试炼（研讨会十二候选池 C2，规格定稿）：16 只 SSR 各一关机制解谜——主将=本人+4 同阵营副将，
 // extraPassive 只挂主将且键值全取 BOSS_MODS 七键词表（新机制键=0）。须拥有该将、不限次、仅首通发荣耀 +15
 //（16×15=240 占满觉总耗 6080 的 3.9%<5% 红线）；全通授称号「试炼·无双」。回退：enabled=false。
@@ -696,7 +717,7 @@ export {
   goldCost, expCost, idleRates, IDLE_CAP_HOURS, GEM_IDLE, ARMORY_IRON_PER_HOUR,
   FAST_AD, FAST_PAID,
   GACHA, factionBonus, FORMATION_ROWS, BATTLE, ARENA, DEFEAT_RX, REPLAYS, DRILL, SEVEN_DAY, FOURTEEN_DAY, DUNGEON, WEEKBOSS, BORROW, SWEEP, REPLAY_ACHV, TUTORIAL_OFF, TUTORIALS, TRAINING_DAILY_CAP, BOUNTY, ROAMER_POOL, AD,
-  FIRST_STAGE_END, CAMPAIGN_DIFFICULTY, CAMPAIGN_MILESTONES, ELITE_STAGE, STAR_RULES, CHAPTER_STAR_CHESTS, DAILY_ELITE_CHEST, DAILY_BOSS_CHEST, DAILY_AGENDA, QUAD_TOWER, TRIALS,
+  FIRST_STAGE_END, CAMPAIGN_DIFFICULTY, CAMPAIGN_MILESTONES, ELITE_STAGE, STAR_RULES, CHAPTER_STAR_CHESTS, DAILY_ELITE_CHEST, DAILY_BOSS_CHEST, DAILY_AGENDA, QUAD_TOWER, TRIALS, RELICS,
   CAMPAIGN_MODS, BOSS_MODS, RETURN_GRANTS, SUMMON_TICKET, SUMMON_POINTS, FORGE, MOTIFS, MOTIF_COST, SMELT,
   CODEX_REWARDS, ACHV_AXES, ACHV_REWARDS, WEEKLY, HALL, AWAKEN, FORMATION_PRESETS_MAX, TACTIC, BATTLE_TACTICS, TACTIC_SR, HALL_ACHV, TACTIC_ACHV, AWAKEN_ACHV, DRILL_ACHV, CHAOS_ACHV, CHAOS_MILESTONES, AFFIX_SETS, EXPEDITION_MUTATORS, EXPEDITION_BOONS
 };
