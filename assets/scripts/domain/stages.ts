@@ -185,16 +185,17 @@ function makeTowerEnemies(floor) {
 
 // 名将试炼（研讨会十二 C2）：主将=该 SSR 本人（带 extraPassive 机制）+4 同阵营副将；
 // 等级按玩家 teamPower 反推（hall 公式，levelMult 0.90），同一关天然服务新人教学与毕业解谜。
-function makeTrialEnemies(heroId, playerPower) {
+function makeTrialEnemies(heroId, playerLevel) {
   const C = __domain_config;
   const cfg = C.TRIALS;
   const H2 = __domain_heroes;
   const t = cfg.trials[heroId];
   const hero = H2.getHero(heroId);
-  const lvMult = (cfg.overrides && cfg.overrides[heroId]) || cfg.levelMult;
-  const targetPower = (playerPower || 0) * lvMult;
-  const lv = Math.max(1, Math.round(Math.pow(targetPower / 2600, 1 / 1.35)));
-  const star = Math.min(2, Math.floor(lv / 60));
+  // 玩家等级锚定（k 校准 2026-10-02）：旧 teamPower 反推公式使敌等仅 6~17 vs 玩家 55~160（全 100%），
+  // 且 power 反推架构下三档 overrides 窗口互不重叠无法共调。改敌等=玩家等级×相对系数，星级上限放开到 4★。
+  const rel = (cfg.overrides && cfg.overrides[heroId]) || cfg.levelMult;
+  const lv = Math.max(1, Math.round((playerLevel || 1) * rel));
+  const star = Math.min(4, Math.floor(lv / 45));
   const ids = [heroId].concat(t.mates);
   const units = ids.map((id, i) => {
     const h = H2.getHero(id);

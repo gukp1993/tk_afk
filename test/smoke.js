@@ -1918,7 +1918,7 @@ const storeP2 = freshStore(); storeP2.load();
   check('T1 16 关且恰好覆盖全部 SSR', ids.length === 16 && ssr.length === 16 && ids.every(id => ssr.includes(id)) && ssr.every(id => ids.includes(id)));
   const KEYS = ['ccImmune','cheatRevivePct','armoryStartShield','dmgReduce','thorns','firstEnergy','vamp'];
   check('T2 被动键全在 BOSS_MODS 词表（新机制键=0）', ids.every(id => Object.keys(C.TRIALS.trials[id].extraPassive).every(k => KEYS.includes(k))));
-  const e = stages.makeTrialEnemies('lvbu', 60000);
+  const e = stages.makeTrialEnemies('lvbu', 40); // 玩家等级锚定：40 级 → 敌 36 级
   check('T3 敌阵 5 人主将即本人仅主将带被动', e.units.length === 5 && e.units[0].hero.id === 'lvbu' && e.units[0].isBoss && e.units.slice(1).every(u => !u.isBoss && !u.extraPassive));
   // 未拥有拒绝
   const rb0 = storeT.beginBattle({ mode: 'trial', trialHero: 'lvbu', referenceLevel: 20 });

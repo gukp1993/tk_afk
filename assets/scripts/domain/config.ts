@@ -187,10 +187,12 @@ const SWEEP = { enabled: true, daily: 3 };
 //（16×15=240 占满觉总耗 6080 的 3.9%<5% 红线）；全通授称号「试炼·无双」。回退：enabled=false。
 const TRIALS = {
   enabled: true,
-  levelMult: 0.90,
+  levelMult: 0.90, // 语义=敌等级相对玩家等级系数（overrides 同语义单关微调 0.85~1.15）
   honorPerStage: 15,
   allTitle: '试炼·无双',
-  overrides: {},
+  overrides: {}, // 刻意留空（k 校准 2026-10-02）：试炼=机制解谜非数值检定，莽夫编队卡墙是设计意图
+  // ——提示文案教克制思路（如棘刺关"带吸血或后排输出"）、重试免费零损失。悬崖两侧 0.80=莽夫 100%（解谜失效）、0.90=莽夫 0~33%（墙）；
+  // 克制编队可解性待体验官用正规 playerUnits 通路验证（临时拼装单位通路数据不可信）。
   trials: {
     liubei:     { name: '仁德开局', extraPassive: { firstEnergy: 50 }, mates: ['guanyu','zhangfei','zhugeliang','huangyueying'], hint: '仁德开局先奶后强——撑过开场，优先放倒军师位' },
     guanyu:     { name: '武圣斩将', extraPassive: { vamp: 0.15 }, mates: ['liubei','zhangfei','zhaoyun','huangzhong'], hint: '武圣以战养战——治疗护盾跟上，别跟他拼血' },

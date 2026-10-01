@@ -348,7 +348,7 @@ export function heroDetail(ctx: ScreenContext) {
         U.text('TrialMech'+i,`${mechNames[k]||k}（${typeof v==='number'&&v<1?Math.round(v*100)+'%':v}）`,0,306-i*34,560,18,tone('#e0856a'));
       });
       U.text('TrialEnemyHead','敌方阵容',-244,220,200,20,LIGHT);
-      const e=stages.makeTrialEnemies(t.heroId,store.teamPower());
+      const e=stages.makeTrialEnemies(t.heroId,store.playerLevel());
       e.units.forEach((u:any,i:number)=>{
         const yy=180-i*46;
         U.panel('TrialEnemy'+i,0,yy,600,40,tone('#171009'),6,tone('#5a452a'));
