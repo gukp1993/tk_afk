@@ -21,10 +21,10 @@ const CLASSES = {
 };
 
 const RARITIES = {
-  1: { key: 1, name: 'N', color: '#c8ccd4', maxStar: 2, mult: 0.8 },
-  2: { key: 2, name: 'R', color: '#6f9fd8', maxStar: 3, mult: 0.9 },
+  1: { key: 1, name: 'N', color: '#c8ccd4', maxStar: 2, },
+  2: { key: 2, name: 'R', color: '#6f9fd8', maxStar: 3, },
   3: { key: 3, name: 'SR', color: '#b07fe0', maxStar: 4, mult: 1.0 },
-  4: { key: 4, name: 'SSR', color: '#f0a83e', maxStar: 5, mult: 1.15 }
+  4: { key: 4, name: 'SSR', color: '#f0a83e', maxStar: 5, }
 };
 
 // 每星属性倍率；英雄等级上限统一由玩家等级决定。
@@ -287,8 +287,7 @@ const AD = {
   placements: {
     idle2x: { limit: 3, name: '双倍领取挂机收益' },
     fast:   { limit: 3, name: '快速收获 · 立即 1 小时收益' },
-    summon: { limit: 1, name: '免费招募令' },
-    revive: { limit: 1, name: '战败复活再战' }
+    summon: { limit: 1, name: '免费招募令' }
   }
 };
 
