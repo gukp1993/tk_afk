@@ -1306,14 +1306,14 @@ function tacticUlt(def, lv) {
 // 三国羁绊：编队同时上阵指定武将时全军生效的固定加成（mods 语义与 passive.mods 一致）。
 // 目标：给图鉴收集与编队选择一个长线目标，全部为 SSR/SR 组合。
 const BONDS = [
-  { id: 'taoyuan', name: '桃园结义', heroes: ['liubei', 'guanyu', 'zhangfei'], mods: { atk: 0.08, hp: 0.08 }, desc: '不求同年同月同日生，但求同年同月同日死：全军攻击+8%、生命+8%。' },
-  { id: 'wuhu', name: '五虎上将', heroes: ['guanyu', 'zhangfei', 'zhaoyun', 'machao', 'huangzhong'], mods: { atk: 0.12 }, desc: '关张赵马黄，五虎震华夏：全军攻击+12%。' },
-  { id: 'wolongfengchu', name: '卧龙凤雏', heroes: ['zhugeliang', 'pangtong'], mods: { atk: 0.06, hp: 0.06 }, desc: '卧龙凤雏，得一可安天下：全军攻击+6%、生命+6%。' },
-  { id: 'jiangdong', name: '江东基业', heroes: ['sunce', 'zhouyu', 'ganning'], mods: { atk: 0.08 }, desc: '小霸王与美周郎会师：全军攻击+8%。' },
-  { id: 'huwei', name: '虎卫双雄', heroes: ['xuchu', 'dianwei'], mods: { def: 0.10 }, desc: '虎痴恶来护卫左右：全军防御+10%。' },
-  { id: 'weiwu', name: '魏武谋主', heroes: ['caocao', 'guojia', 'xunyu'], mods: { atk: 0.08 }, desc: '魏武挥鞭，谋主在侧：全军攻击+8%。' },
-  { id: 'wuzi', name: '五子良将', heroes: ['zhangliao', 'zhanghe', 'xuhuang', 'yujin', 'yuejin'], mods: { atk: 0.10 }, desc: '太祖建兹武功，而时之良将，五子为先：全军攻击+10%。' },
-  { id: 'feijiang', name: '飞将奉先', heroes: ['lvbu', 'diaochan'], mods: { atk: 0.10 }, desc: '人中吕布，马中赤兔，貂蝉在侧：全军攻击+10%。' }
+  { id: 'taoyuan', name: '桃园结义', heroes: ['liubei', 'guanyu', 'zhangfei'], mods: { atk: 0.08, hp: 0.08 }, desc: '不求同年同月同日生，但求同年同月同日死：全军攻击+8%、生命+8%。', combo: { key: 'taoyuan', name: '兄弟同心', passive: { vamp: 0.03 }, short: '全军吸血 +3%' } },
+  { id: 'wuhu', name: '五虎上将', heroes: ['guanyu', 'zhangfei', 'zhaoyun', 'machao', 'huangzhong'], mods: { atk: 0.12 }, desc: '关张赵马黄，五虎震华夏：全军攻击+12%。', combo: { key: 'wuhu', name: '五虎破军', passive: { critDmg: 0.15 }, short: '全军暴伤 +15%' } },
+  { id: 'wolongfengchu', name: '卧龙凤雏', heroes: ['zhugeliang', 'pangtong'], mods: { atk: 0.06, hp: 0.06 }, desc: '卧龙凤雏，得一可安天下：全军攻击+6%、生命+6%。', combo: { key: 'wolongfengchu', name: '奇门遁甲', passive: { firstEnergy: 10 }, short: '全军开场怒气 +10' } },
+  { id: 'jiangdong', name: '江东基业', heroes: ['sunce', 'zhouyu', 'ganning'], mods: { atk: 0.08 }, desc: '小霸王与美周郎会师：全军攻击+8%。', combo: { key: 'jiangdong', name: '江东猛虎', passive: { energyGain: 0.08 }, short: '全军怒气获取 +8%' } },
+  { id: 'huwei', name: '虎卫双雄', heroes: ['xuchu', 'dianwei'], mods: { def: 0.10 }, desc: '虎痴恶来护卫左右：全军防御+10%。', combo: { key: 'huwei', name: '古之恶来', passive: { thorns: 0.08 }, short: '全军反伤 +8%' } },
+  { id: 'weiwu', name: '魏武谋主', heroes: ['caocao', 'guojia', 'xunyu'], mods: { atk: 0.08 }, desc: '魏武挥鞭，谋主在侧：全军攻击+8%。', combo: { key: 'weiwu', name: '运筹帷幄', passive: { dmgReduce: 0.05 }, short: '全军减伤 +5%' } },
+  { id: 'wuzi', name: '五子良将', heroes: ['zhangliao', 'zhanghe', 'xuhuang', 'yujin', 'yuejin'], mods: { atk: 0.10 }, desc: '太祖建兹武功，而时之良将，五子为先：全军攻击+10%。', combo: { key: 'wuzi', name: '先登陷阵', passive: { armoryStartShield: 0.08 }, short: '全军开场护盾 8%' } },
+  { id: 'feijiang', name: '飞将奉先', heroes: ['lvbu', 'diaochan'], mods: { atk: 0.10 }, desc: '人中吕布，马中赤兔，貂蝉在侧：全军攻击+10%。', combo: { key: 'feijiang', name: '飞将无双', passive: { rageOnKill: 8 }, short: '击杀回怒 +8' } }
 ];
 
 export { HEROES, GROWTH, getHero, heroName, heroStats, heroStatsStar, heroPower, BONDS, TACTIC_ULT_KEYS, TACTIC_MAX_LV, tacticPassive, tacticUlt };

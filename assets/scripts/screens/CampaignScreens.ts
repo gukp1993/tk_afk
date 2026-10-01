@@ -746,13 +746,15 @@ export function formation(ctx: ScreenContext) {
   U.text('BondsEffect',modText||'—',190,-70,270,20,GOLD);
   U.text('BondsHint','组合内武将同时上阵即全军生效',-180,-98,420,16,tone('#ad9977'));
   allBonds.forEach((b:any,i:number)=>{
-    const y=-140-i*44;
+    const y=-132-i*40;
     const active=bondsNow.some((x:any)=>x.id===b.id);
     U.text('BondName'+i,(active?'● ':'○ ')+b.name,-232,y,170,19,active?GOLD:tone('#a99778'));
     U.text('BondMembers'+i,b.heroes.map((hid:string)=>heroes.getHero(hid)?.name||hid).join('·'),-70,y,330,17,LIGHT);
     const missing=(b.heroes||[]).filter((hid:string)=>!s.roster[hid]);
     U.text('BondState'+i,active?'已激活':missing.length?`缺 ${missing.map((hid:string)=>heroes.getHero(hid)?.name||hid).join('')}`:'未上阵',225,y,150,17,active?GOLD:tone('#a99778'));
   });
+  const comboLine=bondsNow.filter((b:any)=>b.combo).map((b:any)=>`${b.combo.name}·${b.combo.short}`).join('　');
+  U.text('BondsCombo',comboLine?`组合技：${comboLine}`:'组合技：凑齐组合后额外生效（如五虎破军·全军暴伤+15%）',0,-438,640,16,comboLine?GOLD:tone('#ad9977'));
   if(formationRecommended){
     const recommended=formationRecommended;
     U.rect('FormationRecShade',0,0,720,1280,new Color(12,10,8,190));

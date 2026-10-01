@@ -1500,10 +1500,21 @@ function bondMods() {
   });
   return out;
 }
+// 缘分组合技（研讨会十一 S4）：羁绊激活时额外注入全军战斗被动（vamp/暴伤/开场怒气等既有键），量级 ≤ 一条紫词条
+function bondComboMods() {
+  const out = {};
+  activeBonds().forEach(b => {
+    if (!b.combo || !b.combo.passive) return;
+    Object.keys(b.combo.passive).forEach(k => { out[k] = (out[k] || 0) + b.combo.passive[k]; });
+  });
+  return out;
+}
 // 生成战斗用双方单元（tacticId 可选：战前排兵战术乘区，不传=无修正）
 function playerUnits(tacticId, includeBorrow) {
   const calc = getFormationCalc();
   const extra = bondMods();
+  const combo = bondComboMods();
+  Object.keys(combo).forEach(k => { extra[k] = (extra[k] || 0) + combo[k]; });
   const tactic = tacticId ? (C.BATTLE_TACTICS || []).find(t => t.id === tacticId) : null;
   const tm = tactic ? tactic.mods : null;
   const base = calc.map((x, i) => {
@@ -3102,7 +3113,7 @@ export {
   allRoster, getOwned, addHeroCard, grantCard, crystalInfo, effectiveLevel, playerLevel, playerXpNeeded, addPlayerXP, levelCap, calcHero,
   ascend, ascendPreview, foodPoints, dismiss, resetHero, convertCards, setCardsLocked, addChoiceVoucher, useChoiceVoucher, firstWinChoice, claimFirstWinChoice,
   exchangeQualityShard, qualityShardInfo, drillInfo, drillHero,
-  getFormationCalc, setFormationSlot, applyFormation, formationFactionBonus, teamPower, playerUnits, enemyUnits, activeBonds, bondMods,
+  getFormationCalc, setFormationSlot, applyFormation, formationFactionBonus, teamPower, playerUnits, enemyUnits, activeBonds, bondMods, bondComboMods,
   getArmoryBonuses, getArmoryState, armoryUnlock, armorySelect, armoryUpgrade, armoryUpgradeToNode, armoryClaimBox, grantArmoryItem, applyArmoryRecommendations, armoryAffixBadges, forgeInfo, forgeReroll, forgeSetDir, forgeToggleLock, forgeGateOpen, motifInfo, motifActivate, smeltInfo, smeltMelt, smeltCombine,
   codexInfo, claimCodex, useUniversalSr, achvInfo, claimAchv, weekInfo, claimWeekQuest, claimWeekActive, buyWeekly, makeExpeditionFloor, bumpWeek, beginHall, winHall, hallInfo, saveReplay, replaysInfo, awakenInfo, awakenHero, formationPresetsInfo, saveFormationPreset, applyFormationPreset, delFormationPreset, tacticInfo, tacticUpgrade,
   migrateSaveV1, migrateSaveV2, migrateSaveV3, migrateSaveV4, migrateSaveV5, migrateSaveV6, migrateSaveV7, normalizeState,

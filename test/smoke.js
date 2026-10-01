@@ -214,11 +214,23 @@ s4b.campaign.cleared = 10;
 check('重复通关铜钱线性 800+12×关', store4b.campaignRewardPreview(12).gold === 944);
 // 三国羁绊
 check('羁绊表 8 组且成员有效', (H.BONDS || []).length === 8 && H.BONDS.every(b => b.heroes.every(id => !!H.getHero(id))));
+check('八组羁绊全部配置组合技', H.BONDS.every(b => b.combo && b.combo.name && b.combo.passive && Object.keys(b.combo.passive).length === 1));
 s4b.formation = ['liubei', 'guanyu', 'zhangfei', null, null];
 check('桃园结义激活', store4b.activeBonds().some(b => b.id === 'taoyuan'));
 check('羁绊注入全军被动（全军 atk≥+8%）', store4b.playerUnits().every(u => (u.passive.atk || 0) >= 0.08));
 s4b.formation = ['zhangfei', 'guanyu', 'liaohua', 'liubei', 'mengda'];
 check('默认阵容激活且仅激活桃园结义', store4b.activeBonds().some(b => b.id === 'taoyuan') && store4b.activeBonds().length === 1);
+// 缘分组合技（研讨会十一 S4）：激活羁绊额外注入全军战斗被动
+const comboMods = store4b.bondComboMods();
+check('桃园组合技吸血 +3%', comboMods.vamp === 0.03);
+check('组合技进全军被动（吸血≥3%）', store4b.playerUnits().every(u => (u.passive.vamp || 0) >= 0.03));
+check('组合技键均为战斗既有被动', H.BONDS.every(b => ['vamp','critDmg','firstEnergy','energyGain','thorns','dmgReduce','armoryStartShield','rageOnKill'].includes(Object.keys(b.combo.passive)[0])));
+['zhugeliang','pangtong'].forEach(id => store4b.grantCard(id));
+s4b.formation = ['zhugeliang','pangtong', null, null, null];
+check('卧龙凤雏开场怒气 +10', store4b.bondComboMods().firstEnergy === 10);
+check('卧龙组合技注入单元', store4b.playerUnits().every(u => (u.passive.firstEnergy || 0) >= 10));
+s4b.formation = ['zhangfei', 'liaohua', 'mengda', null, null];
+check('未凑齐组合无被动', Object.keys(store4b.bondComboMods()).length === 0);
 // 悬赏派遣：刷新 4 单、派遣、计时报酬、跨日自动补发、忙碌武将拒绝
 const bt0 = store4b.bountyInfo();
 check('悬赏刷新 4 单', bt0.list.length === 4 && bt0.list.every(b => [4, 8, 12].includes(b.hours)));
@@ -1597,6 +1609,7 @@ const storeP2 = freshStore(); storeP2.load();
   const sP1 = storeP1.getState();
   sP1.campaign.cleared = 169;
   sP1.res.gem = 0; sP1.res.shard = 0; sP1.res.token = 0;
+  sP1.daily.bossChestClaimed = true; // 170 为名将关，屏蔽 Boss 日宝箱随机三选一干扰里程碑断言
   const r170 = storeP1.winCampaign(170, { stars: 1 });
   check('P1F1 170 gem+30/shard+20/token+10 入账', sP1.res.gem === 130 && sP1.res.shard === 20 && sP1.res.token >= 10);
   // title 入 state.titles
@@ -1606,6 +1619,7 @@ const storeP2 = freshStore(); storeP2.load();
   // 140 关 gem+888 入账
   sP1.campaign.cleared = 139;
   sP1.res.gem = 0;
+  sP1.daily.bossChestClaimed = true; // 同上，140 名将关
   storeP1.winCampaign(140, { stars: 1 });
   check('P1F3 140 关 gem+888 入账（审计发现的原 bug）', sP1.res.gem >= 888);
 }
