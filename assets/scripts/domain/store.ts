@@ -2465,9 +2465,11 @@ function arenaFight(win, diff, reserved) {
     delta = Math.round(14 + 8 * diff);
     // 每日首胜积分 ×1.5（研讨会十二 B1）：只加成积分不动令牌，按自然日判定
     const fw = C.ARENA.FIRST_WIN_POINTS_BONUS || 0;
+    var firstWinBonus = false;
     if (fw > 1 && state.arena.lastFirstWinDay !== F.todayStr()) {
       delta = Math.round(delta * fw);
       state.arena.lastFirstWinDay = F.todayStr();
+      firstWinBonus = true;
     }
     tokens = C.ARENA.winTokens ? C.ARENA.winTokens(diff) : C.ARENA.WIN_TOKENS;
     state.arena.wins += 1;
@@ -2498,7 +2500,7 @@ function arenaFight(win, diff, reserved) {
     if (!weekRankUp) weekRankUp = { name: r.name, ...bonus };
   });
   bumpQuest('q_arena1', 1);
-  return { delta, tokens, points: state.arena.points, rankUp, weekRankUp };
+  return { delta, tokens, points: state.arena.points, rankUp, weekRankUp, firstWinBonus };
 }
 
 // 赛季信息：本周段位进度 + 周段位奖领取状态 + 下周一软重置预览（供演武榜页渲染）

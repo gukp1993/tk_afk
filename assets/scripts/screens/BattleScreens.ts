@@ -181,7 +181,7 @@ export function resultView(ctx: ScreenContext) {
   else if(!r?.ok) lines=[r?.msg||'结算失败'];
   else if(ctx.battleMode==='arena'){
     const fmtBonus=(b:any)=>b?Object.keys(b).map((k:string)=>({gold:'铜钱',gem:'元宝',token:'演武令',seals:'印信'} as any)[k]?`${({gold:'铜钱',gem:'元宝',token:'演武令',seals:'印信'} as any)[k]}+${fmt.fmtNum((b as any)[k])}`:'').filter(Boolean).join('·'):'';
-    lines=r?.win?[`演武积分 ${reward.delta>=0?'+':''}${reward.delta||0} · 演武令 +${reward.tokens||0}`,
+    lines=r?.win?[`演武积分 ${reward.delta>=0?'+':''}${reward.delta||0}${reward.firstWinBonus?'（首胜 ×1.5）':''} · 演武令 +${reward.tokens||0}`,
       ...(reward.weekRankUp?[`周段位奖 ${reward.weekRankUp.name}：${fmtBonus(reward.weekRankUp)}`]:[]),
       ...(reward.rankUp?[`首达 ${reward.rankUp.name}！元宝 +${reward.rankUp.gem} · 精铁 +${reward.rankUp.iron}`]:[])]
     :[defeatDiag(ctx,r),`演武积分 ${reward.delta||0} · 演武令 +${reward.tokens||0}`];

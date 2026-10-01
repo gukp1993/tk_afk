@@ -207,6 +207,7 @@ check('段位奖励不重复', store4b.arenaFight(true, 1.35, true).rankUp === n
     check('B1 首胜积分 ×1.5（25→38）', f1.delta === Math.round(Math.round(14 + 8 * 1.35) * 1.5));
   check('B1 同日第二胜无加成', f2.delta === Math.round(14 + 8 * 1.35));
   check('B1 首胜只加积分不加令', f1.tokens === 4);
+  check('B1 首胜标记回传（结算页展示用）', f1.firstWinBonus === true && f2.firstWinBonus === false);
   sB1.arena.points = 1100;
   check('B1 偏将门槛 1100', (IT.ARENA_RANKS.find(r => r.name === '偏将军') || {}).min === 1100);
 }
