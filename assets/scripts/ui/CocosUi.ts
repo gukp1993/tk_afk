@@ -1,4 +1,4 @@
-import { Color, EventTouch, Graphics, Label, LabelOutline, Mask, Node, ScrollView, Sprite, UITransform, Vec2, Vec3, Tween, UIOpacity } from 'cc';
+import { Color, EventTouch, Graphics, Label, LabelOutline, Mask, Node, ScrollView, Sprite, SpriteFrame, UITransform, Vec2, Vec3, Tween, UIOpacity } from 'cc';
 import { ArtService } from '../services/ArtService';
 
 export const hexColor = (hex: string) => new Color(
@@ -192,6 +192,20 @@ export class CocosUi {
       badge.addChild(text);
       node.addChild(badge);
     }
+    return node;
+  }
+
+  /** 整幅图片层（页面背景用）：有图由调用方传入 SpriteFrame，随 CocosUi 纵向缩放铺满。 */
+  image(name: string, frame: SpriteFrame, x: number, y: number, w: number, h: number) {
+    const node = new Node(name);
+    node.setPosition(new Vec3(x, this.y(y), 0));
+    node.addComponent(UITransform).setContentSize(w, this.height(h));
+    const sprite = node.addComponent(Sprite);
+    sprite.spriteFrame = frame;
+    sprite.sizeMode = Sprite.SizeMode.CUSTOM;
+    sprite.trim = false;
+    this.parent.addChild(node);
+    this.nodes.set(name, node);
     return node;
   }
 
@@ -398,6 +412,9 @@ export class CocosUi {
     label.overflow = Label.Overflow.CLAMP;
     return node;
   }
+
+  /** 查本页是否已画某节点（跨屏协调用：如英雄页有背景图时让出全屏底色）。 */
+  has(name: string) { return this.nodes.has(name); }
 
   setText(name: string, value: string) {
     const label=this.nodes.get(name)?.getComponent(Label);

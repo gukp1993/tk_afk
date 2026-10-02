@@ -65,7 +65,8 @@ export function heroes(ctx: ScreenContext) {
     const previews=previewIds.map(id=>heroData.getHero(id)).filter((h:any)=>h&&!ownedIds.has(h.id)&&(heroFaction==='all'||h.faction===heroFaction))
       .slice(0,heroFaction==='all'?Math.max(0,9-owned.length):3).map((h:any)=>({...h,star:0,locked:true}));
     const list=[...owned,...previews];
-    U.rect('HeroBackdrop',0,0,720,1280,tone('#122a22'));
+    // 分包背景图已挂全屏时让位（轻罩保字），否则用原不透明底色
+    U.rect('HeroBackdrop',0,0,720,1280,U.has('BackdropArt')?new Color(18,42,34,90):tone('#122a22'));
     const resourcePills:[string,number][]=[['铜钱',s.res.gold],['元宝',s.res.gem]];
     resourcePills.forEach(([label,value],i)=>{
       const x=i===0?60:250;

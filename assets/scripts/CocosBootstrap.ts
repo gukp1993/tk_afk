@@ -175,6 +175,13 @@ export class CocosBootstrap extends Component implements ScreenContext {
     const verticalScale=Math.max(1,view.getVisibleSize().height/1280);
     const U = this.ui = new CocosUi(this.content,verticalScale), s = store.getState();
     U.rect('Backdrop', 0, 0, 720, 1280, hexColor('#171009'));
+    // 页面背景（2026-10-03 美术阶段）：分包 scene_<page>.jpg 有图用图、无图回退纯色；叠压暗层保 UI 可读
+    const sceneKey = ({ home: 'scene_home', journey: 'scene_journey', campaign: 'scene_campaign', stagePreview: 'scene_campaign', heroes: 'scene_heroes', bag: 'scene_bag' } as Record<string, string | undefined>)[page];
+    const sceneFrame = sceneKey ? ArtService.frame(sceneKey) : null;
+    if (sceneFrame) {
+      U.image('BackdropArt', sceneFrame, 0, 0, 720, 1280);
+      U.rect('BackdropDim', 0, 0, 720, 1280, new Color(8, 6, 4, 96));
+    }
     if (page === 'journey' || page === 'shop') {
       const resources: [string, number][] = [['铜钱',s.res.gold],['元宝',s.res.gem],['招募令',s.res.scroll],['演武令',s.res.token],['碎片',s.res.shard]];
       const y=page==='journey'?590:513;
