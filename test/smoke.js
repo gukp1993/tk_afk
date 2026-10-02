@@ -554,6 +554,16 @@ s4b.armory.unlocked['weapon_n'] = true;
 const ironM3 = s4b.res.iron;
 const mm3 = store4b.smeltMelt('weapon_n');
 check('熔炼 3 件栈得 3 份铁（10×0.7×3=21）', mm3.ok && mm3.iron === 21 && s4b.res.iron === ironM3 + 21 && !s4b.armory.smeltStock['weapon_n']);
+// I4 一键熔炼（2026-10-03）：批量=逐件之和、比率不变、空库拒绝
+s4b.armory.smeltStock = { weapon_n: 3, armor_r: 2 };
+const expIron = Object.keys(s4b.armory.smeltStock).reduce((n, id) => {
+  const c = IT.CATALOG.find(x => x.id === id);
+  return n + Math.floor(IT.GRADES[c.q].duplicate * C.SMELT.meltRate) * s4b.armory.smeltStock[id];
+}, 0);
+const ironB = s4b.res.iron;
+const rBatch = store4b.smeltMeltBatch();
+check('I4 一键熔炼=逐件之和（跨槽跨品质聚合）', rBatch.ok && rBatch.iron === expIron && rBatch.count === 5 && s4b.res.iron === ironB + expIron && Object.keys(s4b.armory.smeltStock).length === 0);
+check('I4 空库拒绝', store4b.smeltMeltBatch().ok === false);
 // ③ 合成折铁精确档位（全解锁 R 折 25 而非 75）
 s4b.armory.smeltStock = {};
 s4b.armory.smeltStock['weapon_n'] = 3;

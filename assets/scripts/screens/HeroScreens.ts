@@ -623,6 +623,7 @@ export function forgeView(ctx: ScreenContext) {
     if(!sm.stock.length){
       U.text('SmeltEmpty','库存空 · 25 关后重复获得的军械存入此处（可熔回 70% 精铁）',0,-160,640,15,dim);
     } else {
+      U.button('SmeltBatch','一键熔炼全部',240,-134,168,40,()=>ctx.confirm('一键熔炼','库存军械全部熔回精铁（含全部品质），确定？',()=>{const r=(store as any).smeltMeltBatch();ctx.tell(r,r.ok?`已熔炼 ${r.count} 件军械 · 精铁 +${fmt.fmtNum(r.iron)}`:'');}),gold);
       sm.stock.slice(0,3).forEach((it:any,i:number)=>{
         const y=-196-i*44,x=0;
         U.panel('SmeltItem'+i,x,y,640,40,ink,6,border);

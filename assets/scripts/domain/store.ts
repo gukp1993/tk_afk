@@ -2460,6 +2460,24 @@ function smeltMelt(itemId) {
     return { ok: true, iron, count, name: cat.name };
   });
 }
+// 一键熔炼（2026-10-03 I4 交互线）：循环既有单件口径聚合，比率与数值锚不变；全部库存一次熔回
+function smeltMeltBatch() {
+  return withSavedMutation(() => {
+    const stock = state.armory.smeltStock || {};
+    const ids = Object.keys(stock).filter(id => stock[id] > 0 && IT.CATALOG.find(x => x.id === id));
+    if (!ids.length) return { ok: false, msg: '库存为空，没有可熔炼的军械' };
+    let iron = 0, count = 0;
+    ids.forEach(id => {
+      const cat = IT.CATALOG.find(x => x.id === id);
+      const n = stock[id];
+      iron += Math.floor(IT.GRADES[cat.q].duplicate * C.SMELT.meltRate) * n;
+      count += n;
+      delete stock[id];
+    });
+    state.res.iron += iron;
+    return { ok: true, iron, count, kinds: ids.length };
+  });
+}
 function smeltCombine(slot, q) {
   return withSavedMutation(() => {
     const recipe = C.SMELT.recipes[q];
@@ -3766,7 +3784,7 @@ export {
   ascend, ascendPreview, foodPoints, dismiss, resetHero, convertCards, setCardsLocked, addChoiceVoucher, useChoiceVoucher, firstWinChoice, claimFirstWinChoice,
   exchangeQualityShard, qualityShardInfo, drillInfo, drillHero,
   getFormationCalc, setFormationSlot, applyFormation, formationFactionBonus, teamPower, playerUnits, enemyUnits, activeBonds, bondMods, bondComboMods,
-  getArmoryBonuses, getArmoryState, armoryUnlock, armorySelect, armoryUpgrade, armoryUpgradeToNode, armoryClaimBox, grantArmoryItem, applyArmoryRecommendations, armoryAffixBadges, forgeInfo, forgeReroll, forgeSetDir, forgeToggleLock, forgeGateOpen, motifInfo, motifActivate, smeltInfo, smeltMelt, smeltCombine,
+  getArmoryBonuses, getArmoryState, armoryUnlock, armorySelect, armoryUpgrade, armoryUpgradeToNode, armoryClaimBox, grantArmoryItem, applyArmoryRecommendations, armoryAffixBadges, forgeInfo, forgeReroll, forgeSetDir, forgeToggleLock, forgeGateOpen, motifInfo, motifActivate, smeltInfo, smeltMelt, smeltMeltBatch, smeltCombine,
   codexInfo, claimCodex, useUniversalSr, achvInfo, claimAchv, weekInfo, claimWeekQuest, claimWeekActive, buyWeekly, makeExpeditionFloor, bumpWeek, dailyAgendaInfo, quadFactionOfWeek, quadTowerInfo, winQuadTower, winTrial, trialInfo, winExpedition, seasonInfo, claimSeasonAct, claimSeasonTrack, buySeasonGood, companionInfo, companionMarkSent, companionRespond, borrowSeats, scenesInfo, winScene, relicInfo, claimRelic, upgradeRelic, equipRelic, relicMods, weekMutatorIds, expeditionBoonOffer, pickExpeditionBoon, expeditionBoonMods, beginHall, winHall, hallInfo, saveReplay, replaysInfo, awakenInfo, awakenHero, formationPresetsInfo, saveFormationPreset, applyFormationPreset, delFormationPreset, tacticInfo, tacticUpgrade,
   migrateSaveV1, migrateSaveV2, migrateSaveV3, migrateSaveV4, migrateSaveV5, migrateSaveV6, migrateSaveV7, normalizeState,
   idlePending, idleTick, gemQuotaInfo, claimIdle, claimIdleInternal, fastReward, fastRewardMutation, fastRewardAdMutation, adReward,
