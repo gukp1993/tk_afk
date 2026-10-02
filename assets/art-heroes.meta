@@ -1,0 +1,17 @@
+{
+  "ver": "1.2.0",
+  "importer": "directory",
+  "imported": true,
+  "uuid": "acdd427c-8be7-42f1-824f-dcaab69f6940",
+  "files": [],
+  "subMetas": {},
+  "userData": {
+    "isBundle": true,
+    "bundleName": "art-heroes",
+    "priority": 1,
+    "optimizeSize": true,
+    "redirect": false,
+    "isSubpackage": true,
+    "bundleConfigID": "auto_4acxhYILBIBJA7hZjwkgzA"
+  }
+}
