@@ -427,6 +427,15 @@ export class CocosUi {
    * 统一左上返回（I1 交互线组件）：‹ 返回 · 22 号金字 · 热区 140×52 · 基线 y=484。
    * 各页 fallback 语义留在调用点；自定义标签如 '‹ 返回点将台'。
    */
+  /** 资源 pill 行（U3 组件化）：journey/shop 顶栏五资源与主城顶栏同调；entries=[标签,已格式化数值] */
+  resourcePills(entries: [string, string][], y: number) {
+    entries.forEach(([label, display], i) => {
+      const x = -278 + i * 139;
+      this.panel('ResourcePill' + i, x, y, 130, 39, palette.ink, 19, palette.gold);
+      this.text('ResourceText' + i, `${label} ${display}`, x, y, 121, 18, palette.gold);
+    });
+  }
+
   backBar(action: () => void, label = '‹ 返回', y = 484) {
     this.text('BackBar', label, -291, y, 130, 22, palette.gold);
     this.tap('BackBarTap', -291, y, 140, 52, action);

@@ -166,13 +166,10 @@ export class CocosBootstrap extends Component implements ScreenContext {
       U.rect('BackdropDim', 0, 0, 720, 1280, new Color(8, 6, 4, 96));
     }
     if (page === 'journey' || page === 'shop') {
-      const resources: [string, number][] = [['铜钱',s.res.gold],['元宝',s.res.gem],['招募令',s.res.scroll],['演武令',s.res.token],['碎片',s.res.shard]];
-      const y=page==='journey'?590:513;
-      resources.forEach(([label,value],i)=>{
-        const x=-278+i*139;
-        U.panel('ResourcePill'+i,x,y,130,39,palette.ink,19,palette.gold);
-        U.text('ResourceText'+i,`${label} ${fmt.fmtNum(value)}`,x,y,119,16,palette.gold);
-      });
+      U.resourcePills([
+        ['铜钱',fmt.fmtNum(s.res.gold)],['元宝',fmt.fmtNum(s.res.gem)],['招募令',fmt.fmtNum(s.res.scroll)],
+        ['演武令',fmt.fmtNum(s.res.token)],['碎片',fmt.fmtNum(s.res.shard)]
+      ], page==='journey'?590:513);
     }
     const render: Record<Page, () => void> = {
       campaign: () => campaignScreens.campaign(this), stagePreview: () => campaignScreens.stagePreview(this), home: () => campaignScreens.home(this), journey: () => campaignScreens.journey(this),

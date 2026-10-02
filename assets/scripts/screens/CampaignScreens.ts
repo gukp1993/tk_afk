@@ -279,7 +279,7 @@ export function home(ctx: ScreenContext) {
       const px=Number(x);
       U.panel('CityShortcut'+i,px,387,110,101,tone('#e8dcc0'),8,tone('#74684a'));
       U.text('CityShortcutGlyph'+i,String(glyph),px,407,93,37,tone('#677767'));
-      U.text('CityShortcutLabel'+i,String(label),px,362,100,17,INK);
+      U.text('CityShortcutLabel'+i,String(label),px,366,100,17,INK);
       U.tap('CityShortcutTap'+i,px,387,110,101,()=>ctx.go(page as Page));
     });
     U.rect('CityDock',0,-440,720,216,PAPER);
