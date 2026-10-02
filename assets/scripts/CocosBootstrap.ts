@@ -181,15 +181,22 @@ export class CocosBootstrap extends Component implements ScreenContext {
     };
     render[page]();
     // 面包屑路径条（I2 交互线）：三级及更深页面显示"祖先 > 当前"，逐环可点直达；两级不显示避免拥挤
-    if (this.navigation.length >= 2 && ['battle','result','autoSummary','ad','summonResults'].indexOf(page) < 0) {
-      const segs: Page[] = [...this.navigation, page];
+    // R4：heroDetail 顶部标题/立绘与面包屑同带（y=484），入豁免列表不再绘制
+    if (this.navigation.length >= 2 && ['battle','result','autoSummary','ad','summonResults','heroDetail'].indexOf(page) < 0) {
+      // R6：相邻同名段渲染前去重（机械栈产生的"点将台 > 点将台"类脏链合并为一段）；
+      // segIdx 记录各段在真实栈中的下标，面包屑跳转仍按原栈位置截断
+      const raw: Page[] = [...this.navigation, page];
+      const pageName = (p: Page) => CocosBootstrap.PAGE_NAMES[p] || p;
+      const segs: Page[] = [];
+      const segIdx: number[] = [];
+      raw.forEach((sp, i) => { if (i === 0 || pageName(sp) !== pageName(segs[segs.length - 1])) { segs.push(sp); segIdx.push(i); } });
       let cx = -150;
       segs.forEach((sp, i) => {
-        const nm = CocosBootstrap.PAGE_NAMES[sp] || sp;
+        const nm = pageName(sp);
         const w = nm.length * 17 + 10;
         if (i < segs.length - 1) {
           U.text('Crumbs' + i, nm, cx + w / 2 - 5, 484, w, 17, hexColor('#c9b489'));
-          U.tap('CrumbsTap' + i, cx + w / 2 - 5, 484, w + 12, 40, () => this.goBreadcrumb(i));
+          U.tap('CrumbsTap' + i, cx + w / 2 - 5, 484, w + 12, 40, () => this.goBreadcrumb(segIdx[i]));
           cx += w + 8;
           U.text('CrumbsSep' + i, '>', cx, 484, 14, 15, hexColor('#8a7c5f'));
           cx += 22;
@@ -224,7 +231,8 @@ export class CocosBootstrap extends Component implements ScreenContext {
     if (page !== this.page) {
       if (['home','journey','campaign','heroes','bag'].includes(page)) this.navigation = [];
       else if (this.navigation[this.navigation.length-1] === page) this.navigation.pop();
-      else this.navigation.push(this.page);
+      // R6：summonResults 是瞬态结果页，不进导航栈——作为目标不压栈、从它离开也不压栈（否则返回动作会把它带入栈），back 直通点将台
+      else if (page !== 'summonResults' && this.page !== 'summonResults') this.navigation.push(this.page);
     }
     this.show(page);
   }

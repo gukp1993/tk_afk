@@ -408,17 +408,20 @@ export function summon(ctx: ScreenContext) {
     U.panel('SummonSeal',0,436,72,72,tone('#57402d'),10,gold);
     U.text('SummonSealText','将',0,436,68,42,gold);
     U.text('SummonRates','概率 SSR 2% · SR 10% · R 28% · N 60%',0,360,630,19,dim);
-    U.text('SummonSoft','31 抽起 SSR 概率递增 · 40 抽必出 SSR',0,330,630,15,tone('#d9b06a'));
+    // R5 重排：软保底行上移 8px 到概率行正下方（旧 y=330 落在 SummonPool 面板 242..338 内被完全盖住）
+    U.text('SummonSoft','31 抽起 SSR 概率递增 · 40 抽必出 SSR',0,338,630,15,tone('#d9b06a'));
     const pity=store.summonPityInfo();
-    U.panel('SummonPool',0,290,686,96,panel,9,border);
-    U.text('PoolTitle',`武将池 · ${heroData.HEROES.length} 将 · SSR 保底 ${pity.sinceSsr}/${pity.ssrHard} 抽`,-73,318,590,19,dim);
+    // R5：池面板下移并缩高（y=283 h=88 → 239..327），上让软保底行、下离抽卡按钮顶缘(229) 10px
+    U.panel('SummonPool',0,283,686,88,panel,9,border);
+    U.text('PoolTitle',`武将池 · ${heroData.HEROES.length} 将 · SSR 保底 ${pity.sinceSsr}/${pity.ssrHard} 抽`,-73,310,590,19,dim);
     const rarity:[string,string,number][]=[['SSR','#e2b95f',4],['SR','#b37ac9',3],['R','#5f90c8',2],['N','#b9bec3',1]];
     rarity.forEach(([name,hex],i)=>{
       const x=-264+i*175;
       U.panel('RarityMark'+i,x-47,285,19,19,tone(hex),2);
       U.text('RarityName'+i,name,x+4,285,83,20,tone(hex));
     });
-    U.text('PoolCounts',rarity.map(([name,,level])=>`${name} ${heroData.HEROES.filter((h:any)=>h.rarity===level).length}`).join(' · '),0,252,610,17,dim);
+    // R5：计数行内移进面板安全区（旧 y=252 离底框仅 1.5px，数字被描金边线穿过）
+    U.text('PoolCounts',rarity.map(([name,,level])=>`${name} ${heroData.HEROES.filter((h:any)=>h.rarity===level).length}`).join(' · '),0,259,610,17,dim);
     const draws:[string,string,string,string,()=>void][]=[
       ['Single','招募 ×1','招募令 ×1','#392719',()=>ctx.confirm('确认招募','消耗招募令 ×1',()=>ctx.summonDraw('scroll1'))],
       ['TenScroll','招募 ×10','招募令 ×10','#d9ac5f',()=>ctx.confirm('确认招募','消耗招募令 ×10',()=>ctx.summonDraw('scroll10'))],
