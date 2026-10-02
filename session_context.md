@@ -33,6 +33,14 @@
 - 项目记忆更新研讨十三三案进展与新方法论教训（load 链禁 Math.random/解谜关验收口径/新档 normalize 收口）。
 - 并行：赛季第二批规格代理（名场面 36 关+周 Boss 换皮）运行中。
 
+### 心跳批次 13：诊断探针补全 · zcode · 已实施待验收
+
+时间：2026-10-02 14:15（Asia/Shanghai）；执行者：zcode；状态：已实施待验收。
+
+- `__tkDiag().systems` 增 quad/trials/relics/season/companion 五组只读摘要——真机验收清单可核对新系统进度（配合既有 currencies/campaign/weekly）。
+- smoke 565、微信包 3492KB。
+- 并行：全游戏终扫第二轮代理仍运行中。
+
 ### 心跳批次 12：基线三次同步 · zcode · 无变更（纯文档）
 
 时间：2026-10-02 13:30（Asia/Shanghai）；执行者：zcode；状态：无变更（文档同步）。
