@@ -468,8 +468,7 @@ export function journey(ctx: ScreenContext) {
 export function weekBossView(ctx: ScreenContext) {
   const U=ctx.ui,wb=store.weekBossInfo();
   ctx.title('魔王 讨 伐');
-  U.text('WbBack','‹ 返回',-291,484,130,22,GOLD);
-  U.tap('WbBackTap',-291,484,136,52,()=>ctx.back('journey'));
+  U.backBar(()=>ctx.back('journey'));
   if(!wb.enabled){
     U.text('WbClosed','魔王讨伐暂未开放',0,200,600,20,LIGHT);
     return;
@@ -507,8 +506,7 @@ export function weekBossView(ctx: ScreenContext) {
 export function settingsView(ctx: ScreenContext) {
   const U=ctx.ui,s=store.getState();
   ctx.title('设 置');
-  U.text('SetBack','‹ 返回',-291,484,130,22,GOLD);
-  U.tap('SetBackTap',-291,484,136,52,()=>ctx.back('home'));
+  U.backBar(()=>ctx.back('home'));
   U.panel('SetVersion',0,400,682,70,tone('#312218'),9,tone('#795b34'));
   U.text('SetVersionText','挂机定三国 v2.0.0 · 微信小游戏',0,414,640,19,LIGHT);
   U.text('SetVersionSub',`存档版本 v${s.v} · 建号 ${new Date(s.createdAt).toLocaleDateString('zh-CN')}`,0,386,640,15,tone('#ad9977'));
@@ -543,8 +541,7 @@ export function settingsView(ctx: ScreenContext) {
 export function dungeonView(ctx: ScreenContext) {
   const U=ctx.ui,info=store.dungeonInfo();
   ctx.title('军 屯 双 本');
-  U.text('DungeonBack','‹ 返回',-291,484,130,22,GOLD);
-  U.tap('DungeonBackTap',-291,484,136,52,()=>ctx.back('journey'));
+  U.backBar(()=>ctx.back('journey'));
   U.text('DungeonGuide',`每日 ${info.daily} 次 · 双轨共用次数 · 层数顺序解锁 · 敌力随主公等级缩放`,0,443,640,18,tone('#ad9977'));
   U.text('DungeonRuns',`今日剩余次数：${info.runsLeft} / ${info.daily}`,0,404,640,20,info.runsLeft>0?GOLD:tone('#a99778'));
   const tracks=[
@@ -751,8 +748,7 @@ export function shop(ctx: ScreenContext) {
 export function formation(ctx: ScreenContext) {
   const s=store.getState(), U=ctx.ui,bonus=store.formationFactionBonus().bonus;
   ctx.title('编 队');
-  U.text('FormationBackTop','‹ 返回',-287,609,132,22,GOLD);
-  U.tap('FormationBackTopTap',-287,609,138,49,()=>ctx.back('campaign'));
+  U.backBar(()=>ctx.back('campaign'), '‹ 返回', 609);
   U.panel('FormationSummary',0,514,682,112,tone('#342518'),11,GOLD);
   U.text('FormationSummaryTitle','出征编队',-204,549,260,28,GOLD);
   U.text('FormationPower',`总战力 ${fmt.fmtNum(store.teamPower())}`,-202,514,270,25,GOLD);
@@ -1036,8 +1032,7 @@ export function storyArchiveView(ctx: ScreenContext) {
   const chIdx=Math.min(Math.max(0,ctx.storyArchiveCh||0),maxCh);
   ctx.storyArchiveCh=chIdx;
   ctx.title('剧 情 回 顾');
-  U.text('ArcBack','‹ 返回',-291,484,130,22,GOLD);
-  U.tap('ArcBackTap',-291,484,136,52,()=>ctx.go('campaign'));
+  U.backBar(()=>ctx.go('campaign'));
   U.panel('ArcChPanel',0,392,640,126,tone('#312218'),9,GOLD);
   U.button('ArcPrev','‹',-268,412,84,52,()=>{ctx.storyArchiveCh=Math.max(0,chIdx-1);ctx.show('storyArchive');},chIdx>0?tone('#5a452a'):tone('#332a1e'));
   U.button('ArcNext','>',268,412,84,52,()=>{ctx.storyArchiveCh=Math.min(maxCh,chIdx+1);ctx.show('storyArchive');},chIdx<maxCh?tone('#5a452a'):tone('#332a1e'));
@@ -1077,8 +1072,7 @@ const SEVEN_DAY_CN = ['一', '二', '三', '四', '五', '六', '七'];
 export function hallView(ctx: ScreenContext) {
   const U=ctx.ui,hi=store.hallInfo(),st=store.getState();
   ctx.title('名 人 堂');
-  U.text('HallBack','‹ 返回',-291,484,130,22,GOLD);
-  U.tap('HallBackTap',-291,484,136,52,()=>ctx.go('journey'));
+  U.backBar(()=>ctx.go('journey'));
   U.text('HallWeek',`本周名阵容 · 荣耀 ${hi.honor}`,-160,443,420,20,GOLD);
   hi.titles.forEach((t:any,i:number)=>{
     U.text('HallTitle'+i,(t.owned?'「':'')+t.title+(t.owned?'」':'')+' '+t.honor+'荣耀',-140+i*210,415,205,17,t.owned?GOLD:tone('#a6906c'));
@@ -1120,8 +1114,7 @@ export function hallView(ctx: ScreenContext) {
 export function expeditionView(ctx: ScreenContext) {
   const U=ctx.ui,w=store.weekInfo(),st=store.getState();
   ctx.title('远 征');
-  U.text('ExpBack','‹ 返回',-291,484,130,22,GOLD);
-  U.tap('ExpBackTap',-291,484,136,52,()=>ctx.go('journey'));
+  U.backBar(()=>ctx.go('journey'));
   U.text('ExpWeek',`本周（${w.weekId}）· 印信 ${w.seals}`,0,443,640,20,GOLD);
   // 无限层词缀挑战（研讨会十二 A1：本周双词缀横幅，前 4 层免词缀）
   U.text('ExpTrialTitle','远征秘境 · 每周双词缀轮换，难度无上限',0,418,640,17,LIGHT);
@@ -1216,8 +1209,7 @@ export function expeditionView(ctx: ScreenContext) {
 export function quadTowerView(ctx: ScreenContext) {
   const U=ctx.ui,qi=store.quadTowerInfo();
   ctx.title('四 方 台');
-  U.text('QuadBack','‹ 返回',-291,484,130,22,GOLD);
-  U.tap('QuadBackTap',-291,484,136,52,()=>ctx.back('journey'));
+  U.backBar(()=>ctx.back('journey'));
   if(!qi.enabled){
     U.text('QuadClosed','四方台暂未开放',0,200,600,20,LIGHT);
     return;
@@ -1257,8 +1249,7 @@ export function quadTowerView(ctx: ScreenContext) {
 export function seasonView(ctx: ScreenContext) {
   const U=ctx.ui,info=store.seasonInfo();
   ctx.title('四 时 战 纪');
-  U.text('SeasonBack','‹ 返回',-291,484,130,22,GOLD);
-  U.tap('SeasonBackTap',-291,484,136,52,()=>ctx.back('journey'));
+  U.backBar(()=>ctx.back('journey'));
   if(!info.enabled){U.text('SeasonClosed','赛季休整中',0,200,600,20,LIGHT);return;}
   U.text('SeasonHead',`第${info.seasonNo}季 · 卷${info.vol}「${info.volName}」· ${info.actName} · 战功 ${info.medal}`,0,443,640,20,GOLD);
   // 卷志卡（本卷 2 页）
@@ -1342,8 +1333,7 @@ let seasonZhiOpen:any=null;
 export function seasonScenesView(ctx: ScreenContext) {
   const U=ctx.ui,si=store.scenesInfo();
   ctx.title('名 场 面 重 演');
-  U.text('SceneBack','‹ 返回',-291,484,130,22,GOLD);
-  U.tap('SceneBackTap',-291,484,136,52,()=>ctx.go('season'));
+  U.backBar(()=>ctx.go('season'));
   if(!si.enabled){U.text('SceneClosed','名场面暂未开放',0,200,600,20,LIGHT);return;}
   U.text('SceneHead',`本幕 · ${si.actName} · 已清 ${si.clearedCount}/${si.total}`,0,443,640,20,GOLD);
   si.current.forEach((sc:any,i:number)=>{
@@ -1379,8 +1369,7 @@ let agendaOpen = false; // 今日军务展开弹层（研讨会十二 C1）
 export function bountyView(ctx: ScreenContext) {
   const info=store.bountyInfo(),U=ctx.ui,s=store.getState();
   ctx.title('悬 赏 派 遣');
-  U.text('BountyBack','‹ 返回',-291,484,130,22,GOLD);
-  U.tap('BountyBackTap',-291,484,136,52,()=>ctx.back('journey'));
+  U.backBar(()=>ctx.back('journey'));
   U.text('BountyGuide','每日 4 单 · 派同阵营武将该单铜钱元宝 +20% · 跨日自动补发',0,443,640,18,tone('#ad9977'));
   info.list.forEach((b:any,i:number)=>{
     const y=360-i*124;
@@ -1453,8 +1442,7 @@ export function sevenDayView(ctx: ScreenContext) {
   const info=store.sevenDayInfo(),U=ctx.ui;
   ctx.title('七 日 目 标');
   const sd=info;
-  U.text('SevenDayBack','‹ 返回',-291,484,130,22,GOLD);
-  U.tap('SevenDayBackTap',-291,484,136,52,()=>ctx.back('campaign'));
+  U.backBar(()=>ctx.back('campaign'));
   U.text('SevenDayGuide',sd.expired?'七日目标已结束 · 未领奖励由第二周目标接续':'开服首 7 天每天一份厚礼；漏领可在 7 天内补领',0,443,640,18,tone('#ad9977'));
   info.list.forEach((d:any,i:number)=>{
     const y=375-i*116;

@@ -420,6 +420,16 @@ export class CocosUi {
   /** 查本页是否已画某节点（跨屏协调用：如英雄页有背景图时让出全屏底色）。 */
   has(name: string) { return this.nodes.has(name); }
 
+  /**
+   * 统一左上返回（I1 交互线组件）：‹ 返回 · 22 号金字 · 热区 140×52 · 基线 y=484。
+   * 各页 fallback 语义留在调用点；自定义标签如 '‹ 返回点将台'。
+   */
+  backBar(action: () => void, label = '‹ 返回', y = 484) {
+    this.text('BackBar', label, -291, y, 130, 22, palette.gold);
+    this.tap('BackBarTap', -291, y, 140, 52, action);
+    return this.nodes.get('BackBar');
+  }
+
   setText(name: string, value: string) {
     const label=this.nodes.get(name)?.getComponent(Label);
     if (label) label.string=value;

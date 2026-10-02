@@ -510,8 +510,7 @@ export function summonDraw(ctx: ScreenContext, type: string) {
 export function summonResults(ctx: ScreenContext) {
     const U=ctx.ui;
     U.rect('ResultBackdrop',0,0,720,1280,ink);
-    U.text('DrawBack','‹ 返回点将台',-254,609,205,21,gold);
-    U.tap('DrawBackTap',-254,609,205,45,()=>ctx.back('summon'));
+    U.backBar(()=>ctx.back('summon'), '‹ 返回点将台');
     U.panel('DrawResultFrame',0,-10,690,1060,panel,13,gold);
     U.text('DrawHeading',`召唤结果 · ${ctx.lastSummon.length} 名英雄`,0,469,630,33,gold);
     U.text('DrawSubheading','新英雄直接入队 · 重复武将自动升星 · 满星后 N/R 转铜钱、SR 转碎片、SSR 转将魂',0,425,630,18,dim);
@@ -573,8 +572,7 @@ export function forgeView(ctx: ScreenContext) {
   const slot=ctx.selectedArmorySlot||'weapon';
   const info=store.forgeInfo(slot);
   ctx.title('锻 造 台');
-  U.text('ForgeBack','‹ 返回',-291,484,130,22,gold);
-  U.tap('ForgeBackTap',-291,484,136,52,()=>ctx.go('armory'));
+  U.backBar(()=>ctx.go('armory'));
   if(!info.open){
     const stars=items.ARMORY_SLOTS.filter((sl:any)=>s.armory.slotStars[sl.id]>=5).length;
     U.text('ForgeClosed',`锻造台尚未开启 · 六槽全部 5★ 后开启（${stars}/6）`,0,250,640,22,dim);
@@ -640,8 +638,7 @@ export function forgeView(ctx: ScreenContext) {
 export function codexView(ctx: ScreenContext) {
   const U=ctx.ui,s=store.getState(),info=store.codexInfo();
   ctx.title('图 鉴 收 集');
-  U.text('CodexBack','‹ 返回',-291,484,130,22,gold);
-  U.tap('CodexBackTap',-291,484,136,52,()=>ctx.go('bag'));
+  U.backBar(()=>ctx.go('bag'));
   // 收集率摘要（研讨会九 B）：各稀有度收集进度实时派生
   {
     const H2=heroData;
@@ -679,8 +676,7 @@ export function codexView(ctx: ScreenContext) {
 export function relicsView(ctx: ScreenContext) {
   const U=ctx.ui,info=(store as any).relicInfo();
   ctx.title('神 兵 阁');
-  U.text('RelicBack','‹ 返回',-291,484,130,22,gold);
-  U.tap('RelicBackTap',-291,484,136,52,()=>ctx.back('bag'));
+  U.backBar(()=>ctx.back('bag'));
   if(!info.enabled){U.text('RelicClosed','神兵阁暂未开放',0,200,600,20,LIGHT);return;}
   if(!info.unlocked){
     U.panel('RelicLockPanel',0,200,620,180,tone('#251b14'),12,gold);
@@ -732,8 +728,7 @@ export function relicsView(ctx: ScreenContext) {
 export function achvView(ctx: ScreenContext) {
   const U=ctx.ui,info=store.achvInfo();
   ctx.title('主 公 成 就');
-  U.text('AchvBack','‹ 返回',-291,484,130,22,gold);
-  U.tap('AchvBackTap',-291,484,136,52,()=>ctx.back('bag'));
+  U.backBar(()=>ctx.back('bag'));
   // 完整档位列表（滚动）
   let flat:any[]=[];
   info.axes.forEach(ax=>ax.tiers.forEach(t=>flat.push({axis:ax.key,name:ax.name,tier:t.tier,need:t.need,reward:t.reward,claimed:t.claimed,claimable:t.claimable,value:ax.value})));
@@ -758,8 +753,7 @@ export function armory(ctx: ScreenContext) {
     const recs:any[]=progression.getArmoryRecommendations(s,items);
     const unlocked=items.CATALOG.filter((item:any)=>s.armory.unlocked[item.id]).length;
     ctx.title('全军军械');
-    U.text('ArmoryBack','‹ 返回',-291,484,130,22,gold);
-    U.tap('ArmoryBackTap',-291,484,136,52,()=>ctx.back('home'));
+    U.backBar(()=>ctx.back('home'));
     U.panel('ArmoryIron',-175,409,334,42,ink,10,border);
     U.text('ArmoryIronText',`精铁 ${fmt.fmtNum(s.res.iron)}`,-175,409,310,19,gold);
     U.panel('ArmoryCoins',175,409,334,42,ink,10,border);
@@ -832,8 +826,7 @@ export function armoryCatalog(ctx: ScreenContext) {
     if(!armoryItemId||!slotItems.some(item=>item.id===armoryItemId))armoryItemId=s.armory.selected[ctx.selectedArmorySlot]||slotItems[0]?.id||'';
     const item:any=slotItems.find(item=>item.id===armoryItemId),unlocked=items.CATALOG.filter((entry:any)=>s.armory.unlocked[entry.id]).length;
     ctx.title('全军军械');
-    U.text('CatalogBack','‹ 返回',-291,484,130,22,gold);
-    U.tap('CatalogBackTap',-291,484,136,52,()=>ctx.back('armory'));
+    U.backBar(()=>ctx.back('armory'));
     U.panel('CatalogIron',-175,409,334,42,ink,10,border);
     U.text('CatalogIronText',`精铁 ${fmt.fmtNum(s.res.iron)}`,-175,409,310,19,gold);
     U.panel('CatalogCoins',175,409,334,42,ink,10,border);
@@ -918,8 +911,7 @@ export function armoryBox(ctx: ScreenContext) {
   const s=store.getState(), q=ctx.selectedBoxQ, count=s.armory.boxes[q]||0,U=ctx.ui;
   const pool:any[]=items.CATALOG.filter((item:any)=>item.q===q);
   ctx.title('军械自选箱',`${items.GRADES[q].name}箱 ×${count} · 选择尚未解锁的军械`);
-  U.text('BoxBack','‹ 返回图鉴',-271,484,170,20,gold);
-  U.tap('BoxBackTap',-271,484,170,50,()=>ctx.back('armoryCatalog'));
+  U.backBar(()=>ctx.back('armoryCatalog'), '‹ 返回图鉴');
   [1,2,3].forEach((grade,i)=>chip(U,'BoxGrade'+grade,`${items.GRADES[grade].name} ×${s.armory.boxes[grade]||0}`,-224+i*224,363,209,grade===q,()=>{ctx.selectedBoxQ=grade;CocosUi.resetScroll('ArmoryBoxItems');ctx.show('armoryBox');}));
   const rows=Math.ceil(pool.length/3),pitch=157,viewH=805,contentH=Math.max(viewH,rows*pitch+30);
   U.scroll('ArmoryBoxItems',0,-85,701,viewH,contentH,V=>{
