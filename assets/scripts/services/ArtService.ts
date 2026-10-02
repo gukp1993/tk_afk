@@ -6,6 +6,7 @@ import { SpriteFrame, assetManager, resources } from 'cc';
  *   assets/art-heroes/<将id>.png  — 武将立绘，配置为微信小游戏分包（不占主包 4MB 限额），
  *                                    启动后异步 loadBundle 预载，未载完页面上先显示占位；
  *   assets/resources/art/icons/<key>.png — 界面图标（seal/指定 artKey 处套用），随主包。
+ *   assets/resources/art/ui/ui_<key>.png — 通用按钮/面板/题字，随主包，边框使用九宫格。
  * 页面绘制时同步查表——有图用图，无图回退原占位绘制；美术按 docs/美术资源接入指南.md 逐张交付。
  */
 const frames = new Map<string, SpriteFrame>();
@@ -20,11 +21,18 @@ export const ArtService = {
   has(key: string) { return frames.has(key); },
   count() { return frames.size; },
   collect(out: SpriteFrame[]) {
-    (out || []).forEach(f => { if (f && f.name && !frames.has(f.name)) frames.set(f.name, f); });
+    (out || []).forEach(f => {
+      if (!f || !f.name || frames.has(f.name)) return;
+      if (f.name.startsWith('ui_') && f.name !== 'ui_logo') {
+        f.insetLeft = f.insetRight = 24;
+        f.insetTop = f.insetBottom = 16;
+      }
+      frames.set(f.name, f);
+    });
   },
   /** 两段加载：图标随主包立即可载；立绘走分包 bundle。每段完成回调一次（驱动菜单页重绘换装）。 */
   preload(done?: (n: number) => void) {
-    resources.loadDir('art/icons', SpriteFrame, (err, out) => {
+    resources.loadDir('art', SpriteFrame, (err, out) => {
       this.collect(out as SpriteFrame[]);
       iconsReady = true;
       if (done) done(frames.size);

@@ -1,4 +1,4 @@
-import { Color, EventTouch, Graphics, Label, Mask, Node, ScrollView, Sprite, UITransform, Vec2, Vec3, Tween, UIOpacity } from 'cc';
+import { Color, EventTouch, Graphics, Label, LabelOutline, Mask, Node, ScrollView, Sprite, UITransform, Vec2, Vec3, Tween, UIOpacity } from 'cc';
 import { ArtService } from '../services/ArtService';
 
 export const hexColor = (hex: string) => new Color(
@@ -25,6 +25,36 @@ export class CocosUi {
 
   private y(value: number) { return value * this.verticalScale; }
   private height(value: number) { return value >= 1000 ? value * this.verticalScale : value; }
+
+  /** Artwork stays inside the existing box; sliced borders keep their thickness. */
+  private skin(node: Node, key: string, w: number, h: number, sliced = true) {
+    const frame = ArtService.frame(key);
+    if (!frame) return false;
+    const art = new Node(node.name + 'Skin');
+    art.addComponent(UITransform).setContentSize(w, h);
+    const sprite = art.addComponent(Sprite);
+    sprite.spriteFrame = frame;
+    sprite.sizeMode = Sprite.SizeMode.CUSTOM;
+    sprite.type = sliced ? Sprite.Type.SLICED : Sprite.Type.SIMPLE;
+    sprite.trim = false;
+    // Assigning a SpriteFrame can restore its native size; apply the layout box last.
+    art.getComponent(UITransform)!.setContentSize(w, h);
+    node.addChild(art);
+    return true;
+  }
+
+  private panelSkin(node: Node, w: number, h: number, fill: Color, radius: number) {
+    if (w >= 80 && h >= 32 && radius < 25 && fill.a >= 230 &&
+      /Sort|ForgeSlot|ForgeDir|PresetChip|ShardTier|Filter|Chip/.test(node.name)) {
+      return this.skin(node, 'ui_frame', w, h);
+    }
+    // Round seals, portrait placeholders, translucent overlays and tiny chips keep their own shape.
+    if (w < 120 || h < 38 || radius >= 25 || fill.a < 230 ||
+      /Shade|Card|Face|HeroToken|Portrait|Avatar|Sort|Faction|ForgeSlot|ForgeDir|PresetChip|ShardTier|Filter|Chip/.test(node.name)) return false;
+    const light = fill.r * .299 + fill.g * .587 + fill.b * .114 > 145;
+    const red = fill.r > fill.g * 1.5 && fill.r > 95 && fill.g < 100;
+    return this.skin(node, light ? 'ui_panel_paper' : red ? 'ui_button_red' : 'ui_panel_jade', w, h);
+  }
 
   /** Round seal mark with one glyph — icons paint over it via ArtService when art/icons/<key>.png exists. */
   seal(name: string, x: number, y: number, size: number, glyph: string,
@@ -88,7 +118,7 @@ export class CocosUi {
       rg.stroke();
       node.addChild(rim);
     } else {
-      node = this.panel(name, x, y, w, h, hexColor(factionColors[info.faction || 'all'] || factionColors.all), radius);
+      node = this.panel(name, x, y, w, h, hexColor(factionColors[info.faction || 'all'] || factionColors.all), radius, undefined, false);
       const g = node.getComponent(Graphics)!;
       g.strokeColor = hexColor(rarityColors[rarity]);
       g.lineWidth = 3;
@@ -176,12 +206,13 @@ export class CocosUi {
     graphics.fillColor = fill;
     graphics.rect(-w / 2, -drawnH / 2, w, drawnH);
     graphics.fill();
+    if (/Panel$|NavBackground|CityHeader/.test(name)) this.panelSkin(node, w, drawnH, fill, 0);
     this.parent.addChild(node);
     this.nodes.set(name, node);
     return node;
   }
 
-  panel(name: string, x: number, y: number, w: number, h: number, fill: Color, radius = 8, border?: Color) {
+  panel(name: string, x: number, y: number, w: number, h: number, fill: Color, radius = 8, border?: Color, artwork = true) {
     const node = new Node(name);
     node.setPosition(new Vec3(x, this.y(y), 0));
     node.addComponent(UITransform).setContentSize(w, h);
@@ -194,6 +225,16 @@ export class CocosUi {
       g.lineWidth = 2;
       g.roundRect(-w / 2 + 1, -h / 2 + 1, w - 2, h - 2, radius);
       g.stroke();
+    }
+    if (artwork && this.panelSkin(node, w, h, fill, radius) && border) {
+      const rim = new Node(name + 'StateRim');
+      rim.addComponent(UITransform).setContentSize(w, h);
+      const edge = rim.addComponent(Graphics);
+      edge.strokeColor = border;
+      edge.lineWidth = 1;
+      edge.roundRect(-w / 2 + 1, -h / 2 + 1, w - 2, h - 2, radius);
+      edge.stroke();
+      node.addChild(rim);
     }
     this.parent.addChild(node);
     this.nodes.set(name, node);
@@ -338,6 +379,12 @@ export class CocosUi {
     label.horizontalAlign = align;
     label.verticalAlign = Label.VerticalAlign.CENTER;
     label.overflow = Label.Overflow.SHRINK;
+    if (size >= 28) {
+      const outline = node.addComponent(LabelOutline);
+      outline.color = new Color(20, 25, 20, 190);
+      outline.width = 1;
+    }
+    if (name === 'CityTitle' && value === '挂机定三国' && this.skin(node, 'ui_logo', w, 40, false)) label.enabled = false;
     this.parent.addChild(node);
     this.nodes.set(name, node);
     return node;
@@ -359,7 +406,8 @@ export class CocosUi {
 
   button(name: string, value: string, x: number, y: number, w: number, h: number, action: () => void, fill = palette.red, immediate = false) {
     const background = this.panel(name, x, y, w, h, fill, 8, palette.gold);
-    this.text(name + 'Text', value, x, y, w - 12, 22);
+    const light = fill.r * .299 + fill.g * .587 + fill.b * .114 > 145;
+    this.text(name + 'Text', value, x, y, w - 12, 22, light ? palette.ink : palette.text);
     if (immediate) {
       const touch = this.tap(name + 'Touch', x, y, w, h, action);
       touch.off(Node.EventType.TOUCH_END);

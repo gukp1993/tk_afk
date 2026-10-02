@@ -1,0 +1,4 @@
+DEBUG rsA: {"seat":2,"lineup":"飞将无双","stars":2,"honor":20,"gem":50,"shard":0,"token":0,"firstKill":true,"firstThreeStar":false,"weeklyClear":false,"firstKillHonor":20,"threeStarHonor":0} rsB: {"seat":2,"lineup":"飞将无双","stars":3,"honor":10,"gem":0,"shard":5,"token":0,"firstKill":false,"firstThreeStar":true,"weeklyClear":false,"firstKillHonor":0,"threeStarHonor":10}
+  [f-debug] daily={"day":"2026-10-03","quests":{},"claimed":[],"active":[]} keys=52 createdAt=2026-09-23T16:54:09.524Z
+
+smoke: 576 passed, 0 failed

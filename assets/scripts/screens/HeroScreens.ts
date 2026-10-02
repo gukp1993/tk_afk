@@ -238,8 +238,8 @@ export function heroDetail(ctx: ScreenContext) {
       {name:h.passiveDef.name,desc:h.passiveDef.desc,glyph:'守',fill:palette.green,kind:'被动技能'}];
     skills.forEach((skill,i)=>{const x=i===0?-169:169,y=top-673;V.panel('SkillTile'+i,x,y,328,216,new Color(19,38,33,247),7,gold);
       V.seal('SkillIcon'+i,x-115,y,84,skill.glyph,skill.fill,skill.fill,palette.text,40);
-      V.textBlock('SkillName'+i,skill.name,x+50,y+42,190,55,26,gold);
-      V.textBlock('SkillSummary'+i,skill.desc,x+50,y-25,190,110,18,paper);
+      V.textBlock('SkillName'+i,skill.name,x+50,y+65,190,48,26,gold);
+      V.textBlock('SkillSummary'+i,skill.desc,x+50,y-20,190,108,18,paper);
       V.tap('SkillTap'+i,x,y,328,181,()=>heroInfoModal(ctx,skill.name,[skill.kind,skill.desc]));});
     V.panel('ArmoryBonusPanel',0,top-825,666,111,new Color(17,36,31,245),5,gold);
     V.seal('ArmoryWeapon',-275,top-825,48,'兵',tone('#bb614c'),tone('#bb614c'),palette.ink,24,'armory_weapon');
