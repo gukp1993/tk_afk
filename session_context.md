@@ -16,6 +16,18 @@
 
 ## 最近交接（新 → 旧）
 
+### 五页背景接入 + Codex UI 框体并行合流 · zcode · 已实施待验收
+
+时间：2026-10-03 01:30（Asia/Shanghai）；执行者：zcode；状态：已实施待验收。
+
+- 用户/Codex 产出 scenes-v2 五张 Q 版国风页面背景（主城庭院/王庭大殿/战场/点将台/军需库房），按 720×1280 JPEG q78（共 287KB）入分包 scenes/（`bd77ff7`）。
+- 背景装载层落地：CocosUi.image 原语 + Bootstrap 五页换装（stagePreview 复用 campaign 背景）+ BackdropDim 压暗层；HeroScreens 全屏底色在有背景图时半透明让位（新增 CocosUi.has 助手）——修复背景被 HeroBackdrop 盖住的合流冲突。
+- 合流注意：Codex 并行做了描金 UI 框体改版（LabelOutline/卷草纹面板/art/ui 五图入主包 resources 54KB）+ 16 SSR v2 立绘源图（output/art/ssr-v2，此前已接入 `64c5b6c`）。工作区多次并发改动，接手者先 git log 对齐。
+- 验证：tsc、实拍六页、视觉验收 5/5（背景氛围可见不抢戏、文字全可读）；微信主包 3604KB（限 4MB，余 ~490KB）/ 分包 1752KB（限 30MB）。
+- 美术余量：R/SR/N 立绘 104 张待产（清单在指南）；图标 P1 批待产。
+
+## 最近交接（新 → 旧）
+
 ### UI 美术首批生成与接入 · Codex · 已实施待验收
 
 时间：2026-10-03（Asia/Shanghai）；执行者：Codex；状态：已实施待验收（Web 实拍通过，微信真机未验）。
