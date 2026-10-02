@@ -143,7 +143,7 @@ function defeatDiag(ctx: ScreenContext, r: any, brief=false): string {
 export function resultView(ctx: ScreenContext) {
   const r=ctx.outcome,U=ctx.ui;
   drawField(U,ctx,ctx.lastBattleSnapshot||[]);
-  U.rect('ResultDim',0,0,720,1280,new Color(0,0,0,185));
+  U.rect('ResultDim',0,0,720,1280,new Color(0,0,0,215)); // R7：加深压暗，结算面板外不再透出可辨残像
   U.panel('ResultPanel',0,-12,572,512,tone('#271b13'),16,GOLD);
   const resultTitle=U.text('ResultTitle',(r&&r.replay?'【回放】':'')+(r?.win?'凯  旋':'败  北'),0,174,514,56,r?.win?GOLD:DIM);
   // 胜负大字入场（2026-10-03 动画线先行批，纯表现层）：缩放 1.6→1 回弹 + 淡入；

@@ -25,7 +25,7 @@ import { CocosUi, hexColor } from '../ui/CocosUi';
  *   且状态机语义覆盖跨阈值语义；扫序也从"事件后"提前到"事件前"——退出归位必须先于同帧
  *   事件 fx（deathFade/ultLunge）采样基准，否则会把呼吸中的缩放误存为 base 残留永久偏移。
  * - deathFade（A3）：阵亡淡出（death）——驱动 Fighter+Glyph opacity 255→0（easeIn）+
- *   下沉 10px（0.5s），到期归位为透明终态（位置回 base、透明度保持 0）；名字/血/怒条照常由
+ *   下沉 10px（0.5s），到期归位为可辨残位（位置回 base、透明度保持 DEATH_FINAL_OP=140）；名字/血/怒条照常由
  *   refreshBattleView 渲染（卡面消失即"阵亡"反馈）。跨帧状态表 deadFaded 记录透明终态：
  *   ①cheat 事件缺席时 snapshot.alive 回 true → 立即恢复可见（兜底复活，规格 6.2-5）；
  *   ②战斗中整页重绘重建节点（UIOpacity 丢失）→ 静默重挂透明态，防"幽灵复现"。
@@ -50,7 +50,7 @@ import { CocosUi, hexColor } from '../ui/CocosUi';
  *   呼吸态退出）取得主写权，活跃期间三类让位不再起播（死亡单位不再产生 act/hit 事件，
  *   实际重叠窗口仅致死当帧）。
  * - `node.isValid` 判定自清理；overlay 到期销毁、driven 到期先写回 base 坐标/缩放再移除
- *   （deathFade 到期例外：位置归 base、透明度保持 0 = 透明终态）。
+ *   （deathFade 到期例外：位置归 base、透明度保持 DEATH_FINAL_OP = 可辨残位）。
  */
 
 const GOLD = hexColor('#e3ba70'); // 现状 UltPopup 金框/金字
@@ -115,6 +115,8 @@ export class BattleFx {
   /** A3 阵亡淡出跨帧状态：uid → 已进入/正在进入透明终态（death 事件置入，cheat/兜底复活
    * 移除；reset 清，跨场不残留）。供 snapshot.alive 兜底比对与重绘自愈。 */
   private static deadFaded = new Map<string, true>();
+  /** R8：阵亡淡出终态透明度——35% 残留可辨（此前 0 深底下只剩名字不可辨） */
+  private static readonly DEATH_FINAL_OP = 140;
 
   /** 现存 fx 数（__tkDiag().fx 机检：跨场残留断言用）。A4 起计入呼吸态（rim overlay 不入
    * items，泄漏时 fx 仍须非 0 才能被机检捕获；reset 双清，结算断言语义不变）。 */
@@ -293,7 +295,7 @@ export class BattleFx {
           d.node.setScale(d.baseScale + ds, d.baseScale + ds, 1);
           if (d.op) {
             d.op.opacity = f.kind === 'deathFade'
-              ? Math.max(0, Math.floor(d.fromOp * (1 - t * t))) // easeIn 淡出至 0（终帧恰为 0 = 透明终态）
+              ? Math.floor(BattleFx.DEATH_FINAL_OP + (d.fromOp - BattleFx.DEATH_FINAL_OP) * (1 - t * t)) // easeIn 淡出至 140（R8：可辨残位而非隐身）
               : Math.min(255, Math.round(d.fromOp + (255 - d.fromOp) * BattleFx.easeOutQuad(t))); // easeOut 回升至满
           }
         }
@@ -449,7 +451,7 @@ export class BattleFx {
    * - deadFaded 单位 snapshot.alive 回 true（cheat 事件缺席的复活路径）→ 终结残留淡出 fx 并
    *   立即恢复可见（无动画，规格 6.1 兜底语义），防"幽灵位"。
    * - deadFaded 单位仍 dead 但淡出 fx 已不在（战斗中整页重绘重建节点、UIOpacity 丢失）→
-   *   静默重挂透明终态；已有终态（opacity 已 0）则零写入。
+   *   静默重挂透明终态；已有终态（opacity 已为终态值）则零写入。
    */
   private static scanAlive(snapshot: any[], ui: CocosUi, indexByUid: Map<string, number>) {
     for (const u of snapshot) {
@@ -459,7 +461,7 @@ export class BattleFx {
         BattleFx.setFadeOpacity(ui, indexByUid, u.uid, 255);
         BattleFx.deadFaded.delete(u.uid);
       } else if (!BattleFx.hasFadeFx(u.uid)) {
-        BattleFx.setFadeOpacity(ui, indexByUid, u.uid, 0, true);
+        BattleFx.setFadeOpacity(ui, indexByUid, u.uid, BattleFx.DEATH_FINAL_OP, true);
       }
     }
   }
