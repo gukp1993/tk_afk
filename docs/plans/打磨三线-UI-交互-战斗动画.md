@@ -37,7 +37,7 @@
 | U2 战役页底部密带重排 | 底部现四层压为三层：挂机信息行（y-393）/ 出征行（y-480）/ GoalStrip（y-536，恰好贴 -548 红线）保留；右侧"双倍 / 快收"147×24 小热区并入挂机信息行（改为行内按钮 ≥150×44）或降级为挂机面板内入口+红点；GoalStrip 行高与热区 ≥40。 | 实拍无重叠挤压；-548 红线不破；所有可点热区高度 ≥40；双倍/快收入口仍可达（两次点击内）。 | 完成（待验收） |
 | U3 快捷角标与资源 pill 组件化 | ① 主城角标（每日任务/背包）label 与面板边缘间距修复（label 底边距 ≥6px）；② journey/shop 五资源 pill 字号 16→18，抽 `CocosUi.resourcePills()` 助手，与主城资源行同源消除两处不一致。 | 主城/玩法/集市三页实拍样式一致、无裁切；tsc。 | 待办 |
 | U4 弹层规范统一 | 四种弹层范式收口为两类：**说明/详情类**（firstTimeOverlay、battleDetail、agenda）=点遮罩可关+统一标题 30 号金描边；**决策类**（Confirm、IdleChoice、stagePreview）=仅按钮关闭防误触；统一九宫格框体 ui_frame、圆角、标题排印；文档内登记每弹层归属。 | 逐弹层实拍：关闭行为与登记表一致、框体样式一致；遮罩误关为零。 | 待办 |
-| U5 红点口径补全 | journey 六入口（群英塔/演武/军屯/周Boss/四时/悬赏）+ 英雄页（名将试炼可挑战）按 store 既有 canClaim/attemptsLeft 布尔补 `U.dot`；口径统一="红点亮起=有收益可领或免费次数可用"（对齐今日军务文案承诺）；nav 徽章逻辑不重复叠加。 | 实拍红点与 `__tkDiag` 布尔逐项一致；无可领时零误亮；机检脚本可选。 | 待办 |
+| U5 红点口径补全 | journey 六入口（群英塔/演武/军屯/周Boss/四时/悬赏）+ 英雄页（名将试炼可挑战）按 store 既有 canClaim/attemptsLeft 布尔补 `U.dot`；口径统一="红点亮起=有收益可领或免费次数可用"（对齐今日军务文案承诺）；nav 徽章逻辑不重复叠加。 | 实拍红点与 `__tkDiag` 布尔逐项一致；无可领时零误亮；机检脚本可选。 | 完成（待验收；journey 五入口落地，英雄页无试炼入口故不含） |
 | U6 列表空态与去向引导 | 补空态：英雄列表筛选无结果（"该阵营暂无武将 · 去招募›"）、背包军械图鉴/熔炉空态已有文案补去向按钮、成就/图鉴未解锁行给获取途径一行提示。 | 空态实拍均有文案+去向，不出现白板区域；不新增纵向高度溢出。 | 待办 |
 
 ## 二、交互优化线（对标剑与远征等卡牌放置成熟惯例）
@@ -61,7 +61,7 @@
 
 | 批次 | 内容 | 验收标准 | 状态 |
 | --- | --- | --- | --- |
-| A0 表现层基建：events 消费管线 | 新增 `assets/scripts/ui/BattleFx.ts`（或 BattleScreens 模块态）：fx 数组 {node, elapsed, life, apply(t)} + `tick(dt)`；`Bootstrap.update` 把当前被丢弃的 `step()` 返回 `events` 传入 `BattleFx.feed(events, snapshot)`；重置钩子全覆盖：`startBattle`/`startWeekBoss`/`startReplay`/`finishBattle`/`go()` 离开 battle。 | tsc；连续两场战斗节点数不残留（机检或日志证明）；**帧率复测 ≥55 FPS**（基线 60.1）且 heap 无增长（基线 49.5→41.5MB）。 | 待办 |
+| A0 表现层基建：events 消费管线 | 新增 `assets/scripts/ui/BattleFx.ts`（或 BattleScreens 模块态）：fx 数组 {node, elapsed, life, apply(t)} + `tick(dt)`；`Bootstrap.update` 把当前被丢弃的 `step()` 返回 `events` 传入 `BattleFx.feed(events, snapshot)`；重置钩子全覆盖：`startBattle`/`startWeekBoss`/`startReplay`/`finishBattle`/`go()` 离开 battle。 | tsc；连续两场战斗节点数不残留（机检或日志证明）；**帧率复测 ≥55 FPS**（基线 60.1）且 heap 无增长（基线 49.5→41.5MB）。 | 完成（待验收 7265704；实测 60.0 FPS，含伤害数字每帧化死路修复与 startReplay 重置补齐） |
 | A1 受击闪白+抖动（hit 事件） | `hit{uid,src}` → 定位受击者 Fighter 坐标，叠加白色圆角覆盖节点（90×91 圆角 13，alpha 0.85→0，0.12s）+ 水平抖动 dx=sin(t·π)·5·方向（方向=远离攻击方），结束归零；同帧同 uid 多 hit 去重只保留一条。 | 实拍战斗序列帧可见闪白/抖动；无节点残留；**帧率复测 ≥55 FPS**；群攻同帧 ≤10 覆盖节点无掉帧。 | 待办 |
 | A2 攻击位移 lunge（act 事件） | `act{uid,tgt}` → 攻击者 Fighter 节点朝目标水平前冲 14px：0→60ms easeOut 冲出、60→180ms easeOutBack 回弹（过冲 2px），由 fx.tick 设置位置、不改常驻坐标；同一 uid fx 活跃时限频跳过（加速 ×4 事件密集防抖成筛子）。 | 实拍可见冲位移回弹；加速 ×4 下无高频抖振；动画后位置精确归位（对照截图逐像素）；**帧率复测 ≥55 FPS**。 | 待办 |
 | A3 阵亡淡出倒下（death 事件 + 复活校验） | `death{uid}` → Fighter 面板 angle 0→85°（0.25s easeIn）+ UIOpacity →90（35%）+ 名字/字形转 muted，血怒条保留可读；**复活校验与动画同批实现**：refreshBattleView 每次比对 snapshot.alive，复活（张角/孟获 cheatRevive 30%）反向复位 0.2s，防"幽灵位"。 | 实拍阵亡倒下与复活回位各一例；阵亡后血条仍可读；**帧率复测 ≥55 FPS**；跨场不残留倒下态。 | 待办 |
