@@ -16,6 +16,16 @@
 
 ## 最近交接（新 → 旧）
 
+### 立绘分包方案落地 · zcode · 已实施待验收
+
+时间：2026-10-03 00:20（Asia/Shanghai）；执行者：zcode；状态：已实施待验收（用户选定方案 A：分包）。
+
+- 立绘超主包限制（主包 4MB 硬限，已用 3492KB）→ 用户拍板分包方案。`assets/art-heroes/` 独立 Bundle 迁移完成（`ce3941d`）：**meta 需 userData.isSubpackage=true 才生成 game.json subpackages**（手写 compressionType 平台映射不够，对齐官方 taxi 模板格式后打通）；构建产物 subpackages/art-heroes/ 104KB、主包 3496KB、主包内无残留。
+- ArtService 两段加载：图标 resources（主包）+ 立绘 loadBundle（分包异步预载，未载完显示占位、载完重绘换装）；web 实拍关羽 bundle 上卡正常。
+- 曹操 v2 立绘接入（`92bc74b`）：用户按提示词模板 v2 自产图（600×800 已量化 65KB）直接入分包，锁定卡显示正确；v2 画风确认比 v1 可爱（2.5 头身生效）。
+- 微信端分包加载走引擎 wx.loadSubpackage 适配，web 已验等价逻辑；真机验收时确认首屏分包拉起。
+- 待用户：继续产图（清单在指南）；真机验收。
+
 ### 收尾批：三项裁决 + 印信双倍 P1 + 美术管线 + 关羽立绘接入 · zcode · 已实施待验收
 
 时间：2026-10-02 23:30（Asia/Shanghai）；执行者：zcode；状态：已实施待验收（用户已确认美术阶段开启；四 commit 已推送）。
