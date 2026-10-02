@@ -1,18 +1,19 @@
-# tk_afk 共享上下文（挂机定三国 · 微信/抖音双平台小游戏）
+# tk_afk 共享上下文（挂机定三国 · 微信小游戏 · Cocos Creator）
 
 > 本文件是跨会话、跨执行者（zcode / codex / 其他 harness）的共享上下文，按 `AGENTS.md`「共享上下文交接」纪律维护：**开工先读本文件；收工在「最近交接」最上方追加本轮条目**。只新增不删改，纠错追加新记录。"已实施"不等于"已验收"，同一任务双方结论分开展示。
 
-## 当前有效基线（2026-09-26 核对）
+## 当前有效基线（2026-10-03 核对；历史 2026-09-26 Canvas 双平台基线已整体作废，详见 AGENTS.md）
 
-- 项目：三国放置卡牌小游戏（Canvas 渲染），玩法对标 AFK Arena；**微信 + 抖音双平台**（2026-09-26 起）。微信 AppID `wx03eb4074ce45033b`；抖音 AppID `ttdd05abb8437df5b602`（2026-09-26 已填入）。
-- 仓库：远程 `github.com/gukp1993/tk_afk`（SSH 推送，分支 main）；本地 `/Users/gukepeng/Desktop/ai/miniProgram/tk_afk`。
-- 技术形态：原生 JS，无 npm 依赖。共享源码 `src/`（表现层）+ `utils/`（内核，`platform.js` 为唯一 wx/tt 适配层）；`build.js` 把共享源码同步进打包目录 `wechat/`（微信开发者工具打开）与 `douyin/`（抖音开发者工具打开），打包目录内 src/utils 是 gitignore 的生成物。
-- 验证命令：`node build.js`（打包同步，发布前必跑）、`node test/smoke.js`（127 项，含广告桥接契约）、`node test/static-check.js`（285 项，含双平台入口/打包目录一致性/平台 API 收口）；离屏渲染审查 `node preview/mini/record.js` + `python3 preview/mini/makeview.py`。
-- 广告分两层：`src/ads.js` 业务门面（零平台分支）+ `src/ads/bridge.js` 桥接层（统一 `show() → Promise<{ended}>` 契约，微信/抖音接入差异收口）；当前测试模式（内置模拟广告），正式变现按平台填 `AD.rewardedUnitIds`（{wechat, douyin}）即切真广告。
-- 存档 key `sanguo_afk_save_v1`（平台存储，两平台相互独立）；改存档结构必须向后兼容旧档。
-- 根目录不再是开发者工具项目目录（入口文件已迁入 `wechat/`）；`legacy-miniprogram/` 旧版微信小程序存档参考，不参与打包。
-- `.gitignore`：`.DS_Store`、`project.private.config.json`、`node_modules/`、`*.log`、`*.tmp`、`/wechat/src|utils/`、`/douyin/src|utils/`。
-- 2026-09-26 初始提交 `a5516f7`、双平台改造提交已推送远程；协作设施 `AGENTS.md` 与本文件已建立。
+- 项目：三国放置卡牌小游戏（**Cocos Creator 3.8.8，微信单平台**，玩法对标 AFK Arena）。微信 AppID `wx03eb4074ce45033b`；抖音已放弃（历史配置仅存于 scripts/cocos-appids.json）。
+- 仓库：远程 `github.com/gukp1993/tk_afk`（SSH 推送，分支 main）；本地 `/Users/gukepeng/Desktop/ai/miniProgram/tk_afk`。仓库根目录即 Cocos 工程（assets/scene+scripts+resources、utils/ 规则源、settings/、package.json）。
+- 技术形态：utils/*.js 纯逻辑源 → `scripts/cocos-sync-domain.js` 生成 assets/scripts/domain/*.ts 镜像（**不可手改**）；页面在 assets/scripts/screens/、服务在 services/、Bootstrap 管生命周期；无 npm 运行时依赖。
+- 美术管线（2026-10-03 上线）：立绘/背景 `assets/art-heroes/`（**微信分包**，目录 meta 须 userData.isSubpackage=true）、图标 `assets/resources/art/icons/`；ArtService 启动预载、有图用图/无图回退占位。规格与全量清单见 `docs/美术资源接入指南.md`。
+- 验证链：`node scripts/cocos-sync-domain.js --check` → `tsc --noEmit`（Creator 内置）→ `node test/smoke.js`（**578 项**）→ 需要时 `./scripts/cocos-build.sh web-mobile|wechatgame`（微信包：主包 3620KB 红线 4MB + art-heroes 分包 ~3.6MB）→ 200 种子仿真 `node test/simulation.js`（四锚：通关 100%/P50 14 天/满星 27 天/SSR ≤12 现值 11.15）。旧 `build.js`/`static-check.js`/`preview/` 已删除不可调用。
+- 广告：测试模式（内置模拟广告），正式变现待流量主开通填广告位。
+- 存档 key `sanguo_afk_save_v1`（v8，平台存储）；改存档结构必须向后兼容旧档（migrateSaveVN 链+load() 版本分发+拒载线同步）。
+- 测试钩子：控制台 `__tkDiag()`（状态快照+fx 计数）/`__tkNav('页名')`（直跳）/`__lastTap`（点击插桩）；无头实拍 = Playwright chromium headless 720×1280 打 `build/web-mobile`。
+- 真机验收：按 `docs/reviews/真机验收清单.md`（2026-10-03 汇总版）。
+- `.gitignore`：`.DS_Store`、`project.private.config.json`、`node_modules/`、`*.log`、`*.tmp`、Cocos 生成目录 `build/`、`library/`、`temp/`。
 
 ## 最近交接（新 → 旧）
 
