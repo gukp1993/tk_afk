@@ -24,6 +24,15 @@
 - 验证：tsc、smoke 578、journey/shop/home 三页实拍。
 - A3（阵亡淡出+复活表现）实施代理后台运行中。三线进度：UI 5/6 · 交互 3/6 · 动画 A0+A1+A2+先行批（A3 施工中）。剩余队列：U4 二阶段、I3、I5、I6、A3、A4、A5。
 
+### I3 领取飞包动画 · zcode · 已实施待验收
+
+时间：2026-10-03 04:40（Asia/Shanghai）；执行者：zcode；状态：已实施待验收（三线跳批：A3 代理占用 BattleFx，避让做交互线）。
+
+- CocosUi.flyGlyph + flyItems/pulses dt 管线；Bootstrap tell 守卫三形态归一（reward/rewards/平铺）——**顺带修复一键收获此前从不飘字**（claimDailyRewards 用 rewards 字段被旧守卫滤掉）；目标按页面分发（journey/shop 五 pill 行、campaign GoldPill/GemPill）。
+- 实拍：战役页一键收获三连帧，「钱」「宝」印章飞行中带字（修了 Label 被 Graphics 同节点盖住）、pill 入账正确。
+- 待核验：落地脉冲 0.2s 窗口未拍到帧（机制有代码保证），后续走查顺带。
+- 验证：tsc、smoke 578。A3（阵亡淡出+复活）实施代理后台运行中。三线进度：UI 5/6 · 交互 4/6 · 动画 A0-A2+先行批（A3 施工中）。
+
 ### A2 怒气满脉冲 + 技能释放前冲 · zcode · 已实施待验收
 
 时间：2026-10-03 04:20（Asia/Shanghai）；执行者：zcode（实施代理施工、主执行者复核）；状态：已实施待验收。
