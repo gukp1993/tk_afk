@@ -59,7 +59,7 @@ export function campaign(ctx: ScreenContext) {
   const current=points[stage-segmentStart];
   if(current){const x=current[0]*720/375-360,y=420-current[1]*660/440;
     U.panel('CurrentStage',x+18,y-24,176,32,tone('#3c6255'),5);
-    U.text('CurrentStageText',`当前 · 第 ${stage} 关${stage>stages.CHAPTERS.length*stages.STAGES_PER_CH?' · 循环':''}`,x+18,y-24,165,17,LIGHT);
+    U.text('CurrentStageText',`第${stage}关${stage>stages.CHAPTERS.length*stages.STAGES_PER_CH?'·循环':''}`,x+18,y-24,165,17,LIGHT);
   }
   U.text('MilestoneHint','主线里程碑：40/100 自选券 · 90/110/150 自选箱 · 120/140/160 完成礼',0,404,560,15,INK);
   const sd=store.sevenDayInfo();
@@ -846,7 +846,7 @@ export function formation(ctx: ScreenContext) {
     U.text('BondName'+i,(active?'● ':'○ ')+b.name,-232,y,170,19,active?GOLD:tone('#a99778'));
     U.text('BondMembers'+i,b.heroes.map((hid:string)=>heroes.getHero(hid)?.name||hid).join('·'),-70,y,330,17,LIGHT);
     const missing=(b.heroes||[]).filter((hid:string)=>!s.roster[hid]);
-    U.text('BondState'+i,active?'已激活':missing.length?`缺 ${missing.map((hid:string)=>heroes.getHero(hid)?.name||hid).join('')}`:'未上阵',225,y,150,17,active?GOLD:tone('#a99778'));
+    U.text('BondState'+i,active?'已激活':missing.length?`缺 ${missing.map((hid:string)=>heroes.getHero(hid)?.name||hid).join('')}`:'未上阵',215,y,180,17,active?GOLD:tone('#a99778'));
   });
   const comboLine=bondsNow.filter((b:any)=>b.combo).map((b:any)=>`${b.combo.name}·${b.combo.short}`).join('　');
   U.text('BondsCombo',comboLine?`组合技：${comboLine}`:'组合技：凑齐组合后额外生效（如五虎破军·全军暴伤+15%）',0,-438,640,16,comboLine?GOLD:tone('#ad9977'));
@@ -1365,7 +1365,7 @@ export function seasonScenesView(ctx: ScreenContext) {
       V.panel('SeasonOverviewRow'+vi,0,vy,656,52,vi+1===si.vol?tone('#3a2c17'):tone('#171009'),7,vi+1===si.vol?GOLD:tone('#5a452a'));
       const done=[1,2,3].every((ai:number)=>[1,2,3].every(s=>si.list.some((x:any)=>x.key===`v${vi+1}a${ai}s${s}`&&x.cleared)));
       V.text('SeasonOverviewName'+vi,`卷${vi+1} · ${vname}`,0,vy,640,18,vi+1===si.vol?GOLD:LIGHT);
-      V.text('SeasonOverviewDone'+vi,done?'全通':`已清 ${si.list.filter((x:any)=>x.key.charAt(1)===String(vi+1)&&x.cleared).length}/9`,0,vy-20,640,14,done?GOLD:tone('#7a6c52'));
+      V.text('SeasonOverviewDone'+vi,done?'全通':`已清 ${si.list.filter((x:any)=>x.key.charAt(1)===String(vi+1)&&x.cleared).length}/9`,0,vy-16,640,14,done?GOLD:tone('#7a6c52'));
     });
   });
 }

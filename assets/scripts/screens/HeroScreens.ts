@@ -87,7 +87,7 @@ export function heroes(ctx: ScreenContext) {
       const qs=store.qualityShardInfo();
       U.panel('ShardEntry',22,515,230,63,tone('#3a2a1b'),7,gold);
       U.text('ShardEntryText','碎片兑换 ›',22,529,213,22,gold);
-      U.text('ShardEntrySub',`SSR${qs[4]} SR${qs[3]} R${qs[2]} N${qs[1]} 各/10`,34,498,206,14,dim);
+      U.text('ShardEntrySub',`SSR${qs[4]} SR${qs[3]} R${qs[2]} N${qs[1]} 各/10`,34,500,206,14,dim);
       U.tap('ShardEntryTap',22,515,230,63,()=>{shardTier=4;ctx.show('heroes');});
     }
     const sharedY=455,filterY=378,sortY=303;
