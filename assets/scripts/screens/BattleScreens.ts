@@ -87,35 +87,7 @@ function drawField(U: CocosUi, ctx: ScreenContext, snapshot: any[]) {
     }
   }
   snapshot.forEach((unit,index)=>drawFighter(U,unit,index));
-  // 伤害数字弹窗
-  var popDisp = (ctx as any).combatPopupDisplay || [];
-  for (var pi = 0; pi < popDisp.length; pi++) {
-    var pp = popDisp[pi];
-    var age = Date.now() - pp.bornAt;
-    var speed = store.getState().settings && store.getState().settings.autoBattleSpeed || 1;
-    var alpha = Math.max(0, 1 - age / (800 / speed));
-    var offsetY = -100 - (age / 800) * 60;
-    var col = pp.crit ? new Color(255, 120, 40, Math.round(255 * alpha)) : new Color(255, 255, 200, Math.round(255 * alpha));
-    var fontSize = pp.crit ? 32 : 24;
-    U.text('DmgNum' + pi, pp.text, pp.x, pp.y + offsetY, 120, fontSize, col);
-  }
-  // 大招释放名称弹窗
-  var lu = (ctx.fighting as any) && (ctx.fighting as any).lastUlt;
-  if (lu) {
-    // 大招横幅 1.2s 淡出（研讨会八修复：无超时挂 30 秒+）+ B 侧坐标修正
-    var age = Date.now() - (lu.wallTime || 0);
-    if (age < 1200) {
-      var castSide = lu.uid && lu.uid.charAt(0) === 'A' ? 'A' : 'B';
-      var casterUnit = snapshot.find(function(u){return u.uid===lu.uid;});
-      if (casterUnit) {
-        var px = casterUnit.slot < 3 ? [-215,0,215][casterUnit.slot] : [-114,114][casterUnit.slot-3];
-        var py = (castSide==='A' ? -208 : 245) - 80;
-        var alpha = age < 900 ? 230 : Math.floor(230 * (1200 - age) / 300);
-        U.panel('UltPopup',px,py,260,42,new Color(46,26,12,alpha),6,GOLD);
-        U.text('UltPopupTxt',lu.name,px,py,250,20,GOLD);
-      }
-    }
-  }
+  // 伤害数字与大招横幅已迁入 BattleFx 每帧管线（A0）：此处整页重绘才执行的死路渲染已删除
 }
 
 export function battleView(ctx: ScreenContext) {

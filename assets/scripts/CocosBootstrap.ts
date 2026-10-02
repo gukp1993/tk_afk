@@ -8,6 +8,7 @@ import * as fmt from './domain/fmt';
 import * as rewarded from './services/RewardedService';
 import { AutoBattleSession } from './services/AutoBattleSession';
 import { ArtService } from './services/ArtService';
+import { BattleFx } from './services/BattleFx';
 import * as campaignScreens from './screens/CampaignScreens';
 import * as heroScreens from './screens/HeroScreens';
 import * as battleScreens from './screens/BattleScreens';
@@ -36,8 +37,6 @@ export class CocosBootstrap extends Component implements ScreenContext {
   public battleSceneName = ''; // 名场面标题（结算/战斗页用）
   public battleId = '';
   public battleMode = 'campaign';
-  public lastUltDisplay = '';
-  public combatPopupDisplay: {x:number,y:number,text:string,crit:boolean,bornAt:number}[] = [];
   public armedTactic: string | null = null;
   public battleIndex = 1;
   public battleDiff = 1;
@@ -123,36 +122,12 @@ export class CocosBootstrap extends Component implements ScreenContext {
       const speed = store.getState().settings.autoBattleSpeed || 1;
       const step = this.fighting.step(Math.min(0.1, dt) * speed);
       this.refreshTime += dt;
-      var lu = (this.fighting as any).lastUlt;
-      if (lu && this.lastUltDisplay !== lu.name + ':' + lu.uid + ':' + lu.time) {
-        this.lastUltDisplay = lu.name + ':' + lu.uid + ':' + lu.time;
-        lu.wallTime = Date.now();
-      }
-      var allPops = (this.fighting as any).popups || [];
-      if (allPops.length) {
-        var lastCount = (this as any)._popupCount || 0;
-        if (allPops.length > lastCount) {
-          var newPops = allPops.slice(lastCount);
-          for (var pi = 0; pi < newPops.length; pi++) {
-            var pp = newPops[pi];
-            var unit = this.fighting.snapshot().find(function(u){return u.uid===pp.uid;});
-            if (unit) {
-              // 弹字定位（研讨会八修复）：受击者头顶 + 侧向偏移 + 随机抖动防重叠
-              var frontX=[-215,0,215], backX=[-114,114];
-              var ux = unit.slot < 3 ? frontX[unit.slot] : backX[unit.slot-3];
-              var uy = (unit.side==='A' ? (unit.slot<3?-208:-405) : (unit.slot<3?245:480)) - 30;
-              ux += Math.floor(Math.random()*80-40); // ±40 抖动
-              this.combatPopupDisplay.push({x:ux,y:uy,text:String(pp.amount),crit:pp.crit,bornAt:Date.now()});
-            }
-          }
-          (this as any)._popupCount = allPops.length;
-        }
-      }
-      // 清理过期弹窗（>0.8 秒）
-      var now = Date.now();
-      var popupLife = 800 / (store.getState().settings && store.getState().settings.autoBattleSpeed || 1);
-      this.combatPopupDisplay = this.combatPopupDisplay.filter(function(p){return now - p.bornAt < popupLife;});
-      var refreshGap = 0.3 / (store.getState().settings && store.getState().settings.autoBattleSpeed || 1);
+      // A0 表现层管线：伤害数字/大招横幅由 BattleFx 每帧消费 events 渲染（旧 combatPopupDisplay/
+      // _popupCount/lastUltDisplay 死路渲染已删除，职责整体迁入 BattleFx）
+      const snap = this.fighting.snapshot();
+      if (this.page === 'battle') BattleFx.feed(step.events, snap, this.ui, this.content);
+      BattleFx.tick(dt, speed);
+      const refreshGap = 0.3 / speed;
       if (step.done) this.finishBattle(step.winner === 'A');
       else if (this.page === 'battle' && this.refreshTime > refreshGap) {
         this.refreshTime = 0;
@@ -174,7 +149,7 @@ export class CocosBootstrap extends Component implements ScreenContext {
   private hookDiag() {
     if (this.diagHooked) return;
     this.diagHooked = true;
-    (globalThis as any).__tkDiag = () => ({ diag: store.diagSnapshot(), page: this.page, notice: this.notice, sceneKey: this.sceneKey });
+    (globalThis as any).__tkDiag = () => ({ diag: store.diagSnapshot(), page: this.page, notice: this.notice, sceneKey: this.sceneKey, fx: BattleFx.live });
     (globalThis as any).__tkNav = (p: string) => { try { this.show(p as any); return true; } catch (e) { return false; } };
   }
   public show(page: Page) {
@@ -208,7 +183,7 @@ export class CocosBootstrap extends Component implements ScreenContext {
     };
     render[page]();
     // 面包屑路径条（I2 交互线）：三级及更深页面显示"祖先 > 当前"，逐环可点直达；两级不显示避免拥挤
-    if (this.navigation.length >= 2) {
+    if (this.navigation.length >= 2 && ['battle','result','autoSummary','ad'].indexOf(page) < 0) {
       const segs: Page[] = [...this.navigation, page];
       let cx = -150;
       segs.forEach((sp, i) => {
@@ -245,6 +220,7 @@ export class CocosBootstrap extends Component implements ScreenContext {
       if (!stopped.ok) { this.notice=stopped.msg; this.noticeAt=Date.now(); this.show('battle'); return; }
       this.fighting=null;
       this.battleId='';
+      BattleFx.onBattleEnd(); // 离开战斗页必清 fx（红线 4：跨场残留 P2 教训）
     }
     this.notice = '';
     if (page !== this.page) {
@@ -404,6 +380,8 @@ export class CocosBootstrap extends Component implements ScreenContext {
     this.battleId = 'replay';
     (this as any).replayName = rec.name || rec.lineupName || '对局回放';
     this.fighting = battleRules.createBattle({ seed: rec.seed, timeLimit: rec.timeLimit, team: rec.team, enemy: rec.enemy, env: rec.effects && rec.effects.env || null, reinforce: rec.effects && rec.effects.reinforce || null, healScale: rec.effects && rec.effects.healScale || null });
+    // 回放跨场重置（6.2-3 既有缺陷修复）：与实况同钩子，防上一场的 fx 状态抑制本场表现
+    BattleFx.reset();
     this.go('battle');
   }
   private finishBattle(win: boolean) {
@@ -411,6 +389,7 @@ export class CocosBootstrap extends Component implements ScreenContext {
       const duration=this.fighting?.result()?.duration || 0;
       const snapshot=this.fighting?.snapshot() || [];
       this.outcome={ win, replay:true, replayName:(this as any).replayName||'对局回放', duration, aliveCount:snapshot.filter((u:any)=>u.side==='A'&&u.alive).length };
+      BattleFx.onBattleEnd();
       this.fighting=null; this.replaying=false;
       this.show('result');
       return;
@@ -428,6 +407,7 @@ export class CocosBootstrap extends Component implements ScreenContext {
       this.lastReplaySpec=null;
     }
     this.outcome={...settled,win,duration,stats:battleStats};
+    BattleFx.onBattleEnd(); // 结算前清 fx：skipBattle 的批量 step 事件不入 feed，避免爆发
     this.fighting=null;
     this.show('result');
     // 震动反馈（研讨会七 P5）：战斗胜利短震
@@ -471,9 +451,7 @@ export class CocosBootstrap extends Component implements ScreenContext {
     if (!started.ok) return this.tell(started, '');
     this.battleId = started.id; this.battleMode = 'weekboss'; this.battleIndex = 1; this.battleDiff = 1; this.battleArenaSeed = 0;
     this.fighting = battleRules.createBattle({ team: store.playerUnits(this.armedTactic, false), enemy: store.enemyUnits(enemy.units), seed: Date.now(), timeLimit: config.BATTLE.TIME_LIMIT });
-    (this as any)._popupCount = 0;
-    this.combatPopupDisplay = [];
-    this.lastUltDisplay = '';
+    BattleFx.reset(); // 每场重置 fx（试玩 P2：跨场保留旧状态会抑制新一场的表现）
     this.lastBattleSnapshot = [];
     this.refreshTime = 0;
     this.go('battle');
@@ -524,10 +502,8 @@ export class CocosBootstrap extends Component implements ScreenContext {
       Object.keys(bm).forEach((k:string)=>{teamUnits.forEach((u:any)=>{u.passive=Object.assign({},u.passive);u.passive[k]=(u.passive[k]||0)+bm[k];});});
     }
     this.fighting=battleRules.createBattle(Object.assign({team:teamUnits,enemy:store.enemyUnits(enemy.units),seed:battleSeed},effects||{}));
-    // 每场重置弹字计数（试玩 P2：跨场保留旧计数会抑制新一场的伤害数字）
-    (this as any)._popupCount = 0;
-    this.combatPopupDisplay = [];
-    this.lastUltDisplay = '';
+    // 每场重置 fx 管线（试玩 P2：跨场保留旧状态会抑制新一场的伤害数字）
+    BattleFx.reset();
     // 战报捕获（战报中心 P3）：battleSeed 与 createBattle 同源（修复回放 RNG 漂移）
     {
       const cap=config.REPLAYS.capture;

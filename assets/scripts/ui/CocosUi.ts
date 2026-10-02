@@ -420,6 +420,9 @@ export class CocosUi {
   /** 查本页是否已画某节点（跨屏协调用：如英雄页有背景图时让出全屏底色）。 */
   has(name: string) { return this.nodes.has(name); }
 
+  /** 按名取节点（A0 战斗 fx 按 Fighter{i} 定位受击者/施放者用；nodes 保持私有）。 */
+  node(name: string): Node | undefined { return this.nodes.get(name); }
+
   /**
    * 统一左上返回（I1 交互线组件）：‹ 返回 · 22 号金字 · 热区 140×52 · 基线 y=484。
    * 各页 fallback 语义留在调用点；自定义标签如 '‹ 返回点将台'。
