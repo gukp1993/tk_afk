@@ -38,7 +38,8 @@ function createBattle(cfg) {
       hp: u.stats.hp, maxHp: u.stats.hp, shield: 0, energy: 0,
       alive: true, actTimer: rng.range(0.2, 0.9),
       buffs: [], dots: [], hots: [], cc: null,
-      cheat: (u.passive && u.passive.cheatDeath) || 0,
+      // 复活计数：显式 cheatDeath 优先；仅配 cheatRevivePct 的（名将机制/名场面/周Boss）默认再起一次——修复机制提示承诺但从不生效的缺陷（2026-10-03 A3 代理发现）
+      cheat: (u.passive && u.passive.cheatDeath) || ((u.passive && u.passive.cheatRevivePct) ? 1 : 0),
       cheatRevivePct: (u.passive && u.passive.cheatRevivePct) || 0
     };
   }
