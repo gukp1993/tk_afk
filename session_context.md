@@ -16,6 +16,16 @@
 
 ## 最近交接（新 → 旧）
 
+### I1 返回通道组件化 · zcode · 已实施待验收
+
+时间：2026-10-03 02:10（Asia/Shanghai）；执行者：zcode；状态：已实施待验收（三线轮转 I1 批）。
+
+- `CocosUi.backBar(action, label?, y=484)` 组件 + Campaign/Hero 两屏 20 处手写返回替换（back/go 语义逐处保留）；编队页保留专用槽位 y=609（标准位被头部面板占据——组件因此加位置参数）；返回点将台/返回图鉴自定义标签。
+- 上轮取证已闭环：结算大字动画真实战斗补验**通过**（21 秒战斗、标题无变形、面板无错位；此前点击落空根因=新档首关剧情页拦截，非坐标问题）。
+- 登记例外：heroDetail 图标式返回（设计顶栏）、story 流程链；剩余 quests/shop 底部大按钮尺寸统一移入 I2 顺手做。
+- 验证：tsc、smoke 576、formation/forge/quad/season 实拍。
+- 下一批 A0（战斗 fx 基建：BattleFx.tick 挂 Bootstrap.update，消费既有 events）——规格准备中。
+
 ### 三线打磨首轮：方案落盘 + A 先行批 + U1 · zcode · 已实施待验收
 
 时间：2026-10-03 02:00（Asia/Shanghai）；执行者：zcode；状态：已实施待验收（用户三线打磨指令的心跳首轮）。
