@@ -288,7 +288,7 @@ function makeWeekBossEnemies(weekId, playerLevel) {
   const guanyuHp = require('./heroes').heroStatsStar(require('./heroes').getHero('guanyu'), lv, 5).hp;
   const hpOverride = Math.floor(guanyuHp * K);
   const units = [{ hero: boss, level: lv, star: 5, scale: 1, hpScale: hpOverride / Math.max(1, require('./heroes').heroStatsStar(boss, lv, 5).hp), isBoss: true, row: 0, extraPassive: sk ? Object.assign({}, sk.passive) : null }];
-  return { name: '本周魔王 · ' + (sk ? sk.name : boss.name), units, isBoss: true, weekBoss: { weekId }, bossMaxHp: hpOverride };
+  return { name: '本周魔王 · ' + (sk ? sk.name : boss.name), bossDisplayName: sk ? sk.name : boss.name, units, isBoss: true, weekBoss: { weekId }, bossMaxHp: hpOverride };
 }
 
 // 军屯双本（研讨会四 P2）：每日资源副本敌阵，敌力随玩家等级与层数缩放，随机 SSR 混编

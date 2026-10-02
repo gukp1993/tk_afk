@@ -32,6 +32,7 @@ export class CocosBootstrap extends Component implements ScreenContext {
   public fighting: any = null;
   public trialHeroId = ''; // 名将试炼当前对象（C2）
   public sceneKey = ''; // 名场面当前对象（四时战纪第二批）
+  public battleSceneName = ''; // 名场面标题（结算/战斗页用）
   public battleId = '';
   public battleMode = 'campaign';
   public lastUltDisplay = '';
@@ -453,7 +454,7 @@ export class CocosBootstrap extends Component implements ScreenContext {
       if(fromAuto) this.autoAction(this.autoSession.battleStarted(false,undefined,started.msg));
       return this.tell(started,'');
     }
-    this.battleId=started.id;this.battleMode=mode;this.battleIndex=index;this.battleDiff=diff;this.battleArenaSeed=mode==='arena'?effectiveArenaSeed:0;
+    this.battleId=started.id;this.battleMode=mode;this.battleIndex=index;if(mode==='scene'){const sc2=(config.SEASON as any).scenes.byId[this.sceneKey];this.battleSceneName=sc2?sc2.name:'';}this.battleDiff=diff;this.battleArenaSeed=mode==='arena'?effectiveArenaSeed:0;
     let effects=null;
     if(mode==='campaign') effects=stages.stageBattleEffects(stages.makeStageEnemies(index));
     else if(mode==='expedition') effects=stages.stageBattleEffects(enemy);

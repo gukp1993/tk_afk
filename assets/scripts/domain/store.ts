@@ -3386,8 +3386,9 @@ function weekBossInfo() {
   if ((state.weekBoss.weekId || '') !== weekId) state.weekBoss = { weekId, attempts: 0, bestPct: 0, bestDamage: 0 };
   const st = __domain_stages.makeWeekBossEnemies(weekId, state.player.level);
   const boss = st.units[0];
+  const bossDisplayName = st.bossDisplayName || boss.hero.name;
   const tiers = C.WEEKBOSS.tiers.map((t, i) => ({ pct: t.pct, reward: t.reward, reached: (state.weekBoss.bestPct || 0) > t.pct || (i === C.WEEKBOSS.tiers.length - 1 && state.weekBoss.bestPct > 0) }));
-  return { enabled: true, weekId, bossName: boss.hero.name, bossLevel: boss.level,
+  return { enabled: true, weekId, bossName: bossDisplayName, bossLevel: boss.level,
     attemptsLeft: Math.max(0, C.WEEKBOSS.attempts - (state.weekBoss.attempts || 0)),
     bestPct: state.weekBoss.bestPct || 0, bestDamage: state.weekBoss.bestDamage || 0, tiers };
 }

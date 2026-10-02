@@ -28,6 +28,8 @@ function battleTitle(ctx: ScreenContext) {
     return `第 ${ctx.battleIndex} 关 · ${stage.name}`;
   }
   if(ctx.battleMode==='expedition')return '远征 · 第 '+ctx.battleIndex+' 层';
+  if(ctx.battleMode==='weekboss')return '决战 · '+(store.weekBossInfo().bossName||'本周魔王');
+  if(ctx.battleMode==='scene')return '名场面 · '+(ctx.battleSceneName||'');
   if(ctx.battleMode==='quad')return '四方台 · 第 '+ctx.battleIndex+' 层';
   if(ctx.battleMode==='trial'){
     const t=(store as any).trialInfo((ctx as any).trialHeroId||'');

@@ -17,6 +17,7 @@ export interface ScreenContext {
   fighting: any;
   battleId: string;
   battleMode: string;
+  battleSceneName: string;
   battleIndex: number;
   trialHeroId: string;
   battleDiff: number;

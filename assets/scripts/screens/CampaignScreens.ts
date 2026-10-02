@@ -605,7 +605,7 @@ export function bag(ctx: ScreenContext) {
     });
     // 神兵阁（研讨会十三案二）：通关 160 关解锁后追加第四入口行（行距收紧保 -548 红线）
     const relicUnlocked=(config.RELICS as any).enabled&&(store.relicInfo() as any).unlocked;
-    U.text('BagGuide','点击物资卡片，前往对应功能使用',0,relicUnlocked?-290:-332,620,18,tone('#ad9977'));
+    if(!relicUnlocked)U.text('BagGuide','点击物资卡片，前往对应功能使用',0,-332,620,18,tone('#ad9977'));
     const entries:[string,string,string][]=[['典','图鉴收集 · 集齐阵营领厚礼','codex'],['勋','主公成就 · 十一轴长线目标','achv'],['远','远征周 · 周任务与词缀挑战','expedition']];
     if(relicUnlocked)entries.push(['神','神兵阁 · 传世宝物认主与淬炼','relics']);
     const eStep=relicUnlocked?56:64, eStart=relicUnlocked?-350:-372, eH=relicUnlocked?48:52;
@@ -1310,8 +1310,7 @@ export function seasonView(ctx: ScreenContext) {
     info.track.forEach((t:any,i:number)=>{
       const y=contentH/2-33-i*66;
       V.panel('SeasonTrackRow'+i,0,y,656,56,t.claimed?tone('#26301f'):t.claimable?tone('#3a2c17'):tone('#171009'),7,t.claimed?tone('#6f8a5f'):t.claimable?GOLD:tone('#5a452a'));
-      V.text('SeasonTrackLv'+i,`军资 Lv.${t.level}`,-250,y,150,19,t.claimed?tone('#a99778'):t.claimable?GOLD:LIGHT);
-      V.text('SeasonTrackNeed'+i,`累计 ${t.need}`,-100,y,140,15,tone('#a99778'));
+      V.text('SeasonTrackLv'+i,`军资 Lv.${t.level} · 累计${t.need}`,-230,y,340,19,t.claimed?tone('#a99778'):t.claimable?GOLD:LIGHT);
       const giveTxt=Object.entries(t.give).map(([k,n]:any)=>`${({gold:'铜钱',shard:'通用碎片',stones:'淬火石',title:'称号'} as any)[k]||k}×${n}`).join(' · ');
       V.text('SeasonTrackGive'+i,giveTxt,30,y,320,17,t.claimed?tone('#6f8a5f'):LIGHT);
       if(t.claimed)V.text('SeasonTrackGo'+i,'已 领',244,y,120,19,tone('#6f8a5f'));
@@ -1349,7 +1348,7 @@ export function seasonScenesView(ctx: ScreenContext) {
     const y=330-i*96;
     const typeName=sc.type==='faction'?'阵营关':sc.type==='speed'?'限时关':'禁疗关';
     U.panel('SceneCard'+i,0,y,640,84,sc.cleared?tone('#26301f'):tone('#3a2c17'),9,sc.cleared?tone('#6f8a5f'):GOLD);
-    U.text('SceneCardName'+i,`${sc.name} · ${typeName}`,0,y+24,420,22,sc.cleared?tone('#a99778'):GOLD);
+    U.text('SceneCardName'+i,`${sc.name} · ${typeName}${sc.type==='faction'?('（'+({shu:'蜀',wei:'魏',wu:'吴',qun:'群'} as any)[sc.faction]+'）'):''}`,0,y+24,420,22,sc.cleared?tone('#a99778'):GOLD);
     const mechTxt=Object.entries(sc.passive).map(([k,v]:any)=>`${(si.mechNames as any)[k]||k}(${typeof v==='number'&&v<1?Math.round(v*100)+'%':v})`).join(' · ');
     U.text('SceneCardMech'+i,`敌主将 ${(heroes.getHero(sc.boss)||{}).name||sc.boss} · ${mechTxt}`,0,y-10,340,15,LIGHT);
     U.text('SceneCardMedal'+i,`战功 +${sc.medal}`,-230,y-10,150,15,tone('#d9b06a'));
