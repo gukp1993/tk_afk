@@ -566,11 +566,12 @@ export function summonResults(ctx: ScreenContext) {
     {
       const debut=ctx.lastSummon.find((r2:any)=>{const hh=heroData.getHero(r2.id);return hh&&hh.rarity===4&&r2.isNew;});
       if(debut){
+        // 十连含新 SSR 时登场卡原位 y=60 会盖住网格第二行 4 张卡（[5,115] vs [31,181]）——下移压缩到网格与信息栏之间的空带 [-262,-178]
         const dh=heroData.getHero(debut.id);
-        U.panel('DebutCard',0,60,620,110,tone('#2a1c10'),12,palette.gold);
-        U.text('DebutTag','初 登 场',0,88,560,18,tone('#d9b06a'));
-        U.text('DebutName',`${dh.name} · ${dh.title||'武将'}`,0,58,560,24,palette.gold);
-        U.text('DebutQuote',`「${dh.quote||'——'}」`,0,26,560,18,tone('#c9b489'));
+        U.panel('DebutCard',0,-220,620,84,tone('#2a1c10'),12,palette.gold);
+        U.text('DebutTag','初 登 场',0,-198,560,16,tone('#d9b06a'));
+        U.text('DebutName',`${dh.name} · ${dh.title||'武将'}`,0,-222,560,22,palette.gold);
+        U.text('DebutQuote',`「${(dh.quote||'——').slice(0,24)}」`,0,-248,560,15,tone('#c9b489'));
       }
     }
     // 抽卡差页引导（研讨会二 P2）：SSR 缺口 + 保底余量 + 品质碎片兑换推荐
