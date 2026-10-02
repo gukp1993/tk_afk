@@ -59,6 +59,14 @@ export class CocosBootstrap extends Component implements ScreenContext {
   private adSuccessText = '';
   public lastSummon: any[] = [];
   private navigation: Page[] = [];
+  private static readonly PAGE_NAMES: Record<string, string> = {
+    home: '主城', journey: '玩法', campaign: '战役', heroes: '英雄', bag: '背包', stagePreview: '关卡',
+    heroDetail: '武将详情', summon: '点将台', summonResults: '召唤结果', armory: '军械', armoryCatalog: '军械图鉴',
+    armoryBox: '军械箱', shop: '集市', formation: '编队', formationPick: '选择武将', quests: '任务', tower: '群英塔',
+    arena: '演武场', arenaBoard: '演武排行', dungeon: '军屯', weekboss: '魔王讨伐', settings: '设置', story: '剧情',
+    storyArchive: '剧情回顾', sevenDay: '七日目标', bounty: '悬赏', forge: '锻造台', codex: '图鉴', achv: '成就',
+    expedition: '远征', hall: '名人堂', quad: '四方台', relics: '神兵阁', season: '四时战纪', seasonScenes: '名场面'
+  };
 
   onLoad() {
     view.setDesignResolutionSize(720, 1280, ResolutionPolicy.FIXED_WIDTH);
@@ -199,6 +207,22 @@ export class CocosBootstrap extends Component implements ScreenContext {
       battle: () => battleScreens.battleView(this), result: () => battleScreens.resultView(this), autoSummary: () => battleScreens.autoSummary(this, this.autoSession.summary), ad: () => this.adView()
     };
     render[page]();
+    // 面包屑路径条（I2 交互线）：三级及更深页面显示"祖先 > 当前"，逐环可点直达；两级不显示避免拥挤
+    if (this.navigation.length >= 2) {
+      const segs: Page[] = [...this.navigation, page];
+      let cx = -150;
+      segs.forEach((sp, i) => {
+        const nm = CocosBootstrap.PAGE_NAMES[sp] || sp;
+        const w = nm.length * 17 + 10;
+        if (i < segs.length - 1) {
+          U.text('Crumbs' + i, nm, cx + w / 2 - 5, 484, w, 17, hexColor('#c9b489'));
+          U.tap('CrumbsTap' + i, cx + w / 2 - 5, 484, w + 12, 40, () => this.goBreadcrumb(i));
+          cx += w + 8;
+          U.text('CrumbsSep' + i, '>', cx, 484, 14, 15, hexColor('#8a7c5f'));
+          cx += 22;
+        } else U.text('CrumbsCur', nm, cx + w / 2 - 5, 484, w, 17, hexColor('#8a7c5f'));
+      });
+    }
     if (this.notice) U.text('Notice', this.notice, 0, -510, 670, 20, palette.gold);
     if(['home','journey','campaign','heroes','bag','summon'].includes(page)) {
       U.rect('NavBackground', 0, -594, 720, 92, new Color(9, 31, 27, 248));
@@ -231,6 +255,13 @@ export class CocosBootstrap extends Component implements ScreenContext {
     this.show(page);
   }
   public back(fallback: Page = 'campaign') { this.go(this.navigation[this.navigation.length-1] || fallback); }
+  /** 面包屑跳转（I2）：截断栈到目标层级并直达，不经过 go 的压栈逻辑。 */
+  private goBreadcrumb(level: number) {
+    this.notice = '';
+    this.navigation = this.navigation.slice(0, level + 1);
+    const target = this.navigation[this.navigation.length - 1];
+    if (target) this.show(target);
+  }
   public tell(result: any, good: string) {
     this.notice = result?.ok ? good : (result?.msg || '操作失败');
     this.noticeAt = Date.now();
