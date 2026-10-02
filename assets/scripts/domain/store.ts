@@ -3419,7 +3419,12 @@ function diagSnapshot() {
       sevenDayClaimed: (state.sevenDay.claimed || []).length,
       fourteenClaimed: (state.fourteenDay && state.fourteenDay.claimed || []).length,
       achvClaimed: Object.keys(state.achv && state.achv.claimed || {}).length,
-      weekly: { sealsEarned: (state.week && state.week.sealsEarned) || 0, questsClaimed: (state.week && state.week.questClaimed || []).length }
+      weekly: { sealsEarned: (state.week && state.week.sealsEarned) || 0, questsClaimed: (state.week && state.week.questClaimed || []).length },
+      quad: { weekId: state.quadTower.weekId, best: state.quadTower.best },
+      trials: { cleared: Object.keys(state.trials && state.trials.cleared || {}).length },
+      relics: { owned: Object.keys(state.relics && state.relics.owned || {}).length, stones: state.relics.stones, equipped: state.relics.equipped },
+      season: { seasonNo: state.season.seasonNo, medal: state.seasonMedal, earned: state.season.medalEarned, scenesCleared: Object.keys(state.season.sceneCleared || {}).length },
+      companion: { sent: state.companion.sent, responds: state.companion.responds }
     }
   };
 }
