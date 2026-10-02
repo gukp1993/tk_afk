@@ -693,7 +693,8 @@ function quadTowerInfo() {
 function winQuadTower(floor) {
   const cfg = C.QUAD_TOWER;
   const reward = { mode: 'quad', floor, gold: 0, seals: 0, milestoneGold: 0, first: false, title: null };
-  if (!state.quadTower) state.quadTower = { weekId: (state.week && state.week.weekId) || '', best: 0 };
+  const curWeekId = (state.week && state.week.weekId) || F.isoWeekKey();
+  if (!state.quadTower || state.quadTower.weekId !== curWeekId) state.quadTower = { weekId: curWeekId, best: 0 };
   if (floor === (state.quadTower.best || 0) + 1) {
     reward.first = true;
     state.quadTower.best = floor;

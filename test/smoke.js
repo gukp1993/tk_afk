@@ -2127,4 +2127,37 @@ const storeP2 = freshStore(); storeP2.load();
   check('SC12 无皮回退旧哈希选将', wbOld.units[0].hero.id !== 'zhangjiao' || wbOld.name.indexOf('黄天') < 0);
 }
 
+// 存档往返加固（研讨十三新增字段全量）：改→save→新实例 load→逐字段断言
+{
+  global.wx._map.delete(SAVE_KEY);
+  const storeW = freshStore(); storeW.load();
+  const sW = storeW.getState();
+  // 驱动全部新系统产生状态
+  storeW.companionRespond({ t: 'xw', c: 'AB12CD' });
+  storeW.winQuadTower(1);
+  sW.quadTower.best = 2;
+  storeW.winTrial('lvbu');
+  storeW.quadTowerInfo(); // 真实流程先经 info→checkDailyReset 初始化周与 quadTower（winQuadTower 有周卫防陈旧 best）
+  storeW.weekInfo(); // 初始化周结构
+  sW.week.trial.best = 19; // 远征阶梯直通
+  storeW.winExpedition(20); // 淬火石
+  sW.campaign.cleared = 160;
+  storeW.claimRelic('fangtian'); storeW.equipRelic('fangtian');
+  // 赛季幕任务：每次都用最新 state 引用（week 可能被周重建替换）
+  const sW2 = storeW.getState();
+  sW2.week.counters.wins = 40; sW2.week.counters.arenaWins = 12; sW2.week.counters.bounty = 16;
+  storeW.claimSeasonAct(0); storeW.claimSeasonAct(1); storeW.claimSeasonAct(2);
+  storeW.winScene('v1a1s1', 10);
+  storeW.save();
+  // 新实例读档
+  const storeR = freshStore(); storeR.load();
+  const sR = storeR.getState();
+  check('RT1 同袍码持久', sR.companion.code === sW.companion.code && sR.companion.responds === 1);
+  check('RT2 四方台 best 持久', sR.quadTower.best === 2 && sR.quadTower.weekId === sW.quadTower.weekId);
+  check('RT3 试炼持久', !!sR.trials.cleared.lvbu && sR.hall.honor >= 15);
+  check('RT4 神兵认主/上阵/淬火石持久', !!sR.relics.owned.fangtian && sR.relics.equipped === 'fangtian' && sR.relics.stones >= 20);
+  check('RT5 赛季战功双轨持久', sR.seasonMedal >= 480 && sR.season.medalEarned >= 480 && !!sR.season.sceneCleared.v1a1s1);
+  check('RT6 版本不变 v8', sR.v === 8);
+}
+
 console.log('\nsmoke: ' + passed + ' passed, ' + failed + ' failed');process.exit(failed ? 1 : 0);
