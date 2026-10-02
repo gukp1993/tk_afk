@@ -65,7 +65,7 @@
 | A1 受击闪白+抖动（hit 事件） | `hit{uid,src}` → 定位受击者 Fighter 坐标，叠加白色圆角覆盖节点（90×91 圆角 13，alpha 0.85→0，0.12s）+ 水平抖动 dx=sin(t·π)·5·方向（方向=远离攻击方），结束归零；同帧同 uid 多 hit 去重只保留一条。 | 完成（待验收；shake 取 x 轴与纵向 lunge 垂直可分辨，lunge 12px 无过冲） | 待办 |
 | A2 攻击位移 lunge（act 事件） | `act{uid,tgt}` → 攻击者 Fighter 节点朝目标水平前冲 14px：0→60ms easeOut 冲出、60→180ms easeOutBack 回弹（过冲 2px），由 fx.tick 设置位置、不改常驻坐标；同一 uid fx 活跃时限频跳过（加速 ×4 事件密集防抖成筛子）。 | 完成（待验收；怒气跨帧重试语义+baseScale 核实均留代码注释） | 待办 |
 | A3 阵亡淡出倒下（death 事件 + 复活校验） | `death{uid}` → Fighter 面板 angle 0→85°（0.25s easeIn）+ UIOpacity →90（35%）+ 名字/字形转 muted，血怒条保留可读；**复活校验与动画同批实现**：refreshBattleView 每次比对 snapshot.alive，复活（张角/孟获 cheatRevive 30%）反向复位 0.2s，防"幽灵位"。 | 完成（待验收 9d02206；连规则层发现：复活机制从未生效已另行修复） | 待办 |
-| A4 怒气满脉冲 + 大招横幅入场 | energy≥100 单位 EnergyBar scale 1+0.06·sin(t·6) 呼吸脉冲；卡框金↔亮金交替用**两枚预制 rim 节点切 visible**（不逐帧重绘 Graphics 防 overdraw）；`ult` 事件→现有 UltPopup 加滑入（y +14→0，90ms easeOut）与描边加亮。 | 实拍怒气满呼吸光与横幅滑入；Graphics 逐帧重绘为零（代码审查）；**帧率复测 ≥55 FPS**。 | 待办 |
+| A4 怒气满脉冲 + 大招横幅入场 | energy≥100 单位 EnergyBar scale 1+0.06·sin(t·6) 呼吸脉冲；卡框金↔亮金交替用**两枚预制 rim 节点切 visible**（不逐帧重绘 Graphics 防 overdraw）；`ult` 事件→现有 UltPopup 加滑入（y +14→0，90ms easeOut）与描边加亮。 | 完成（待验收 54be798；常驻呼吸态语义取代 A2 一次性脉冲，已留档） | 待办 |
 | A5 胜负大字入场 + 暴击弹跳 | resultView 渲染后 ResultTitle 一次性 fx：scale 2.4→1（0.35s easeOutBack）+ 淡入（前 40%），胜利加描边闪一次（LabelOutline width 1→3→1）；暴击伤害数字首帧 scale 1.6→1（0.18s，combatPopupDisplay 对象加 scale 字段），普通字不变。 | 结算实拍大字入场（回放态同样生效）；暴击/普通数字样式分级可见；result 页反复进出无 fx 残留；**帧率复测 ≥55 FPS**。 | 待办 |
 
 ---
