@@ -136,7 +136,8 @@ export function heroes(ctx: ScreenContext) {
     });
     U.text('HeroGrowthHint','◆  重复获得同名武将，自动升星  ◆',0,-540,595,21,paper);
     if(showStarterPick&&first){
-      U.rect('StarterMask',0,0,720,1280,tone('#171009')).on(Node.EventType.TOUCH_END,()=>{showStarterPick=false;ctx.show('heroes');});
+      // 决策类弹层防误触（U4 规范）：首胜选择仅按钮关闭，遮罩点击吞掉不关闭
+      U.rect('StarterMask',0,0,720,1280,tone('#171009')).on(Node.EventType.TOUCH_END,()=>{});
       U.panel('StarterPanel',0,0,660,444,panel,14,gold);
       U.text('StarterHeading','首胜奖励 · 选择一名武将升星',0,164,620,27,gold);
       ['liubei','guanyu','zhangfei'].forEach((id,i)=>{
