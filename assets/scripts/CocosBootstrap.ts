@@ -160,6 +160,7 @@ export class CocosBootstrap extends Component implements ScreenContext {
     if (this.diagHooked) return;
     this.diagHooked = true;
     (globalThis as any).__tkDiag = () => ({ diag: store.diagSnapshot(), page: this.page, notice: this.notice, sceneKey: this.sceneKey });
+    (globalThis as any).__tkNav = (p: string) => { try { this.show(p as any); return true; } catch (e) { return false; } };
   }
   public show(page: Page) {
     this.page = page;

@@ -517,23 +517,25 @@ export function summonResults(ctx: ScreenContext) {
     ctx.lastSummon.forEach((result: any, i: number) => {
       const hero = heroData.getHero(result.id);
       if (!hero) return;
-      const cols=Math.min(3,ctx.lastSummon.length);
-      const x=-(cols-1)*111+(i%cols)*222;
+      // 十连 4 列×3 行（3 列会出第 4 行撞 DrawGap 信息栏，实拍 P2）
+      const ten=ctx.lastSummon.length===10;
+      const cols=ten?4:Math.min(3,ctx.lastSummon.length);
+      const x=ten?-(cols-1)*86+(i%cols)*172:-(cols-1)*111+(i%cols)*222;
       const y=ctx.lastSummon.length===1?70:313-Math.floor(i/cols)*207;
       const rarity=rarityNames[hero.rarity]||'N';
       const openHero = () => {ctx.selectedHeroId=result.id;ctx.heroDetailOrigin='summonResults';ctx.go('heroDetail');};
       const single=ctx.lastSummon.length===1;
       const accent=tone(rarityColors[hero.rarity]);
-      U.panel('DrawCard'+i,x,y,single?350:205,single?420:193,panel,9,accent);
-      U.heroIcon('DrawAvatar'+i,x,single?y+54:y+38,single?214:135,single?220:98,{surname:hero.surname||hero.name[0],faction:hero.faction,rarity:hero.rarity});
-      U.text('DrawName'+i,hero.name,x,single?y-78:y-35,single?290:180,single?30:23,paper);
-      U.text('DrawRarity'+i,rarity,x,single?y-120:y-63,single?210:154,20,accent);
+      U.panel('DrawCard'+i,x,y,single?350:(ten?160:205),single?420:(ten?150:193),panel,9,accent);
+      U.heroIcon('DrawAvatar'+i,x,single?y+54:(ten?y+30:y+38),single?214:(ten?100:135),single?220:(ten?74:98),{surname:hero.surname||hero.name[0],faction:hero.faction,rarity:hero.rarity});
+      U.text('DrawName'+i,hero.name,x,single?y-78:(ten?y-42:y-35),single?290:(ten?130:180),single?30:(ten?19:23),paper);
+      U.text('DrawRarity'+i,rarity,x,single?y-120:(ten?y-64:y-63),single?210:(ten?120:154),20,accent);
       U.text('DrawStatus'+i,result.isNew?'NEW':result.autoStar?`★${result.fromStar}→${result.star}`
-        :result.soulGain?`将魂 +1 · 余额 ${result.soul||0}`
-        :result.shardGain?`品质碎片 +1 · ${result.qualityShards||0}/10`
-        :result.goldGain?`转化为铜钱 +${fmt.fmtNum(result.goldGain)}`
-        :`留存 ×${result.cards||1}`,x,single?y-157:y-83,single?235:162,17,dim);
-      U.tap('DrawCardTap'+i,x,y,single?350:205,single?420:193,openHero);
+        :result.soulGain?`将魂+1·余${result.soul||0}`
+        :result.shardGain?`碎片+1·${result.qualityShards||0}/10`
+        :result.goldGain?`铜钱+${fmt.fmtNum(result.goldGain)}`
+        :`留存 ×${result.cards||1}`,x,single?y-157:(ten?y-80:y-83),single?235:(ten?130:162),17,dim);
+      U.tap('DrawCardTap'+i,x,y,single?350:(ten?160:205),single?420:(ten?150:193),openHero);
     });
     // SSR 登场引言（研讨会六 C2）：本抽出新 SSR 时展示专属登场卡（quote 复用，零新文案）
     {
