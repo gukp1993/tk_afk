@@ -354,7 +354,9 @@ export class BattleFx {
   private static anchorOf(indexByUid: Map<string, number>, ui: CocosUi, uid: string): { x: number; y: number } | null {
     const idx = indexByUid.get(uid);
     if (idx === undefined) return null;
-    const node = ui.node('Fighter' + idx);
+    // R2 修复（第二轮走查 P2）：锚点取视觉卡 FighterGlyph{i}（与玩家所见卡位一致）；
+    // 原取 Fighter{i} 隐形面板与视觉卡错位约 130px，B 排数字全部落进两军空带
+    const node = ui.node('FighterGlyph' + idx) || ui.node('Fighter' + idx);
     if (!node || !node.isValid) return null;
     const p = node.position;
     if (!isFinite(p.x) || !isFinite(p.y)) return null;
@@ -496,9 +498,9 @@ export class BattleFx {
     const crit = !!ev.crit;
     const fontSize = crit ? 32 : 24;
     const node = new Node('BfxDmg');
-    // 头顶锚点（现状 -30）+ 现状死路渲染的 -100 起始偏移：数字带在卡面/名字上方，不与血条重叠
+    // R2：锚点已改为视觉卡 Glyph——偏移收敛为头顶 -40（卡高约 91，上缘 -45 附近），不再叠 -130 死路偏移
     const baseX = anchor.x + Math.floor(Math.random() * 80 - 40);
-    const baseY = anchor.y - 130;
+    const baseY = anchor.y - 40;
     node.setPosition(new Vec3(baseX, baseY, 0));
     node.addComponent(UITransform).setContentSize(120, Math.max(fontSize * 2.4, 46));
     const label = node.addComponent(Label);

@@ -1,5 +1,5 @@
 import { CocosUi, factionColors, palette, hexColor as tone, rarityColors } from '../ui/CocosUi';
-import { Color, Node, Tween, UIOpacity, Vec3 } from 'cc';
+import { Color, Label, Node, Tween, UITransform, UIOpacity, Vec3 } from 'cc';
 import { ScreenContext } from './ScreenContext';
 import * as store from '../domain/store';
 import * as heroData from '../domain/heroes';
@@ -552,7 +552,19 @@ export function summonResults(ctx: ScreenContext) {
       order.forEach((idx, seq) => {
         const s = revealSpecs[idx];
         const cov = U.panel('RevealCover' + idx, s.x, s.y, s.w, s.h, tone('#1c140c'), 9, s.gold ? palette.gold : tone('#4a3a26'));
-        U.text('RevealGlyph' + idx, s.gold ? 'SSR' : '將', s.x, s.y + (s.gold ? 6 : 0), s.w - 14, s.gold ? 30 : 44, s.gold ? palette.gold : tone('#6f8a5f'));
+        // R1 修复：字牌作 cover 子节点随父销毁（原页面级兄弟节点在揭示/跳过后永久残留）
+        const glyphNode = new Node('RevealGlyphText' + idx);
+        glyphNode.addComponent(UITransform).setContentSize(s.w, s.h);
+        const glyphLabel = glyphNode.addComponent(Label);
+        glyphLabel.string = s.gold ? 'SSR' : '將';
+        glyphLabel.fontFamily = 'Kaiti SC';
+        glyphLabel.fontSize = s.gold ? 30 : 44;
+        glyphLabel.lineHeight = glyphLabel.fontSize * 1.2;
+        glyphLabel.color = s.gold ? palette.gold : tone('#6f8a5f');
+        glyphLabel.horizontalAlign = Label.HorizontalAlign.CENTER;
+        glyphLabel.verticalAlign = Label.VerticalAlign.CENTER;
+        glyphLabel.overflow = Label.Overflow.SHRINK;
+        cov.addChild(glyphNode);
         covers.push(cov);
         const op = cov.addComponent(UIOpacity);
         new Tween(cov).delay(0.12 + seq * 0.09)
@@ -566,12 +578,15 @@ export function summonResults(ctx: ScreenContext) {
     {
       const debut=ctx.lastSummon.find((r2:any)=>{const hh=heroData.getHero(r2.id);return hh&&hh.rarity===4&&r2.isNew;});
       if(debut){
-        // 十连含新 SSR 时登场卡原位 y=60 会盖住网格第二行 4 张卡（[5,115] vs [31,181]）——下移压缩到网格与信息栏之间的空带 [-262,-178]
+        // 新 SSR 高光浮层：压在 SSR 信息栏上方短暂展示（网格与按钮间无 84px 空带），4s 后淡出自毁；信息栏随浮层消失恢复
         const dh=heroData.getHero(debut.id);
-        U.panel('DebutCard',0,-220,620,84,tone('#2a1c10'),12,palette.gold);
-        U.text('DebutTag','初 登 场',0,-198,560,16,tone('#d9b06a'));
-        U.text('DebutName',`${dh.name} · ${dh.title||'武将'}`,0,-222,560,22,palette.gold);
-        U.text('DebutQuote',`「${(dh.quote||'——').slice(0,24)}」`,0,-248,560,15,tone('#c9b489'));
+        const debutCard=U.panel('DebutCard',0,-290,620,84,tone('#2a1c10'),12,palette.gold);
+        U.text('DebutTag','初 登 场',0,-268,560,16,tone('#d9b06a'));
+        U.text('DebutName',`${dh.name} · ${dh.title||'武将'}`,0,-292,560,22,palette.gold);
+        U.text('DebutQuote',`「${(dh.quote||'——').slice(0,24)}」`,0,-318,560,15,tone('#c9b489'));
+        const debutOp=debutCard.addComponent(UIOpacity);
+        new Tween(debutCard).delay(3.6).to(0.4,{scale:new Vec3(0.9,0.9,1)}).call(()=>{if(debutCard.isValid)debutCard.destroy();}).start();
+        new Tween(debutOp).delay(3.6).to(0.4,{opacity:0}).start();
       }
     }
     // 抽卡差页引导（研讨会二 P2）：SSR 缺口 + 保底余量 + 品质碎片兑换推荐
