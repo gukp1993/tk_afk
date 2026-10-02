@@ -1,4 +1,5 @@
-import { Color, EventTouch, Graphics, Label, Mask, Node, ScrollView, UITransform, Vec2, Vec3, Tween, UIOpacity } from 'cc';
+import { Color, EventTouch, Graphics, Label, Mask, Node, ScrollView, Sprite, UITransform, Vec2, Vec3, Tween, UIOpacity } from 'cc';
+import { ArtService } from '../services/ArtService';
 
 export const hexColor = (hex: string) => new Color(
   parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16), 255
@@ -25,45 +26,92 @@ export class CocosUi {
   private y(value: number) { return value * this.verticalScale; }
   private height(value: number) { return value >= 1000 ? value * this.verticalScale : value; }
 
-  /** Round seal mark with one glyph — the lightweight stand-in for removed icon sprites. */
+  /** Round seal mark with one glyph — icons paint over it via ArtService when art/icons/<key>.png exists. */
   seal(name: string, x: number, y: number, size: number, glyph: string,
-    fill = palette.ink, border = palette.gold, color = palette.gold, fontSize = Math.round(size * 0.5)) {
+    fill = palette.ink, border = palette.gold, color = palette.gold, fontSize = Math.round(size * 0.5), artKey?: string) {
+    const frame = artKey ? ArtService.frame(artKey) : null;
+    if (frame) {
+      const node = new Node(name);
+      node.setPosition(new Vec3(x, this.y(y), 0));
+      node.addComponent(UITransform).setContentSize(size, size);
+      const sprite = node.addComponent(Sprite);
+      sprite.spriteFrame = frame;
+      sprite.sizeMode = Sprite.SizeMode.CUSTOM;
+      sprite.trim = false;
+      this.parent.addChild(node);
+      this.nodes.set(name, node);
+      return node;
+    }
     this.panel(name, x, y, size, size, fill, size / 2, border);
     this.text(name + 'Glyph', glyph, x, y, size - 4, fontSize, color);
     return this.nodes.get(name);
   }
 
   /**
-   * Unified placeholder hero token: faction fill, rarity rim and surname glyph.
+   * Unified hero token: faction fill, rarity rim and surname glyph as placeholder;
+   * when ArtService has art/heroes/<artKey>.png the portrait covers the box (等比居中裁切) and rim/状态角标保留.
    * Every page draws hero faces through this method; restoring real portraits later only rewrites its body.
    */
   heroIcon(name: string, x: number, y: number, w: number, h: number,
-    info: { surname: string; faction?: string; rarity?: number; locked?: boolean; formed?: boolean }) {
+    info: { surname: string; faction?: string; rarity?: number; locked?: boolean; formed?: boolean; artKey?: string }) {
     const rarity = Math.min(4, Math.max(1, Math.round(info.rarity || 1)));
     const radius = Math.min(14, w * 0.12, h * 0.12);
-    const node = this.panel(name, x, y, w, h, hexColor(factionColors[info.faction || 'all'] || factionColors.all), radius);
-    const g = node.getComponent(Graphics)!;
-    g.strokeColor = hexColor(rarityColors[rarity]);
-    g.lineWidth = 3;
-    g.roundRect(-w / 2 + 1.5, -h / 2 + 1.5, w - 3, h - 3, radius);
-    g.stroke();
-    g.strokeColor = new Color(238, 218, 170, 30);
-    g.lineWidth = 2;
-    g.roundRect(-w / 2 + 7, -h / 2 + 7, w - 14, h - 14, Math.max(3, radius - 5));
-    g.stroke();
-    const glyph = new Node(name + 'Glyph');
-    glyph.addComponent(UITransform).setContentSize(w * 0.72, h * 0.42);
-    const label = glyph.addComponent(Label);
-    label.string = (info.surname || '?').slice(0, 1);
-    label.fontFamily = 'Kaiti SC';
-    label.fontSize = Math.round(Math.min(w, h) * 0.36);
-    label.lineHeight = label.fontSize * 1.25;
-    label.color = info.locked ? palette.muted : palette.text;
-    label.horizontalAlign = Label.HorizontalAlign.CENTER;
-    label.verticalAlign = Label.VerticalAlign.CENTER;
-    label.overflow = Label.Overflow.SHRINK;
-    glyph.setPosition(0, info.locked ? h * 0.1 : 0, 0);
-    node.addChild(glyph);
+    const frame = info.artKey ? ArtService.frame(info.artKey) : null;
+    let node: Node;
+    if (frame) {
+      node = new Node(name);
+      node.setPosition(new Vec3(x, this.y(y), 0));
+      node.addComponent(UITransform).setContentSize(w, h);
+      const holder = new Node(name + 'Art');
+      holder.addComponent(UITransform).setContentSize(w, h);
+      const mask = holder.addComponent(Mask);
+      mask.type = Mask.Type.GRAPHICS_RECT;
+      // Mask 只裁子节点：Sprite 放子级，按 cover 等比缩放居中（立绘统一竖版 3:4，小盒型裁两侧）
+      const artNode = new Node(name + 'Pic');
+      const rect = frame.getRect();
+      const scale = Math.max(w / rect.width, h / rect.height);
+      artNode.addComponent(UITransform).setContentSize(Math.ceil(rect.width * scale), Math.ceil(rect.height * scale));
+      const sprite = artNode.addComponent(Sprite);
+      sprite.spriteFrame = frame;
+      sprite.sizeMode = Sprite.SizeMode.CUSTOM;
+      sprite.trim = false;
+      holder.addChild(artNode);
+      node.addChild(holder);
+      this.parent.addChild(node);
+      this.nodes.set(name, node);
+      const rim = new Node(name + 'Rim');
+      rim.addComponent(UITransform).setContentSize(w, h);
+      const rg = rim.addComponent(Graphics);
+      rg.strokeColor = hexColor(rarityColors[rarity]);
+      rg.lineWidth = 3;
+      rg.roundRect(-w / 2 + 1.5, -h / 2 + 1.5, w - 3, h - 3, radius);
+      rg.stroke();
+      node.addChild(rim);
+    } else {
+      node = this.panel(name, x, y, w, h, hexColor(factionColors[info.faction || 'all'] || factionColors.all), radius);
+      const g = node.getComponent(Graphics)!;
+      g.strokeColor = hexColor(rarityColors[rarity]);
+      g.lineWidth = 3;
+      g.roundRect(-w / 2 + 1.5, -h / 2 + 1.5, w - 3, h - 3, radius);
+      g.stroke();
+      g.strokeColor = new Color(238, 218, 170, 30);
+      g.lineWidth = 2;
+      g.roundRect(-w / 2 + 7, -h / 2 + 7, w - 14, h - 14, Math.max(3, radius - 5));
+      g.stroke();
+      const glyph = new Node(name + 'Glyph');
+      glyph.addComponent(UITransform).setContentSize(w * 0.72, h * 0.42);
+      const label = glyph.addComponent(Label);
+      label.string = (info.surname || '?').slice(0, 1);
+      label.fontFamily = 'Kaiti SC';
+      label.fontSize = Math.round(Math.min(w, h) * 0.36);
+      label.lineHeight = label.fontSize * 1.25;
+      label.color = info.locked ? palette.muted : palette.text;
+      label.horizontalAlign = Label.HorizontalAlign.CENTER;
+      label.verticalAlign = Label.VerticalAlign.CENTER;
+      label.overflow = Label.Overflow.SHRINK;
+      glyph.setPosition(0, info.locked ? h * 0.1 : 0, 0);
+      node.addChild(glyph);
+    }
     if (info.locked) {
       const shade = new Node(name + 'Shade');
       shade.addComponent(UITransform).setContentSize(w, h);

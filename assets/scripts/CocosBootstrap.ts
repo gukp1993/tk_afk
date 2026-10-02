@@ -7,6 +7,7 @@ import * as battleRules from './domain/battle';
 import * as fmt from './domain/fmt';
 import * as rewarded from './services/RewardedService';
 import { AutoBattleSession } from './services/AutoBattleSession';
+import { ArtService } from './services/ArtService';
 import * as campaignScreens from './screens/CampaignScreens';
 import * as heroScreens from './screens/HeroScreens';
 import * as battleScreens from './screens/BattleScreens';
@@ -73,6 +74,12 @@ export class CocosBootstrap extends Component implements ScreenContext {
     game.on(Game.EVENT_SHOW, this.onShow, this);
     this.show('campaign');
     this.hookDiag();
+    // 美术预加载（2026-10-02 美术阶段）：装载完成后重绘一次当前菜单页，让已交付立绘/图标立即生效
+    ArtService.preload((n) => {
+      if (n > 0 && this.page && ['home', 'journey', 'campaign', 'stagePreview', 'heroes', 'bag', 'summon'].indexOf(this.page) >= 0) {
+        try { this.show(this.page); } catch (e) { /* 重绘失败静默，保留占位页 */ }
+      }
+    });
   }
   onDestroy() {
     game.off(Game.EVENT_HIDE, this.onHide, this);
@@ -194,7 +201,7 @@ export class CocosBootstrap extends Component implements ScreenContext {
       nav.forEach(([p,label,glyph], i) => {
         const x=-288+144*i, active=p===page || (p==='campaign'&&page==='stagePreview');
         if(active) U.panel('NavActive'+p,x,-594,140,89,new Color(91,69,35,240),5,palette.gold);
-        U.seal('NavIcon'+p,x,-575,54,glyph,active?palette.gold:palette.ink,palette.gold,active?palette.ink:palette.gold,26);
+        U.seal('NavIcon'+p,x,-575,54,glyph,active?palette.gold:palette.ink,palette.gold,active?palette.ink:palette.gold,26,'nav_'+p);
         U.text('NavLabel'+p,label,x,-620,123,23,active?palette.gold:palette.paper);
         if(badges[p])U.dot('NavDot'+p,x+52,-566);
         U.tap('Nav'+p,x,-594,138,90,()=>this.go(p));
