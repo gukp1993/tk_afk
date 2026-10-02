@@ -437,6 +437,16 @@ export function journey(ctx: ScreenContext) {
       U.text('JourneyWeekBossText',`本周魔王 · ${wb.bossName} · 最高伤害 ${(wb.bestPct*100).toFixed(1)}% · 剩 ${wb.attemptsLeft} 次 >`,0,-516,650,17,wb.attemptsLeft>0?GOLD:LIGHT);
       U.tap('JourneyWeekBossTap',0,-516,682,44,()=>ctx.go('weekboss'));
     }
+    // U5 红点口径补全（三线 UI 线）：红点=有收益可领或免费次数可用；军屯/赛季/周Boss 带已有金字信号不重复叠加
+    {
+      const tq=store.questList().find((qq:any)=>qq.id==='q_tower1');
+      if(tq&&tq.done&&!tq.claimed)U.dot('DotJourneyTower',-58,480);
+      if(s.arena.attempts>0)U.dot('DotJourneyArena',278,480);
+      if(bt.canClaim)U.dot('DotJourneyBounty',302,-40);
+      const q5=store.quadTowerInfo();
+      if(q5.enabled&&q5.owned>0&&q5.unlocked>q5.best)U.dot('DotJourneyQuad',302,78);
+      if(store.weekInfo().canClaim)U.dot('DotJourneyWeekly',302,-262);
+    }
   firstTimeOverlay(ctx,'agenda');
   // 今日军务展开弹层（研讨会十二 C1）：11 条清单+勤勉进度+一键前往
   if(agendaOpen){
