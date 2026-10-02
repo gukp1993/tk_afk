@@ -309,9 +309,10 @@ export class CocosBootstrap extends Component implements ScreenContext {
     const U = this.ui;
     const mask = U.rect('ConfirmMask', 0, 0, 720, 1280, new Color(12, 10, 8, 190));
     mask.on(Node.EventType.TOUCH_END, () => {});
-    U.rect('ConfirmPanel', 0, 0, 625, 385, palette.paper);
-    U.text('ConfirmTitle', title, 0, 120, 575, 34, palette.ink);
-    U.text('ConfirmDetail', detail, 0, 24, 555, 23, palette.ink);
+    // U4 二阶段：弹层框体统一描金系（暗底+金框+金字标题），按钮色保留
+    U.panel('ConfirmPanel', 0, 0, 625, 385, hexColor('#2a1e12'), 14, palette.gold);
+    U.text('ConfirmTitle', title, 0, 120, 575, 34, palette.gold);
+    U.text('ConfirmDetail', detail, 0, 24, 555, 23, hexColor('#f0e6cd'));
     U.button('ConfirmCancel', '再想想', -150, -112, 240, 72, () => this.show(this.page), palette.green);
     U.button('ConfirmDo', '确认', 150, -112, 240, 72, act, palette.red);
   }
@@ -348,21 +349,22 @@ export class CocosBootstrap extends Component implements ScreenContext {
     const fastLimit=config.AD.placements.fast.limit, fastLeft=Math.max(0, fastLimit-store.adCount('fast'));
     const fastOk=fastLeft>0 && quota.remaining>=config.FAST_AD.gem;
     U.rect('IdleChoiceMask',0,0,720,1280,palette.ink).on(Node.EventType.TOUCH_END,()=>{});
-    U.rect('IdleChoicePanel',0,-10,664,648,palette.paper);
-    U.text('IdleChoiceTitle','领取挂机收益',0,252,565,34,palette.ink);
+    // U4 二阶段：描金系统一
+    U.panel('IdleChoicePanel',0,-10,664,648,hexColor('#2a1e12'),14,palette.gold);
+    U.text('IdleChoiceTitle','领取挂机收益',0,252,565,34,palette.gold);
     const companionBuff = store.companionInfo && store.companionInfo().buffActive;
-    U.text('IdleChoiceAmount',`自然待领：铜钱 ${fmt.fmtNum(idle.gold)} · 精铁 ${idle.iron}${companionBuff?'（含义从 +10%）':''}`,0,204,565,24,palette.ink);
-    U.text('IdleGemLine',`今日元宝额度 ${quota.claimedGem}/${quota.cap} · 待领元宝 ${fmt.fmtNum(quota.pending)} · 00:00 重置`,0,170,600,19,palette.ink);
+    U.text('IdleChoiceAmount',`自然待领：铜钱 ${fmt.fmtNum(idle.gold)} · 精铁 ${idle.iron}${companionBuff?'（含义从 +10%）':''}`,0,204,565,24,hexColor('#f0e6cd'));
+    U.text('IdleGemLine',`今日元宝额度 ${quota.claimedGem}/${quota.cap} · 待领元宝 ${fmt.fmtNum(quota.pending)} · 00:00 重置`,0,170,600,19,hexColor('#c9b489'));
     U.button('IdleNormal','普通领取',-155,100,255,81,()=>{
       const r=store.claimIdle(false);
       this.tell(r,`获得铜钱 ${fmt.fmtNum(r.gold)}${r.gem?` · 元宝 ${fmt.fmtNum(r.gem)}`:''} · 精铁 ${r.iron}`);
     },palette.green);
     U.button('IdleAd','双倍 · 看模拟广告',155,100,255,81,()=>this.playAd('idle2x',()=>store.claimIdleInternal(true),'双倍领取挂机收益'),palette.gold);
-    U.text('IdleAdNote','双倍只加倍铜钱，不倍增元宝',155,40,255,16,palette.ink);
-    U.panel('FastPanel',0,-52,600,148,palette.paperDark,8);
-    U.text('FastTitle','快速收获 · 看模拟广告',-88,-16,340,24,palette.ink);
-    U.text('FastLeft',`剩余 ${fastLeft}/${fastLimit} 次`,218,-16,140,22,palette.ink);
-    U.text('FastDesc','立即获得 1 小时：元宝 1000＋铜钱＋精铁 25\n元宝计入今日 5000 额度；精铁不占自然累计',0,-62,560,32,palette.ink);
+    U.text('IdleAdNote','双倍只加倍铜钱，不倍增元宝',155,40,255,16,hexColor('#a99778'));
+    U.panel('FastPanel',0,-52,600,148,hexColor('#312218'),8,hexColor('#795b34'));
+    U.text('FastTitle','快速收获 · 看模拟广告',-88,-16,340,24,hexColor('#f0e6cd'));
+    U.text('FastLeft',`剩余 ${fastLeft}/${fastLimit} 次`,218,-16,140,22,hexColor('#f0e6cd'));
+    U.text('FastDesc','立即获得 1 小时：元宝 1000＋铜钱＋精铁 25\n元宝计入今日 5000 额度；精铁不占自然累计',0,-62,560,32,hexColor('#ad9977'));
     U.button('IdleFast',fastOk?'立即快收':'今日次数或额度不足',0,-172,560,64,()=>this.playAd('fast',()=>store.fastRewardAdMutation(),'快速收获成功'),fastOk?palette.gold:palette.paperDark);
     U.button('IdleCancel','稍后再领',0,-256,250,56,()=>this.show('campaign'),palette.paperDark);
   }
