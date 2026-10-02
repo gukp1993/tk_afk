@@ -2,22 +2,29 @@ import { Color, Graphics, Label, LabelOutline, Node, UIOpacity, UITransform, Vec
 import { CocosUi, hexColor } from '../ui/CocosUi';
 
 /**
- * A0+A1 战斗表现层管线（三线打磨 A 线，纯表现层、零规则改动）：
- * 每帧消费 `fighting.step().events` 与一次 `snapshot()`，生成/驱动四类 fx：
+ * A0+A1+A2 战斗表现层管线（三线打磨 A 线，纯表现层、零规则改动）：
+ * 每帧消费 `fighting.step().events` 与一次 `snapshot()`，生成/驱动六类 fx：
  * - dmgNum：伤害数字（hit）——overlay，挂 fxLayer。
  * - ultBanner：大招横幅（ult）——overlay，挂 fxLayer。
  * - lunge：攻击位移（act）——驱动既有 `Fighter{i}`+`FighterGlyph{i}` 沿纵轴前冲回弹
  *   （战场上下排布：A 方在下 y<0 向 +y 冲、B 方在上向 -y 冲，按节点 y 符号判向）。
+ * - ultLunge（A2）：大招前冲（ult）——同轴更大更慢的一次前冲（18px/0.5s，普通 lunge
+ *   12px/0.36s），与 lunge/shake 共用驱动型互斥槽；banner 照常不受互斥影响。
  * - shake：受击抖动（hit 且 src 非空）——驱动同上节点横向 ±3px 三次振荡（x 轴与纵向
  *   lunge 轴垂直，同一卡面上两种动效可同帧共存且互不遮挡；src=null 的 reflect/dot/env
  *   不抖，env 全场每秒 tick 只弹字不抖，避免常驻噪声）。
+ * - energyPulse（A2）：怒气满脉冲——feed 对比相邻两次 snapshot 同 uid 怒气，从 <100 跨到
+ *   ≥100 的瞬间播一次 scale 1→1.08→1（0.3s，Fighter+Glyph 同缩放）；每单位每次充满只播
+ *   一次（跨帧状态表，播成功才标记，被互斥占用时下一帧重试——gainEnergy 与攻击/受击同帧，
+ *   不重试会被 lunge/shake 活跃窗成批吞掉）；首帧只记录不触发（firstEnergy 开场满怒不闪）。
  * 由 `Bootstrap.update` 战斗分支驱动 `feed → tick(dt, speed)`，帧率无关（对齐 CocosUi.floaters 模式）。
  * - 视觉参数照抄旧 combatPopupDisplay/DmgNum/UltPopup 死路渲染路径（寿命/字号/配色/位移）。
  * - overlay 全部挂 `CocosUi.ensureFxLayer`（与 content 同坐标系，跨页存活）——所以进场/离场
  *   钩子必须全覆盖（startBattle/startWeekBoss/startReplay/finishBattle/go 离场）。
- * - 驱动型 fx（lunge/shake）不建节点，直接位移既有节点，到期/重置/节点失效时逐像素归位；
- *   同一 uid 同一时间只允许一个驱动型 fx（防两类动效同帧争写同一节点坐标）。
- * - `node.isValid` 判定自清理；overlay 到期销毁、driven 到期先写回 base 坐标再移除。
+ * - 驱动型 fx（lunge/ultLunge/shake/energyPulse）不建节点，直接位移/缩放既有节点，
+ *   到期/重置/节点失效时逐像素归位；同一 uid 同一时间只允许一个驱动型 fx
+ *   （防两类动效同帧争写同一节点坐标/缩放基准）。
+ * - `node.isValid` 判定自清理；overlay 到期销毁、driven 到期先写回 base 坐标/缩放再移除。
  */
 
 const GOLD = hexColor('#e3ba70'); // 现状 UltPopup 金框/金字
@@ -31,15 +38,20 @@ const SHAKE_DUR = 0.18;
 const LUNGE_DIST = 12;            // 攻击前冲距离 px（本批规格 10~14 取中）
 const LUNGE_DUR = 0.36;           // 快出慢回：0.12s easeOut 冲出 + 0.24s easeInOut 回弹
 const LUNGE_OUT = 0.12;
-const MAX_DRIVEN = 12;            // shake/lunge 同类并存上限（场上单位 ≤11 含援军，足额）
+const ULT_LUNGE_DIST = 18;        // A2 大招前冲：比普通 lunge 更大更慢，更有仪式感
+const ULT_LUNGE_DUR = 0.5;        // 0.18s easeOut 冲出 + 0.32s easeInOut 回弹（无过冲，终帧零偏移）
+const ULT_LUNGE_OUT = 0.18;
+const PULSE_AMP = 0.08;           // A2 怒气满脉冲：scale 1→1.08→1（sin 半波，天然起零归零）
+const PULSE_DUR = 0.3;
+const MAX_DRIVEN = 12;            // 驱动型 fx（lunge/ultLunge/shake/pulse）同类并存上限（场上单位 ≤11 含援军，足额）
 
 /** 被驱动的既有节点 + 归位基准（Fighter 与 Glyph 的 y 差 2px，各存各的 base）。 */
-interface DrivenNode { node: Node; baseX: number; baseY: number; }
+interface DrivenNode { node: Node; baseX: number; baseY: number; baseScale: number; }
 
 interface BfxItem {
-  kind: 'dmgNum' | 'ultBanner' | 'shake' | 'lunge';
-  node: Node | null;              // 本模块创建的 overlay（shake/lunge 不建节点，为 null）
-  driven: DrivenNode[];           // 被驱动的既有节点（shake/lunge：Fighter{i}+FighterGlyph{i}）
+  kind: 'dmgNum' | 'ultBanner' | 'shake' | 'lunge' | 'ultLunge' | 'energyPulse';
+  node: Node | null;              // 本模块创建的 overlay（驱动型不建节点，为 null）
+  driven: DrivenNode[];           // 被驱动的既有节点（驱动型：Fighter{i}+FighterGlyph{i}）
   opacity: UIOpacity | null;
   elapsed: number;
   duration: number;               // 秒；elapsed += dt * speed
@@ -48,6 +60,8 @@ interface BfxItem {
 
 export class BattleFx {
   private static items: BfxItem[] = [];
+  /** A2 怒气跨帧状态：uid → 上一帧是否已 ≥100（播成功才置 true；reset 清，跨场不残留）。 */
+  private static energyFull = new Map<string, boolean>();
 
   /** 现存 fx 数（__tkDiag().fx 机检：跨场残留断言用）。 */
   static get live(): number { return BattleFx.items.length; }
@@ -59,6 +73,7 @@ export class BattleFx {
       if (f.node && f.node.isValid) { f.node.removeFromParent(); f.node.destroy(); }
     }
     BattleFx.items = [];
+    BattleFx.energyFull.clear();
   }
 
   /** finishBattle 钩子（语义命名便于回读），内部即 reset。 */
@@ -80,8 +95,33 @@ export class BattleFx {
       if (ev.e === 'hit') {
         BattleFx.spawnDmgNum(layer, ui, ev, indexByUid);
         BattleFx.spawnShake(ui, ev, indexByUid);
-      } else if (ev.e === 'ult') BattleFx.spawnUltBanner(layer, ui, ev, indexByUid);
-      else if (ev.e === 'act') BattleFx.spawnLunge(ui, ev, indexByUid);
+      } else if (ev.e === 'ult') {
+        BattleFx.spawnUltBanner(layer, ui, ev, indexByUid);
+        BattleFx.spawnUltLunge(ui, ev, indexByUid);
+      } else if (ev.e === 'act') BattleFx.spawnLunge(ui, ev, indexByUid);
+    }
+    // A2 怒气满检测（事件之后扫：同帧先到 lunge/shake 占槽时脉冲顺延重试，事件反馈优先）。
+    BattleFx.scanEnergy(snapshot, ui, indexByUid);
+  }
+
+  /**
+   * A2：对比相邻两次 snapshot 的同 uid 怒气，从 <100 跨到 ≥100 的瞬间触发一次脉冲。
+   * - 首帧只记录不触发（firstEnergy/armoryStartEnergy 开场即满不闪，“跨越”需两帧对比）。
+   * - 播放成功才标记已满；被同 uid 驱动槽占用（lunge/shake 活跃窗）或超上限时保持未标记，
+   *   下一帧重试，槽位释放后必播一次——每单位每次充满仍只播一次。
+   */
+  private static scanEnergy(snapshot: any[], ui: CocosUi, indexByUid: Map<string, number>) {
+    for (const u of snapshot) {
+      if (!u || !u.uid) continue;
+      const e = Number(u.energy);
+      const full = u.alive !== false && isFinite(e) && e >= 100;
+      const seen = BattleFx.energyFull.get(u.uid);
+      if (seen === undefined) { BattleFx.energyFull.set(u.uid, full); continue; }
+      if (full && !seen) {
+        if (BattleFx.spawnEnergyPulse(ui, indexByUid, u.uid)) BattleFx.energyFull.set(u.uid, true);
+      } else {
+        BattleFx.energyFull.set(u.uid, full);
+      }
     }
   }
 
@@ -90,22 +130,26 @@ export class BattleFx {
     const advance = dt * (speed || 1);
     for (let i = BattleFx.items.length - 1; i >= 0; i--) {
       const f = BattleFx.items[i];
-      if (f.kind === 'shake' || f.kind === 'lunge') {
+      if (f.kind === 'shake' || f.kind === 'lunge' || f.kind === 'ultLunge' || f.kind === 'energyPulse') {
         // 驱动型：任一被驱动节点失效（show() 整页重绘销毁）→ 归位剩余有效节点并弃单
         if (f.driven.some(d => !d.node.isValid)) { BattleFx.restoreDriven(f); BattleFx.items.splice(i, 1); continue; }
         f.elapsed += advance;
         const t = Math.min(1, f.elapsed / f.duration);
-        let dx = 0, dy = 0;
+        let dx = 0, dy = 0, ds = 0;
         if (f.kind === 'shake') {
           dx = SHAKE_AMP * Math.sin(2 * Math.PI * SHAKE_CYCLES * t);
-        } else { // lunge：快出（easeOut 冲到满幅）慢回（easeInOut 归零），终帧 off=0 与 base 逐像素一致
-          const dir = f.data.dir || 1;
-          const off = f.elapsed <= LUNGE_OUT
-            ? LUNGE_DIST * BattleFx.easeOutQuad(f.elapsed / LUNGE_OUT)
-            : LUNGE_DIST * (1 - BattleFx.easeInOutQuad(Math.min(1, (f.elapsed - LUNGE_OUT) / (LUNGE_DUR - LUNGE_OUT))));
-          dy = dir * off;
+        } else if (f.kind === 'lunge' || f.kind === 'ultLunge') {
+          // lunge 族：快出（easeOut 冲到满幅）慢回（easeInOut 归零），终帧 off=0 与 base 逐像素一致
+          const dist = f.kind === 'lunge' ? LUNGE_DIST : ULT_LUNGE_DIST;
+          const out = f.kind === 'lunge' ? LUNGE_OUT : ULT_LUNGE_OUT;
+          dy = (f.data.dir || 1) * BattleFx.lungeOffset(f.elapsed, dist, f.duration, out);
+        } else { // energyPulse：scale 1→1.08→1，sin 半波起点/终点均为 0，天然归位
+          ds = PULSE_AMP * Math.sin(Math.PI * t);
         }
-        for (const d of f.driven) d.node.setPosition(new Vec3(d.baseX + dx, d.baseY + dy, 0));
+        for (const d of f.driven) {
+          d.node.setPosition(new Vec3(d.baseX + dx, d.baseY + dy, 0));
+          d.node.setScale(d.baseScale + ds, d.baseScale + ds, 1);
+        }
         if (t >= 1) { BattleFx.restoreDriven(f); BattleFx.items.splice(i, 1); }
         continue;
       }
@@ -150,26 +194,29 @@ export class BattleFx {
     const fp = fighter.position, gp = glyph.position;
     if (!isFinite(fp.x) || !isFinite(fp.y) || !isFinite(gp.x) || !isFinite(gp.y)) return null;
     return [
-      { node: fighter, baseX: fp.x, baseY: fp.y },
-      { node: glyph, baseX: gp.x, baseY: gp.y },
+      { node: fighter, baseX: fp.x, baseY: fp.y, baseScale: fighter.scale.x },
+      { node: glyph, baseX: gp.x, baseY: gp.y, baseScale: glyph.scale.x },
     ];
   }
 
   private static restoreDriven(f: BfxItem) {
     for (const d of f.driven) {
-      if (d.node.isValid) d.node.setPosition(new Vec3(d.baseX, d.baseY, 0));
+      if (!d.node.isValid) continue;
+      d.node.setPosition(new Vec3(d.baseX, d.baseY, 0));
+      d.node.setScale(d.baseScale, d.baseScale, 1);
     }
   }
 
-  /** 同 uid 已有驱动型 fx（lunge/shake 互斥共写同一节点坐标），新动效让位。 */
+  /** 同 uid 已有驱动型 fx（lunge/ultLunge/shake/energyPulse 互斥共写同一节点坐标/缩放基准），新动效让位。 */
   private static hasDrivenFx(uid: string): boolean {
     for (const f of BattleFx.items) {
-      if ((f.kind === 'shake' || f.kind === 'lunge') && f.data.uid === uid) return true;
+      if ((f.kind === 'shake' || f.kind === 'lunge' || f.kind === 'ultLunge' || f.kind === 'energyPulse')
+        && f.data.uid === uid) return true;
     }
     return false;
   }
 
-  private static countKind(kind: 'dmgNum' | 'ultBanner' | 'shake' | 'lunge'): number {
+  private static countKind(kind: BfxItem['kind']): number {
     let n = 0;
     for (const f of BattleFx.items) if (f.kind === kind) n++;
     return n;
@@ -177,6 +224,13 @@ export class BattleFx {
 
   private static easeOutQuad(u: number): number { return 1 - (1 - u) * (1 - u); }
   private static easeInOutQuad(u: number): number { return u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2; }
+
+  /** lunge 族位移包络：out 段 easeOut 冲到满幅，余段 easeInOut 归零（终帧恰为 0）。 */
+  private static lungeOffset(elapsed: number, dist: number, dur: number, out: number): number {
+    return elapsed <= out
+      ? dist * BattleFx.easeOutQuad(elapsed / out)
+      : dist * (1 - BattleFx.easeInOutQuad(Math.min(1, (elapsed - out) / (dur - out))));
+  }
 
   /** 伤害数字（hit 事件）：受击者头顶 ±40 抖动，暴击 32 号橙/普通 24 号淡黄，0.8s 上飘 60px 线性淡出。 */
   private static spawnDmgNum(layer: Node, ui: CocosUi, ev: any, indexByUid: Map<string, number>) {
@@ -275,5 +329,40 @@ export class BattleFx {
       kind: 'lunge', node: null, driven, opacity: null, elapsed: 0, duration: LUNGE_DUR,
       data: { baseX: driven[0].baseX, baseY: driven[0].baseY, dir, uid: ev.uid },
     });
+  }
+
+  /**
+   * 大招前冲（A2）：ult 事件驱施放者 Fighter+Glyph 沿纵轴冲 18px 回弹（0.5s，比普通 lunge
+   * 更大更慢，配合金框横幅构成释放仪式感）。与 lunge/shake 共用驱动型互斥槽：施放瞬间同 uid
+   * 有活跃动效则让位（横幅仍在，主反馈不丢）；castUlt 与行动回合错帧，实际几乎必播。
+   */
+  private static spawnUltLunge(ui: CocosUi, ev: any, indexByUid: Map<string, number>) {
+    if (BattleFx.countKind('ultLunge') >= MAX_DRIVEN) return;
+    if (BattleFx.hasDrivenFx(ev.uid)) return;
+    const driven = BattleFx.drivenOf(indexByUid, ui, ev.uid);
+    if (!driven) return;
+    const dir = driven[0].baseY < 0 ? 1 : -1; // 同 lunge：朝敌方阵营方向冲
+    BattleFx.items.push({
+      kind: 'ultLunge', node: null, driven, opacity: null, elapsed: 0, duration: ULT_LUNGE_DUR,
+      data: { baseX: driven[0].baseX, baseY: driven[0].baseY, dir, uid: ev.uid },
+    });
+  }
+
+  /**
+   * 怒气满脉冲（A2）：scanEnergy 检测到跨帧 <100→≥100 时驱动 Fighter+Glyph 缩放
+   * 1→1.08→1（0.3s，sin 半波天然起零归零）。不改 Energy 条——updateProgress 每 0.3s
+   * setScale 会覆盖条上的脉冲（规格 A4 教训前移）。成功返回 true（scanEnergy 据此标记已满，
+   * 失败保持未标记下帧重试）。
+   */
+  private static spawnEnergyPulse(ui: CocosUi, indexByUid: Map<string, number>, uid: string): boolean {
+    if (BattleFx.countKind('energyPulse') >= MAX_DRIVEN) return false;
+    if (BattleFx.hasDrivenFx(uid)) return false;
+    const driven = BattleFx.drivenOf(indexByUid, ui, uid);
+    if (!driven) return false;
+    BattleFx.items.push({
+      kind: 'energyPulse', node: null, driven, opacity: null, elapsed: 0, duration: PULSE_DUR,
+      data: { baseX: driven[0].baseX, baseY: driven[0].baseY, uid },
+    });
+    return true;
   }
 }
