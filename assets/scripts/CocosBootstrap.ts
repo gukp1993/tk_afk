@@ -181,7 +181,7 @@ export class CocosBootstrap extends Component implements ScreenContext {
     };
     render[page]();
     // 面包屑路径条（I2 交互线）：三级及更深页面显示"祖先 > 当前"，逐环可点直达；两级不显示避免拥挤
-    if (this.navigation.length >= 2 && ['battle','result','autoSummary','ad'].indexOf(page) < 0) {
+    if (this.navigation.length >= 2 && ['battle','result','autoSummary','ad','summonResults'].indexOf(page) < 0) {
       const segs: Page[] = [...this.navigation, page];
       let cx = -150;
       segs.forEach((sp, i) => {

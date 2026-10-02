@@ -1,5 +1,5 @@
 import { CocosUi, factionColors, palette, hexColor as tone, rarityColors } from '../ui/CocosUi';
-import { Color, Node } from 'cc';
+import { Color, Node, Tween, UIOpacity, Vec3 } from 'cc';
 import { ScreenContext } from './ScreenContext';
 import * as store from '../domain/store';
 import * as heroData from '../domain/heroes';
@@ -515,6 +515,7 @@ export function summonResults(ctx: ScreenContext) {
     U.panel('DrawResultFrame',0,-10,690,1060,panel,13,gold);
     U.text('DrawHeading',`召唤结果 · ${ctx.lastSummon.length} 名英雄`,0,469,630,33,gold);
     U.text('DrawSubheading','新英雄直接入队 · 重复武将自动升星 · 满星后 N/R 转铜钱、SR 转碎片、SSR 转将魂',0,425,630,18,dim);
+    const revealSpecs: {x:number;y:number;w:number;h:number;gold:boolean}[] = [];
     ctx.lastSummon.forEach((result: any, i: number) => {
       const hero = heroData.getHero(result.id);
       if (!hero) return;
@@ -537,7 +538,30 @@ export function summonResults(ctx: ScreenContext) {
         :result.goldGain?`铜钱+${fmt.fmtNum(result.goldGain)}`
         :`留存 ×${result.cards||1}`,x,single?y-157:(ten?y-80:y-83),single?235:(ten?130:162),17,dim);
       U.tap('DrawCardTap'+i,x,y,single?350:(ten?160:205),single?420:(ten?150:193),openHero);
+      revealSpecs.push({x,y,w:single?350:(ten?160:205),h:single?420:(ten?150:193),gold:hero.rarity===4});
     });
+    // I5 逐张揭示（纯表现层）：卡背按序揭除（SSR 压轴金框），点任意处跳过；lastSummon 与掉落逻辑零改动
+    if (revealSpecs.length) {
+      const order = revealSpecs.map((s, i) => i).sort((a, b) => (revealSpecs[a].gold ? 1 : 0) - (revealSpecs[b].gold ? 1 : 0));
+      const covers: Node[] = [];
+      let remain = order.length;
+      const skipTap = U.tap('RevealSkip', 0, 0, 720, 1280, () => {
+        covers.forEach(c => { if (c.isValid) { Tween.stopAllByTarget(c); c.destroy(); } });
+        if (skipTap.isValid) skipTap.destroy();
+      });
+      order.forEach((idx, seq) => {
+        const s = revealSpecs[idx];
+        const cov = U.panel('RevealCover' + idx, s.x, s.y, s.w, s.h, tone('#1c140c'), 9, s.gold ? palette.gold : tone('#4a3a26'));
+        U.text('RevealGlyph' + idx, s.gold ? 'SSR' : '將', s.x, s.y + (s.gold ? 6 : 0), s.w - 14, s.gold ? 30 : 44, s.gold ? palette.gold : tone('#6f8a5f'));
+        covers.push(cov);
+        const op = cov.addComponent(UIOpacity);
+        new Tween(cov).delay(0.12 + seq * 0.09)
+          .to(0.14, { scale: new Vec3(0.86, 0.86, 1) })
+          .call(() => { if (cov.isValid) cov.destroy(); remain--; if (remain <= 0 && skipTap && skipTap.isValid) skipTap.destroy(); })
+          .start();
+        new Tween(op).delay(0.12 + seq * 0.09).to(0.14, { opacity: 0 }).start();
+      });
+    }
     // SSR 登场引言（研讨会六 C2）：本抽出新 SSR 时展示专属登场卡（quote 复用，零新文案）
     {
       const debut=ctx.lastSummon.find((r2:any)=>{const hh=heroData.getHero(r2.id);return hh&&hh.rarity===4&&r2.isNew;});
