@@ -1,4 +1,4 @@
-import { Color } from 'cc';
+import { Color, Tween, UIOpacity, Vec3 } from 'cc';
 import { CocosUi, hexColor as tone } from '../ui/CocosUi';
 import { ScreenContext } from './ScreenContext';
 import * as store from '../domain/store';
@@ -172,7 +172,15 @@ export function resultView(ctx: ScreenContext) {
   drawField(U,ctx,ctx.lastBattleSnapshot||[]);
   U.rect('ResultDim',0,0,720,1280,new Color(0,0,0,185));
   U.panel('ResultPanel',0,-12,572,512,tone('#271b13'),16,GOLD);
-  U.text('ResultTitle',(r&&r.replay?'【回放】':'')+(r?.win?'凯  旋':'败  北'),0,174,514,56,r?.win?GOLD:DIM);
+  const resultTitle=U.text('ResultTitle',(r&&r.replay?'【回放】':'')+(r?.win?'凯  旋':'败  北'),0,174,514,56,r?.win?GOLD:DIM);
+  // 胜负大字入场（2026-10-03 动画线先行批，纯表现层）：缩放 1.6→1 回弹 + 淡入
+  {
+    const titleOp=resultTitle.addComponent(UIOpacity);
+    titleOp.opacity=0;
+    resultTitle.setScale(new Vec3(1.6,1.6,1));
+    new Tween(resultTitle).to(0.28,{scale:new Vec3(1,1,1)},{easing:'backOut'}).start();
+    new Tween(titleOp).to(0.22,{opacity:255}).start();
+  }
   const reward=r?.reward||{};
   // 处方单提前计算（败北行是否用 brief 诊断取决于处方是否激活）
   let rx:any=null;
@@ -256,7 +264,7 @@ export function resultView(ctx: ScreenContext) {
   const msLabels=(reward.milestones||[]).map((m:any)=>m.label);
   if(r?.win&&reward.finale)U.text('ResultFinale','第一期主线完成 · 主线 120/120',0,14,500,24,GOLD);
   else if(r?.win&&msLabels.length){
-    U.text('ResultMilestone',`里程碑：${msLabels.join('；')} ›`,0,14,515,19,GOLD);
+    U.text('ResultMilestone',`里程碑：${msLabels.join('；')} >`,0,14,515,19,GOLD);
     U.tap('ResultMilestoneTap',0,14,515,30,()=>ctx.go(reward.milestones.some((m:any)=>m.kind==='armoryBox')?'armory':'bag'));
   }
   if(r?.win&&reward.first&&ctx.battleMode==='campaign'){
@@ -280,7 +288,7 @@ export function resultView(ctx: ScreenContext) {
         const u=names.find((n:any)=>n.uid===uid);
         return (u?u.name:uid)+' '+fmt.fmtNum(st.dmg);
       }).join(' · ');
-      U.text('ResultDPS','输出前三：'+dpsText+' · 详情 ›',0,-68,500,16,GOLD);
+      U.text('ResultDPS','输出前三：'+dpsText+' · 详情 >',0,-68,500,16,GOLD);
       U.tap('ResultDPSTap',0,-68,500,30,()=>{battleDetailOpen=true;ctx.show('result');});
     }
   }
