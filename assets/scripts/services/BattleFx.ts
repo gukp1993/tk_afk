@@ -2,9 +2,10 @@ import { Color, Graphics, Label, LabelOutline, Node, UIOpacity, UITransform, Vec
 import { CocosUi, hexColor } from '../ui/CocosUi';
 
 /**
- * A0~A4 战斗表现层管线（三线打磨 A 线，纯表现层、零规则改动）：
+ * A0~A5 战斗表现层管线（三线打磨 A 线，纯表现层、零规则改动）：
  * 每帧消费 `fighting.step().events` 与一次 `snapshot()`，生成/驱动八类 fx：
- * - dmgNum：伤害数字（hit）——overlay，挂 fxLayer。
+ * - dmgNum：伤害数字（hit）——overlay，挂 fxLayer；A5 暴击弹跳：crit 字首帧 scale 1.6，
+ *   0.18s easeOut 收拢至 1（普通字不写缩放、样式分级照旧橙 32/淡黄 24）。
  * - ultBanner：大招横幅（ult）——overlay，挂 fxLayer；A4 入场增强：自上 14px 滑入
  *   （90ms easeOut）+ 亮金描边叠加层自 255 衰减（描边加亮后回落金框），1.2s 淡出照旧。
  * - lunge：攻击位移（act）——驱动既有 `Fighter{i}`+`FighterGlyph{i}` 沿纵轴前冲回弹
@@ -78,6 +79,8 @@ const PULSE_AMP = 0.08;           // A3 复活起身脉冲：scale 1→1.08→1�
 const DEATH_DUR = 0.5;            // A3 阵亡淡出：opacity 255→0 + 下沉 10px，easeIn（先缓后快）
 const DEATH_SINK = 10;            // A3 阵亡下沉距离 px（画面向下 = -y，双侧同向）
 const REVIVE_DUR = 0.6;           // A3 复活回升：opacity→255 + 回升 + 1→1.08→1 脉冲
+const DMG_POP = 0.18;             // A5 暴击弹跳：首帧 scale 1.6→1（0.18s easeOut），普通字不变
+const DMG_POP_FROM = 1.6;         // A5 暴击弹跳起始缩放（规格字面）
 const MAX_DRIVEN = 12;            // 驱动型 fx（三类动效 + A3 淡出/复活按 kind 各自计）同类并存上限（场上单位 ≤11 含援军，足额）
 
 /** 被驱动的既有节点 + 归位基准（Fighter 与 Glyph 的 y 差 2px，各存各的 base）。
@@ -94,7 +97,7 @@ interface BfxItem {
   glowOp: UIOpacity | null;       // A4 ultBanner 亮金描边叠加层透明度（随横幅子节点同毁）
   elapsed: number;
   duration: number;               // 秒；elapsed += dt * speed
-  data: { baseX: number; baseY: number; dir?: number; uid?: string; sunk?: boolean };
+  data: { baseX: number; baseY: number; dir?: number; uid?: string; sunk?: boolean; pop?: boolean };
 }
 
 /** A4 怒气满常驻呼吸态：uid → 态（进态建、退出/reset 销毁）。rim 两枚 Graphics 各画一次，
@@ -302,6 +305,13 @@ export class BattleFx {
       const t = Math.min(1, f.elapsed / f.duration);
       if (f.kind === 'dmgNum') {
         f.node.setPosition(new Vec3(f.data.baseX, f.data.baseY - DMG_RISE * t, 0));
+        if (f.data.pop) {
+          // A5 暴击弹跳：0.18s 内 scale 1.6→1（easeOut 减速收拢），终帧恰为 1 无残留；
+          // 普通伤害数字不写缩放（规格"普通字不变"）。overlay 随到期销毁，无需归位钩子。
+          const popT = Math.min(1, f.elapsed / DMG_POP);
+          const s = DMG_POP_FROM - (DMG_POP_FROM - 1) * BattleFx.easeOutQuad(popT);
+          f.node.setScale(new Vec3(s, s, 1));
+        }
         if (f.opacity) f.opacity.opacity = Math.max(0, Math.floor(255 * (1 - t)));
       } else { // ultBanner：A4 入场滑入（y+14→0，90ms easeOut 自上落入）+ 亮金描边叠加层衰减（加亮后回落金框）；
         // 之后前 0.9s 全亮，末 0.3s 淡出（现状 230→0 参数换算为节点透明度）
@@ -506,8 +516,9 @@ export class BattleFx {
       outline.width = 1;
     }
     layer.addChild(node);
+    if (crit) node.setScale(new Vec3(DMG_POP_FROM, DMG_POP_FROM, 1)); // A5 暴击弹跳首帧
     const opacity = node.addComponent(UIOpacity);
-    BattleFx.items.push({ kind: 'dmgNum', node, driven: [], opacity, glowOp: null, elapsed: 0, duration: DMG_LIFE, data: { baseX, baseY } });
+    BattleFx.items.push({ kind: 'dmgNum', node, driven: [], opacity, glowOp: null, elapsed: 0, duration: DMG_LIFE, data: { baseX, baseY, pop: crit } });
   }
 
   /**

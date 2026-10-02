@@ -1,4 +1,4 @@
-import { Color, Tween, UIOpacity, Vec3 } from 'cc';
+import { Color, LabelOutline, Tween, UIOpacity, Vec3 } from 'cc';
 import { CocosUi, hexColor as tone } from '../ui/CocosUi';
 import { ScreenContext } from './ScreenContext';
 import * as store from '../domain/store';
@@ -11,6 +11,7 @@ import { firstTimeOverlay } from './TutorialOverlay';
 import { AutoSummary } from '../services/AutoBattleSession';
 
 let battleDetailOpen=false;
+let resultFxPlayed:any=null; // A5（规格 6.5-4）：同一 outcome 只播一次大字入场/描边闪（战报详情等重入不重播）
 const GOLD=tone('#e3ba70'), PAPER=tone('#f0dfbd'), DIM=tone('#a69776');
 const BG=tone('#1d120b'), CARD=tone('#2a1a18'), BLUE=tone('#4d91bd');
 const PURPLE=tone('#a678c5'), GREEN=tone('#7fbd94'), RED=tone('#bb614c');
@@ -145,13 +146,17 @@ export function resultView(ctx: ScreenContext) {
   U.rect('ResultDim',0,0,720,1280,new Color(0,0,0,185));
   U.panel('ResultPanel',0,-12,572,512,tone('#271b13'),16,GOLD);
   const resultTitle=U.text('ResultTitle',(r&&r.replay?'【回放】':'')+(r?.win?'凯  旋':'败  北'),0,174,514,56,r?.win?GOLD:DIM);
-  // 胜负大字入场（2026-10-03 动画线先行批，纯表现层）：缩放 1.6→1 回弹 + 淡入
-  {
+  // 胜负大字入场（2026-10-03 动画线先行批，纯表现层）：缩放 1.6→1 回弹 + 淡入；
+  // A5 收尾：同一 outcome 只播一次（6.5-4）+ 胜利金描边 1→3→1 闪一次（败北不闪）
+  if (resultFxPlayed!==r) {
+    resultFxPlayed=r;
     const titleOp=resultTitle.addComponent(UIOpacity);
     titleOp.opacity=0;
     resultTitle.setScale(new Vec3(1.6,1.6,1));
     new Tween(resultTitle).to(0.28,{scale:new Vec3(1,1,1)},{easing:'backOut'}).start();
     new Tween(titleOp).to(0.22,{opacity:255}).start();
+    const ol=resultTitle.getComponent(LabelOutline);
+    if(r?.win&&ol)new Tween(ol).to(0.14,{width:3},{easing:'backOut'}).to(0.16,{width:1}).start();
   }
   const reward=r?.reward||{};
   // 处方单提前计算（败北行是否用 brief 诊断取决于处方是否激活）
