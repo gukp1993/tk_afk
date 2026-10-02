@@ -208,11 +208,13 @@ export function stagePreview(ctx: ScreenContext) {
   U.text('StageHeading',`第 ${stage} 关${stage>stages.CHAPTERS.length*stages.STAGES_PER_CH?'（循环乱世）':''}${enemy.elite?' · 精锐':enemy.mods&&enemy.mods.length?' · 机制':''} · ${enemy.story?.stage?.name||enemy.name||'两军对阵'}`,0,343,600,30,GOLD);
   U.text('StageEnemyTitle',enemy.isBoss?'名将镇守 · 首通奖励':'敌阵与首通奖励',-155,289,311,21,GOLD);
   enemy.units.slice(0,5).forEach((unit:any,i:number)=>{
-    const fName=(config.FACTIONS as any)[unit.hero.faction]?.name||'';
-    U.text('StageEnemy'+i,`${fName}·${unit.hero.name} Lv.${unit.level}${unit.isBoss?'·首领':''}`,-163,249-i*38,310,19,LIGHT);
+    // 小兵混编单位无 hero 字段（soldier:true，阵营/名在顶层）——统一取值防预览半页中断（性能代理 2026-10-02 发现）
+    const fName=(config.FACTIONS as any)[(unit.hero?unit.hero.faction:unit.faction)]?.name||'';
+    const uname=unit.hero?unit.hero.name:unit.name;
+    U.text('StageEnemy'+i,`${fName}·${uname} Lv.${unit.level}${unit.isBoss?'·首领':unit.soldier?'·小兵':''}`,-163,249-i*38,310,19,LIGHT);
   });
   const fCount:any={};
-  enemy.units.forEach((unit:any)=>{fCount[unit.hero.faction]=(fCount[unit.hero.faction]||0)+1;});
+  enemy.units.forEach((unit:any)=>{const f=unit.hero?unit.hero.faction:unit.faction;fCount[f]=(fCount[f]||0)+1;});
   const domFaction=Object.keys(fCount).sort((a:string,b:string)=>fCount[b]-fCount[a])[0];
   if(enemy.mods&&enemy.mods.length){
     const modNames=enemy.mods.map((m:any)=>(config.CAMPAIGN_MODS.meta as any)[m]).filter(Boolean);
@@ -473,7 +475,7 @@ export function weekBossView(ctx: ScreenContext) {
     return;
   }
   U.panel('WbBossCard',0,330,682,150,tone('#2a1210'),12,palette.red);
-  U.seal('WbBossGlyph',-272,340,64,'魔',palette.red,palette.red,tone('#f0e6cd'),34);
+  U.seal('WbBossGlyph',-272,340,64,'魔',palette.red,palette.red,tone('#f0e6cd'),34,'weekboss');
   U.text('WbBossName',wb.bossName,60,362,300,30,GOLD);
   U.text('WbBossSub','本周魔王 · 全服同敌 · 伤害定档',60,330,340,17,tone('#ad9977'));
   U.text('WbBest',`本周最高伤害：${(wb.bestPct*100).toFixed(1)}%`,60,300,340,19,GOLD);
@@ -552,7 +554,7 @@ export function dungeonView(ctx: ScreenContext) {
   tracks.forEach((t:any,i:number)=>{
     const x=i%2===0?-171:171, y=170;
     U.panel('DungeonTrack'+i,x,y,330,300,tone('#312218'),10,t.color);
-    U.seal('DungeonGlyph'+i,x,y+108,56,t.glyph,t.color,t.color,tone('#3a2b20'),30);
+    U.seal('DungeonGlyph'+i,x,y+108,56,t.glyph,t.color,t.color,tone('#3a2b20'),30,'dungeon_'+t.key);
     U.text('DungeonName'+i,t.name,x-70,y+112,220,26,GOLD);
     U.text('DungeonDesc'+i,t.desc,x,y-120,300,17,tone('#ad9977'));
     U.text('DungeonBest'+i,t.best>0?`已通 ${t.best}/10 层`:'尚未挑战',x,y+64,300,20,LIGHT);
@@ -732,7 +734,7 @@ export function shop(ctx: ScreenContext) {
         list.forEach((hero:any,i:number)=>{
           const x=-206+i%3*206,y=gridH/2-94-Math.floor(i/3)*ch;
           V.panel('ShopPickCard'+i,x,y,185,177,tone('#322319'),8,rarity===4?GOLD:tone('#795b34'));
-          V.heroIcon('ShopPickPortrait'+i,x,y+32,149,89,{surname:hero.surname||hero.name[0],faction:hero.faction,rarity:hero.rarity});
+          V.heroIcon('ShopPickPortrait'+i,x,y+32,149,89,{surname:hero.surname||hero.name[0],faction:hero.faction,rarity:hero.rarity,artKey:hero.id});
           V.text('ShopPickName'+i,hero.name,x,y-25,166,22,LIGHT);
           V.text('ShopPickTitle'+i,hero.title||'',x,y-51,164,16,tone('#ad9977'));
           V.tap('ShopPickTap'+i,x,y,185,177,()=>{
@@ -775,7 +777,7 @@ export function formation(ctx: ScreenContext) {
     const x=i<3?-216+i*216:-108+(i-3)*216,y=i<3?138:350;
     const hero=id?heroes.getHero(id):null;
     U.panel('Slot'+i,x,y,188,164,tone('#322319'),9,id?GOLD:tone('#827563'));
-    U.heroIcon('SlotAvatar'+i,x,y+22,145,100,hero?{surname:hero.surname||hero.name[0],faction:hero.faction,rarity:hero.rarity}:{surname:'+'});
+    U.heroIcon('SlotAvatar'+i,x,y+22,145,100,hero?{surname:hero.surname||hero.name[0],faction:hero.faction,rarity:hero.rarity,artKey:hero.id}:{surname:'+'});
     U.text('SlotName'+i,hero?.name||'点击上阵',x,y-47,165,21,GOLD);
     U.text('SlotLevel'+i,hero?`Lv.${store.playerLevel()}`:'',x,y-69,150,16,tone('#ad9977'));
     U.tap('SlotTap'+i,x,y,188,164,()=>{ctx.selectedFormationSlot=i;ctx.go('formationPick');});
@@ -888,7 +890,7 @@ export function formationPick(ctx: ScreenContext) {
     list.forEach((hero:any,i:number)=>{
       const col=i%3,row=Math.floor(i/3),x=-201+col*201,y=contentH/2-103-row*200;
       V.panel('PickCard'+i,x,y,184,184,tone('#322319'),8,hero.rarity>=4?GOLD:tone('#795b34'));
-      V.heroIcon('PickFace'+i,x,y+39,155,97,{surname:hero.surname||hero.name[0],faction:hero.faction,rarity:hero.rarity});
+      V.heroIcon('PickFace'+i,x,y+39,155,97,{surname:hero.surname||hero.name[0],faction:hero.faction,rarity:hero.rarity,artKey:hero.id});
       V.text('PickName'+i,hero.name,x,y-23,166,22,LIGHT);
       V.text('PickGrade'+i,['','N','R','SR','SSR'][hero.rarity]||'',x+58,y-47,60,17,GOLD);
       V.text('PickLevel'+i,`Lv.${hero.level}`,x-48,y-48,80,17,GOLD);
@@ -1147,12 +1149,12 @@ export function expeditionView(ctx: ScreenContext) {
     if(wr.topHeroes.length)U.text('ExpWeeklyTop','常用：'+wr.topHeroes.join(' · '),0,166,640,14,tone('#8a7c5f'));
   }
   // 周活跃宝箱（试玩 P1 修补：规则侧已有 claimWeekActive，此前无 UI 入口）
-  U.text('ExpActiveTitle','周活跃宝箱 · 按本周累计印信领额外印信',0,140,640,18,LIGHT);
+  U.text('ExpActiveTitle','周活跃宝箱 · 按本周累计印信领印信与演武令',0,140,640,18,LIGHT);
   (w.active as any[]).forEach((a:any,i:number)=>{
     const x=-236+i*236;
     U.panel('ExpActive'+i,x,88,210,84,a.claimed?tone('#26301f'):a.claimable?tone('#3a2c17'):tone('#171009'),7,a.claimed?tone('#6f8a5f'):a.claimable?GOLD:tone('#5a452a'));
     U.text('ExpActiveNeed'+i,`累计印信 ${a.need}`,x,114,200,17,a.claimable?GOLD:LIGHT);
-    U.text('ExpActiveReward'+i,`奖 印信 ×${a.reward.seals||0}`,x,90,200,15,tone('#d9b06a'));
+    U.text('ExpActiveReward'+i,'奖 '+Object.entries(a.reward).map(([k,n]:any)=>`${(store as any).CURRENCY_NAME[k]||k}×${n}`).join('·'),x,90,200,15,tone('#d9b06a'));
     U.button('ExpActiveGo'+i,a.claimed?'已 领':a.claimable?'领 取':`进度 ${w.sealsEarned}/${a.need}`,x,64,196,38,()=>{
       if(!a.claimable)return;
       const r=store.claimWeekActive(i);

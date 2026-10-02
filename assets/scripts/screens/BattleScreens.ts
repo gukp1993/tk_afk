@@ -183,6 +183,8 @@ export function resultView(ctx: ScreenContext) {
     },{duration:r.duration||0,snapshot:ctx.lastBattleSnapshot||[],enemyFactions});
   }
   let diagBrief=!!rx;
+  // 满级经验转铜钱（2026-10-02 裁决三 A）：结算行追加折算提示
+  const xpGoldNote=(r&&r.convertedXP||0)>0?` · 满级转铜钱 +${fmt.fmtNum(r.convertedXP||0)}`:'';
   let lines: string[]=[];
   if(r&&r.replay) lines=[`复盘 · ${r.replayName||'对局回放'}`,`用时 ${Math.round((r.duration||0)*10)/10} 秒`];
   else if(!r?.ok) lines=[r?.msg||'结算失败'];
@@ -206,7 +208,7 @@ export function resultView(ctx: ScreenContext) {
       if(hr.title)lines.push('获得称号：'+hr.title);
     }
   }
-  else if(ctx.battleMode==='training') lines=[`练兵经验 +${r.gainedXP||0}`];
+  else if(ctx.battleMode==='training') lines=[`练兵经验 +${r.gainedXP||0}${xpGoldNote}`];
   else if(ctx.battleMode==='weekboss'){
     const wbr=reward||{};
     lines=[`对魔王输出：${fmt.fmtNum(wbr.damage||0)}（占血量 ${((wbr.pct||0)*100).toFixed(1)}%）`,
@@ -215,7 +217,7 @@ export function resultView(ctx: ScreenContext) {
   }
   else if(ctx.battleMode==='dungeon'){
     const dr=reward||{};
-    lines=r?.win?(dr.kind==='gold'?[`屯金第 ${dr.floor} 层通关 · 铜钱 +${fmt.fmtNum(dr.gold||0)}`]:[`屯兵第 ${dr.floor} 层通关 · 主公经验 +${dr.xpDirect||0}${r.levelAfter>r.levelBefore?` · 升至 Lv.${r.levelAfter}`:''}`]):[defeatDiag(ctx,r),'军屯不计入主线进度 · 明日再来'];
+    lines=r?.win?(dr.kind==='gold'?[`屯金第 ${dr.floor} 层通关 · 铜钱 +${fmt.fmtNum(dr.gold||0)}`]:[`屯兵第 ${dr.floor} 层通关 · 主公经验 +${dr.xpDirect||0}${xpGoldNote}${r.levelAfter>r.levelBefore?` · 升至 Lv.${r.levelAfter}`:''}`]):[defeatDiag(ctx,r),'军屯不计入主线进度 · 明日再来'];
   }
   else if(ctx.battleMode==='trial'){
     const tr=reward||{};
@@ -233,8 +235,8 @@ export function resultView(ctx: ScreenContext) {
   else if(r?.win){
     if(reward.first){
       lines=[`元宝 +${reward.gem||0} · 铜钱 +${fmt.fmtNum(reward.gold||0)}${reward.scroll?` · 招募令 +${reward.scroll}`:''}`,
-        `首通经验 +${r.gainedXP||0}`];
-    } else lines=[`铜钱 +${fmt.fmtNum(reward.gold||0)} · 经验 +${r.gainedXP||0}`,'重复挑战不重复发放首通奖励'];
+        `首通经验 +${r.gainedXP||0}${xpGoldNote}`];
+    } else lines=[`铜钱 +${fmt.fmtNum(reward.gold||0)} · 经验 +${r.gainedXP||0}${xpGoldNote}`,'重复挑战不重复发放首通奖励'];
   }
   else lines=['普通奖励需凯旋后方可领取',defeatDiag(ctx,r,diagBrief)];
   lines.slice(0,3).forEach((line,i)=>U.text(`ResultLine${i}`,line,0,99-i*40,515,22,PAPER));
