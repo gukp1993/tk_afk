@@ -277,6 +277,48 @@ export class CocosUi {
     return CocosUi.fxLayer;
   }
   static floaters: { node: Node; opacity: UIOpacity; baseY: number; elapsed: number }[] = [];
+  /** 飞包（I3 交互线）：资源印章从领取点飞向目标坐标，落地回调驱动 pill 脉冲。 */
+  static flyItems: { node: Node; sx: number; sy: number; tx: number; ty: number; elapsed: number; dur: number; onArrive?: () => void }[] = [];
+  static pulses: { node: Node; elapsed: number }[] = [];
+  static flyGlyph(sx: number, sy: number, tx: number, ty: number, glyph: string, color: Color, onArrive?: () => void) {
+    if (!CocosUi.fxLayer || !CocosUi.fxLayer.isValid) return; // 由调用方先经 floatText/ensureFxLayer 建层
+    const layer = CocosUi.fxLayer;
+    const node = new Node('FlyItem');
+    node.setPosition(new Vec3(sx, sy, 0));
+    node.addComponent(UITransform).setContentSize(46, 46);
+    const g = node.addComponent(Graphics);
+    g.fillColor = palette.ink; g.circle(0, 0, 20); g.fill();
+    g.strokeColor = palette.gold; g.lineWidth = 2.5; g.circle(0, 0, 19); g.stroke();
+    const glyphNode = new Node('FlyGlyphText');
+    glyphNode.addComponent(UITransform).setContentSize(40, 40);
+    const label = glyphNode.addComponent(Label);
+    label.string = glyph; label.fontFamily = 'Kaiti SC'; label.fontSize = 19; label.lineHeight = 22;
+    label.color = palette.gold; label.horizontalAlign = Label.HorizontalAlign.CENTER; label.verticalAlign = Label.VerticalAlign.CENTER;
+    node.addChild(glyphNode);
+    node.addComponent(UIOpacity).opacity = 235;
+    layer.addChild(node);
+    CocosUi.flyItems.push({ node, sx, sy, tx, ty, elapsed: 0, dur: 0.5, onArrive });
+  }
+  static updateFlyItems(dt: number) {
+    for (let i = CocosUi.flyItems.length - 1; i >= 0; i--) {
+      const f = CocosUi.flyItems[i];
+      f.elapsed += dt;
+      const t = Math.min(1, f.elapsed / f.dur);
+      if (f.node.isValid) f.node.setPosition(new Vec3(f.sx + (f.tx - f.sx) * t, f.sy + (f.ty - f.sy) * t, 0));
+      if (t >= 1) {
+        if (f.onArrive) f.onArrive();
+        if (f.node.isValid) f.node.destroy();
+        CocosUi.flyItems.splice(i, 1);
+      }
+    }
+    for (let i = CocosUi.pulses.length - 1; i >= 0; i--) {
+      const p = CocosUi.pulses[i];
+      p.elapsed += dt;
+      const t = Math.min(1, p.elapsed / 0.2);
+      if (p.node.isValid) { const s = 1.15 - 0.15 * t; p.node.setScale(new Vec3(s, s, 1)); if (t >= 1) p.node.setScale(new Vec3(1, 1, 1)); }
+      CocosUi.pulses.splice(i, 1);
+    }
+  }
   static floatText(parent: Node, x: number, y: number, text: string, color: Color) {
     const layer = CocosUi.ensureFxLayer(parent);
     const node = new Node('Floater');

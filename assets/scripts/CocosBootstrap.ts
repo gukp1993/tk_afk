@@ -108,6 +108,7 @@ export class CocosBootstrap extends Component implements ScreenContext {
 
   update(dt: number) {
     CocosUi.updateFloaters(dt);
+    CocosUi.updateFlyItems(dt);
     if (this.page === 'ad' && this.adPlacement && this.adSeconds > 0) {
       const before = Math.ceil(this.adSeconds);
       this.adSeconds = Math.max(0, this.adSeconds - dt);
@@ -240,13 +241,19 @@ export class CocosBootstrap extends Component implements ScreenContext {
     this.noticeAt = Date.now();
     this.show(this.page);
     // 领取飞字（研讨会七 P4）：成功且有奖励数据时在屏幕中央偏上飘字
-    if (result?.ok && result?.reward && typeof result.reward === 'object') {
-      this.spawnRewardFloater(result.reward);
+    const hasRewardData = result?.ok && (!!result?.reward || !!result?.rewards
+      || ['gold', 'gem', 'scroll', 'token', 'shard', 'iron'].some(k => typeof result[k] === 'number' && result[k] > 0));
+    if (hasRewardData) {
+      this.spawnRewardFloater(result);
     } else if (result?.ok && result?.label) {
       this.spawnLabelFloater(good || result.label);
     }
   }
-  private spawnRewardFloater(reward: object) {
+  private spawnRewardFloater(result: any) {
+    // I3：兼容三种形态——reward 对象 / rewards 增量映射（claimDailyRewards）/ 顶层平铺数值字段
+    const reward: any = result?.reward && typeof result.reward === 'object' ? result.reward
+      : result?.rewards && typeof result.rewards === 'object' ? result.rewards
+      : result;
     const CN: Record<string,string> = {gold:'铜钱',gem:'元宝',scroll:'令',token:'演武令',shard:'碎片',iron:'精铁',seals:'印信',medal:'战功',stones:'淬火石'};
     const parts = Object.entries(reward)
       .filter(([k]) => k in CN)
@@ -254,6 +261,31 @@ export class CocosBootstrap extends Component implements ScreenContext {
     if (parts.length) {
       const color = new (this.ccColor())(255, 220, 120, 255);
       CocosUi.floatText(this.content, 0, -80, parts.join('  '), color);
+      // I3 领取飞包：页面顶栏有资源 pill 时，印章从飘字处飞向对应 pill 并脉冲
+      // 目标按页面分发：journey/shop = ResourcePill 行；campaign = 顶栏 GoldPill/GemPill
+      const flat: Record<string, number> = {};
+      Object.entries(reward).forEach(([k, v]) => { if (typeof v === 'number' && v) flat[k] = v; });
+      const rw: Record<string, number> = reward;
+      const GLYPH: Record<string, string> = { gold: '钱', gem: '宝', scroll: '令', token: '令', shard: '片', iron: '铁' };
+      const pillY = this.page === 'journey' ? 590 : this.page === 'shop' ? 513 : 600;
+      const targets: Record<string, [number, number, string]> = {};
+      if (this.page === 'journey' || this.page === 'shop') {
+        const order = ['gold', 'gem', 'scroll', 'token', 'shard'];
+        order.forEach((k, i) => { targets[k] = [-278 + i * 139, pillY, 'ResourcePill' + i]; });
+      } else if (this.page === 'campaign') {
+        targets.gold = [70, 600, 'GoldPill'];
+        targets.gem = [216, 600, 'GemPill'];
+      }
+      Object.keys(targets)
+        .filter(k => rw[k])
+        .slice(0, 3)
+        .forEach(k => {
+          const [tx, ty, nodeName] = targets[k];
+          CocosUi.flyGlyph(0, -60, tx, ty, GLYPH[k] || k[0], color, () => {
+            const pill = this.ui.node(nodeName);
+            if (pill) CocosUi.pulses.push({ node: pill, elapsed: 0 });
+          });
+        });
     }
   }
   private spawnLabelFloater(text: string) {
