@@ -98,13 +98,17 @@ export class CocosUi {
       mask.type = Mask.Type.GRAPHICS_RECT;
       // Mask 只裁子节点：Sprite 放子级，按 cover 等比缩放居中（立绘统一竖版 3:4，小盒型裁两侧）
       const artNode = new Node(name + 'Pic');
-      const rect = frame.getRect();
+      const rect = frame.getOriginalSize();
       const scale = Math.max(w / rect.width, h / rect.height);
       artNode.addComponent(UITransform).setContentSize(Math.ceil(rect.width * scale), Math.ceil(rect.height * scale));
       const sprite = artNode.addComponent(Sprite);
       sprite.spriteFrame = frame;
       sprite.sizeMode = Sprite.SizeMode.CUSTOM;
       sprite.trim = false;
+      // spriteFrame 的赋值会应用默认 TRIMMED 尺寸，必须在赋图后恢复最终尺寸。
+      artNode.getComponent(UITransform)!.setContentSize(Math.ceil(rect.width * scale), Math.ceil(rect.height * scale));
+      // 编队和十连使用横向小框，裁切中心上移，优先保留脸部而非腰腹。
+      if (w > h) artNode.setPosition(new Vec3(0, -(Math.ceil(rect.height * scale) - h) * 0.35, 0));
       holder.addChild(artNode);
       node.addChild(holder);
       this.parent.addChild(node);

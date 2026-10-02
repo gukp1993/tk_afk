@@ -1,0 +1,14 @@
+{
+  "heroes": 40,
+  "sourceMatch": true,
+  "metaPresent": true,
+  "wechatMainBytes": 3560628,
+  "artHeroesBundleBytes": 3415760,
+  "totalBytes": 6976388,
+  "subpackages": [
+    {
+      "name": "art-heroes",
+      "root": "subpackages/art-heroes/"
+    }
+  ]
+}

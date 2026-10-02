@@ -1,0 +1,70 @@
+{
+  "loaded": {
+    "loaded": [
+      "caocao",
+      "caoren",
+      "chengong",
+      "dianwei",
+      "diaochan",
+      "dongzhuo",
+      "fazheng",
+      "ganning",
+      "guanyu",
+      "guojia",
+      "huanggai",
+      "huangyueying",
+      "huangzhong",
+      "huatuo",
+      "jiaxu",
+      "liru",
+      "liubei",
+      "lusu",
+      "luxun",
+      "lvbu",
+      "lvmeng",
+      "machao",
+      "pangde",
+      "pangtong",
+      "simayi",
+      "sunce",
+      "sunjian",
+      "taishici",
+      "xiahouyuan",
+      "xuchu",
+      "xunyu",
+      "yuanshao",
+      "zhangfei",
+      "zhangliao",
+      "zhaoyun",
+      "zhenji",
+      "zhoutai",
+      "zhouyu",
+      "zhugeliang",
+      "zhurong"
+    ],
+    "controller": true
+  },
+  "errors": [],
+  "sizes": [
+    {
+      "node": "DrawAvatar0Pic",
+      "w": 135,
+      "h": 180,
+      "ratio": 0.75,
+      "original": [
+        600,
+        800
+      ]
+    },
+    {
+      "node": "DrawAvatar1Pic",
+      "w": 135,
+      "h": 180,
+      "ratio": 0.75,
+      "original": [
+        600,
+        800
+      ]
+    }
+  ]
+}

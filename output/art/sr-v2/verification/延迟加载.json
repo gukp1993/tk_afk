@@ -1,0 +1,15 @@
+{
+  "passed": true,
+  "blockedRequests": 138,
+  "before": {
+    "page": "heroDetail",
+    "pic": false,
+    "placeholder": true
+  },
+  "after": {
+    "page": "heroDetail",
+    "pic": true,
+    "placeholder": false
+  },
+  "errors": []
+}

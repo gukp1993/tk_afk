@@ -76,7 +76,7 @@ export class CocosBootstrap extends Component implements ScreenContext {
     this.hookDiag();
     // 美术预加载（2026-10-02 美术阶段）：装载完成后重绘一次当前菜单页，让已交付立绘/图标立即生效
     ArtService.preload((n) => {
-      if (n > 0 && this.page && ['home', 'journey', 'campaign', 'stagePreview', 'heroes', 'bag', 'summon'].indexOf(this.page) >= 0) {
+      if (n > 0 && this.page && ['home', 'journey', 'campaign', 'stagePreview', 'heroes', 'heroDetail', 'formation', 'formationPick', 'bag', 'summon', 'summonResults', 'shop'].indexOf(this.page) >= 0) {
         try { this.show(this.page); } catch (e) { /* 重绘失败静默，保留占位页 */ }
       }
     });
