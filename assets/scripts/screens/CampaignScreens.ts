@@ -33,7 +33,7 @@ function campaignHeader(ctx: ScreenContext, chapter: any, stage: number) {
   U.text('GemCount',String(s.res.gem),308,600,84,23,GOLD);
   U.progress('LordXp',151,552,388,level>=config.MAX_LEVEL?1:s.player.exp/need,GOLD);
   // 设置入口（研讨会七批次乙）：主公面板点击进设置
-  U.text('LordSettings','设置 ›',-184,545,150,16,tone('#c7cdac'));
+  U.text('LordSettings','设置 >',-184,545,150,16,tone('#c7cdac'));
   U.tap('LordSettingsTap',-240,560,200,70,()=>ctx.go('settings'));
   U.text('TeamPower',`战力 ${fmt.fmtNum(store.teamPower())}`,-240,524,220,19,GOLD);
   U.text('ExpCount',level>=config.MAX_LEVEL?'主公等级已满':`战斗经验 ${fmt.fmtNum(s.player.exp)}/${fmt.fmtNum(need)}`,191,524,320,17,tone('#c7cdac'));
@@ -66,19 +66,19 @@ export function campaign(ctx: ScreenContext) {
   const fdBanner=store.fourteenDayInfo();
   if(sd.allDone&&!fdBanner.allDone){
     U.panel('FourteenBanner',-60,372,500,44,fdBanner.canClaim?tone('#3a2c17'):tone('#2b2118'),7,fdBanner.canClaim?GOLD:tone('#6b5837'));
-    U.text('FourteenBannerText',fdBanner.canClaim?'第二周目标 · 有奖励可领 ›':`第二周目标 · 第 ${fdBanner.ageDays} 天 ›`,-60,372,470,18,fdBanner.canClaim?GOLD:LIGHT);
+    U.text('FourteenBannerText',fdBanner.canClaim?'第二周目标 · 有奖励可领 >':`第二周目标 · 第 ${fdBanner.ageDays} 天 >`,-60,372,470,18,fdBanner.canClaim?GOLD:LIGHT);
     U.tap('FourteenBannerTap',-60,372,500,44,()=>ctx.go('sevenDay'));
   }
   if(!sd.allDone&&!sd.expired){
     const claimable=sd.canClaim;
     U.panel('SevenDayBanner',-60,372,500,44,claimable?tone('#3a2c17'):tone('#2b2118'),7,claimable?GOLD:tone('#6b5837'));
-    U.text('SevenDayBannerText',claimable?'七日目标 · 今天有奖励可领 ›':`七日目标 · 第 ${sd.cur} 天 ›`,-60,372,470,18,claimable?GOLD:LIGHT);
+    U.text('SevenDayBannerText',claimable?'七日目标 · 今天有奖励可领 >':`七日目标 · 第 ${sd.cur} 天 >`,-60,372,470,18,claimable?GOLD:LIGHT);
     U.tap('SevenDayBannerTap',-60,372,500,44,()=>ctx.go('sevenDay'));
   }
   const starInfo=store.campaignStarChestInfo();
   if(starInfo.claimable){
     U.panel('StarChestBanner',-60,336,500,40,tone('#3a2c17'),7,GOLD);
-    U.text('StarChestText','章节星宝箱可领 · 点击领取 ›',-60,336,470,18,GOLD);
+    U.text('StarChestText','章节星宝箱可领 · 点击领取 >',-60,336,470,18,GOLD);
     U.tap('StarChestTap',-60,336,500,40,()=>{
       const r=store.claimStarChests();
       ctx.tell(r,r.ok?`已领取：${(r.got||[]).join('；')}`:'');
@@ -96,7 +96,7 @@ export function campaign(ctx: ScreenContext) {
   const formation = s.formation.map((id: string|null)=>id ? heroes.getHero(id)?.name || '空' : '空');
   campaignCamp(U,formation);
   U.text('CampHeading','出战阵容',-276,-255,124,18,LIGHT);
-  U.text('CampEdit','调整编队 ›',79,-255,150,18,LIGHT);
+  U.text('CampEdit','调整编队 >',79,-255,150,18,LIGHT);
   formation.forEach((name: string,i: number)=>U.text('CampHero'+i,name||'空',-290+i*92,-336,84,16,LIGHT));
   U.text('ChestLabel','挂机宝箱',236,-331,132,17,LIGHT);
   U.tap('CampEditTap',-118,-296,490,106,()=>ctx.go('formation'));
@@ -137,20 +137,20 @@ export function campaign(ctx: ScreenContext) {
   const returnPending=store.getState().returnPending;
   if(returnPending){
     U.panel('ReturnBanner',0,-78,640,54,tone('#3a2c17'),9,GOLD);
-    U.text('ReturnBannerText',`主公回来了！离开 ${returnPending.days} 天，回归补给：${returnPending.label}（已入账）›`,0,-70,600,16,GOLD);
+    U.text('ReturnBannerText',`主公回来了！离开 ${returnPending.days} 天，回归补给：${returnPending.label}（已入账）>`,0,-70,600,16,GOLD);
     U.tap('ReturnBannerTap',0,-78,640,54,()=>{store.dismissReturnPending();ctx.show('campaign');});
   }
   // 锻造台开启宣告（研讨会六 B1）：第 6 颗 5★ 达成后一次性播报，点击直达锻造台
   if(s.forgeOpenNotice){
     U.panel('ForgeOpenBanner',0,-122,640,44,tone('#3a2c17'),9,GOLD);
-    U.text('ForgeOpenBannerText','锻造台已开启 · 词条洗练解锁 ›',0,-122,600,17,GOLD);
+    U.text('ForgeOpenBannerText','锻造台已开启 · 词条洗练解锁 >',0,-122,600,17,GOLD);
     U.tap('ForgeOpenBannerTap',0,-122,640,44,()=>{s.forgeOpenNotice=false;store.save();ctx.go('forge');});
   }
   const retro=store.retroGrants();
   if(retro){
     U.panel('RetroGrants',0,-40,640,54,tone('#2b1e12'),9,GOLD);
     U.text('RetroGrantsText',`旧档补发：${retro.map((g:any)=>`第${g.stage}关 ${g.label}`).join('；')}`,0,-32,560,16,LIGHT);
-    U.text('RetroGrantsOk','知道了 ›',0,-54,560,15,GOLD);
+    U.text('RetroGrantsOk','知道了 >',0,-54,560,15,GOLD);
     U.tap('RetroGrantsTap',0,-40,640,54,()=>{store.dismissRetroGrants();ctx.show('campaign');});
   }
   campaignHeader(ctx,chapter,stage);
@@ -167,7 +167,7 @@ export function campaign(ctx: ScreenContext) {
     U.text('ChapterMapTitle',viewCh.name,0,437,440,29,GOLD);
     U.text('ChapterMapCount',`第${viewIdx+1}章 · 已通关 ${Math.max(0,Math.min(stages.STAGES_PER_CH,s.campaign.cleared-viewIdx*stages.STAGES_PER_CH))}/${stages.STAGES_PER_CH}`,0,393,580,19,LIGHT);
     U.button('ChapterMapPrev','‹',-284,415,56,44,()=>{chapterMapCh=Math.max(0,viewIdx-1);ctx.show('campaign');},viewIdx>0?tone('#5a452a'):tone('#332a1e'));
-    U.button('ChapterMapNext','›',284,415,56,44,()=>{chapterMapCh=Math.min(maxCh,viewIdx+1);ctx.show('campaign');},viewIdx<maxCh?tone('#5a452a'):tone('#332a1e'));
+    U.button('ChapterMapNext','>',284,415,56,44,()=>{chapterMapCh=Math.min(maxCh,viewIdx+1);ctx.show('campaign');},viewIdx<maxCh?tone('#5a452a'):tone('#332a1e'));
     const sw=store.sweepInfo();
     U.text('ChapterMapSweepInfo',sw.enabled?`扫荡 ${sw.left}/${sw.daily} 次 · 三星关可免战速通`:'',0,366,620,16,tone('#a99778'));
     const first=viewIdx*stages.STAGES_PER_CH+1;
@@ -272,7 +272,7 @@ export function home(ctx: ScreenContext) {
       const y=440-(b.y+b.h)*790/500-28;
       U.panel('BuildingLabel'+i,x,y,Math.max(172,b.w*1.78),70,tone('#eee3c8'),5,tone('#766a51'));
       U.text('BuildingName'+i,b.name,x,y+13,170,27,INK);
-      U.text('BuildingHint'+i,b.hint+' ›',x,y-17,170,16,tone('#766a51'));
+      U.text('BuildingHint'+i,b.hint+' >',x,y-17,170,16,tone('#766a51'));
       U.tap('BuildingTap'+i,x,440-(b.y+b.h/2)*790/500-20,b.w*1.92+15,b.h*790/500+78,()=>ctx.go(b.page as Page));
     });
     [['quests','令','每日任务',-289],['bag','囊','背包',289]].forEach(([page,glyph,label,x],i)=>{
@@ -307,7 +307,7 @@ export function home(ctx: ScreenContext) {
       ctx.go(goal.page as Page);
     });
     // 设置入口（研讨会七批次乙 P3）：主公头像区域点击（个人位惯例，与本章地图/自动出征无冲突）
-    U.text('CitySettings','设置 ›',-133,558,120,17,tone('#766a51'));
+    U.text('CitySettings','设置 >',-133,558,120,17,tone('#766a51'));
     U.tap('CitySettingsTap',-200,600,220,84,()=>ctx.go('settings'));
     U.panel('CityDeploy',-95,-440,489,57,palette.red,8,GOLD);
     U.text('CityDeployText',ctx.auto?'本场后停止':'自动出征',-95,-440,460,28,LIGHT);
@@ -363,7 +363,7 @@ export function journey(ctx: ScreenContext) {
     U.text('JourneyBountyName','悬赏派遣',-150,-60,180,28,LIGHT);
     U.text('JourneyBountyDesc','派武将出征，到时领赏 · 每日 4 单',-10,-95,430,18,tone('#ad9977'));
     const unread=store.takeBountyGrantsNotice();
-    U.text('JourneyBountyStat',unread?`离线赏金×${unread} 已入账 ›`:bt.canClaim?'有赏可领 ›':bt.idleCount>0?`待派遣 ${bt.idleCount} 单`:bt.list.some((b:any)=>b.state==='running')?'出征途中':'今日已完成',30,-58,330,19,GOLD);
+    U.text('JourneyBountyStat',unread?`离线赏金×${unread} 已入账 >`:bt.canClaim?'有赏可领 >':bt.idleCount>0?`待派遣 ${bt.idleCount} 单`:bt.list.some((b:any)=>b.state==='running')?'出征途中':'今日已完成',30,-58,330,19,GOLD);
     U.tap('JourneyBountyTap',0,-75,682,130,()=>ctx.go('bounty'));
     const hi=store.hallInfo();
     U.panel('JourneyHall',0,-188,682,84,hi.seats.every((x:any)=>x.killed)?tone('#26301f'):tone('#312218'),10,hi.seats.every((x:any)=>x.killed)?tone('#6f8a5f'):tone('#a17b40'));
@@ -379,7 +379,7 @@ export function journey(ctx: ScreenContext) {
     U.text('JourneyWeeklyName','本周必做',-158,-270,180,26,LIGHT);
     U.text('JourneyWeeklyStat',`任务 ${wk.questsDone}/${wk.questsTotal} · 演武 ${wk.arenaRank}`,120,-269,280,18,GOLD);
     U.text('JourneyWeeklyDesc','周任务与活跃宝箱在远征页领取',-58,-305,430,17,tone('#ad9977'));
-    U.text('JourneyWeeklyReplay',`战报 · 最近 ${(store.replaysInfo().list as any[]).length} 场 ›`,-58,-330,300,17,GOLD);
+    U.text('JourneyWeeklyReplay',`战报 · 最近 ${(store.replaysInfo().list as any[]).length} 场 >`,-58,-330,300,17,GOLD);
     U.tap('JourneyWeeklyReplayTap',110,-330,240,34,()=>ctx.go('hall'));
     U.tap('JourneyWeeklyTap',0,-280,682,60,()=>ctx.go('expedition'));
     // 军屯双本入口（研讨会四 P2）
@@ -388,7 +388,7 @@ export function journey(ctx: ScreenContext) {
       const q=store.quadTowerInfo();
       if(q.enabled){
         const qname=(config.FACTIONS as any)[q.faction]?.name||q.faction;
-        const qStat=q.owned>0?`已登 ${q.best}/${q.floors} · 本国可战 ${q.owned} 将 ›`:`本周${qname}台 · 暂无${qname}将（召唤/定向券可补）›`;
+        const qStat=q.owned>0?`已登 ${q.best}/${q.floors} · 本国可战 ${q.owned} 将 >`:`本周${qname}台 · 暂无${qname}将（召唤/定向券可补）>`;
         U.panel('QuadEntry',0,56,682,84,tone('#312218'),10,tone('#a17b40'));
         U.text('QuadEntryGlyph','四',-272,71,59,49,GOLD);
         U.text('QuadEntryName',`四方台 · ${qname}·${q.theme}`,-52,71,360,25,LIGHT);
@@ -401,8 +401,8 @@ export function journey(ctx: ScreenContext) {
       const ag=store.dailyAgendaInfo();
       if(ag.enabled&&ag.total>0){
         const ns=ag.nextStep?(ag.entries as any[]).find(e=>e.key===ag.nextStep!.key):null;
-        const txt=ag.count>=ag.total?`今日军务 ${ag.count}/${ag.total} · 已清 · 勤勉 ${ag.agendaDays} 天 ›`
-          :`今日军务 ${ag.count}/${ag.total} · 下一步：${ns?ns.label:'稍后再来'} ›`;
+        const txt=ag.count>=ag.total?`今日军务 ${ag.count}/${ag.total} · 已清 · 勤勉 ${ag.agendaDays} 天 >`
+          :`今日军务 ${ag.count}/${ag.total} · 下一步：${ns?ns.label:'稍后再来'} >`;
         const allDone=ag.count>=ag.total;
         U.panel('AgendaBand',0,-368,682,36,allDone?tone('#26301f'):tone('#2b2118'),8,allDone?tone('#6f8a5f'):GOLD);
         U.text('AgendaBandTxt',txt,0,-368,640,17,allDone?tone('#a99778'):GOLD);
@@ -414,7 +414,7 @@ export function journey(ctx: ScreenContext) {
     if(dg.enabled){
       // 单行带（研讨会十三案一：为赛季带腾位）
       U.panel('JourneyDungeon',0,-412,682,36,dg.runsLeft>0?tone('#312218'):tone('#26201a'),8,tone('#795b34'));
-      U.text('JourneyDungeonText',`军屯双本 · 剩 ${dg.runsLeft} 次 · 屯金 ${dg.gold.best}/10 · 屯兵 ${dg.train.best}/10 ›`,0,-412,650,17,dg.runsLeft>0?GOLD:tone('#a99778'));
+      U.text('JourneyDungeonText',`军屯双本 · 剩 ${dg.runsLeft} 次 · 屯金 ${dg.gold.best}/10 · 屯兵 ${dg.train.best}/10 >`,0,-412,650,17,dg.runsLeft>0?GOLD:tone('#a99778'));
       U.tap('JourneyDungeonTap',0,-412,682,36,()=>ctx.go('dungeon'));
     }
     // 四时战纪赛季带（研讨会十三案一）
@@ -422,7 +422,7 @@ export function journey(ctx: ScreenContext) {
       const si=store.seasonInfo();
       if(si.enabled){
         const trackNext=(si.track as any[]).find(t=>t.claimable);
-        const txt=`四时战纪 · 第${si.seasonNo}季 卷${si.vol}·${si.volName} · 军资簿 Lv${(si.track as any[]).filter(t=>t.claimed).length}${si.claimable?' · 有赏可领':''} ›`;
+        const txt=`四时战纪 · 第${si.seasonNo}季 卷${si.vol}·${si.volName} · 军资簿 Lv${(si.track as any[]).filter(t=>t.claimed).length}${si.claimable?' · 有赏可领':''} >`;
         U.panel('JourneySeason',0,-458,682,44,si.claimable?tone('#3a2c17'):tone('#2b2118'),8,si.claimable?GOLD:tone('#6b5837'));
         U.text('JourneySeasonGlyph','季',-282,-458,40,30,GOLD);
         U.text('JourneySeasonText',txt,-20,-458,600,17,si.claimable?GOLD:LIGHT);
@@ -434,7 +434,7 @@ export function journey(ctx: ScreenContext) {
     const wb=store.weekBossInfo();
     if(wb.enabled){
       U.panel('JourneyWeekBoss',0,-516,682,44,wb.attemptsLeft>0?tone('#3a2c17'):tone('#2b2118'),8,wb.attemptsLeft>0?GOLD:tone('#6b5837'));
-      U.text('JourneyWeekBossText',`本周魔王 · ${wb.bossName} · 最高伤害 ${(wb.bestPct*100).toFixed(1)}% · 剩 ${wb.attemptsLeft} 次 ›`,0,-516,650,17,wb.attemptsLeft>0?GOLD:LIGHT);
+      U.text('JourneyWeekBossText',`本周魔王 · ${wb.bossName} · 最高伤害 ${(wb.bestPct*100).toFixed(1)}% · 剩 ${wb.attemptsLeft} 次 >`,0,-516,650,17,wb.attemptsLeft>0?GOLD:LIGHT);
       U.tap('JourneyWeekBossTap',0,-516,682,44,()=>ctx.go('weekboss'));
     }
   firstTimeOverlay(ctx,'agenda');
@@ -455,7 +455,7 @@ export function journey(ctx: ScreenContext) {
           V.panel('AgendaRow'+i,0,y,600,56,e.done?tone('#26301f'):tone('#302b1c'),7,e.done?tone('#6f8a5f'):tone('#3f3424'));
           V.text('AgendaDotMark'+i,e.done?'●':'○',-266,y,30,22,e.done?GOLD:tone('#7a6c52'));
           V.text('AgendaLabel'+i,`${e.label} ${e.cur}/${e.target}`,-150,y,360,19,e.done?tone('#a99778'):LIGHT);
-          V.text('AgendaGo'+i,'前往 ›',250,y,120,18,e.done?tone('#6f8a5f'):GOLD);
+          V.text('AgendaGo'+i,'前往 >',250,y,120,18,e.done?tone('#6f8a5f'):GOLD);
           V.tap('AgendaRowTap'+i,0,y,600,56,()=>{agendaOpen=false;ctx.go(e.page as any);});
         });
       });
@@ -602,7 +602,7 @@ export function bag(ctx: ScreenContext) {
       U.text('BagCardName'+i,name,x+28,y+66,178,24,LIGHT);
       U.text('BagCardCount'+i,fmt.fmtNum(n),x+28,y+34,178,28,GOLD);
       U.text('BagCardDesc'+i,desc,x,y-17,282,19,tone('#ad9977'));
-      U.text('BagCardLink'+i,action+' ›',x,y-70,275,18,GOLD);
+      U.text('BagCardLink'+i,action+' >',x,y-70,275,18,GOLD);
       U.tap('BagCardTap'+i,x,y,310,193,()=>ctx.go(page));
     });
     // 神兵阁（研讨会十三案二）：通关 160 关解锁后追加第四入口行（行距收紧保 -548 红线）
@@ -616,7 +616,7 @@ export function bag(ctx: ScreenContext) {
       U.panel('BagEntry'+i,0,ey,682,eH,tone('#312218'),8,tone('#795b34'));
       U.text('BagEntryGlyph'+i,String(glyph),-290,ey,44,30,GOLD);
       U.text('BagEntryLabel'+i,String(label),-128,ey,400,19,LIGHT);
-      U.text('BagEntryGo'+i,'›',290,ey,40,19,GOLD);
+      U.text('BagEntryGo'+i,'>',290,ey,40,19,GOLD);
       U.tap('BagEntryTap'+i,0,ey,682,eH,()=>ctx.go(page as Page));
     });
   }
@@ -827,7 +827,7 @@ export function formation(ctx: ScreenContext) {
     });
     // 传檄小按钮（同袍录 Phase A）
     const ciX=344-64;
-    U.text('CompanionSent','传檄 ›',296,-510,60,16,GOLD);
+    U.text('CompanionSent','传檄 >',296,-510,60,16,GOLD);
     U.tap('CompanionSentTap',296,-510,64,44,()=>{
       const ci=store.companionInfo();
       const vanguard=(s.formation||[]).slice(0,2).map((id:string)=>heroes.getHero(id)?.name||id).join('、')||'众将';
@@ -937,14 +937,14 @@ export function arena(ctx: ScreenContext) {
     U.text('ArenaPowerTitle','我军战力',212,366,200,17,tone('#ad9977'));
     U.text('ArenaPower',fmt.fmtNum(store.teamPower()),215,337,200,26,GOLD);
     U.text('ArenaAttempts',`战绩 ${s.arena.wins} 胜 ${s.arena.losses} 负 · 今日剩 ${s.arena.attempts} 次`,-141,302,420,18,tone('#ad9977'));
-    U.text('ArenaFormation','调整编队 ›',222,302,198,18,tone('#ad9977'));
+    U.text('ArenaFormation','调整编队 >',222,302,198,18,tone('#ad9977'));
     U.tap('ArenaFormationTap',218,328,228,104,()=>ctx.go('formation'));
     // 赛季条（2026-09-30 裁决 A）：本周段位 + 周段位奖进度 + 软重置预览，点击进演武榜
     const season=store.arenaSeasonInfo();
     U.panel('ArenaSeason',0,237,682,62,tone('#26301f'),9,tone('#6f8a5f'));
     U.text('ArenaSeasonMain',`本周 ${season.rank} · ${season.points} 分`,-168,250,330,22,GOLD);
     U.text('ArenaSeasonSub',`周段位奖 ${season.claimedCount}/${season.tiers.length} · 下周一重置至约 ${season.carryPreview} 分`,-131,225,400,16,tone('#ad9977'));
-    U.text('ArenaSeasonGo','榜单 ›',255,250,120,22,GOLD);
+    U.text('ArenaSeasonGo','榜单 >',255,250,120,22,GOLD);
     U.tap('ArenaSeasonTap',0,237,682,62,()=>ctx.go('arenaBoard'));
     const date=new Date(),day=date.getFullYear()*10000+(date.getMonth()+1)*100+date.getDate();
     [
@@ -1040,7 +1040,7 @@ export function storyArchiveView(ctx: ScreenContext) {
   U.tap('ArcBackTap',-291,484,136,52,()=>ctx.go('campaign'));
   U.panel('ArcChPanel',0,392,640,126,tone('#312218'),9,GOLD);
   U.button('ArcPrev','‹',-268,412,84,52,()=>{ctx.storyArchiveCh=Math.max(0,chIdx-1);ctx.show('storyArchive');},chIdx>0?tone('#5a452a'):tone('#332a1e'));
-  U.button('ArcNext','›',268,412,84,52,()=>{ctx.storyArchiveCh=Math.min(maxCh,chIdx+1);ctx.show('storyArchive');},chIdx<maxCh?tone('#5a452a'):tone('#332a1e'));
+  U.button('ArcNext','>',268,412,84,52,()=>{ctx.storyArchiveCh=Math.min(maxCh,chIdx+1);ctx.show('storyArchive');},chIdx<maxCh?tone('#5a452a'):tone('#332a1e'));
   const chName=stages.chapterOf(chIdx*10+1).name;
   let seenCount=0;
   for(let i=0;i<10;i++)if(store.isStorySeen(chIdx*10+i+1))seenCount++;
@@ -1063,7 +1063,7 @@ export function storyArchiveView(ctx: ScreenContext) {
       V.panel('ArcRow'+i,0,y,660,58,seen?tone('#2b2418'):tone('#1d1812'),7,seen?tone('#795b34'):tone('#3a2f20'));
       V.text('ArcRowNum'+i,String(n).padStart(2,'0'),-282,y,60,22,seen?GOLD:tone('#7a6c52'));
       V.text('ArcRowName'+i,st?.stage?.name||'—',-160,y,344,22,open?LIGHT:tone('#7a6c52'));
-      V.text('ArcRowState'+i,seen?'已读 · 回顾 ›':open?'未读,可阅':'未开放',225,y,150,17,seen?GOLD:open?tone('#a99778'):tone('#6b5837'));
+      V.text('ArcRowState'+i,seen?'已读 · 回顾 >':open?'未读,可阅':'未开放',225,y,150,17,seen?GOLD:open?tone('#a99778'):tone('#6b5837'));
       if(open)V.tap('ArcRowTap'+i,0,y,660,58,()=>{
         ctx.storyStage=n;ctx.storyReview=true;ctx.go('story');
       });
@@ -1269,7 +1269,7 @@ export function seasonView(ctx: ScreenContext) {
     const zx=i===0?-150:150;
     U.panel('SeasonZhiPg'+i,zx,348,190,64,z.unlocked?tone('#39291a'):tone('#171009'),7,z.unlocked?GOLD:tone('#5a452a'));
     U.text('SeasonZhiPgT'+i,`页${i+1} · ${z.title}`,zx,362,180,17,z.unlocked?(z.seen?LIGHT:GOLD):tone('#7a6c52'));
-    U.text('SeasonZhiPgS'+i,z.unlocked?(z.seen?'已读 · 重读 ›':'可读 ›'):'未解锁',zx,340,180,15,z.unlocked?GOLD:tone('#7a6c52'));
+    U.text('SeasonZhiPgS'+i,z.unlocked?(z.seen?'已读 · 重读 >':'可读 >'):'未解锁',zx,340,180,15,z.unlocked?GOLD:tone('#7a6c52'));
     if(z.unlocked&&!z.seen)U.dot('SeasonZhiDot'+i,zx+80,368);
     U.tap('SeasonZhiTap'+i,zx,348,190,64,()=>{seasonZhiOpen=z;ctx.show('season');});
   });
@@ -1277,7 +1277,7 @@ export function seasonView(ctx: ScreenContext) {
   if(info.scenes&&info.scenes.enabled){
     U.panel('SeasonSceneEntry',0,252,682,44,tone('#2b2118'),8,GOLD);
     U.text('SeasonSceneGlyph','名',-282,252,40,30,GOLD);
-    U.text('SeasonSceneText',`名场面重演 · ${info.actName} 3 关 · 本季已清 ${info.scenes.clearedCount}/${info.scenes.total} ›`,0,252,620,17,LIGHT);
+    U.text('SeasonSceneText',`名场面重演 · ${info.actName} 3 关 · 本季已清 ${info.scenes.clearedCount}/${info.scenes.total} >`,0,252,620,17,LIGHT);
     U.tap('SeasonSceneTap',0,252,682,44,()=>ctx.go('seasonScenes'));
   }
   // 幕任务
@@ -1463,7 +1463,7 @@ export function sevenDayView(ctx: ScreenContext) {
       d.claimable?GOLD:tone('#6b5837'));
     U.text('SevenDayDay'+i,`第${SEVEN_DAY_CN[i]}天`,-228,y+20,150,26,d.claimable?GOLD:d.claimed?tone('#6f8a5f'):tone('#a99778'));
     U.text('SevenDayLabel'+i,d.label,-66,y-14,360,22,d.locked?tone('#a99778'):LIGHT);
-    U.text('SevenDayState'+i,d.claimed?'已领取':d.claimable?'待领取 ›':sd.expired?'已过期':`第 ${d.day} 天解锁`,205,y+18,160,20,d.claimable?GOLD:d.claimed?tone('#6f8a5f'):sd.expired?tone('#6b5837'):tone('#a99778'));
+    U.text('SevenDayState'+i,d.claimed?'已领取':d.claimable?'待领取 >':sd.expired?'已过期':`第 ${d.day} 天解锁`,205,y+18,160,20,d.claimable?GOLD:d.claimed?tone('#6f8a5f'):sd.expired?tone('#6b5837'):tone('#a99778'));
     if(d.claimable)U.tap('SevenDayTap'+i,0,y,640,102,()=>{
       const r=store.claimSevenDay(d.day);
       ctx.tell(r,r.ok?`已领取：${d.label}`:'');
@@ -1476,7 +1476,7 @@ export function sevenDayView(ctx: ScreenContext) {
     const x=i%2===0?-165:165, y=-430-Math.floor(i/2)*56;
     U.panel('Fourteen'+i,x,y,312,48,d.claimed?tone('#26301f'):d.claimable?tone('#3a2c17'):tone('#2b2118'),8,d.claimable?GOLD:tone('#6b5837'));
     U.text('FourteenCond'+i,`第 ${d.day} 天 · ${d.cond}`,x,y+9,286,15,d.claimed?tone('#6f8a5f'):d.claimable?GOLD:d.locked?tone('#a99778'):LIGHT);
-    U.text('FourteenState'+i,d.claimed?'已领取':d.claimable?`${d.label} ›`:d.locked?`第 ${d.day} 天解锁`:d.met?'已达成 · 待天数解锁':d.label,x,y-13,286,13,d.claimable?GOLD:tone('#a99778'));
+    U.text('FourteenState'+i,d.claimed?'已领取':d.claimable?`${d.label} >`:d.locked?`第 ${d.day} 天解锁`:d.met?'已达成 · 待天数解锁':d.label,x,y-13,286,13,d.claimable?GOLD:tone('#a99778'));
     if(d.claimable)U.tap('FourteenTap'+i,x,y,312,48,()=>{
       const r=store.claimFourteenDay(d.day);
       ctx.tell(r,r.ok?'已领取：'+r.label:'');

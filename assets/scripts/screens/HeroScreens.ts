@@ -87,8 +87,8 @@ export function heroes(ctx: ScreenContext) {
     }else{
       const qs=store.qualityShardInfo();
       U.panel('ShardEntry',22,515,230,63,tone('#3a2a1b'),7,gold);
-      U.text('ShardEntryText','碎片兑换 ›',22,529,213,22,gold);
-      U.text('ShardEntrySub',`SSR${qs[4]} SR${qs[3]} R${qs[2]} N${qs[1]} 各/10`,34,500,206,14,dim);
+      U.text('ShardEntryText','碎片兑换 >',22,529,213,22,gold);
+      U.text('ShardEntrySub',`SSR${qs[4]} SR${qs[3]} R${qs[2]} N${qs[1]}`,30,501,206,15,dim);
       U.tap('ShardEntryTap',22,515,230,63,()=>{shardTier=4;ctx.show('heroes');});
     }
     const sharedY=455,filterY=378,sortY=303;
@@ -121,7 +121,7 @@ export function heroes(ctx: ScreenContext) {
         grid.panel('HeroCardNameShade'+i,x,y-109,206,72,new Color(10,22,20,226),0);
         grid.panel('HeroFaction'+i,x-78,y+119,51,51,tone(factionColors[h.faction]||factionColors.all),26,gold);
         grid.text('HeroFactionLabel'+i,({wei:'魏',shu:'蜀',wu:'吴',qun:'群'} as any)[h.faction]||'?',x-78,y+119,45,23,paper);
-        grid.text('HeroCardRarity'+i,rarityNames[rarity],x+73,y+73,64,23,accent);
+        grid.text('HeroCardRarity'+i,rarityNames[rarity],x+68,y+58,64,23,accent);
         grid.text('HeroCardName'+i,h.name,x,y-94,188,27,paper);
         const maxStar=(config.RARITIES?.[rarity]?.maxStar)||5;
         grid.text('HeroCardStars'+i,h.locked?'☆'.repeat(maxStar):'★'.repeat(h.star||0)+'☆'.repeat(Math.max(0,maxStar-(h.star||0))),x,y-126,190,h.locked?18:20,h.locked?dim:gold);
@@ -233,7 +233,7 @@ export function heroDetail(ctx: ScreenContext) {
     // 小传入口（研讨会六 C3）：台词行兼作按钮，有传记的将点击弹四句小传
     const bioLines=(bios.BIOS as any)[h.id];
     if(bioLines)V.tap('BioTap',0,top-248,684,26,()=>heroInfoModal(ctx,'武将小传 · '+h.name,bioLines));
-    if(h.quote)V.text('DetailQuote','「'+h.quote+'」'+(bioLines?'  ·  小传 ›':''),0,top-248,560,19,tone('#c9b489'));
+    if(h.quote)V.text('DetailQuote','「'+h.quote+'」'+(bioLines?'  ·  小传 >':''),0,top-248,560,19,tone('#c9b489'));
     V.text('SkillsHeading','武将技能',-242,top-535,195,29,gold);
     const skills=[{name:h.ult.name,desc:h.ult.desc,glyph:'杀',fill:palette.red,kind:'必杀技能'},
       {name:h.passiveDef.name,desc:h.passiveDef.desc,glyph:'守',fill:palette.green,kind:'被动技能'}];
@@ -249,7 +249,7 @@ export function heroDetail(ctx: ScreenContext) {
     V.text('ArmoryHeading','全军军械',103,top-802,272,29,gold);
     V.text('ArmoryShared','一套军械，全体武将共享',106,top-836,331,21,paper);
     V.text('ArmoryBonus','攻击 +'+pct(bonus.atk)+' · 生命 +'+pct(bonus.hp)+' · 防御 +'+pct(bonus.def),106,top-860,340,18,dim);
-    V.text('ArmoryChevron','›',292,top-825,30,30,dim);
+    V.text('ArmoryChevron','>',292,top-825,30,30,dim);
     V.tap('HeroArmoryTap',0,top-825,666,111,()=>ctx.go('armory'));
     const gy=top-990;V.panel('GrowthPanel',0,gy,666,130,new Color(20,39,34,242),6,border);
     V.text('GrowthLevel','主公 Lv.'+s.player.level+' · 全体武将共享等级',-84,gy+37,480,23,gold);
@@ -818,7 +818,7 @@ export function armory(ctx: ScreenContext) {
         });
       });
             if((store.getArmoryState() as any).forgeOpen){
-        V.button('ForgeEntry','锻造台已开启 · 词条洗练 ›',0,summaryY-134,660,52,()=>ctx.go('forge'),gold);
+        V.button('ForgeEntry','锻造台已开启 · 词条洗练 >',0,summaryY-134,660,52,()=>ctx.go('forge'),gold);
       } else {
         const fstars=items.ARMORY_SLOTS.filter((sl:any)=>s.armory.slotStars[sl.id]>=5).length;
         V.text('ForgeEntryText',`锻造台 · 六槽全部 5★ 后开启（${fstars}/6）`,0,summaryY-134,660,18,dim);
