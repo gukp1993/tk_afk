@@ -501,10 +501,23 @@ check('周任务未完成拒绝', wq.ok === false);
 store4b.grantCard('guanyu'); // 干扰项：不影响计数
 s4b.week.counters.wins = 21;
 s4b.week.counters.stages = 30;
+const sealsBeforeWq = s4b.seals || 0;
 const wq2 = store4b.claimWeekQuest(0);
-check('周任务领取得印信', wq2.ok && s4b.seals >= 15);
+check('周任务领取得印信（恰好 +15，回归双倍发放修复）', wq2.ok && s4b.seals === sealsBeforeWq + 15);
 const wq3 = store4b.claimWeekQuest(0);
 check('周任务重复领取拒绝', wq3.ok === false);
+// 裁决二 A（2026-10-02）：周任务/周活跃加演武令入口
+s4b.week.counters.arenaWins = 5;
+const tokenBeforeArenaQ = s4b.res.token || 0;
+const sealsBeforeArenaQ = s4b.seals || 0;
+const wqA = store4b.claimWeekQuest(3);
+check('周任务演武获胜加发演武令 +5（印信恰好 +10）', wqA.ok && s4b.res.token === tokenBeforeArenaQ + 5 && s4b.seals === sealsBeforeArenaQ + 10);
+s4b.week.sealsEarned = 100;
+const tokenBeforeAct = s4b.res.token || 0;
+const sealsBeforeAct = s4b.seals || 0;
+const waTop = store4b.claimWeekActive(2);
+check('周活跃顶档发令 +30 · 印信恰好 +20', waTop.ok && s4b.res.token === tokenBeforeAct + 30 && s4b.seals === sealsBeforeAct + 20);
+check('日宝箱碎片翻倍（名将 6 / 精英 10）', C.DAILY_BOSS_CHEST.pick[0].shard === 6 && C.DAILY_ELITE_CHEST.pick[2].shard === 10);
 s4b.seals += 100; // 充足印信用于兑换测试
 const ba = store4b.buyWeekly('w_shard');
 check('印信兑换碎片', ba.ok && s4b.res.shard >= 30);
@@ -1372,7 +1385,15 @@ const storeP2 = freshStore(); storeP2.load();
   check('DG6 屯兵胜利直发主公经验', st3.ok && st3.reward.kind === 'train' && st3.reward.xpDirect > 0
     && (sDG.player.exp > expBefore || sDG.player.level > lvBefore));
   check('DG7 屯兵本不加战斗结算经验（防双发）', (st3.gainedXP || 0) === 0);
-  // 次数耗尽
+  // 满级经验转铜钱（2026-10-02 裁决三 A）
+  sDG.player.level = C.MAX_LEVEL; sDG.player.exp = 0;
+  const goldBeforeXp = sDG.res.gold;
+  const r3b = storeDG.beginBattle({ mode: 'dungeon', index: 1, dungeonKind: 'train' });
+  const st3b = storeDG.settleBattle(r3b.id, { win: true, duration: 20, aliveCount: 5 });
+  check('DG10 满级屯兵经验按 1:1 转铜钱', st3b.ok && st3b.convertedXP > 0 && sDG.res.gold === goldBeforeXp + st3b.convertedXP
+    && sDG.player.level === C.MAX_LEVEL);
+  const xr = storeDG.addPlayerXP(4321);
+  check('DG11 满级直调 addPlayerXP 同样折算', xr.converted === 4321 && xr.gained === 4321 && sDG.res.gold === goldBeforeXp + st3b.convertedXP + 4321);
   sDG.dungeon.runs = 2;
   const r4 = storeDG.beginBattle({ mode: 'dungeon', index: 1, dungeonKind: 'gold' });
   check('DG8 次数用完拒绝', r4.ok === false && /次数已用完/.test(r4.msg));

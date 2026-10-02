@@ -412,7 +412,7 @@ const DAILY_AGENDA = {
 };
 const DAILY_BOSS_CHEST = {
   enabled: true, gold: 15000,
-  pick: [{ shard: 3 }, { scroll: 1 }, { gem: 30 }]
+  pick: [{ shard: 6 }, { scroll: 1 }, { gem: 30 }]
 };
 
 // 新手首见浮层（2026-09-30 研讨会四 P1）：每场景首次进入弹一次图文说明。
@@ -805,16 +805,17 @@ const ACHV_REWARDS = [
 
 // 远征周系统（合并 C-P5+D-P1）：ISO 周重置；周任务零新行为聚合；印信兑换禁精铁/招募令直发
 const WEEKLY = {
+  // 周任务/周活跃加源（2026-10-02 用户裁决二 A）：给演武令补日常入口，30 天令约 800 跨过有感兑换阈值
   quests: [
     { key: 'wins', target: 21, reward: { seals: 15 }, label: '本周任意战斗胜利 21 场' },
     { key: 'stages', target: 30, reward: { seals: 15 }, label: '本周推图推进 30 关' },
     { key: 'tower', target: 15, reward: { seals: 10 }, label: '本周群英塔登 15 层' },
-    { key: 'arenaWins', target: 5, reward: { seals: 10 }, label: '本周演武获胜 5 场' },
+    { key: 'arenaWins', target: 5, reward: { seals: 10, token: 5 }, label: '本周演武获胜 5 场' },
     { key: 'bounty', target: 12, reward: { seals: 10 }, label: '本周派遣悬赏 12 单' },
     { key: 'summons', target: 30, reward: { seals: 10 }, label: '本周召唤 30 次' },
     { key: 'idle', target: 5, reward: { seals: 10 }, label: '本周领取挂机 5 天' }
   ],
-  activeTiers: [{ need: 40, reward: { seals: 10 } }, { need: 70, reward: { seals: 15 } }, { need: 100, reward: { seals: 20 } }],
+  activeTiers: [{ need: 40, reward: { seals: 10, token: 10 } }, { need: 70, reward: { seals: 15, token: 20 } }, { need: 100, reward: { seals: 20, token: 30 } }],
   // 远征无限层：难度与印信按层数递增，milestones 一次性奖励
   trial: { scaleBase: 1.0, scaleStep: 0.12, scaleCap: 2.6, sealBase: 15, sealStep: 5, sealFloor: 10,
     milestones: [{ floor: 5, seals: 30 }, { floor: 10, seals: 50 }, { floor: 20, seals: 80 }, { floor: 30, seals: 120 }] },
@@ -837,7 +838,8 @@ const RETURN_GRANTS = [
 ];
 
 // 今日目标关（每日首个精锐关胜利）日宝箱：铜钱+三选一随机
-const DAILY_ELITE_CHEST = { gold: 20000, pick: [{ scroll: 1 }, { gem: 50 }, { shard: 5 }] };
+// 碎片三选一翻倍（2026-10-02 用户裁决二 A）：精英 5→10、名将 3→6（DAILY_BOSS_CHEST 定义在上方），30 天碎片约 450 接近 SR 自选卡
+const DAILY_ELITE_CHEST = { gold: 20000, pick: [{ scroll: 1 }, { gem: 50 }, { shard: 10 }] };
 
 export {
   FACTIONS, BEATS, FACTION_ADV, ENEMY_FACTION_AURA, CLASSES, RARITIES,

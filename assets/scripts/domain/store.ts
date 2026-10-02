@@ -399,8 +399,7 @@ function claimWeekQuest(idx) {
     if (w.questClaimed.indexOf(idx) >= 0) return { ok: false, msg: '已领取' };
     if ((w.counters[q.key] || 0) < q.target) return { ok: false, msg: '周任务未完成' };
     w.questClaimed.push(idx);
-    applyReward(q.reward);
-    state.seals = (state.seals || 0) + (q.reward.seals || 0);
+    applyReward(q.reward); // applyReward 已含印信入账（修 2026-10-02 复现的双倍发放：此处不再手工重复叠加）
     w.sealsEarned = (w.sealsEarned || 0) + (q.reward.seals || 0);
     return { ok: true, label: q.label, seals: q.reward.seals || 0 };
   });
@@ -414,8 +413,7 @@ function claimWeekActive(tier) {
     if (w.activeClaimed.indexOf(tier) >= 0) return { ok: false, msg: '已领取' };
     if ((w.sealsEarned || 0) < t.need) return { ok: false, msg: '周活跃不足' };
     w.activeClaimed.push(tier);
-    applyReward(t.reward);
-    state.seals = (state.seals || 0) + (t.reward.seals || 0);
+    applyReward(t.reward); // 印信由 applyReward 入账一次（同上，去掉双倍叠加）；活跃箱印信不计 sealsEarned 防自增
     return { ok: true, seals: t.reward.seals || 0 };
   });
 }
@@ -1557,7 +1555,12 @@ function playerLevel() { return state.player.level; }
 function playerXpNeeded(level) { return level >= C.MAX_LEVEL ? 0 : Math.floor(C.PLAYER_LEVEL.baseXP + C.PLAYER_LEVEL.stepXP * (level - 1)); }
 function addPlayerXP(amount) {
   let gained = Math.max(0, Math.floor(Number(amount) || 0));
-  if (state.player.level >= C.MAX_LEVEL) { state.player.exp = 0; return { gained: 0, before: C.MAX_LEVEL, after: C.MAX_LEVEL, exp: 0, need: 0 }; }
+  // 满级经验转铜钱（2026-10-02 用户裁决三 A）：1 XP = 1 铜钱，屯兵本/战斗/任务经验不再白丢
+  if (state.player.level >= C.MAX_LEVEL) {
+    state.player.exp = 0;
+    if (gained > 0) state.res.gold += gained;
+    return { gained, converted: gained, before: C.MAX_LEVEL, after: C.MAX_LEVEL, exp: 0, need: 0 };
+  }
   const before = state.player.level;
   state.player.exp += gained;
   while (state.player.level < C.MAX_LEVEL && state.player.exp >= playerXpNeeded(state.player.level)) {
@@ -2631,7 +2634,7 @@ function sweepStage(stageIdx) {
     state.res.gold += rw.gold;
     const lvl = addPlayerXP(rw.xp);
     state.sweep.used = (state.sweep.used || 0) + 1;
-    return { ok: true, stage: stageIdx, gold: rw.gold, xp: rw.xp,
+    return { ok: true, stage: stageIdx, gold: rw.gold, xp: rw.xp, convertedXP: lvl.converted || 0,
       levelBefore: lvl.before, levelAfter: lvl.after, left: Math.max(0, info.daily - state.sweep.used) };
   });
 }
@@ -3049,6 +3052,7 @@ function settleBattle(battleId, outcome) {
     checkDailyReset();
     const win = outcome.win === true;
     let reward = null;
+    let convertedTotal = 0; // 本场结算中满级折算铜钱的总量（屯兵直发 + 结算经验两处合并）
     if (pending.mode === 'campaign') {
       if (win) {
         const relaxed = __domain_stages.isEliteStage(pending.index) || (__domain_stages.resolveMods(pending.index).length > 0);
@@ -3110,7 +3114,8 @@ function settleBattle(battleId, outcome) {
           const lv = C.DUNGEON.enemyLevel(f, state.player.level);
           const xpDirect = C.DUNGEON.xpReward(lv);
           const lvl = addPlayerXP(xpDirect);
-          reward = { kind: 'train', floor: f, xpDirect, levelBefore: lvl.before, levelAfter: lvl.after };
+          convertedTotal += lvl.converted || 0;
+          reward = { kind: 'train', floor: f, xpDirect, converted: lvl.converted || 0, levelBefore: lvl.before, levelAfter: lvl.after };
         }
         const key = kind === 'gold' ? 'bestGold' : 'bestTrain';
         if (pending.first && f > (state.dungeon[key] || 0)) state.dungeon[key] = f;
@@ -3126,10 +3131,11 @@ function settleBattle(battleId, outcome) {
     if (pending.mode === 'training' && win) state.daily.trainingWins = (state.daily.trainingWins || 0) + 1;
     const xp = battleXP(pending, win);
     const level = addPlayerXP(xp);
+    convertedTotal += level.converted || 0;
     state.battle.pending = null;
     const summary = {
       id: battleId, mode: pending.mode, outcome: win ? 'win' : 'loss',
-      levelBefore: level.before, levelAfter: level.after, gainedXP: level.gained,
+      levelBefore: level.before, levelAfter: level.after, gainedXP: level.gained, convertedXP: convertedTotal,
       playerExp: level.exp, needXP: level.need, reward, firstWinChoicePending: state.heroProgress.firstWinChoicePending
     };
     state.battle.lastSettled = { id: battleId, outcome: summary.outcome, gainedXP: level.gained, reward, summary };
