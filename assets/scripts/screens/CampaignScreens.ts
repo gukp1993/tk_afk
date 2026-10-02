@@ -102,38 +102,38 @@ export function campaign(ctx: ScreenContext) {
   U.tap('CampEditTap',-118,-296,490,106,()=>ctx.go('formation'));
   U.tap('ChestTap',238,-295,150,100,()=>ctx.idleClaimChoice());
 
-  U.panel('CampaignInfo', 0, -393, 696, 82, tone('#ded2ae'),8);
+  U.panel('CampaignInfo', 0, -391, 696, 76, tone('#ded2ae'),8);
   const idle = store.idlePending();
   const mins=Math.floor(idle.hours*60);
-  U.text('IdleTime',idle.full?'挂机收益已满':`积累 ${Math.floor(mins/60)}时${mins%60}分`,-218,-367,245,19,INK);
-  U.text('Idle',`铜钱 ${fmt.fmtNum(idle.gold)} · 精铁 ${idle.iron}（自然 12 小时封顶）`,-156,-391,370,16,tone('#74684a'));
-  U.text('IdleRate',`今日元宝 ${idle.gem.claimedGem}/${idle.gem.cap} · 累计未领 ${fmt.fmtNum(idle.gem.pending)}`,-176,-413,330,14,tone('#74684a'));
-  U.panel('IdleClaimPanel',232,-393,220,59,palette.gold,9,tone('#a47735'));
-  U.text('IdleClaimText',idle.gold||idle.iron?'一键收获':'收益积累中',232,-393,198,25,INK);
-  U.tap('IdleClaimTap',232,-393,220,59,()=>ctx.tell(store.claimFreeRewards(),'挂机收益已领取'));
-  U.panel('MapButton',-288,-480,103,86,tone('#3a291a'),8,GOLD);
-  U.text('MapButtonTitle','征途',-288,-466,90,24,LIGHT);
-  U.text('MapButtonSub','本章地图',-288,-494,90,14,tone('#d6c7a1'));
-  U.tap('JourneyTap',-288,-480,103,86,()=>{chapterMapOpen=true;chapterMapCh=chapter.idx;ctx.show('campaign');});
-  U.panel('AutoButton',0,-480,445,86,ctx.auto?palette.red:tone('#39695a'),10,GOLD);
-  U.text('AutoButtonTitle',ctx.auto?'本场后停止':'自动出征',0,-467,422,35,LIGHT);
-  U.text('AutoButtonSub',`第 ${stage} 关 · ${enemy.name||chapter.name}`,0,-498,417,15,tone('#e5e5bf'));
-  U.tap('AutoTap',0,-480,445,86,()=>ctx.auto?ctx.stopAuto(true):ctx.startAuto('campaign'));
-  U.panel('TrainingButton',288,-480,103,86,tone('#3a291a'),8,GOLD);
-  U.text('TrainingTitle','练兵',288,-466,90,24,LIGHT);
-  U.text('TrainingSub','最多10胜',288,-494,90,14,tone('#d6c7a1'));
-  U.tap('TrainingTap',288,-480,103,86,()=>ctx.startAuto('training'));
-  U.rect('GoalStrip',0,-536,720,24,tone('#344438'));
+  U.text('IdleTime',idle.full?'挂机收益已满':`积累 ${Math.floor(mins/60)}时${mins%60}分`,-218,-365,245,19,INK);
+  U.text('Idle',`铜钱 ${fmt.fmtNum(idle.gold)} · 精铁 ${idle.iron}（自然 12 小时封顶）`,-156,-389,370,16,tone('#74684a'));
+  U.text('IdleRate',`今日元宝 ${idle.gem.claimedGem}/${idle.gem.cap} · 累计未领 ${fmt.fmtNum(idle.gem.pending)}`,-176,-409,330,14,tone('#74684a'));
+  U.panel('IdleClaimPanel',232,-391,220,59,palette.gold,9,tone('#a47735'));
+  U.text('IdleClaimText',idle.gold||idle.iron?'一键收获':'收益积累中',232,-391,198,25,INK);
+  U.tap('IdleClaimTap',232,-391,220,59,()=>ctx.tell(store.claimFreeRewards(),'挂机收益已领取'));
+  U.panel('MapButton',-288,-471,103,70,tone('#3a291a'),8,GOLD);
+  U.text('MapButtonTitle','征途',-288,-458,90,24,LIGHT);
+  U.text('MapButtonSub','本章地图',-288,-485,90,14,tone('#d6c7a1'));
+  U.tap('JourneyTap',-288,-471,103,70,()=>{chapterMapOpen=true;chapterMapCh=chapter.idx;ctx.show('campaign');});
+  U.panel('AutoButton',0,-471,445,70,ctx.auto?palette.red:tone('#39695a'),10,GOLD);
+  U.text('AutoButtonTitle',ctx.auto?'本场后停止':'自动出征',0,-459,422,35,LIGHT);
+  U.text('AutoButtonSub',`第 ${stage} 关 · ${enemy.name||chapter.name}`,0,-489,417,15,tone('#e5e5bf'));
+  U.tap('AutoTap',0,-471,445,70,()=>ctx.auto?ctx.stopAuto(true):ctx.startAuto('campaign'));
+  U.panel('TrainingButton',288,-471,103,70,tone('#3a291a'),8,GOLD);
+  U.text('TrainingTitle','练兵',288,-458,90,24,LIGHT);
+  U.text('TrainingSub','最多10胜',288,-485,90,14,tone('#d6c7a1'));
+  U.tap('TrainingTap',288,-471,103,70,()=>ctx.startAuto('training'));
+  U.rect('GoalStrip',0,-528,720,40,tone('#344438'));
   const firstDone=Math.min(s.campaign.cleared,config.FIRST_STAGE_END);
   const storyEnd=stages.CHAPTERS.length*stages.STAGES_PER_CH;
   const goalText=firstDone<config.FIRST_STAGE_END
     ?`第一期主线 ${firstDone}/${config.FIRST_STAGE_END} · 通关越多，挂机收益越高`
     :s.campaign.cleared>=storyEnd?`主线全通 ${storyEnd}/${storyEnd} · 循环乱世继续开放`
     :`二期征途 ${s.campaign.cleared}/${storyEnd} · 通关越多，挂机收益越高`;
-  U.text('GoalHint',goalText,-151,-536,400,16,LIGHT);
-  U.text('IdleMore','双倍 / 快收',278,-536,147,16,GOLD);
-  U.tap('GoalTap',-150,-536,405,24,()=>ctx.go('stagePreview'));
-  U.tap('IdleMoreTap',278,-536,147,24,()=>ctx.idleClaimChoice());
+  U.text('GoalHint',goalText,-151,-528,400,16,LIGHT);
+  U.text('IdleMore','双倍 / 快收',278,-528,180,18,GOLD);
+  U.tap('GoalTap',-150,-528,405,40,()=>ctx.go('stagePreview'));
+  U.tap('IdleMoreTap',278,-528,180,40,()=>ctx.idleClaimChoice());
   const returnPending=store.getState().returnPending;
   if(returnPending){
     U.panel('ReturnBanner',0,-78,640,54,tone('#3a2c17'),9,GOLD);
