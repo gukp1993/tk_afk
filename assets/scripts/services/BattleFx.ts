@@ -2,10 +2,11 @@ import { Color, Graphics, Label, LabelOutline, Node, UIOpacity, UITransform, Vec
 import { CocosUi, hexColor } from '../ui/CocosUi';
 
 /**
- * A0+A1+A2+A3 战斗表现层管线（三线打磨 A 线，纯表现层、零规则改动）：
+ * A0~A4 战斗表现层管线（三线打磨 A 线，纯表现层、零规则改动）：
  * 每帧消费 `fighting.step().events` 与一次 `snapshot()`，生成/驱动八类 fx：
  * - dmgNum：伤害数字（hit）——overlay，挂 fxLayer。
- * - ultBanner：大招横幅（ult）——overlay，挂 fxLayer。
+ * - ultBanner：大招横幅（ult）——overlay，挂 fxLayer；A4 入场增强：自上 14px 滑入
+ *   （90ms easeOut）+ 亮金描边叠加层自 255 衰减（描边加亮后回落金框），1.2s 淡出照旧。
  * - lunge：攻击位移（act）——驱动既有 `Fighter{i}`+`FighterGlyph{i}` 沿纵轴前冲回弹
  *   （战场上下排布：A 方在下 y<0 向 +y 冲、B 方在上向 -y 冲，按节点 y 符号判向）。
  * - ultLunge（A2）：大招前冲（ult）——同轴更大更慢的一次前冲（18px/0.5s，普通 lunge
@@ -13,10 +14,15 @@ import { CocosUi, hexColor } from '../ui/CocosUi';
  * - shake：受击抖动（hit 且 src 非空）——驱动同上节点横向 ±3px 三次振荡（x 轴与纵向
  *   lunge 轴垂直，同一卡面上两种动效可同帧共存且互不遮挡；src=null 的 reflect/dot/env
  *   不抖，env 全场每秒 tick 只弹字不抖，避免常驻噪声）。
- * - energyPulse（A2）：怒气满脉冲——feed 对比相邻两次 snapshot 同 uid 怒气，从 <100 跨到
- *   ≥100 的瞬间播一次 scale 1→1.08→1（0.3s，Fighter+Glyph 同缩放）；每单位每次充满只播
- *   一次（跨帧状态表，播成功才标记，被互斥占用时下一帧重试——gainEnergy 与攻击/受击同帧，
- *   不重试会被 lunge/shake 活跃窗成批吞掉）；首帧只记录不触发（firstEnergy 开场满怒不闪）。
+ * - energyPulse（A4）：怒气满常驻呼吸——feed 先于事件扫 snapshot：`energy>=100 && alive`
+ *   进呼吸态、<100 或 !alive 退出（Map<uid> 跨帧状态表，reset 清）。态内每帧写
+ *   Fighter+Glyph scale=基准+0.06·sin(t·6)（≈0.96Hz 呼吸，规格字面 1+0.06·sin(t·6)，
+ *   卡面基准恒 1），两枚预制 rim overlay（金/亮金 Graphics 各画一次、之后只切 active）
+ *   置卡坐标 3Hz 交替——零逐帧重绘 Graphics（规格 A4 防 overdraw）。态由 snapshot 状态机
+ *   驱动而非事件：满怒即呼吸（提示大招可用），castUlt 清怒即退出、缩放逐位归 1（规格
+ *   "动画结束归位"）。前批 A2 的"跨阈值一次性 0.3s 脉冲"由本常驻态取代：两者同写 scale
+ *   且状态机语义覆盖跨阈值语义；扫序也从"事件后"提前到"事件前"——退出归位必须先于同帧
+ *   事件 fx（deathFade/ultLunge）采样基准，否则会把呼吸中的缩放误存为 base 残留永久偏移。
  * - deathFade（A3）：阵亡淡出（death）——驱动 Fighter+Glyph opacity 255→0（easeIn）+
  *   下沉 10px（0.5s），到期归位为透明终态（位置回 base、透明度保持 0）；名字/血/怒条照常由
  *   refreshBattleView 渲染（卡面消失即"阵亡"反馈）。跨帧状态表 deadFaded 记录透明终态：
@@ -31,18 +37,23 @@ import { CocosUi, hexColor } from '../ui/CocosUi';
  * - 视觉参数照抄旧 combatPopupDisplay/DmgNum/UltPopup 死路渲染路径（寿命/字号/配色/位移）。
  * - overlay 全部挂 `CocosUi.ensureFxLayer`（与 content 同坐标系，跨页存活）——所以进场/离场
  *   钩子必须全覆盖（startBattle/startWeekBoss/startReplay/finishBattle/go 离场）。
- * - 驱动型 fx（lunge/ultLunge/shake/energyPulse）不建节点，直接位移/缩放既有节点，
+ * - 驱动型 fx（lunge/ultLunge/shake）不建节点，直接位移/缩放既有节点，
  *   到期/重置/节点失效时逐像素归位；同一 uid 同一时间只允许一个驱动型 fx
  *   （防两类动效同帧争写同一节点坐标/缩放基准）。
- * - A3 淡出/复活的互斥设计：主信道是 opacity 而非位移，**独立于四类驱动互斥槽**（不占
- *   lunge/shake/ultLunge/energyPulse 的槽位，deathFade/revive 两者之间同 uid 互斥——先到者
- *   被后到者终结）；但它们仍写 y 位移，因此 spawn 时终结该 uid 全部既有 fx 取得位移主写权，
- *   活跃期间四类让位不再起播（死亡单位不再产生 act/hit 事件，实际重叠窗口仅致死当帧）。
+ * - A4 呼吸态与驱动互斥槽的关系：呼吸只写 scale（每帧最后写、终态权威），lunge/shake/
+ *   ultLunge 实际只消费位移（ds 恒 0），两者正交、互不占槽；呼吸退出时归位缩放并修正
+ *   呼吸期间采样的驱动 fx 基准（防把呼吸值当 base 残留）。
+ * - A3 淡出/复活的互斥设计：主信道是 opacity 而非位移，**独立于三类驱动互斥槽**（不占
+ *   lunge/shake/ultLunge 的槽位，deathFade/revive 两者之间同 uid 互斥——先到者
+ *   被后到者终结）；但它们仍写 y 位移与缩放，因此 spawn 时终结该 uid 全部既有 fx（含
+ *   呼吸态退出）取得主写权，活跃期间三类让位不再起播（死亡单位不再产生 act/hit 事件，
+ *   实际重叠窗口仅致死当帧）。
  * - `node.isValid` 判定自清理；overlay 到期销毁、driven 到期先写回 base 坐标/缩放再移除
  *   （deathFade 到期例外：位置归 base、透明度保持 0 = 透明终态）。
  */
 
 const GOLD = hexColor('#e3ba70'); // 现状 UltPopup 金框/金字
+const GOLD_HI = hexColor('#ffe9b0'); // A4 亮金：呼吸 rim 交替的第二色 + 横幅入场描边加亮
 const DMG_LIFE = 0.8;             // 伤害数字寿命秒（现状 800ms；×N 倍速由 tick 按 speed 压缩）
 const DMG_RISE = 60;              // 上飘距离（现状线性 60px）
 const ULT_LIFE = 1.2;             // 横幅寿命（前 0.9s 全亮 230，末 0.3s 淡出）
@@ -56,12 +67,18 @@ const LUNGE_OUT = 0.12;
 const ULT_LUNGE_DIST = 18;        // A2 大招前冲：比普通 lunge 更大更慢，更有仪式感
 const ULT_LUNGE_DUR = 0.5;        // 0.18s easeOut 冲出 + 0.32s easeInOut 回弹（无过冲，终帧零偏移）
 const ULT_LUNGE_OUT = 0.18;
-const PULSE_AMP = 0.08;           // A2 怒气满脉冲：scale 1→1.08→1（sin 半波，天然起零归零）
-const PULSE_DUR = 0.3;
+const BREATH_AMP = 0.06;          // A4 呼吸幅度：scale=基准+0.06·sin(t·6)（规格字面）
+const BREATH_RATE = 6;            // A4 呼吸角频率 rad/s（≈0.96Hz）
+const RIM_HZ = 3;                 // A4 双 rim visible 交替频率（金↔亮金）
+const RIM_PAD = 2;                // A4 rim 相对卡面（90×91 r13）的外扩距离
+const BANNER_SLIDE = 0.09;        // A4 横幅滑入时长（90ms easeOut）
+const BANNER_SLIDE_DIST = 14;     // A4 横幅滑入起始偏移 px（y+14→0，自上落入）
+const BANNER_GLOW = 0.45;         // A4 横幅描边加亮衰减时长（亮金叠加层 255→0）
+const PULSE_AMP = 0.08;           // A3 复活起身脉冲：scale 1→1.08→1（sin 半波，天然起零归零）
 const DEATH_DUR = 0.5;            // A3 阵亡淡出：opacity 255→0 + 下沉 10px，easeIn（先缓后快）
 const DEATH_SINK = 10;            // A3 阵亡下沉距离 px（画面向下 = -y，双侧同向）
 const REVIVE_DUR = 0.6;           // A3 复活回升：opacity→255 + 回升 + 1→1.08→1 脉冲
-const MAX_DRIVEN = 12;            // 驱动型 fx（四类动效 + A3 淡出/复活按 kind 各自计）同类并存上限（场上单位 ≤11 含援军，足额）
+const MAX_DRIVEN = 12;            // 驱动型 fx（三类动效 + A3 淡出/复活按 kind 各自计）同类并存上限（场上单位 ≤11 含援军，足额）
 
 /** 被驱动的既有节点 + 归位基准（Fighter 与 Glyph 的 y 差 2px，各存各的 base）。
  * A3 淡出/复活额外持有透明度主写权：op 为该节点 UIOpacity（spawn 时 ensure 补挂），
@@ -70,29 +87,39 @@ const MAX_DRIVEN = 12;            // 驱动型 fx（四类动效 + A3 淡出/复
 interface DrivenNode { node: Node; baseX: number; baseY: number; baseScale: number; op: UIOpacity | null; fromOp: number; }
 
 interface BfxItem {
-  kind: 'dmgNum' | 'ultBanner' | 'shake' | 'lunge' | 'ultLunge' | 'energyPulse' | 'deathFade' | 'revive';
+  kind: 'dmgNum' | 'ultBanner' | 'shake' | 'lunge' | 'ultLunge' | 'deathFade' | 'revive';
   node: Node | null;              // 本模块创建的 overlay（驱动型不建节点，为 null）
   driven: DrivenNode[];           // 被驱动的既有节点（驱动型：Fighter{i}+FighterGlyph{i}）
   opacity: UIOpacity | null;
+  glowOp: UIOpacity | null;       // A4 ultBanner 亮金描边叠加层透明度（随横幅子节点同毁）
   elapsed: number;
   duration: number;               // 秒；elapsed += dt * speed
   data: { baseX: number; baseY: number; dir?: number; uid?: string; sunk?: boolean };
 }
 
+/** A4 怒气满常驻呼吸态：uid → 态（进态建、退出/reset 销毁）。rim 两枚 Graphics 各画一次，
+ * 态内只切 active（3Hz 交替），不逐帧重绘。baseF/baseG 为进态时的缩放基准（进态有
+ * hasFadeFx 守卫，采样时节点必为净基准），退出时逐位归位。 */
+interface BreathState { t: number; baseF: number; baseG: number; rimGold: Node | null; rimHi: Node | null }
+
 export class BattleFx {
   private static items: BfxItem[] = [];
-  /** A2 怒气跨帧状态：uid → 上一帧是否已 ≥100（播成功才置 true；reset 清，跨场不残留）。 */
-  private static energyFull = new Map<string, boolean>();
+  /** A4 怒气呼吸跨帧状态：uid → 常驻呼吸态（feed 按 snapshot 状态机进出；reset 清，跨场不残留）。 */
+  private static breaths = new Map<string, BreathState>();
+  /** A4：最近一帧 feed 的寻址上下文（呼吸写在 tick，需按 uid 解析节点；每帧刷新，
+   * reset 置空——feed 只在 battle 页调用，离开即失效）。 */
+  private static view: { ui: CocosUi; indexByUid: Map<string, number> } | null = null;
   /** A3 阵亡淡出跨帧状态：uid → 已进入/正在进入透明终态（death 事件置入，cheat/兜底复活
    * 移除；reset 清，跨场不残留）。供 snapshot.alive 兜底比对与重绘自愈。 */
   private static deadFaded = new Map<string, true>();
 
-  /** 现存 fx 数（__tkDiag().fx 机检：跨场残留断言用）。 */
-  static get live(): number { return BattleFx.items.length; }
+  /** 现存 fx 数（__tkDiag().fx 机检：跨场残留断言用）。A4 起计入呼吸态（rim overlay 不入
+   * items，泄漏时 fx 仍须非 0 才能被机检捕获；reset 双清，结算断言语义不变）。 */
+  static get live(): number { return BattleFx.items.length + BattleFx.breaths.size; }
 
   /** 新战斗/离场重置：driven 节点先逐像素归位（防中途结束残留位移），overlay 全部销毁。
    * A3：淡出/复活遗留的半程透明度一并复位 255（节点通常随 show() 重建，此处兜节点复用场景），
-   * deadFaded 状态表清空。 */
+   * deadFaded 状态表清空。A4：呼吸态先退出（缩放归位 + rim 销毁）再清表与寻址上下文。 */
   static reset() {
     for (const f of BattleFx.items) {
       BattleFx.restoreDriven(f);
@@ -106,7 +133,9 @@ export class BattleFx {
       if (f.node && f.node.isValid) { f.node.removeFromParent(); f.node.destroy(); }
     }
     BattleFx.items = [];
-    BattleFx.energyFull.clear();
+    for (const uid of Array.from(BattleFx.breaths.keys())) BattleFx.exitBreath(uid);
+    BattleFx.breaths.clear();
+    BattleFx.view = null;
     BattleFx.deadFaded.clear();
   }
 
@@ -117,14 +146,18 @@ export class BattleFx {
    * 每帧把 `step().events` 与一次 `snapshot()` 传入（仅 battle 页调用，防 fx 泄到其他页）。
    * 内部按 snapshot 下标建 uid→节点序号映射：snapshot 数组下标 = 战斗页节点序号 i
    * （drawFighter/refreshBattleView 同一序号，节点名 Fighter{i}）。
-   * content 仅用于定位 fxLayer（与 content 同父同坐标系，overlay 直接 copy 目标节点 position）。
-   * A3 起：事件块与跨帧扫描块（scanEnergy/scanAlive）解耦——无事件帧也执行扫描
-   * （A2 重试语义此前靠事件密集兜底；A3 兜底复活/重绘自愈必须每帧比对 alive）。
+   * content 仅用于定位 fxLayer（与 content 同坐标系，overlay 直接 copy 目标节点 position）。
+   * A4 起扫序：呼吸状态机（scanEnergy）先于事件——退出呼吸的缩放归位必须发生在同帧事件 fx
+   * （deathFade/revive/ultLunge）采样缩放基准之前，否则基准被呼吸值污染（详见 scanEnergy 注释）；
+   * 事件块与跨帧扫描块解耦——无事件帧也执行扫描（A3 兜底复活/重绘自愈必须每帧比对 alive）。
    */
   static feed(events: any[], snapshot: any[], ui: CocosUi, content: Node) {
     if (!ui || !content || !snapshot || !snapshot.length) return;
     const indexByUid = new Map<string, number>();
     for (let i = 0; i < snapshot.length; i++) indexByUid.set(snapshot[i].uid, i);
+    BattleFx.view = { ui, indexByUid }; // A4：呼吸写在 tick，此处每帧刷新寻址上下文
+    // A4 怒气满呼吸状态机（先于事件，理由见方法注释；无槽位竞争——呼吸只写 scale 且为终态权威）。
+    BattleFx.scanEnergy(snapshot, ui, indexByUid, content);
     if (events && events.length) {
       const layer = CocosUi.ensureFxLayer(content);
       for (const ev of events) {
@@ -140,31 +173,89 @@ export class BattleFx {
         else if (ev.e === 'cheat') BattleFx.spawnRevive(ui, indexByUid, ev.uid); // pct 字段为规则层语义，表现层不消费
       }
     }
-    // A2 怒气满检测（事件之后扫：同帧先到 lunge/shake 占槽时脉冲顺延重试，事件反馈优先）。
-    BattleFx.scanEnergy(snapshot, ui, indexByUid);
     // A3 兜底比对（规格 6.2-5：主触发是 cheat 事件，此处仅安全网）：复活补偿 + 重绘自愈。
     BattleFx.scanAlive(snapshot, ui, indexByUid);
   }
 
   /**
-   * A2：对比相邻两次 snapshot 的同 uid 怒气，从 <100 跨到 ≥100 的瞬间触发一次脉冲。
-   * - 首帧只记录不触发（firstEnergy/armoryStartEnergy 开场即满不闪，“跨越”需两帧对比）。
-   * - 播放成功才标记已满；被同 uid 驱动槽占用（lunge/shake 活跃窗）或超上限时保持未标记，
-   *   下一帧重试，槽位释放后必播一次——每单位每次充满仍只播一次。
+   * A4：怒气满常驻呼吸状态机（规格 6.4 A4）——`energy>=100 && alive` 进态、<100 或 !alive
+   * 退出（Map<uid>，reset 清）。与 A2 一次性版的语义差异：态由 snapshot 状态驱动而非跨阈值
+   * 事件——开场/获满即呼吸（大招可用的常驻提示，首帧满怒也成立），castUlt 清怒即退；
+   * 不再有”播成功才标记/下帧重试”（呼吸无互斥槽，进态即刻成立；进态守卫仅 hasFadeFx——
+   * 复活动画进行中顺延一帧，防基准采样到复活的脉冲中值）。
    */
-  private static scanEnergy(snapshot: any[], ui: CocosUi, indexByUid: Map<string, number>) {
+  private static scanEnergy(snapshot: any[], ui: CocosUi, indexByUid: Map<string, number>, content: Node) {
     for (const u of snapshot) {
       if (!u || !u.uid) continue;
       const e = Number(u.energy);
       const full = u.alive !== false && isFinite(e) && e >= 100;
-      const seen = BattleFx.energyFull.get(u.uid);
-      if (seen === undefined) { BattleFx.energyFull.set(u.uid, full); continue; }
-      if (full && !seen) {
-        if (BattleFx.spawnEnergyPulse(ui, indexByUid, u.uid)) BattleFx.energyFull.set(u.uid, true);
-      } else {
-        BattleFx.energyFull.set(u.uid, full);
+      const has = BattleFx.breaths.has(u.uid);
+      if (full && !has) BattleFx.enterBreath(u.uid, ui, indexByUid, content);
+      else if (!full && has) BattleFx.exitBreath(u.uid);
+    }
+  }
+
+  /** A4 进态：采样缩放基准 + 建两枚预制 rim（Graphics 各画一次）。进态前有 hasFadeFx 守卫
+   * （scanEnergy），此处基准必为净值；援军越界等非法坐标跳过（下帧重试，与 A2 重试语义一致）。 */
+  private static enterBreath(uid: string, ui: CocosUi, indexByUid: Map<string, number>, content: Node) {
+    if (BattleFx.hasFadeFx(uid)) return; // 淡出/复活跃：顺延一帧（防 baseF 采到复活脉冲中值）
+    const idx = indexByUid.get(uid);
+    if (idx === undefined) return;
+    const fighter = ui.node('Fighter' + idx);
+    const glyph = ui.node('FighterGlyph' + idx);
+    if (!fighter || !fighter.isValid || !glyph || !glyph.isValid) return;
+    const fp = fighter.position;
+    if (!isFinite(fp.x) || !isFinite(fp.y)) return; // 援军 slot=5 越界守卫（6.2-7）
+    let rimGold: Node | null = null, rimHi: Node | null = null;
+    const layer = CocosUi.ensureFxLayer(content);
+    rimGold = BattleFx.makeRim('BfxRimG', fp.x, fp.y, GOLD);
+    rimHi = BattleFx.makeRim('BfxRimH', fp.x, fp.y, GOLD_HI);
+    layer.addChild(rimGold);
+    layer.addChild(rimHi);
+    rimHi.active = false; // 起始相：金框亮
+    BattleFx.breaths.set(uid, { t: 0, baseF: fighter.scale.x, baseG: glyph.scale.x, rimGold, rimHi });
+  }
+
+  /** A4 预制 rim：卡面 90×91 r13 外扩 RIM_PAD 的圆角描边，只画这一次（态内仅切 active）。 */
+  private static makeRim(name: string, x: number, y: number, color: Color): Node {
+    const node = new Node(name);
+    node.setPosition(new Vec3(x, y, 0));
+    node.addComponent(UITransform).setContentSize(90 + RIM_PAD * 2, 91 + RIM_PAD * 2);
+    const g = node.addComponent(Graphics);
+    g.strokeColor = color;
+    g.lineWidth = 3;
+    g.roundRect(-45 - RIM_PAD, -45.5 - RIM_PAD, 90 + RIM_PAD * 2, 91 + RIM_PAD * 2, 13 + RIM_PAD);
+    g.stroke();
+    return node;
+  }
+
+  /**
+   * A4 退态：缩放逐位归位 + rim 销毁（幂等：不在态内直接返回）。
+   * 位置时机敏感：必须先于同帧事件 fx 采样基准（feed 扫序保证），并修正呼吸期间采样的
+   * 驱动 fx 基准——shake/lunge 若以呼吸中的缩放为 baseScale，退出后其每帧写/到期归位都会
+   * 把呼吸值当基准残留永久 +6% 缩放，统一改写真基准。
+   */
+  private static exitBreath(uid: string) {
+    const st = BattleFx.breaths.get(uid);
+    if (!st) return;
+    BattleFx.breaths.delete(uid);
+    const view = BattleFx.view;
+    if (view) {
+      const idx = view.indexByUid.get(uid);
+      if (idx !== undefined) {
+        const f = view.ui.node('Fighter' + idx), g = view.ui.node('FighterGlyph' + idx);
+        if (f && f.isValid) f.setScale(new Vec3(st.baseF, st.baseF, 1));
+        if (g && g.isValid) g.setScale(new Vec3(st.baseG, st.baseG, 1));
       }
     }
+    for (const f of BattleFx.items) {
+      if ((f.kind === 'shake' || f.kind === 'lunge' || f.kind === 'ultLunge') && f.data.uid === uid) {
+        if (f.driven[0]) f.driven[0].baseScale = st.baseF;
+        if (f.driven[1]) f.driven[1].baseScale = st.baseG;
+      }
+    }
+    if (st.rimGold && st.rimGold.isValid) { st.rimGold.removeFromParent(); st.rimGold.destroy(); }
+    if (st.rimHi && st.rimHi.isValid) { st.rimHi.removeFromParent(); st.rimHi.destroy(); }
   }
 
   /** 帧率无关驱动：elapsed += dt * speed（×4 时动画同步加快，对齐 popupLife/refreshGap 除速惯例）。 */
@@ -172,7 +263,7 @@ export class BattleFx {
     const advance = dt * (speed || 1);
     for (let i = BattleFx.items.length - 1; i >= 0; i--) {
       const f = BattleFx.items[i];
-      if (f.kind === 'shake' || f.kind === 'lunge' || f.kind === 'ultLunge' || f.kind === 'energyPulse'
+      if (f.kind === 'shake' || f.kind === 'lunge' || f.kind === 'ultLunge'
         || f.kind === 'deathFade' || f.kind === 'revive') {
         // 驱动型：任一被驱动节点失效（show() 整页重绘销毁）→ 归位剩余有效节点并弃单
         if (f.driven.some(d => !d.node.isValid)) { BattleFx.restoreDriven(f); BattleFx.items.splice(i, 1); continue; }
@@ -186,9 +277,6 @@ export class BattleFx {
           const dist = f.kind === 'lunge' ? LUNGE_DIST : ULT_LUNGE_DIST;
           const out = f.kind === 'lunge' ? LUNGE_OUT : ULT_LUNGE_OUT;
           dy = (f.data.dir || 1) * BattleFx.lungeOffset(f.elapsed, dist, f.duration, out);
-        } else if (f.kind === 'energyPulse') {
-          // energyPulse：scale 1→1.08→1，sin 半波起点/终点均为 0，天然归位
-          ds = PULSE_AMP * Math.sin(Math.PI * t);
         } else if (f.kind === 'deathFade') {
           // A3 阵亡淡出：下沉 10px easeIn（缓慢启动的瘫沉感），终帧位置由 restoreDriven 归 base
           dy = -DEATH_SINK * t * t;
@@ -215,16 +303,39 @@ export class BattleFx {
       if (f.kind === 'dmgNum') {
         f.node.setPosition(new Vec3(f.data.baseX, f.data.baseY - DMG_RISE * t, 0));
         if (f.opacity) f.opacity.opacity = Math.max(0, Math.floor(255 * (1 - t)));
-      } else { // ultBanner：前 0.9s 全亮，末 0.3s 淡出（现状 230→0 参数换算为节点透明度）
+      } else { // ultBanner：A4 入场滑入（y+14→0，90ms easeOut 自上落入）+ 亮金描边叠加层衰减（加亮后回落金框）；
+        // 之后前 0.9s 全亮，末 0.3s 淡出（现状 230→0 参数换算为节点透明度）
+        const slide = Math.min(1, f.elapsed / BANNER_SLIDE);
+        f.node.setPosition(new Vec3(f.data.baseX, f.data.baseY + BANNER_SLIDE_DIST * (1 - BattleFx.easeOutQuad(slide)), 0));
         if (f.opacity) {
           f.opacity.opacity = f.elapsed < 0.9 ? 255
             : Math.max(0, Math.floor(255 * (f.duration - f.elapsed) / (f.duration - 0.9)));
+        }
+        if (f.glowOp) {
+          f.glowOp.opacity = Math.max(0, Math.round(255 * (1 - BattleFx.easeOutQuad(Math.min(1, f.elapsed / BANNER_GLOW)))));
         }
       }
       if (t >= 1) {
         f.node.removeFromParent();
         f.node.destroy();
         BattleFx.items.splice(i, 1);
+      }
+    }
+    // A4 怒气满常驻呼吸：每帧对态内单位重写缩放（tick 最后写 = 终态权威，正交于只写位移的
+    // lunge/shake）并按 3Hz 切 rim visible（Graphics 已预制，零逐帧重绘）。节点按 view 每帧
+    // 重新解析——整页重绘重建后自愈，无需 deadFaded 式状态机。
+    if (BattleFx.breaths.size && BattleFx.view) {
+      for (const [uid, st] of BattleFx.breaths) {
+        st.t += advance;
+        const idx = BattleFx.view.indexByUid.get(uid);
+        if (idx === undefined) continue;
+        const f = BattleFx.view.ui.node('Fighter' + idx), g = BattleFx.view.ui.node('FighterGlyph' + idx);
+        const off = BREATH_AMP * Math.sin(BREATH_RATE * st.t);
+        if (f && f.isValid && isFinite(f.position.x)) f.setScale(new Vec3(st.baseF + off, st.baseF + off, 1));
+        if (g && g.isValid) g.setScale(new Vec3(st.baseG + off, st.baseG + off, 1));
+        const hi = Math.floor(st.t * RIM_HZ) % 2 === 1;
+        if (st.rimGold && st.rimGold.isValid) st.rimGold.active = !hi;
+        if (st.rimHi && st.rimHi.isValid) st.rimHi.active = hi;
       }
     }
   }
@@ -285,12 +396,14 @@ export class BattleFx {
     }
   }
 
-  /** A3：终结某 uid 的四类驱动 fx 并归位——淡出/复活 spawn 时取得位移主写权，
-   * base 采样必须发生在归位之后（否则会把动效中的位置误当基准，残留永久偏移）。 */
+  /** A3/A4：终结某 uid 的三类驱动 fx 并归位，同时退出呼吸态（缩放归位 + rim 销毁）——
+   * 淡出/复活 spawn 时取得位移/缩放主写权，base 采样必须发生在归位之后
+   * （否则会把动效/呼吸中的位置与缩放误当基准，残留永久偏移）。 */
   private static killDrivenFx(uid: string) {
+    BattleFx.exitBreath(uid);
     for (let i = BattleFx.items.length - 1; i >= 0; i--) {
       const f = BattleFx.items[i];
-      if ((f.kind === 'shake' || f.kind === 'lunge' || f.kind === 'ultLunge' || f.kind === 'energyPulse')
+      if ((f.kind === 'shake' || f.kind === 'lunge' || f.kind === 'ultLunge')
         && f.data.uid === uid) {
         BattleFx.restoreDriven(f);
         BattleFx.items.splice(i, 1);
@@ -339,10 +452,11 @@ export class BattleFx {
     }
   }
 
-  /** 同 uid 已有驱动型 fx（lunge/ultLunge/shake/energyPulse 互斥共写同一节点坐标/缩放基准），新动效让位。 */
+  /** 同 uid 已有驱动型 fx（lunge/ultLunge/shake 互斥共写同一节点坐标/缩放基准），新动效让位。
+   * A4 呼吸态不在此列：呼吸只写 scale（每帧终态权威），驱动型实际只消费位移，两者正交。 */
   private static hasDrivenFx(uid: string): boolean {
     for (const f of BattleFx.items) {
-      if ((f.kind === 'shake' || f.kind === 'lunge' || f.kind === 'ultLunge' || f.kind === 'energyPulse')
+      if ((f.kind === 'shake' || f.kind === 'lunge' || f.kind === 'ultLunge')
         && f.data.uid === uid) return true;
     }
     return false;
@@ -393,17 +507,21 @@ export class BattleFx {
     }
     layer.addChild(node);
     const opacity = node.addComponent(UIOpacity);
-    BattleFx.items.push({ kind: 'dmgNum', node, driven: [], opacity, elapsed: 0, duration: DMG_LIFE, data: { baseX, baseY } });
+    BattleFx.items.push({ kind: 'dmgNum', node, driven: [], opacity, glowOp: null, elapsed: 0, duration: DMG_LIFE, data: { baseX, baseY } });
   }
 
-  /** 大招横幅（ult 事件）：施放者头顶（pos+(0,-80)），260×42 金框，1.2s 淡出。Graphics 只画一次，淡出走 UIOpacity。 */
+  /**
+   * 大招横幅（ult 事件）：施放者头顶（pos+(0,-80)），260×42 金框，1.2s 淡出。
+   * A4 入场增强：亮金描边叠加层（子节点，同几何加粗一档）随滑入自 255 衰减至 0——
+   * "描边加亮后回落金框"；Graphics 各画一次，动画全走 UIOpacity/位置，零逐帧重绘。
+   */
   private static spawnUltBanner(layer: Node, ui: CocosUi, ev: any, indexByUid: Map<string, number>) {
     const anchor = BattleFx.anchorOf(indexByUid, ui, ev.uid);
     if (!anchor) return;
     const node = new Node('BfxUlt');
     const baseX = anchor.x;
     const baseY = anchor.y - 80;
-    node.setPosition(new Vec3(baseX, baseY, 0));
+    node.setPosition(new Vec3(baseX, baseY + BANNER_SLIDE_DIST, 0)); // 滑入起点：终位上方 14px
     node.addComponent(UITransform).setContentSize(260, 42);
     const g = node.addComponent(Graphics);
     g.fillColor = new Color(46, 26, 12, 230);
@@ -413,6 +531,14 @@ export class BattleFx {
     g.lineWidth = 2;
     g.roundRect(-129, -20, 258, 40, 6);
     g.stroke();
+    const glow = new Node('BfxUltGlow');
+    glow.addComponent(UITransform).setContentSize(260, 42);
+    const gg = glow.addComponent(Graphics);
+    gg.strokeColor = GOLD_HI;
+    gg.lineWidth = 3.5;
+    gg.roundRect(-129, -20, 258, 40, 6);
+    gg.stroke();
+    node.addChild(glow);
     const textNode = new Node('BfxUltText');
     textNode.addComponent(UITransform).setContentSize(250, 46);
     const label = textNode.addComponent(Label);
@@ -427,7 +553,8 @@ export class BattleFx {
     node.addChild(textNode);
     layer.addChild(node);
     const opacity = node.addComponent(UIOpacity);
-    BattleFx.items.push({ kind: 'ultBanner', node, driven: [], opacity, elapsed: 0, duration: ULT_LIFE, data: { baseX, baseY } });
+    const glowOp = glow.addComponent(UIOpacity);
+    BattleFx.items.push({ kind: 'ultBanner', node, driven: [], opacity, glowOp, elapsed: 0, duration: ULT_LIFE, data: { baseX, baseY } });
   }
 
   /**
@@ -443,7 +570,7 @@ export class BattleFx {
     const driven = BattleFx.drivenOf(indexByUid, ui, ev.uid);
     if (!driven) return;
     BattleFx.items.push({
-      kind: 'shake', node: null, driven, opacity: null, elapsed: 0, duration: SHAKE_DUR,
+      kind: 'shake', node: null, driven, opacity: null, glowOp: null, elapsed: 0, duration: SHAKE_DUR,
       data: { baseX: driven[0].baseX, baseY: driven[0].baseY, uid: ev.uid },
     });
   }
@@ -460,7 +587,7 @@ export class BattleFx {
     if (!driven) return;
     const dir = driven[0].baseY < 0 ? 1 : -1; // A 方（下方）+y、B 方（上方）-y
     BattleFx.items.push({
-      kind: 'lunge', node: null, driven, opacity: null, elapsed: 0, duration: LUNGE_DUR,
+      kind: 'lunge', node: null, driven, opacity: null, glowOp: null, elapsed: 0, duration: LUNGE_DUR,
       data: { baseX: driven[0].baseX, baseY: driven[0].baseY, dir, uid: ev.uid },
     });
   }
@@ -478,28 +605,9 @@ export class BattleFx {
     if (!driven) return;
     const dir = driven[0].baseY < 0 ? 1 : -1; // 同 lunge：朝敌方阵营方向冲
     BattleFx.items.push({
-      kind: 'ultLunge', node: null, driven, opacity: null, elapsed: 0, duration: ULT_LUNGE_DUR,
+      kind: 'ultLunge', node: null, driven, opacity: null, glowOp: null, elapsed: 0, duration: ULT_LUNGE_DUR,
       data: { baseX: driven[0].baseX, baseY: driven[0].baseY, dir, uid: ev.uid },
     });
-  }
-
-  /**
-   * 怒气满脉冲（A2）：scanEnergy 检测到跨帧 <100→≥100 时驱动 Fighter+Glyph 缩放
-   * 1→1.08→1（0.3s，sin 半波天然起零归零）。不改 Energy 条——updateProgress 每 0.3s
-   * setScale 会覆盖条上的脉冲（规格 A4 教训前移）。成功返回 true（scanEnergy 据此标记已满，
-   * 失败保持未标记下帧重试）。
-   */
-  private static spawnEnergyPulse(ui: CocosUi, indexByUid: Map<string, number>, uid: string): boolean {
-    if (BattleFx.countKind('energyPulse') >= MAX_DRIVEN) return false;
-    if (BattleFx.hasDrivenFx(uid)) return false;
-    if (BattleFx.hasFadeFx(uid)) return false; // A3：淡出/复活活跃期间顺延（返回 false → 下一帧重试语义不变）
-    const driven = BattleFx.drivenOf(indexByUid, ui, uid);
-    if (!driven) return false;
-    BattleFx.items.push({
-      kind: 'energyPulse', node: null, driven, opacity: null, elapsed: 0, duration: PULSE_DUR,
-      data: { baseX: driven[0].baseX, baseY: driven[0].baseY, uid },
-    });
-    return true;
   }
 
   /**
@@ -517,7 +625,7 @@ export class BattleFx {
     if (!driven) return;
     BattleFx.deadFaded.set(uid, true);
     BattleFx.items.push({
-      kind: 'deathFade', node: null, driven, opacity: null, elapsed: 0, duration: DEATH_DUR,
+      kind: 'deathFade', node: null, driven, opacity: null, glowOp: null, elapsed: 0, duration: DEATH_DUR,
       data: { baseX: driven[0].baseX, baseY: driven[0].baseY, uid },
     });
   }
@@ -538,7 +646,7 @@ export class BattleFx {
     const driven = BattleFx.drivenOf(indexByUid, ui, uid, true);
     if (!driven) return;
     BattleFx.items.push({
-      kind: 'revive', node: null, driven, opacity: null, elapsed: 0, duration: REVIVE_DUR,
+      kind: 'revive', node: null, driven, opacity: null, glowOp: null, elapsed: 0, duration: REVIVE_DUR,
       data: { baseX: driven[0].baseX, baseY: driven[0].baseY, uid, sunk: wasFaded },
     });
   }
