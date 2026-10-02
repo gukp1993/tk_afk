@@ -621,7 +621,8 @@ export function forgeView(ctx: ScreenContext) {
       U.button('SmeltCombine'+ri,rn,x,-92,310,44,()=>{const r=store.smeltCombine(q===1?'weapon':'armor',q);ctx.tell(r,r.ok?(r.name?'合成 '+r.name:'折精铁 +'+r.convertedIron):'');},gold);
     });
     if(!sm.stock.length){
-      U.text('SmeltEmpty','库存空 · 25 关后重复获得的军械存入此处（可熔回 70% 精铁）',0,-160,640,15,dim);
+      U.text('SmeltEmpty','库存空 · 重复军械 25 关后存入此处（可熔回 70% 精铁）· 去推图 >',0,-160,640,15,dim);
+      U.tap('SmeltEmptyTap',0,-160,640,32,()=>ctx.go('campaign'));
     } else {
       U.button('SmeltBatch','一键熔炼全部',240,-134,168,40,()=>ctx.confirm('一键熔炼','库存军械全部熔回精铁（含全部品质），确定？',()=>{const r=(store as any).smeltMeltBatch();ctx.tell(r,r.ok?`已熔炼 ${r.count} 件军械 · 精铁 +${fmt.fmtNum(r.iron)}`:'');}),gold);
       sm.stock.slice(0,3).forEach((it:any,i:number)=>{
@@ -745,6 +746,7 @@ export function achvView(ctx: ScreenContext) {
       V.text('AchvRowName'+i,`${t.name} · 第${t.tier+1}档（需 ${t.need}）`,-170,y+2,400,19,t.claimable?gold:LIGHT);
       V.text('AchvRowReward'+i,Object.entries(t.reward).map(([k,n]:any)=>`${k==='title'?'称号':k==='frame'?'头像框':k==='gem'?'元宝':k==='shard'?'碎片':k==='token'?'演武令':k==='gold'?'铜钱':k==='scroll'?'招募令':k==='seals'?'印信':k}`+'×'+n).join(' · '),-170,y-24,420,15,dim);
       if(t.claimable)V.button('AchvGo'+i,'领 取',235,y,140,48,()=>{const r=store.claimAchv(t.axis,t.tier);ctx.tell(r,r.ok?'已领取 '+r.name:'');},gold);
+      else V.text('AchvProg'+i,`进度 ${Math.min(t.value,t.need)}/${t.need}`,255,y,120,17,tone('#a99778'));
     });
   });
 }
