@@ -243,6 +243,62 @@ const SEASON = {
     { need: 4600, give: { shard: 25 } },
     { need: 4900, give: { title: '四时·太史令', stones: 10 } }
   ],
+  // 名场面重演（第二批）：36 关=4 卷×3 幕×3 槽（阵营/限时 60s/禁疗），当幕当周开放；
+  // 敌阵走玩家等级×0.90 反推+BOSS_MODS 七键被动（零新机制键）；战功 20/30/50，首通当幕窗内有效随季重置。
+  scenes: {
+    enabled: true,
+    graceActs: 0,
+    levelMult: 0.90,
+    fastSeconds: 60,
+    medal: [20, 30, 50],
+    allTitle: '四时·修史',
+    byId: {
+    v1a1s1: { key: 'v1a1s1', name: '桃园结义', type: 'faction', faction: 'shu', boss: 'zhangjiao', passive: { firstEnergy: 40} },
+    v1a1s2: { key: 'v1a1s2', name: '温酒斩华雄', type: 'speed', boss: 'huaxiong', passive: { armoryStartShield: 0.25} },
+    v1a1s3: { key: 'v1a1s3', name: '虎牢三英', type: 'banHeal', boss: 'lvbu', passive: { ccImmune: 1} },
+    v1a2s1: { key: 'v1a2s1', name: '火烧颍川', type: 'faction', faction: 'wei', boss: 'zhangjiao', passive: { firstEnergy: 40} },
+    v1a2s2: { key: 'v1a2s2', name: '夜袭汝南', type: 'speed', boss: 'yuji', passive: { firstEnergy: 50} },
+    v1a2s3: { key: 'v1a2s3', name: '断粮颍川', type: 'banHeal', boss: 'zhangjiao', passive: { cheatRevivePct: 0.3} },
+    v1a3s1: { key: 'v1a3s1', name: '广宗守城', type: 'faction', faction: 'qun', boss: 'zhangjiao', passive: { armoryStartShield: 0.25} },
+    v1a3s2: { key: 'v1a3s2', name: '计除国贼', type: 'speed', boss: 'dongzhuo', passive: { firstEnergy: 40} },
+    v1a3s3: { key: 'v1a3s3', name: '白门楼', type: 'banHeal', boss: 'lvbu', passive: { ccImmune: 1, cheatRevivePct: 0.3} },
+    v2a1s1: { key: 'v2a1s1', name: '白马之围', type: 'faction', faction: 'wei', boss: 'yanliang', passive: { firstEnergy: 40} },
+    v2a1s2: { key: 'v2a1s2', name: '千里单骑', type: 'speed', boss: 'wenchou', passive: { thorns: 0.12} },
+    v2a1s3: { key: 'v2a1s3', name: '延津溃围', type: 'banHeal', boss: 'yuanshao', passive: { vamp: 0.15} },
+    v2a2s1: { key: 'v2a2s1', name: '官渡对峙', type: 'faction', faction: 'qun', boss: 'yuanshao', passive: { armoryStartShield: 0.25} },
+    v2a2s2: { key: 'v2a2s2', name: '火焚乌巢', type: 'speed', boss: 'xuyou', passive: { firstEnergy: 50} },
+    v2a2s3: { key: 'v2a2s3', name: '雪夜劫粮', type: 'banHeal', boss: 'jiling', passive: { thorns: 0.12} },
+    v2a3s1: { key: 'v2a3s1', name: '仓亭十面', type: 'faction', faction: 'wei', boss: 'caocao', passive: { armoryStartShield: 0.25, firstEnergy: 40} },
+    v2a3s2: { key: 'v2a3s2', name: '白狼山', type: 'speed', boss: 'zhangliao', passive: { firstEnergy: 40} },
+    v2a3s3: { key: 'v2a3s3', name: '遗计定辽', type: 'banHeal', boss: 'guojia', passive: { dmgReduce: 0.15} },
+    v3a1s1: { key: 'v3a1s1', name: '舌战群儒', type: 'faction', faction: 'shu', boss: 'zhugejin', passive: { firstEnergy: 40} },
+    v3a1s2: { key: 'v3a1s2', name: '草船借箭', type: 'speed', boss: 'caocao', passive: { firstEnergy: 50} },
+    v3a1s3: { key: 'v3a1s3', name: '苦肉计', type: 'banHeal', boss: 'huanggai', passive: { thorns: 0.12} },
+    v3a2s1: { key: 'v3a2s1', name: '七星借风', type: 'faction', faction: 'wu', boss: 'yuji', passive: { firstEnergy: 40} },
+    v3a2s2: { key: 'v3a2s2', name: '蒋干盗书', type: 'speed', boss: 'jianggan', passive: { firstEnergy: 50} },
+    v3a2s3: { key: 'v3a2s3', name: '铁索横江', type: 'banHeal', boss: 'caoren', passive: { armoryStartShield: 0.25} },
+    v3a3s1: { key: 'v3a3s1', name: '火烧赤壁', type: 'faction', faction: 'wu', boss: 'zhouyu', passive: { firstEnergy: 50} },
+    v3a3s2: { key: 'v3a3s2', name: '败走华容', type: 'speed', boss: 'caocao', passive: { armoryStartShield: 0.25, firstEnergy: 40} },
+    v3a3s3: { key: 'v3a3s3', name: '华容义释', type: 'banHeal', boss: 'guanyu', passive: { vamp: 0.15} },
+    v4a1s1: { key: 'v4a1s1', name: '水淹七军', type: 'faction', faction: 'shu', boss: 'guanyu', passive: { vamp: 0.15} },
+    v4a1s2: { key: 'v4a1s2', name: '威震华夏', type: 'speed', boss: 'caoren', passive: { armoryStartShield: 0.25, firstEnergy: 40} },
+    v4a1s3: { key: 'v4a1s3', name: '白衣渡江', type: 'banHeal', boss: 'lvmeng', passive: { dmgReduce: 0.15} },
+    v4a2s1: { key: 'v4a2s1', name: '火烧连营', type: 'faction', faction: 'wu', boss: 'luxun', passive: { firstEnergy: 50} },
+    v4a2s2: { key: 'v4a2s2', name: '八阵图困', type: 'speed', boss: 'zhugeliang', passive: { firstEnergy: 50} },
+    v4a2s3: { key: 'v4a2s3', name: '七擒七纵', type: 'banHeal', boss: 'menghuo', passive: { cheatRevivePct: 0.3} },
+    v4a3s1: { key: 'v4a3s1', name: '屯兵渭滨', type: 'faction', faction: 'wei', boss: 'simayi', passive: { dmgReduce: 0.15} },
+    v4a3s2: { key: 'v4a3s2', name: '木牛流马', type: 'speed', boss: 'zhugeliang', passive: { firstEnergy: 40} },
+    v4a3s3: { key: 'v4a3s3', name: '灯落五丈原', type: 'banHeal', boss: 'simayi', passive: { dmgReduce: 0.15, cheatRevivePct: 0.3} },
+    }
+  },
+  // 周 Boss 决战换皮：按卷换名/换将/被动组合；被动仅计量中性键（cheatRevive/firstEnergy/vamp）——
+  // 盾/减伤/荆棘会压低全服伤害百分比致五档掉档（护盾吸收不计 stats.dmg），键位级红线禁用。
+  weekBossSkin: {
+    1: { bossId: 'zhangjiao', name: '黄天魔王 · 张角', passive: { cheatRevivePct: 0.3, firstEnergy: 40 } },
+    2: { bossId: 'yuanshao', name: '四世三公 · 袁绍', passive: { cheatRevivePct: 0.3, firstEnergy: 40 } },
+    3: { bossId: 'caocao', name: '横槊魔王 · 曹操', passive: { cheatRevivePct: 0.3, vamp: 0.15 } },
+    4: { bossId: 'simayi', name: '冢虎魔王 · 司马懿', passive: { cheatRevivePct: 0.3, firstEnergy: 40 } }
+  },
   shop: [
     { id: 's_stone', name: '淬火石 ×5', medal: 240, weekly: 1, give: { stones: 5 } },
     { id: 's_shard', name: '通用碎片 ×20', medal: 100, weekly: 2, give: { shard: 20 } },

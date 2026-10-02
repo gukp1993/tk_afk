@@ -203,6 +203,28 @@ function makeTrialEnemies(heroId, playerLevel) {
 
 // 四方台（研讨会十二 A2）：阵营试炼塔敌阵。同阵营将池+阵营小兵，周键+层数确定性；
 // 曲线锚定主线进度（anchor=clamp(cleared,10,120)），k 已计敌方满编同阵营光环 ≈13.5% 实效。
+// 名场面重演（四时战纪第二批）：36 关按幕开放，约束三型（阵营/限时/禁疗），
+// 敌阵=主将（表被动）+同阵营 4 副将，玩家等级×0.90 反推，sceneKey 种子确定性。
+function makeSceneEnemies(sceneKey, playerLevel) {
+  const C = require('./config');
+  const sc = C.SEASON.scenes.byId[sceneKey];
+  const H2 = require('./heroes');
+  const lv = Math.max(1, Math.round((playerLevel || 1) * (C.SEASON.scenes.levelMult || 0.90)));
+  const star = Math.min(4, Math.floor(lv / 45));
+  const boss = H2.getHero(sc.boss);
+  const bf = boss.faction;
+  const mates = H2.HEROES.filter(h => h.faction === bf && h.id !== sc.boss && h.id !== 'huatuo');
+  const rng = require('./rng').makeRng('scene:' + sceneKey);
+  const mateIds = rng.shuffle(mates.map(h => h.id)).slice(0, 4);
+  const units = [{ hero: boss, level: lv, star, scale: 1.05, isBoss: true, row: 0,
+    extraPassive: Object.assign({}, sc.passive) }];
+  mateIds.forEach((id, i) => {
+    units.push({ hero: H2.getHero(id), level: lv, star, scale: 0.95, isBoss: false, row: i <= 1 ? 0 : 1 });
+  });
+  const effects = sc.type === 'banHeal' ? { healScale: { A: 0, B: 1 } } : null;
+  return { name: '名场面 · ' + sc.name, units, isBoss: true, scene: { key: sceneKey }, effects };
+}
+
 function makeQuadTowerEnemies(faction, weekId, anchor, floor) {
   const C = require('./config');
   const cfg = C.QUAD_TOWER;
@@ -255,14 +277,18 @@ function makeWeekBossEnemies(weekId, playerLevel) {
   const ssr = heroes.filter(h => h.rarity === 4 && !BLACKLIST[h.id]);
   let h = 5381;
   for (let i = 0; i < String(weekId).length; i++) h = ((h * 33) ^ String(weekId).charCodeAt(i)) >>> 0;
-  const boss = ssr[h % ssr.length];
+  let boss = ssr[h % ssr.length];
+  // 决战换皮（四时战纪第二批）：按卷换名/换将/计量中性被动（hpK 与五档阈值逐字不动）
+  const CSkin = require('./config').SEASON;
+  const sk = CSkin && CSkin.enabled && CSkin.weekBossSkin && CSkin.weekBossSkin[(CSkin.mapWeek(weekId) || {}).vol];
+  if (sk) boss = require('./heroes').getHero(sk.bossId);
   const lv = Math.max(1, Math.round(playerLevel || 1));
   // 巨血公式（周Boss仿真 2026-09-30）：MaxHp = 350 × 同等星等级关羽体魄（≈锚档单场输出×20，K 可 15~25 微调）；攻防速保持 ×1
   const K = (require('./config').WEEKBOSS && require('./config').WEEKBOSS.hpK) || 350;
   const guanyuHp = require('./heroes').heroStatsStar(require('./heroes').getHero('guanyu'), lv, 5).hp;
   const hpOverride = Math.floor(guanyuHp * K);
-  const units = [{ hero: boss, level: lv, star: 5, scale: 1, hpScale: hpOverride / Math.max(1, require('./heroes').heroStatsStar(boss, lv, 5).hp), isBoss: true, row: 0 }];
-  return { name: '本周魔王 · ' + boss.name, units, isBoss: true, weekBoss: { weekId }, bossMaxHp: hpOverride };
+  const units = [{ hero: boss, level: lv, star: 5, scale: 1, hpScale: hpOverride / Math.max(1, require('./heroes').heroStatsStar(boss, lv, 5).hp), isBoss: true, row: 0, extraPassive: sk ? Object.assign({}, sk.passive) : null }];
+  return { name: '本周魔王 · ' + (sk ? sk.name : boss.name), units, isBoss: true, weekBoss: { weekId }, bossMaxHp: hpOverride };
 }
 
 // 军屯双本（研讨会四 P2）：每日资源副本敌阵，敌力随玩家等级与层数缩放，随机 SSR 混编
@@ -337,4 +363,4 @@ function buildReinforceUnits(globalStage, chapterFoes, lv, star, baseScale) {
     };
   });
 }
-module.exports = { CHAPTERS, STAGES_PER_CH, stageScale, chapterOf, isEliteStage, stageStars, resolveMods, stageBattleEffects, buildReinforceUnits, makeHallEnemies, hallStars, hallWeeklyLineups, makeStageEnemies, makeTowerEnemies, makeArenaEnemies, makePracticeEnemies, makeDungeonEnemies, makeWeekBossEnemies, makeQuadTowerEnemies, makeTrialEnemies };
+module.exports = { CHAPTERS, STAGES_PER_CH, stageScale, chapterOf, isEliteStage, stageStars, resolveMods, stageBattleEffects, buildReinforceUnits, makeHallEnemies, hallStars, hallWeeklyLineups, makeStageEnemies, makeTowerEnemies, makeArenaEnemies, makePracticeEnemies, makeDungeonEnemies, makeWeekBossEnemies, makeQuadTowerEnemies, makeTrialEnemies, makeSceneEnemies };

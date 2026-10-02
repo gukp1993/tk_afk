@@ -38,7 +38,7 @@ function battleTitle(ctx: ScreenContext) {
 }
 
 function returnPage(ctx: ScreenContext) {
-  return ctx.battleMode==='arena'?'arena':ctx.battleMode==='tower'?'tower':ctx.battleMode==='quad'?'journey':ctx.battleMode==='trial'?'heroes':ctx.battleMode==='expedition'||ctx.battleMode==='hall'?'journey':'campaign';
+  return ctx.battleMode==='arena'?'arena':ctx.battleMode==='tower'?'tower':ctx.battleMode==='quad'?'journey':ctx.battleMode==='trial'?'heroes':ctx.battleMode==='scene'||ctx.battleMode==='seasonScenes'?'season':ctx.battleMode==='expedition'||ctx.battleMode==='hall'?'journey':'campaign';
 }
 
 function drawFighter(U: CocosUi, unit: any, index: number) {
@@ -218,6 +218,10 @@ export function resultView(ctx: ScreenContext) {
   else if(ctx.battleMode==='trial'){
     const tr=reward||{};
     lines=r?.win?(tr.first?[`首通荣耀 +${tr.honor||0} · 试炼「${(store as any).trialInfo((ctx as any).trialHeroId||'').name}」达成`,`当前荣耀 ${(store as any).hallInfo().honor}`]:['试炼成功（复习不发奖）']):['试炼不限次 · 调整编队再战',defeatDiag(ctx,r)];
+  }
+  else if(ctx.battleMode==='scene'){
+    const sr=reward||{};
+    lines=r?.win?(sr.slow?['敌军已重整旗鼓 · 超时未清（限 60 秒）',defeatDiag(ctx,r)]:sr.first?[`名场面「${sr.name}」达成 · 战功 +${sr.medal||0}`]:['名场面重演（已清 · 复演不发奖）']):['名场面败北 · 零损失再来',defeatDiag(ctx,r)];
   }
   else if(ctx.battleMode==='expedition'){
     const er=reward||{};

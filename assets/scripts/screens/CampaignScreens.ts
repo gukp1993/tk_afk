@@ -1271,6 +1271,13 @@ export function seasonView(ctx: ScreenContext) {
     if(z.unlocked&&!z.seen)U.dot('SeasonZhiDot'+i,zx+80,368);
     U.tap('SeasonZhiTap'+i,zx,348,190,64,()=>{seasonZhiOpen=z;ctx.show('season');});
   });
+  // 名场面入口行（第二批）：空带 y=252
+  if(info.scenes&&info.scenes.enabled){
+    U.panel('SeasonSceneEntry',0,252,682,44,tone('#2b2118'),8,GOLD);
+    U.text('SeasonSceneGlyph','名',-282,252,40,30,GOLD);
+    U.text('SeasonSceneText',`名场面重演 · ${info.actName} 3 关 · 本季已清 ${info.scenes.clearedCount}/${info.scenes.total} ›`,0,252,620,17,LIGHT);
+    U.tap('SeasonSceneTap',0,252,682,44,()=>ctx.go('seasonScenes'));
+  }
   // 幕任务
   U.text('SeasonActTitle','幕任务 · 战功主要来源（本周 3 条）',0,196,640,18,LIGHT);
   info.acts.forEach((a:any,i:number)=>{
@@ -1329,6 +1336,40 @@ export function seasonView(ctx: ScreenContext) {
   }
 }
 let seasonZhiOpen:any=null;
+
+// 名场面重演（四时战纪第二批）：当幕 3 关 + 十二幕总览
+export function seasonScenesView(ctx: ScreenContext) {
+  const U=ctx.ui,si=store.scenesInfo();
+  ctx.title('名 场 面 重 演');
+  U.text('SceneBack','‹ 返回',-291,484,130,22,GOLD);
+  U.tap('SceneBackTap',-291,484,136,52,()=>ctx.go('season'));
+  if(!si.enabled){U.text('SceneClosed','名场面暂未开放',0,200,600,20,LIGHT);return;}
+  U.text('SceneHead',`本幕 · ${si.actName} · 已清 ${si.clearedCount}/${si.total}`,0,443,640,20,GOLD);
+  si.current.forEach((sc:any,i:number)=>{
+    const y=330-i*96;
+    const typeName=sc.type==='faction'?'阵营关':sc.type==='speed'?'限时关':'禁疗关';
+    U.panel('SceneCard'+i,0,y,640,84,sc.cleared?tone('#26301f'):tone('#3a2c17'),9,sc.cleared?tone('#6f8a5f'):GOLD);
+    U.text('SceneCardName'+i,`${sc.name} · ${typeName}`,0,y+24,420,22,sc.cleared?tone('#a99778'):GOLD);
+    const mechTxt=Object.entries(sc.passive).map(([k,v]:any)=>`${(si.mechNames as any)[k]||k}(${typeof v==='number'&&v<1?Math.round(v*100)+'%':v})`).join(' · ');
+    U.text('SceneCardMech'+i,`敌主将 ${(heroes.getHero(sc.boss)||{}).name||sc.boss} · ${mechTxt}`,0,y-10,340,15,LIGHT);
+    U.text('SceneCardMedal'+i,`战功 +${sc.medal}`,-230,y-10,150,15,tone('#d9b06a'));
+    if(sc.cleared)U.text('SceneCardDone'+i,'已 达 成',244,y,150,20,tone('#6f8a5f'));
+    else U.button('SceneCardGo'+i,'出 战',244,y,150,52,()=>{(ctx as any).sceneKey=sc.key;ctx.startBattle('scene',1);},palette.gold);
+  });
+  U.text('SceneLegend','阵营关=仅该阵营上阵 · 限时关=60 秒取胜 · 禁疗关=治疗吸血无效（护盾有效）',0,82,640,15,tone('#7a6c52'));
+  U.text('SeasonOverviewTitle','十二幕总览',0,48,640,18,LIGHT);
+  const contentH=12*62+16;
+  U.scroll('SceneOverview',0,-208,688,300,contentH,(V)=>{
+    const volNames=['黄巾乱世','官渡相持','赤壁纵火','鼎足归尘'];
+    volNames.forEach((vname:string,vi:number)=>{
+      const vy=contentH/2-31-vi*62;
+      V.panel('SeasonOverviewRow'+vi,0,vy,656,52,vi+1===si.vol?tone('#3a2c17'):tone('#171009'),7,vi+1===si.vol?GOLD:tone('#5a452a'));
+      const done=[1,2,3].every((ai:number)=>[1,2,3].every(s=>si.list.some((x:any)=>x.key===`v${vi+1}a${ai}s${s}`&&x.cleared)));
+      V.text('SeasonOverviewName'+vi,`卷${vi+1} · ${vname}`,0,vy,640,18,vi+1===si.vol?GOLD:LIGHT);
+      V.text('SeasonOverviewDone'+vi,done?'全通':`已清 ${si.list.filter((x:any)=>x.key.charAt(1)===String(vi+1)&&x.cleared).length}/9`,0,vy-20,640,14,done?GOLD:tone('#7a6c52'));
+    });
+  });
+}
 
 let bountyPickIdx = -1;
 let expBoonDismissedFloor = -1; // 加护弹层「稍后再选」标记：同层不再弹，新一层 offer 再弹

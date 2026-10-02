@@ -360,7 +360,7 @@ function checkWeeklyReset(today) {
     const mapped = C.SEASON.mapWeek(weekKey);
     state.season = state.season || { seasonNo: 1, medalEarned: 0, trackClaimed: [], zhiSeen: [], titleBought: false };
     if (state.season.seasonNo !== mapped.seasonNo) {
-      state.season = { seasonNo: mapped.seasonNo, medalEarned: 0, trackClaimed: [], zhiSeen: state.season.zhiSeen || [], titleBought: false };
+      state.season = { seasonNo: mapped.seasonNo, medalEarned: 0, trackClaimed: [], zhiSeen: state.season.zhiSeen || [], titleBought: false, sceneCleared: {} };
     }
   }
 }
@@ -800,6 +800,59 @@ function relicMods() {
 }
 
 
+// —— 名场面重演（四时战纪第二批）——
+function sceneOpenNow(sceneKey) {
+  const m = C.SEASON.mapWeek((state.week && state.week.weekId) || F.isoWeekKey());
+  const mch = sceneKey.match(/^v([1-4])a([1-3])s[1-3]$/);
+  if (!mch) return false;
+  // s 位是幕内槽位（每幕 3 关），开放窗=卷幕匹配（grace 可给过期幕宽限）
+  const grace = (C.SEASON.scenes && C.SEASON.scenes.graceActs) || 0;
+  const posDiff = ((m.vol - Number(mch[1])) * 3 + (m.act - Number(mch[2])));
+  return posDiff >= -grace && posDiff <= 0;
+}
+function winScene(sceneKey, duration) {
+  const cfgS = C.SEASON.scenes;
+  const sc = cfgS.byId[sceneKey];
+  const reward = { mode: 'scene', key: sceneKey, name: sc.name, medal: 0, first: false, slow: false };
+  const slot = Number(sceneKey.charAt(5));
+  const slow = sc.type === 'speed' && duration > (cfgS.fastSeconds || 60);
+  if (slow) { reward.slow = true; return reward; }
+  if (!state.season.sceneCleared) state.season.sceneCleared = {};
+  if (!state.season.sceneCleared[sceneKey]) {
+    state.season.sceneCleared[sceneKey] = 1;
+    reward.first = true;
+    reward.medal = cfgS.medal[slot - 1] || 20;
+    state.seasonMedal = (state.seasonMedal || 0) + reward.medal;
+    state.season.medalEarned = (state.season.medalEarned || 0) + reward.medal;
+    if (Object.keys(cfgS.byId).every(k => state.season.sceneCleared[k])) {
+      state.titles = state.titles || [];
+      if (state.titles.indexOf(cfgS.allTitle) < 0) { state.titles.push(cfgS.allTitle); reward.title = cfgS.allTitle; }
+    }
+  }
+  return reward;
+}
+function scenesInfo() {
+  checkDailyReset();
+  const cfgS = C.SEASON.scenes;
+  const weekKey = (state.week && state.week.weekId) || F.isoWeekKey();
+  const mapped = C.SEASON.mapWeek(weekKey);
+  const cleared = state.season.sceneCleared || {};
+  const list = Object.keys(cfgS.byId).map(key => {
+    const sc = cfgS.byId[key];
+    return { key, name: sc.name, type: sc.type, faction: sc.faction || null, boss: sc.boss,
+      passive: sc.passive, medal: cfgS.medal[Number(key.charAt(5)) - 1],
+      cleared: !!cleared[key], open: sceneOpenNow(key) };
+  });
+  const mechNames = { ccImmune: '免疫控制', cheatRevivePct: '倒地再起', armoryStartShield: '开场护盾', dmgReduce: '伤害减免', thorns: '反弹伤害', firstEnergy: '开场怒气', vamp: '攻击吸血' };
+  return {
+    enabled: !!cfgS.enabled, actName: C.SEASON.vols[mapped.vol - 1].acts[mapped.act - 1],
+    vol: mapped.vol, act: mapped.act, fastSeconds: cfgS.fastSeconds || 60, mechNames,
+    current: list.filter(x => x.open), list,
+    clearedCount: Object.keys(cleared).length, total: Object.keys(cfgS.byId).length,
+    allTitle: cfgS.allTitle
+  };
+}
+
 // —— 四时战纪（研讨会十三案一）——
 function seasonInfo() {
   checkDailyReset();
@@ -831,6 +884,9 @@ function seasonInfo() {
       return { ...z, unlocked: p === 1 || acts.every(a => a.claimed), seen: (state.season.zhiSeen || []).indexOf(z.key) >= 0 };
     }),
     shop: cfg.shop.map(g => ({ ...g, bought: (w.seasonBought || {})[g.id] || 0 })),
+    scenes: { enabled: !!(cfg.scenes && cfg.scenes.enabled),
+      clearedCount: Object.keys(state.season.sceneCleared || {}).length, total: Object.keys(cfg.scenes.byId).length,
+      anyClaimable: false },
     claimable: acts.some(a => a.claimable) || track.some(t => t.claimable)
   };
 }
@@ -1257,6 +1313,8 @@ function normalizeState(s) {
     s.season.trackClaimed = (s.season.trackClaimed || []).filter(n => Number.isInteger(n) && n >= 1 && n <= 20).filter((n, i, a) => a.indexOf(n) === i);
     s.season.zhiSeen = (s.season.zhiSeen || []).filter(k => typeof k === 'string' && /^\d-\d$/.test(k));
     s.season.titleBought = !!s.season.titleBought;
+    s.season.sceneCleared = s.season.sceneCleared || {};
+    Object.keys(s.season.sceneCleared).forEach(k => { if (!/^v[1-4]a[1-3]s[1-3]$/.test(k)) delete s.season.sceneCleared[k]; });
   s.sevenDay = s.sevenDay || { start: F.todayStr(), claimed: [] };
   if (!Array.isArray(s.sevenDay.claimed)) s.sevenDay.claimed = [];
   s.sevenDay.claimed = s.sevenDay.claimed.map(n => Math.floor(Number(n) || 0)).filter(n => n >= 1 && n <= 7);
@@ -2881,6 +2939,12 @@ function beginBattle(spec) {
     if (!spec.trialHero || !C.TRIALS.trials[spec.trialHero]) return { ok: false, msg: '试炼对象无效' };
     if (!state.roster[spec.trialHero]) return { ok: false, msg: '须拥有该名将方可试炼' };
   }
+  if (spec.mode === 'scene') {
+    if (!C.SEASON || !C.SEASON.enabled || !C.SEASON.scenes || !C.SEASON.scenes.enabled) return { ok: false, msg: '名场面暂未开放' };
+    if (!spec.sceneKey || !C.SEASON.scenes.byId[spec.sceneKey]) return { ok: false, msg: '名场面无效' };
+    const open = sceneOpenNow(spec.sceneKey);
+    if (!open) return { ok: false, msg: '该名场面仅当幕开放（十二周一轮）' };
+  }
   if (spec.mode === 'weekboss') {
     if (!C.WEEKBOSS || !C.WEEKBOSS.enabled) return { ok: false, msg: '魔王讨伐未开放' };
     const wbInfo = weekBossInfo();
@@ -2908,12 +2972,14 @@ function beginBattle(spec) {
     : mode === 'expedition' ? index === ((state.week && state.week.trial.best) || 0) + 1
     : mode === 'quad' ? index === ((state.quadTower && state.quadTower.best) || 0) + 1
     : mode === 'trial' ? !state.trials.cleared[spec.trialHero]
+    : mode === 'scene' ? !((state.season && state.season.sceneCleared) || {})[spec.sceneKey]
     : mode === 'dungeon' ? index === ((spec.dungeonKind === 'train' ? state.dungeon.bestTrain : state.dungeon.bestGold) || 0) + 1 : false;
   state.battle.pending = {
     id, mode, index,
     dungeonKind: spec.dungeonKind || null, first,
     hallLineup: spec.hallLineup || null,
     trialHero: spec.trialHero || null,
+    sceneKey: spec.sceneKey || null,
     hallWeek: (state.week && state.week.weekId) || null,
     referenceLevel: Math.max(1, Math.floor(spec.referenceLevel || state.player.level)),
     levelAtStart: state.player.level, first,
@@ -2960,6 +3026,7 @@ function battleXP(pending, win) {
   if (pending.mode === 'weekboss') return 0;
   if (pending.mode === 'quad') return 0; // 四方台零经验（A2 败北/胜利都不给，不碰经验溢出裁决）
   if (pending.mode === 'trial') return 0; // 名将试炼零经验（C2 同口径）
+  if (pending.mode === 'scene') return 0; // 名场面零经验（赛季第二批）
   if (pending.mode === 'training') {
     // 练兵经验每日上限：前 N 场全额，之后 0（切断"无限练兵=免费等级"）
     const done = (state.daily.trainingWins || 0);
@@ -3003,6 +3070,8 @@ function settleBattle(battleId, outcome) {
       if (win) reward = winQuadTower(pending.index);
     } else if (pending.mode === 'trial') {
       if (win) reward = winTrial(pending.trialHero);
+    } else if (pending.mode === 'scene') {
+      if (win) reward = winScene(pending.sceneKey, outcome.duration || 0);
     } else if (pending.mode === 'hall') {
       reward = { seat: pending.index, lineupId: pending.hallLineup ? pending.hallLineup.id : null, stars: 0, hallReward: null };
       if (win) {
@@ -3685,7 +3754,7 @@ export {
   exchangeQualityShard, qualityShardInfo, drillInfo, drillHero,
   getFormationCalc, setFormationSlot, applyFormation, formationFactionBonus, teamPower, playerUnits, enemyUnits, activeBonds, bondMods, bondComboMods,
   getArmoryBonuses, getArmoryState, armoryUnlock, armorySelect, armoryUpgrade, armoryUpgradeToNode, armoryClaimBox, grantArmoryItem, applyArmoryRecommendations, armoryAffixBadges, forgeInfo, forgeReroll, forgeSetDir, forgeToggleLock, forgeGateOpen, motifInfo, motifActivate, smeltInfo, smeltMelt, smeltCombine,
-  codexInfo, claimCodex, useUniversalSr, achvInfo, claimAchv, weekInfo, claimWeekQuest, claimWeekActive, buyWeekly, makeExpeditionFloor, bumpWeek, dailyAgendaInfo, quadFactionOfWeek, quadTowerInfo, winQuadTower, winTrial, trialInfo, winExpedition, seasonInfo, claimSeasonAct, claimSeasonTrack, buySeasonGood, companionInfo, companionMarkSent, companionRespond, borrowSeats, relicInfo, claimRelic, upgradeRelic, equipRelic, relicMods, weekMutatorIds, expeditionBoonOffer, pickExpeditionBoon, expeditionBoonMods, beginHall, winHall, hallInfo, saveReplay, replaysInfo, awakenInfo, awakenHero, formationPresetsInfo, saveFormationPreset, applyFormationPreset, delFormationPreset, tacticInfo, tacticUpgrade,
+  codexInfo, claimCodex, useUniversalSr, achvInfo, claimAchv, weekInfo, claimWeekQuest, claimWeekActive, buyWeekly, makeExpeditionFloor, bumpWeek, dailyAgendaInfo, quadFactionOfWeek, quadTowerInfo, winQuadTower, winTrial, trialInfo, winExpedition, seasonInfo, claimSeasonAct, claimSeasonTrack, buySeasonGood, companionInfo, companionMarkSent, companionRespond, borrowSeats, scenesInfo, winScene, relicInfo, claimRelic, upgradeRelic, equipRelic, relicMods, weekMutatorIds, expeditionBoonOffer, pickExpeditionBoon, expeditionBoonMods, beginHall, winHall, hallInfo, saveReplay, replaysInfo, awakenInfo, awakenHero, formationPresetsInfo, saveFormationPreset, applyFormationPreset, delFormationPreset, tacticInfo, tacticUpgrade,
   migrateSaveV1, migrateSaveV2, migrateSaveV3, migrateSaveV4, migrateSaveV5, migrateSaveV6, migrateSaveV7, normalizeState,
   idlePending, idleTick, gemQuotaInfo, claimIdle, claimIdleInternal, fastReward, fastRewardMutation, fastRewardAdMutation, adReward,
   doSummon, rollRarity, pickHeroOfRarity, summonPityInfo, setSummonFocus, summonTicketInfo, summonPointsInfo, claimSummonPoints, useUniversalSsr,

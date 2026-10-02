@@ -226,7 +226,7 @@ export class CocosUi {
     node.on(Node.EventType.TOUCH_END, (event: EventTouch) => {
       release();
       const point = event.getLocation();
-      if (Math.hypot(point.x - startX, point.y - startY) < 12) action();
+      if (Math.hypot(point.x - startX, point.y - startY) < 12) { (globalThis as any).__lastTap = name; action(); }
     });
     node.on(Node.EventType.TOUCH_CANCEL, release);
     this.parent.addChild(node);

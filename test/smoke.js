@@ -2070,4 +2070,61 @@ const storeP2 = freshStore(); storeP2.load();
   check('SC12b 奖励表红线', C.COMPANION_ACHV.rewards.every(r => Object.keys(r).every(k => ['gold', 'shard', 'token', 'title', 'frame'].includes(k))));
 }
 
+// 名场面重演+周 Boss 换皮（四时战纪第二批）
+{
+  global.wx._map.delete(SAVE_KEY);
+  const storeN = freshStore(); storeN.load();
+  const sN = storeN.getState();
+  const byId = C.SEASON.scenes.byId;
+  check('SC1 36 关表：键唯一/主将存在/被动词表/槽型', (() => {
+    const keys = Object.keys(byId);
+    const KEYS = ['ccImmune','cheatRevivePct','armoryStartShield','dmgReduce','thorns','firstEnergy','vamp'];
+    const H2 = require('../utils/heroes');
+    return keys.length === 36 && new Set(keys).size === 36
+      && keys.every(k => H2.getHero(byId[k].boss) && Object.keys(byId[k].passive).every(p => KEYS.includes(p))
+        && byId[k].type !== 'faction' ? true : ['shu','wei','wu','qun'].includes(byId[k].faction));
+  })());
+  check('SC2 开放窗 W40→仅 v1a1', storeN.scenesInfo().current.every(x => x.key.startsWith('v1a1')) && storeN.scenesInfo().current.length === 3);
+  const e = stages.makeSceneEnemies('v1a1s1', 100);
+  check('SC3 敌阵反推+确定性', e.units[0].level === 90 && e.units.length === 5 && e.units[0].isBoss
+    && JSON.stringify(e) === JSON.stringify(stages.makeSceneEnemies('v1a1s1', 100)));
+  // SC4 禁疗通道（banHeal 关 effects.healScale.A=0）
+  const e3 = stages.makeSceneEnemies('v1a1s3', 100);
+  check('SC4 禁疗关带 healScale.A=0', e3.effects && e3.effects.healScale && e3.effects.healScale.A === 0);
+  // SC5/SC6 限时与首通结算
+  storeN.winScene('v1a1s1', 10); // faction 关无限时
+  const rSlow = storeN.winScene('v1a1s2', 61);
+  check('SC5 超时不清', rSlow.slow === true && rSlow.medal === 0);
+  const rOk = storeN.winScene('v1a1s2', 59);
+  check('SC5b 限时内首通 +30', rOk.first && rOk.medal === 30 && sN.seasonMedal >= 30);
+  const rAgain = storeN.winScene('v1a1s2', 59);
+  check('SC6 复打不发', rAgain.first === false && rAgain.medal === 0);
+  // SC7 红线：reward 仅 medal
+  check('SC7 reward 红线', !('gem' in rOk) && !('iron' in rOk) && !('scroll' in rOk) && !('shard' in rOk));
+  // SC8 跨窗拒绝（beginBattle）
+  const rb = storeN.beginBattle({ mode: 'scene', sceneKey: 'v3a3s1', referenceLevel: 40 });
+  check('SC8 过期幕拒绝', rb.ok === false);
+  storeN.interruptBattle(rb.id || '', 't');
+  // SC10 跨季清零（mock W52）
+  sN.seasonMedal = 500;
+  const fmtMod = require('../utils/fmt');
+  const realIso = fmtMod.isoWeekKey;
+  fmtMod.isoWeekKey = () => '2026-W52';
+  storeN.checkDailyReset();
+  fmtMod.isoWeekKey = realIso;
+  check('SC10 跨季 sceneCleared 清零', sS_key(sN));
+  function sS_key(sN) { return sN.season.sceneCleared && Object.keys(sN.season.sceneCleared).length === 0; }
+  // SC11 换皮
+  const wb = stages.makeWeekBossEnemies('2026-W40', 100);
+  check('SC11 W40 皮=张角+中性被动', wb.name.indexOf('张角') >= 0 && wb.units[0].extraPassive.cheatRevivePct === 0.3
+    && wb.units[0].hero.id === 'zhangjiao' && wb.bossMaxHp > 0);
+  const wb44 = stages.makeWeekBossEnemies('2026-W44', 100);
+  check('SC11b W44 皮=袁绍', wb44.name.indexOf('袁绍') >= 0 && wb44.units[0].hero.id === 'yuanshao');
+  // SC12 回退对照
+  const CSkin = C.SEASON.weekBossSkin; C.SEASON.weekBossSkin = null;
+  const wbOld = stages.makeWeekBossEnemies('2026-W40', 100);
+  C.SEASON.weekBossSkin = CSkin;
+  check('SC12 无皮回退旧哈希选将', wbOld.units[0].hero.id !== 'zhangjiao' || wbOld.name.indexOf('黄天') < 0);
+}
+
 console.log('\nsmoke: ' + passed + ' passed, ' + failed + ' failed');process.exit(failed ? 1 : 0);

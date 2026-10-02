@@ -31,6 +31,7 @@ export class CocosBootstrap extends Component implements ScreenContext {
   public selectedBoxQ = 1;
   public fighting: any = null;
   public trialHeroId = ''; // 名将试炼当前对象（C2）
+  public sceneKey = ''; // 名场面当前对象（四时战纪第二批）
   public battleId = '';
   public battleMode = 'campaign';
   public lastUltDisplay = '';
@@ -157,7 +158,7 @@ export class CocosBootstrap extends Component implements ScreenContext {
   private hookDiag() {
     if (this.diagHooked) return;
     this.diagHooked = true;
-    (globalThis as any).__tkDiag = () => store.diagSnapshot();
+    (globalThis as any).__tkDiag = () => ({ diag: store.diagSnapshot(), page: this.page, notice: this.notice, sceneKey: this.sceneKey });
   }
   public show(page: Page) {
     this.page = page;
@@ -178,7 +179,7 @@ export class CocosBootstrap extends Component implements ScreenContext {
       campaign: () => campaignScreens.campaign(this), stagePreview: () => campaignScreens.stagePreview(this), home: () => campaignScreens.home(this), journey: () => campaignScreens.journey(this),
       heroes: () => heroScreens.heroes(this), heroDetail: () => heroScreens.heroDetail(this), summon: () => heroScreens.summon(this), summonResults: () => heroScreens.summonResults(this), bag: () => campaignScreens.bag(this),
       armory: () => heroScreens.armory(this), armoryCatalog: () => heroScreens.armoryCatalog(this), armoryBox: () => heroScreens.armoryBox(this), shop: () => campaignScreens.shop(this), formation: () => campaignScreens.formation(this), formationPick: () => campaignScreens.formationPick(this), quests: () => campaignScreens.quests(this),
-      tower: () => campaignScreens.tower(this), arena: () => campaignScreens.arena(this), arenaBoard: () => campaignScreens.arenaBoard(this), dungeon: () => campaignScreens.dungeonView(this), weekboss: () => campaignScreens.weekBossView(this), settings: () => campaignScreens.settingsView(this), story: () => campaignScreens.storyView(this), storyArchive: () => campaignScreens.storyArchiveView(this), sevenDay: () => campaignScreens.sevenDayView(this), bounty: () => campaignScreens.bountyView(this), forge: () => heroScreens.forgeView(this), codex: () => heroScreens.codexView(this), achv: () => heroScreens.achvView(this), expedition: () => campaignScreens.expeditionView(this), hall: () => campaignScreens.hallView(this), quad: () => campaignScreens.quadTowerView(this), relics: () => heroScreens.relicsView(this), season: () => campaignScreens.seasonView(this),
+      tower: () => campaignScreens.tower(this), arena: () => campaignScreens.arena(this), arenaBoard: () => campaignScreens.arenaBoard(this), dungeon: () => campaignScreens.dungeonView(this), weekboss: () => campaignScreens.weekBossView(this), settings: () => campaignScreens.settingsView(this), story: () => campaignScreens.storyView(this), storyArchive: () => campaignScreens.storyArchiveView(this), sevenDay: () => campaignScreens.sevenDayView(this), bounty: () => campaignScreens.bountyView(this), forge: () => heroScreens.forgeView(this), codex: () => heroScreens.codexView(this), achv: () => heroScreens.achvView(this), expedition: () => campaignScreens.expeditionView(this), hall: () => campaignScreens.hallView(this), quad: () => campaignScreens.quadTowerView(this), relics: () => heroScreens.relicsView(this), season: () => campaignScreens.seasonView(this), seasonScenes: () => campaignScreens.seasonScenesView(this),
       battle: () => battleScreens.battleView(this), result: () => battleScreens.resultView(this), autoSummary: () => battleScreens.autoSummary(this, this.autoSession.summary), ad: () => this.adView()
     };
     render[page]();
@@ -445,8 +446,8 @@ export class CocosBootstrap extends Component implements ScreenContext {
     const effectiveArenaSeed=arenaSeed||Date.now();
     let _hallLineup:any=null;
     if(mode==='hall'){const bh=store.beginHall(index);if(!bh.ok)return this.tell(bh,'');_hallLineup=bh.lineup;}
-    const enemy=mode==='campaign'?stages.makeStageEnemies(index):mode==='tower'?stages.makeTowerEnemies(index):mode==='training'?stages.makePracticeEnemies(store.playerLevel(),Date.now()):mode==='expedition'?store.makeExpeditionFloor(index):mode==='trial'?stages.makeTrialEnemies(this.trialHeroId,store.playerLevel()):mode==='quad'?(():any=>{const qi=store.quadTowerInfo();const anchor=Math.max(10,Math.min(120,store.getState().campaign.cleared||0));return stages.makeQuadTowerEnemies(qi.faction,qi.weekId,anchor,index);})():mode==='dungeon'?stages.makeDungeonEnemies(dungeonKind==='train'?'train':'gold',index,store.playerLevel()):mode==='hall'?(():any=>{const bh=store.beginHall(index);if(!bh.ok)return null;return stages.makeHallEnemies(bh.lineup,store.teamPower(),index);})():stages.makeArenaEnemies(store.teamPower(),effectiveArenaSeed,diff);
-    const started=store.beginBattle({mode,index,diff,referenceLevel:enemy.units[0]?.level||store.playerLevel(),hallLineup:_hallLineup,hallWeek:(store.getState().week||{}).weekId||null,dungeonKind,trialHero:mode==='trial'?(this.trialHeroId||null):null});
+    const enemy=mode==='campaign'?stages.makeStageEnemies(index):mode==='tower'?stages.makeTowerEnemies(index):mode==='training'?stages.makePracticeEnemies(store.playerLevel(),Date.now()):mode==='expedition'?store.makeExpeditionFloor(index):mode==='trial'?stages.makeTrialEnemies(this.trialHeroId,store.playerLevel()):mode==='scene'?stages.makeSceneEnemies(this.sceneKey,store.playerLevel()):mode==='quad'?(():any=>{const qi=store.quadTowerInfo();const anchor=Math.max(10,Math.min(120,store.getState().campaign.cleared||0));return stages.makeQuadTowerEnemies(qi.faction,qi.weekId,anchor,index);})():mode==='dungeon'?stages.makeDungeonEnemies(dungeonKind==='train'?'train':'gold',index,store.playerLevel()):mode==='hall'?(():any=>{const bh=store.beginHall(index);if(!bh.ok)return null;return stages.makeHallEnemies(bh.lineup,store.teamPower(),index);})():stages.makeArenaEnemies(store.teamPower(),effectiveArenaSeed,diff);
+    const started=store.beginBattle({mode,index,diff,referenceLevel:enemy.units[0]?.level||store.playerLevel(),hallLineup:_hallLineup,hallWeek:(store.getState().week||{}).weekId||null,dungeonKind,trialHero:mode==='trial'?(this.trialHeroId||null):null,sceneKey:mode==='scene'?(this.sceneKey||null):null});
     this.battleDungeonKind=dungeonKind||'';
     if(!started.ok){
       if(fromAuto) this.autoAction(this.autoSession.battleStarted(false,undefined,started.msg));
@@ -456,11 +457,19 @@ export class CocosBootstrap extends Component implements ScreenContext {
     let effects=null;
     if(mode==='campaign') effects=stages.stageBattleEffects(stages.makeStageEnemies(index));
     else if(mode==='expedition') effects=stages.stageBattleEffects(enemy);
+    else if(mode==='scene') effects=(enemy as any).effects||null;
     const battleSeed=Date.now();
     let teamUnits=store.playerUnits(this.armedTactic,!(config.BORROW&&config.BORROW.excludedModes||[]).includes(mode));
     if(mode==='quad'){
       const qi=store.quadTowerInfo();
       teamUnits=teamUnits.filter((u:any)=>u.faction===qi.faction);
+    }
+    if(mode==='scene'){
+      const sc=(config.SEASON as any).scenes.byId[this.sceneKey];
+      if(sc.type==='faction'){
+        teamUnits=teamUnits.filter((u:any)=>u.faction===sc.faction);
+        if(!teamUnits.length){ return this.tell({ok:false,msg:'该阵营无可上阵武将'},''); }
+      }
     }
     // 远征加护（研讨会十二 A1）：仅远征战斗把本周加护被动并入我方全军
     if(mode==='expedition'){
