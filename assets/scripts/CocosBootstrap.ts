@@ -156,6 +156,9 @@ export class CocosBootstrap extends Component implements ScreenContext {
   public show(page: Page) {
     this.page = page;
     for (const child of this.content.children.slice()) child.destroy();
+    // P1-① 防御清场（第二轮走查）：战斗 fx overlay 挂在常驻 fxLayer 上，任何非战斗页渲染时强制清空——
+    // 无论泄漏链路（自动连战/跳过/中断）如何，用户可见症状必然消失；战斗页刷新不受影响
+    if (page !== 'battle') BattleFx.onBattleEnd();
     const verticalScale=Math.max(1,view.getVisibleSize().height/1280);
     const U = this.ui = new CocosUi(this.content,verticalScale), s = store.getState();
     U.rect('Backdrop', 0, 0, 720, 1280, hexColor('#171009'));
