@@ -1,4 +1,4 @@
-import { Color } from 'cc';
+import { Color, view } from 'cc';
 import { palette, hexColor as tone } from '../ui/CocosUi';
 import { Page, ScreenContext } from './ScreenContext';
 import * as store from '../domain/store';
@@ -11,7 +11,8 @@ import * as progression from '../domain/progression';
 import * as fmt from '../domain/fmt';
 import { firstTimeOverlay } from './TutorialOverlay';
 import { recommendFormation } from '../domain/formation';
-import { campaignMap, campaignFlag, campaignCamp, cityMap, CITY_BUILDINGS } from '../ui/Scenery';
+import { ArtService } from '../services/ArtService';
+import { campaignMap, campaignFlag, campaignCamp, cityMap, CITY_BUILDINGS, CAMPAIGN_ROUTE, CAMPAIGN_ART_ROUTE } from '../ui/Scenery';
 
 const INK = tone('#3d4337'), PAPER = tone('#eee3bf'), GOLD = tone('#edcf88'), LIGHT = tone('#f5e8c9');
 let chapterMapOpen=false;
@@ -46,9 +47,10 @@ export function campaign(ctx: ScreenContext) {
   const s = store.getState(), stage = s.campaign.cleared + 1;
   const chapter = stages.chapterOf(stage), enemy = stages.makeStageEnemies(stage);
   const U = ctx.ui;
+  const verticalScale=Math.max(1,view.getVisibleSize().height/1280);
   campaignMap(U);
   const segmentStart = chapter.idx * stages.STAGES_PER_CH + 1 + (chapter.inCh < 5 ? 0 : 5);
-  const points: Array<[number,number]> = [[150,396],[82.5,316.8],[217.5,237.6],[135,149.6],[243.75,61.6]];
+  const points: Array<[number,number]> = (ArtService.has('map_campaign_v2')?CAMPAIGN_ART_ROUTE:CAMPAIGN_ROUTE).map(([x,y])=>[x*375,y*440]);
   points.forEach(([x,y], i) => {
     const n = segmentStart+i;
     campaignFlag(U,'StageFlag'+i,x,y,n,n===stage?'current':n<stage?'cleared':'locked',() => {
@@ -58,8 +60,9 @@ export function campaign(ctx: ScreenContext) {
   });
   const current=points[stage-segmentStart];
   if(current){const x=current[0]*720/375-360,y=420-current[1]*660/440;
-    U.panel('CurrentStage',x+18,y-24,176,32,tone('#3c6255'),5);
-    U.text('CurrentStageText',`第${stage}关${stage>stages.CHAPTERS.length*stages.STAGES_PER_CH?'·循环':''}`,x+18,y-24,165,17,LIGHT);
+    const markerArt=ArtService.has('map_campaign_v2'),labelX=x+(markerArt?0:18),labelY=y-(markerArt?42:24);
+    U.panel('CurrentStage',labelX,labelY,176,32,tone('#3c6255'),5,undefined,false);
+    U.text('CurrentStageText',`第${stage}关${stage>stages.CHAPTERS.length*stages.STAGES_PER_CH?'·循环':''}`,labelX,labelY,165,17,LIGHT);
   }
   U.text('MilestoneHint','主线里程碑：40/100 自选券 · 90/110/150 自选箱 · 120/140/160 完成礼',0,404,560,15,INK);
   const sd=store.sevenDayInfo();
@@ -93,36 +96,39 @@ export function campaign(ctx: ScreenContext) {
     U.tap('MapTap'+page,294,y,92,82,()=>ctx.go(page));
   });
 
-  const formation = s.formation.map((id: string|null)=>id ? heroes.getHero(id)?.name || '空' : '空');
-  campaignCamp(U,formation);
-  U.text('CampHeading','出战阵容',-276,-255,124,18,LIGHT);
-  U.text('CampEdit','调整编队 >',79,-255,150,18,LIGHT);
-  formation.forEach((name: string,i: number)=>U.text('CampHero'+i,name||'空',-290+i*92,-336,84,16,LIGHT));
-  U.text('ChestLabel','挂机宝箱',236,-331,132,17,LIGHT);
-  U.tap('CampEditTap',-118,-296,490,106,()=>ctx.go('formation'));
+  campaignCamp(U);
+  U.text('CampHeading','出战阵容',-276,-253,124,16,LIGHT);
+  U.text('CampEdit','调整编队 >',79,-253,150,16,LIGHT);
+  s.formation.slice(0,5).forEach((id: string|null,i: number)=>{
+    const hero=id?heroes.getHero(id):null,x=-290+i*92;
+    U.heroIcon('CampPortrait'+i,x,-300,64,62*verticalScale,{surname:hero?.name?.[0]||'空',faction:hero?.faction,rarity:hero?.rarity,artKey:id||undefined});
+    U.text('CampHero'+i,hero?.name||'空位',x,-340,84,15,LIGHT);
+  });
+  U.text('ChestLabel','挂机宝箱',236,-339,132,16,LIGHT);
+  U.tap('CampEditTap',-106,-300,500,106,()=>ctx.go('formation'));
   U.tap('ChestTap',238,-295,150,100,()=>ctx.idleClaimChoice());
 
-  U.panel('CampaignInfo', 0, -391, 696, 76, tone('#ded2ae'),8);
+  U.panel('CampaignInfo', 0, -391, 696, 76*verticalScale, tone('#ded2ae'),8);
   const idle = store.idlePending();
   const mins=Math.floor(idle.hours*60);
-  U.text('IdleTime',idle.full?'挂机收益已满':`积累 ${Math.floor(mins/60)}时${mins%60}分`,-218,-365,245,19,INK);
-  U.text('Idle',`铜钱 ${fmt.fmtNum(idle.gold)} · 精铁 ${idle.iron}（自然 12 小时封顶）`,-156,-389,370,16,tone('#74684a'));
-  U.text('IdleRate',`今日元宝 ${idle.gem.claimedGem}/${idle.gem.cap} · 累计未领 ${fmt.fmtNum(idle.gem.pending)}`,-176,-409,330,14,tone('#74684a'));
-  U.panel('IdleClaimPanel',232,-391,220,59,palette.gold,9,tone('#a47735'));
+  const idleTime=idle.full?'收益已满':`${Math.floor(mins/60)}时${mins%60}分`;
+  U.text('IdleTime',`${idleTime} · 铜钱 ${fmt.fmtNum(idle.gold)} · 精铁 ${idle.iron}`,-128,-380,408,17,INK);
+  U.text('IdleRate',`元宝 ${idle.gem.claimedGem}/${idle.gem.cap} · 待领 ${fmt.fmtNum(idle.gem.pending)} · 铜铁12时封顶`,-128,-403,408,14,tone('#74684a'));
+  U.panel('IdleClaimPanel',232,-391,220,59*verticalScale,palette.gold,9,tone('#a47735'));
   U.text('IdleClaimText',idle.gold||idle.iron?'一键收获':'收益积累中',232,-391,198,25,INK);
-  U.tap('IdleClaimTap',232,-391,220,59,()=>ctx.tell(store.claimFreeRewards(),'挂机收益已领取'));
-  U.panel('MapButton',-288,-471,103,70,tone('#3a291a'),8,GOLD);
+  U.tap('IdleClaimTap',232,-391,220,59*verticalScale,()=>ctx.tell(store.claimFreeRewards(),'挂机收益已领取'));
+  U.panel('MapButton',-288,-471,103,70*verticalScale,tone('#3a291a'),8,GOLD);
   U.text('MapButtonTitle','征途',-288,-458,90,24,LIGHT);
   U.text('MapButtonSub','本章地图',-288,-485,90,14,tone('#d6c7a1'));
-  U.tap('JourneyTap',-288,-471,103,70,()=>{chapterMapOpen=true;chapterMapCh=chapter.idx;ctx.show('campaign');});
-  U.panel('AutoButton',0,-471,445,70,ctx.auto?palette.red:tone('#39695a'),10,GOLD);
+  U.tap('JourneyTap',-288,-471,103,70*verticalScale,()=>{chapterMapOpen=true;chapterMapCh=chapter.idx;ctx.show('campaign');});
+  U.panel('AutoButton',0,-471,445,70*verticalScale,ctx.auto?palette.red:tone('#39695a'),10,GOLD);
   U.text('AutoButtonTitle',ctx.auto?'本场后停止':'自动出征',0,-459,422,35,LIGHT);
   U.text('AutoButtonSub',`第 ${stage} 关 · ${enemy.name||chapter.name}`,0,-489,417,15,tone('#e5e5bf'));
-  U.tap('AutoTap',0,-471,445,70,()=>ctx.auto?ctx.stopAuto(true):ctx.startAuto('campaign'));
-  U.panel('TrainingButton',288,-471,103,70,tone('#3a291a'),8,GOLD);
+  U.tap('AutoTap',0,-471,445,70*verticalScale,()=>ctx.auto?ctx.stopAuto(true):ctx.startAuto('campaign'));
+  U.panel('TrainingButton',288,-471,103,70*verticalScale,tone('#3a291a'),8,GOLD);
   U.text('TrainingTitle','练兵',288,-458,90,24,LIGHT);
   U.text('TrainingSub','最多10胜',288,-485,90,14,tone('#d6c7a1'));
-  U.tap('TrainingTap',288,-471,103,70,()=>ctx.startAuto('training'));
+  U.tap('TrainingTap',288,-471,103,70*verticalScale,()=>ctx.startAuto('training'));
   U.rect('GoalStrip',0,-528,720,40,tone('#344438'));
   const firstDone=Math.min(s.campaign.cleared,config.FIRST_STAGE_END);
   const storyEnd=stages.CHAPTERS.length*stages.STAGES_PER_CH;
@@ -266,14 +272,17 @@ export function stagePreview(ctx: ScreenContext) {
 export function home(ctx: ScreenContext) {
     const s = store.getState(),U=ctx.ui,stage=s.campaign.cleared+1,chapter=stages.chapterOf(stage);
     cityMap(U);
-    U.text('CityName','桃 园 主 城',0,420,320,24,INK);
+    const cityArt=ArtService.has('city_home_v2');
+    const cityCenters: Array<[number,number]>=[[.50,.24],[.22,.36],[.78,.36],[.22,.51],[.78,.51],[.50,.635]];
+    U.text('CityName','桃 园 主 城',0,420,320,24,cityArt?LIGHT:INK);
     CITY_BUILDINGS.forEach((b,i)=>{
-      const x=(b.x+b.w/2)*720/375-360;
-      const y=440-(b.y+b.h)*790/500-28;
-      U.panel('BuildingLabel'+i,x,y,Math.max(172,b.w*1.78),70,tone('#eee3c8'),5,tone('#766a51'));
-      U.text('BuildingName'+i,b.name,x,y+13,170,27,INK);
-      U.text('BuildingHint'+i,b.hint+' >',x,y-17,170,16,tone('#766a51'));
-      U.tap('BuildingTap'+i,x,440-(b.y+b.h/2)*790/500-20,b.w*1.92+15,b.h*790/500+78,()=>ctx.go(b.page as Page));
+      const [cx,cy]=cityCenters[i];
+      const x=cityArt?cx*720-360:(b.x+b.w/2)*720/375-360;
+      const y=cityArt?640-cy*1280-68:440-(b.y+b.h)*790/500-28;
+      U.panel('BuildingLabel'+i,x,y,cityArt?176:Math.max(172,b.w*1.78),cityArt?58:70,cityArt?new Color(22,35,29,232):tone('#eee3c8'),7,cityArt?GOLD:tone('#766a51'),!cityArt);
+      U.text('BuildingName'+i,b.name,x,y+(cityArt?10:13),164,cityArt?25:27,cityArt?LIGHT:INK);
+      U.text('BuildingHint'+i,b.hint+' >',x,y-(cityArt?16:17),164,16,cityArt?GOLD:tone('#766a51'));
+      U.tap('BuildingTap'+i,x,cityArt?y+35:440-(b.y+b.h/2)*790/500-20,cityArt?190:b.w*1.92+15,cityArt?128:b.h*790/500+78,()=>ctx.go(b.page as Page));
     });
     [['quests','令','每日任务',-289],['bag','囊','背包',289]].forEach(([page,glyph,label,x],i)=>{
       const px=Number(x);
@@ -343,110 +352,54 @@ export function home(ctx: ScreenContext) {
 export function journey(ctx: ScreenContext) {
     const s=store.getState(),U=ctx.ui,armory=store.getArmoryState();
     U.text('JourneyHeading','玩法 · 王庭',-204,521,275,29,GOLD);
-    const cards:[Page,string,string,string,string,number,number][]=[
-      ['tower','塔','群英塔','无限挑战，节节高升',`已登 ${s.tower.best} 层`,-168,416],
-      ['arena','演','演武场','切磋武艺，争锋排名',`${items.arenaRank(s.arena.points)} · 今日剩 ${s.arena.attempts} 次`,168,416],
-      ['armory','械','军械图鉴','全军共用，培养六部位',`已解锁 ${armory.unlockedCount}/${armory.total}`,-168,218],
-      ['shop','市','集市','每日刷新，奇货可居','每日刷新',168,218]
-    ];
-    cards.forEach(([page,glyph,name,description,stat,x,y],i)=>{
-      U.panel('JourneyCard'+i,x,y,319,177,tone('#312218'),10,tone('#a17b40'));
-      U.text('JourneyGlyph'+i,glyph,x-113,y+43,59,49,GOLD);
-      U.text('JourneyName'+i,name,x+25,y+44,207,28,LIGHT);
-      U.text('JourneyDescription'+i,description,x,y-9,289,18,tone('#ad9977'));
-      U.text('JourneyStat'+i,stat,x,y-54,289,19,GOLD);
-      U.tap('JourneyTap'+i,x,y,319,177,()=>ctx.go(page));
-    });
-    const bt=store.bountyInfo();
-    U.panel('JourneyBounty',0,-75,682,130,bt.canClaim?tone('#3a2c17'):tone('#312218'),10,bt.canClaim?GOLD:tone('#a17b40'));
-    U.text('JourneyBountyGlyph','赏',-272,-60,59,49,GOLD);
-    U.text('JourneyBountyName','悬赏派遣',-150,-60,180,28,LIGHT);
-    U.text('JourneyBountyDesc','派武将出征，到时领赏 · 每日 4 单',-10,-95,430,18,tone('#ad9977'));
+    const bt=store.bountyInfo(),hi=store.hallInfo(),wk=progression.buildWeeklyBriefing(s,hi.seats);
+    const ag=store.dailyAgendaInfo(),dg=store.dungeonInfo(),q=store.quadTowerInfo(),si=store.seasonInfo(),wb=store.weekBossInfo();
     const unread=store.takeBountyGrantsNotice();
-    U.text('JourneyBountyStat',unread?`离线赏金×${unread} 已入账 >`:bt.canClaim?'有赏可领 >':bt.idleCount>0?`待派遣 ${bt.idleCount} 单`:bt.list.some((b:any)=>b.state==='running')?'出征途中':'今日已完成',30,-58,330,19,GOLD);
-    U.tap('JourneyBountyTap',0,-75,682,130,()=>ctx.go('bounty'));
-    const hi=store.hallInfo();
-    U.panel('JourneyHall',0,-188,682,84,hi.seats.every((x:any)=>x.killed)?tone('#26301f'):tone('#312218'),10,hi.seats.every((x:any)=>x.killed)?tone('#6f8a5f'):tone('#a17b40'));
-    U.text('JourneyHallGlyph','堂',-272,-173,59,49,GOLD);
-    U.text('JourneyHallName','名人堂',-198,-173,180,26,LIGHT);
-    U.text('JourneyHallDesc','本周名阵容挑战 · 荣耀与称号',-58,-213,430,17,tone('#ad9977'));
-    U.text('JourneyHallStat',hi.seats.every((x:any)=>x.killed)?`本周全胜 · 荣耀 ${hi.honor}`:`已胜 ${hi.seats.filter((x:any)=>x.killed).length}/3 · 荣耀 ${hi.honor}`,-58,-183,430,18,GOLD);
-    U.tap('JourneyHallTap',0,-188,682,84,()=>ctx.go('hall'));
-    // 本周必做聚合卡（2026-09-30 裁决 B）：一眼看全周任务/名人堂/演武赛季，点击进远征周页
-    const wk=progression.buildWeeklyBriefing(s,hi.seats);
-    U.panel('JourneyWeekly',0,-290,682,104,(wk.questsDone<wk.questsTotal)?tone('#312218'):tone('#26301f'),10,(wk.questsDone<wk.questsTotal)?tone('#a17b40'):tone('#6f8a5f'));
-    U.text('JourneyWeeklyGlyph','周',-272,-270,59,49,GOLD);
-    U.text('JourneyWeeklyName','本周必做',-158,-270,180,26,LIGHT);
-    U.text('JourneyWeeklyStat',`任务 ${wk.questsDone}/${wk.questsTotal} · 演武 ${wk.arenaRank}`,120,-269,280,18,GOLD);
-    U.text('JourneyWeeklyDesc','周任务与活跃宝箱在远征页领取',-58,-305,430,17,tone('#ad9977'));
-    U.text('JourneyWeeklyReplay',`战报 · 最近 ${(store.replaysInfo().list as any[]).length} 场 >`,-58,-330,300,17,GOLD);
-    U.tap('JourneyWeeklyReplayTap',110,-330,240,34,()=>ctx.go('hall'));
-    U.tap('JourneyWeeklyTap',0,-280,682,60,()=>ctx.go('expedition'));
-    // 军屯双本入口（研讨会四 P2）
-    // 四方台入口（研讨会十二 A2）：周轮换阵营塔，占集市卡与悬赏卡间空白带
-    {
-      const q=store.quadTowerInfo();
-      if(q.enabled){
-        const qname=(config.FACTIONS as any)[q.faction]?.name||q.faction;
-        const qStat=q.owned>0?`已登 ${q.best}/${q.floors} · 本国可战 ${q.owned} 将 >`:`本周${qname}台 · 暂无${qname}将（召唤/定向券可补）>`;
-        U.panel('QuadEntry',0,56,682,84,tone('#312218'),10,tone('#a17b40'));
-        U.text('QuadEntryGlyph','四',-272,71,59,49,GOLD);
-        U.text('QuadEntryName',`四方台 · ${qname}·${q.theme}`,-52,71,360,25,LIGHT);
-        U.text('QuadEntryStat',qStat,30,36,520,18,GOLD);
-        U.tap('QuadEntryTap',0,56,682,84,()=>ctx.go('quad' as any));
-      }
+    const tq=store.questList().find((qq:any)=>qq.id==='q_tower1');
+    type Entry={key:string;glyph:string;name:string;desc:string;stat:string;page?:Page;artKey?:string;dot?:string;active?:boolean;action?:()=>void};
+    const today:Entry[]=[],daily:Entry[]=[],weekly:Entry[]=[],services:Entry[]=[];
+    if(ag.enabled&&ag.total>0){
+      const ns=ag.nextStep?(ag.entries as any[]).find(e=>e.key===ag.nextStep!.key):null;
+      today.push({key:'AgendaBand',glyph:'令',name:`今日军务 ${ag.count}/${ag.total}`,desc:ag.count>=ag.total?`今日已清 · 勤勉 ${ag.agendaDays} 天`:`下一步：${ns?ns.label:'稍后再来'}`,stat:'查看每日清单 >',artKey:'scroll',dot:ag.nextStep?.tier==='claim'?'AgendaDot':undefined,active:ag.count<ag.total,action:()=>{agendaOpen=true;ctx.show('journey');}});
+    }else today.push({key:'JourneyQuests',glyph:'令',name:'每日任务',desc:'日常挑战与活跃奖励',stat:'查看今日任务 >',page:'quests',artKey:'scroll'});
+    daily.push({key:'JourneyCard0',glyph:'塔',name:'群英塔',desc:'无限挑战，节节高升',stat:`已登 ${s.tower.best} 层`,page:'tower',artKey:'feature_tower',dot:tq&&tq.done&&!tq.claimed?'DotJourneyTower':undefined});
+    daily.push({key:'JourneyCard1',glyph:'演',name:'演武场',desc:'切磋武艺，争锋排名',stat:`${items.arenaRank(s.arena.points)} · 今日剩 ${s.arena.attempts} 次`,page:'arena',artKey:'feature_arena',dot:s.arena.attempts>0?'DotJourneyArena':undefined,active:s.arena.attempts>0});
+    daily.push({key:'JourneyBounty',glyph:'赏',name:'悬赏派遣',desc:'派武将出征，到时领赏 · 每日 4 单',stat:unread?`离线赏金×${unread} 已入账 >`:bt.canClaim?'有赏可领 >':bt.idleCount>0?`待派遣 ${bt.idleCount} 单`:bt.list.some((b:any)=>b.state==='running')?'出征途中':'今日已完成',page:'bounty',artKey:'feature_bounty',dot:bt.canClaim?'DotJourneyBounty':undefined,active:bt.canClaim});
+    if(dg.enabled)daily.push({key:'JourneyDungeon',glyph:'屯',name:'军屯双本',desc:`屯金 ${dg.gold.best}/10 · 屯兵 ${dg.train.best}/10`,stat:`今日剩 ${dg.runsLeft} 次 >`,page:'dungeon',artKey:'dungeon_gold',active:dg.runsLeft>0});
+    weekly.push({key:'JourneyWeekly',glyph:'周',name:'本周必做',desc:'周任务与活跃宝箱在远征页领取',stat:`任务 ${wk.questsDone}/${wk.questsTotal} · 演武 ${wk.arenaRank}`,page:'expedition',dot:store.weekInfo().canClaim?'DotJourneyWeekly':undefined,active:store.weekInfo().canClaim});
+    weekly.push({key:'JourneyHall',glyph:'堂',name:'名人堂',desc:'本周名阵容挑战 · 荣耀与称号',stat:hi.seats.every((x:any)=>x.killed)?`本周全胜 · 荣耀 ${hi.honor}`:`已胜 ${hi.seats.filter((x:any)=>x.killed).length}/3 · 荣耀 ${hi.honor}`,page:'hall',artKey:'honor'});
+    if(q.enabled){
+      const qname=(config.FACTIONS as any)[q.faction]?.name||q.faction;
+      weekly.push({key:'QuadEntry',glyph:'四',name:`四方台 · ${qname}·${q.theme}`,desc:q.owned>0?`本国可战 ${q.owned} 将`:`暂无${qname}将 · 召唤/定向券可补`,stat:`已登 ${q.best}/${q.floors} >`,page:'quad',dot:q.owned>0&&q.unlocked>q.best?'DotJourneyQuad':undefined});
     }
-    // 今日军务折叠带（研讨会十二 C1）：单行入口，红点只挂可领取
-    {
-      const ag=store.dailyAgendaInfo();
-      if(ag.enabled&&ag.total>0){
-        const ns=ag.nextStep?(ag.entries as any[]).find(e=>e.key===ag.nextStep!.key):null;
-        const txt=ag.count>=ag.total?`今日军务 ${ag.count}/${ag.total} · 已清 · 勤勉 ${ag.agendaDays} 天 >`
-          :`今日军务 ${ag.count}/${ag.total} · 下一步：${ns?ns.label:'稍后再来'} >`;
-        const allDone=ag.count>=ag.total;
-        U.panel('AgendaBand',0,-368,682,36,allDone?tone('#26301f'):tone('#2b2118'),8,allDone?tone('#6f8a5f'):GOLD);
-        U.text('AgendaBandTxt',txt,0,-368,640,17,allDone?tone('#a99778'):GOLD);
-        if(ag.nextStep&&ag.nextStep.tier==='claim')U.dot('AgendaDot',296,-376);
-        U.tap('AgendaBandTap',0,-368,682,36,()=>{agendaOpen=true;ctx.show('journey');});
-      }
-    }
-    const dg=store.dungeonInfo();
-    if(dg.enabled){
-      // 单行带（研讨会十三案一：为赛季带腾位）
-      U.panel('JourneyDungeon',0,-412,682,36,dg.runsLeft>0?tone('#312218'):tone('#26201a'),8,tone('#795b34'));
-      U.text('JourneyDungeonText',`军屯双本 · 剩 ${dg.runsLeft} 次 · 屯金 ${dg.gold.best}/10 · 屯兵 ${dg.train.best}/10 >`,0,-412,650,17,dg.runsLeft>0?GOLD:tone('#a99778'));
-      U.tap('JourneyDungeonTap',0,-412,682,36,()=>ctx.go('dungeon'));
-    }
-    // 四时战纪赛季带（研讨会十三案一）
-    {
-      const si=store.seasonInfo();
-      if(si.enabled){
-        const trackNext=(si.track as any[]).find(t=>t.claimable);
-        const txt=`四时战纪 · 第${si.seasonNo}季 卷${si.vol}·${si.volName} · 军资簿 Lv${(si.track as any[]).filter(t=>t.claimed).length}${si.claimable?' · 有赏可领':''} >`;
-        U.panel('JourneySeason',0,-458,682,44,si.claimable?tone('#3a2c17'):tone('#2b2118'),8,si.claimable?GOLD:tone('#6b5837'));
-        U.text('JourneySeasonGlyph','季',-282,-458,40,30,GOLD);
-        U.text('JourneySeasonText',txt,-20,-458,600,17,si.claimable?GOLD:LIGHT);
-        if(si.claimable)U.dot('JourneySeasonDot',296,-466);
-        U.tap('JourneySeasonTap',0,-458,682,44,()=>ctx.go('season'));
-      }
-    }
-    // 周常 Boss 横幅（研讨会四 P3）：导航红线上方窄带
-    const wb=store.weekBossInfo();
-    if(wb.enabled){
-      U.panel('JourneyWeekBoss',0,-516,682,44,wb.attemptsLeft>0?tone('#3a2c17'):tone('#2b2118'),8,wb.attemptsLeft>0?GOLD:tone('#6b5837'));
-      U.text('JourneyWeekBossText',`本周魔王 · ${wb.bossName} · 最高伤害 ${(wb.bestPct*100).toFixed(1)}% · 剩 ${wb.attemptsLeft} 次 >`,0,-516,650,17,wb.attemptsLeft>0?GOLD:LIGHT);
-      U.tap('JourneyWeekBossTap',0,-516,682,44,()=>ctx.go('weekboss'));
-    }
-    // U5 红点口径补全（三线 UI 线）：红点=有收益可领或免费次数可用；军屯/赛季/周Boss 带已有金字信号不重复叠加
-    {
-      const tq=store.questList().find((qq:any)=>qq.id==='q_tower1');
-      if(tq&&tq.done&&!tq.claimed)U.dot('DotJourneyTower',-58,480);
-      if(s.arena.attempts>0)U.dot('DotJourneyArena',278,480);
-      if(bt.canClaim)U.dot('DotJourneyBounty',302,-40);
-      const q5=store.quadTowerInfo();
-      if(q5.enabled&&q5.owned>0&&q5.unlocked>q5.best)U.dot('DotJourneyQuad',302,78);
-      if(store.weekInfo().canClaim)U.dot('DotJourneyWeekly',302,-262);
-    }
+    if(si.enabled)weekly.push({key:'JourneySeason',glyph:'季',name:'四时战纪',desc:`第${si.seasonNo}季 卷${si.vol}·${si.volName}`,stat:`军资簿 Lv${(si.track as any[]).filter(t=>t.claimed).length}${si.claimable?' · 有赏可领':''} >`,page:'season',dot:si.claimable?'JourneySeasonDot':undefined,active:si.claimable});
+    if(wb.enabled)weekly.push({key:'JourneyWeekBoss',glyph:'魔',name:`本周魔王 · ${wb.bossName}`,desc:`最高伤害 ${(wb.bestPct*100).toFixed(1)}%`,stat:`今日剩 ${wb.attemptsLeft} 次 >`,page:'weekboss',artKey:'feature_weekboss',active:wb.attemptsLeft>0});
+    weekly.push({key:'JourneyWeeklyReplay',glyph:'录',name:'战报回顾',desc:'重温最近的战斗',stat:`最近 ${(store.replaysInfo().list as any[]).length} 场 >`,page:'hall'});
+    services.push({key:'JourneyCard2',glyph:'械',name:'军械图鉴',desc:'全军共用，培养六部位',stat:`已解锁 ${armory.unlockedCount}/${armory.total}`,page:'armory',artKey:'feature_armory'});
+    services.push({key:'JourneyCard3',glyph:'市',name:'集市',desc:'每日刷新，奇货可居',stat:'兑换物资与自选券 >',page:'shop',artKey:'feature_shop'});
+    const groups:[string,Entry[]][]=[['今日军务',today],['日常挑战',daily],['周常与赛季',weekly],['养成服务',services]];
+    // 一套纵向预算容纳全部入口；滚区上让页眉/路径条，下缘留在导航上方。
+    const contentH=44+groups.reduce((sum,[,entries])=>sum+44+entries.length*132,0);
+    U.scroll('JourneyGroups',0,-35,696,970,contentH,V=>{
+      let cursor=contentH/2-16;
+      groups.forEach(([label,entries],groupIndex)=>{
+        V.text('JourneyGroupTitle'+groupIndex,label,-223,cursor-14,230,22,GOLD);
+        V.text('JourneyGroupCount'+groupIndex,`${entries.length} 项`,284,cursor-14,72,17,palette.muted);
+        cursor-=44;
+        entries.forEach(entry=>{
+          const y=cursor-60;
+          V.panel(entry.key,0,y,674,120,new Color(19,32,27,232),10,entry.active?tone('#a98447'):tone('#506252'),false);
+          V.seal(entry.key+'Glyph',-273,y+12,58,entry.glyph,palette.ink,tone('#7b7652'),GOLD,30,entry.artKey);
+          V.text(entry.key+'Name',entry.name,-20,y+28,410,26,LIGHT);
+          V.text(entry.key+'Desc',entry.desc,-20,y-4,410,18,palette.muted);
+          V.text(entry.key+'Stat',entry.stat,0,y-35,610,19,entry.active?GOLD:tone('#c5c6ab'));
+          V.text(entry.key+'Arrow','›',303,y+10,40,32,GOLD);
+          if(entry.dot)V.dot(entry.dot,283,y+42);
+          V.tap(entry.key+'Tap',0,y,674,120,entry.action||(()=>ctx.go(entry.page!)));
+          cursor-=132;
+        });
+      });
+    });
   firstTimeOverlay(ctx,'agenda');
   // 今日军务展开弹层（研讨会十二 C1）：11 条清单+勤勉进度+一键前往
   if(agendaOpen){

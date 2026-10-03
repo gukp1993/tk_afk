@@ -68,6 +68,7 @@ export class CocosUi {
       sprite.spriteFrame = frame;
       sprite.sizeMode = Sprite.SizeMode.CUSTOM;
       sprite.trim = false;
+      node.getComponent(UITransform)!.setContentSize(size, size);
       this.parent.addChild(node);
       this.nodes.set(name, node);
       return node;
@@ -208,6 +209,7 @@ export class CocosUi {
     sprite.spriteFrame = frame;
     sprite.sizeMode = Sprite.SizeMode.CUSTOM;
     sprite.trim = false;
+    node.getComponent(UITransform)!.setContentSize(w, this.height(h));
     this.parent.addChild(node);
     this.nodes.set(name, node);
     return node;
@@ -477,10 +479,15 @@ export class CocosUi {
    */
   /** 资源 pill 行（U3 组件化）：journey/shop 顶栏五资源与主城顶栏同调；entries=[标签,已格式化数值] */
   resourcePills(entries: [string, string][], y: number) {
+    const keys: Record<string, string> = { 铜钱: 'gold', 元宝: 'gem', 招募令: 'scroll', 演武令: 'token', 碎片: 'shard', 精铁: 'iron' };
     entries.forEach(([label, display], i) => {
       const x = -278 + i * 139;
-      this.panel('ResourcePill' + i, x, y, 130, 39, palette.ink, 19, palette.gold);
-      this.text('ResourceText' + i, `${label} ${display}`, x, y, 121, 18, palette.gold);
+      this.panel('ResourcePill' + i, x, y, 130, 44, new Color(12, 28, 25, 232), 10, new Color(162, 128, 67, 135), false);
+      if (ArtService.has(keys[label])) {
+        this.seal('ResourceIcon' + i, x - 43, y, 32, label[0], undefined, undefined, undefined, undefined, keys[label]);
+        this.text('ResourceLabel' + i, label, x + 15, y + 10, 85, 13, palette.muted);
+        this.text('ResourceText' + i, display, x + 15, y - 8, 85, 18, palette.text);
+      } else this.text('ResourceText' + i, `${label} ${display}`, x, y, 121, 18, palette.gold);
     });
   }
 

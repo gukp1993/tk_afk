@@ -1,5 +1,6 @@
-import { Graphics } from 'cc';
+import { Graphics, UITransform, view } from 'cc';
 import { CocosUi, hexColor as color } from './CocosUi';
+import { ArtService } from '../services/ArtService';
 
 type Point = [number, number];
 
@@ -79,7 +80,16 @@ function fortress(p: Paint, x: number, y: number, s: number) {
 }
 
 export const CAMPAIGN_ROUTE: Point[] = [[.40,.90],[.22,.72],[.58,.54],[.36,.34],[.65,.14]];
+// 生成地图的实拍圆盘中心：与图片中的道路逐点对齐，旧几何地图仍使用原路线。
+export const CAMPAIGN_ART_ROUTE: Point[] = [[270/720,545/660],[170/720,351/660],[398/720,276/660],[237/720,157/660],[415/720,94/660]];
 export function campaignMap(ui: CocosUi, top = 420, height = 660) {
+  const frame = ArtService.frame('map_campaign_v2');
+  if (frame) {
+    const art=ui.image('CampaignMapArt', frame, 0, top - height / 2, 720, height);
+    // image 的短面板尺寸保持原高；地图属于纵向场景，须与旗点一起适配长屏。
+    art.getComponent(UITransform)!.setContentSize(720,height*Math.max(1,view.getVisibleSize().height/1280));
+    return;
+  }
   ui.scene('CampaignScenery', g => {
     const p = new Paint(g, top, height, 440);
     p.box(0,0,375,440,'#b2bc99');
@@ -101,6 +111,12 @@ export function campaignMap(ui: CocosUi, top = 420, height = 660) {
 
 export function campaignFlag(ui: CocosUi, name: string, px: number, py: number, n: number, state: 'current'|'cleared'|'locked', action: () => void) {
   const x=px*720/375-360, y=420-py*660/440;
+  if(ArtService.has('map_campaign_v2')){
+    ui.panel(name+'Marker',x,y,44,44,state==='current'?color('#aa472d'):state==='cleared'?color('#426650'):color('#5f6652'),22,state==='current'?color('#f4d485'):color('#cab687'),false);
+    ui.text(name+'Number',state==='cleared'?'✓':String(n),x,y,40,24,color('#fff0bf'));
+    ui.tap(name,x,y,76,76,action);
+    return;
+  }
   ui.scene(name+'Art',g=>{
     const p=new Paint(g,420,660,440);
     p.oval(px,py+2,state==='current'?21:16,state==='current'?8:5,state==='current'?'#e8d190':'#8e9b7b');
@@ -112,23 +128,12 @@ export function campaignFlag(ui: CocosUi, name: string, px: number, py: number, 
   ui.tap(name,x+17,y+29,76,87,action);
 }
 
-export function campaignCamp(ui: CocosUi, names: string[]) {
+export function campaignCamp(ui: CocosUi) {
+  const chest=ArtService.frame('chest');
   ui.scene('CampaignCampArt',g=>{
     const p=new Paint(g,-241,112,88);
-    p.box(0,0,375,88,'#758d74');
-    p.poly([[0,48],[110,31],[263,42],[375,19],[375,88],[0,88]],'#617b67');
-    p.line([[0,63],[187,60],[375,53]],'#a5a587',2);
-    const colors=['#567d69','#947458','#7e5345','#667a89','#9b8052'];
-    names.slice(0,5).forEach((_,i)=>{
-      const x=35+i*48,y=58;
-      p.oval(x,y+3,14,4,'#53694f');
-      p.poly([[x-8,y-29],[x-13,y-7],[x-9,y-3],[x+2,y-5],[x+11,y-1],[x+10,y-27]],colors[i]);
-      p.poly([[x-7,y-28],[x+6,y-28],[x+9,y-10],[x-8,y-10]],'#b1a178');
-      p.line([[x-6,y-8],[x-5,y+2]],'#343f36',3);p.line([[x+6,y-8],[x+7,y+2]],'#343f36',3);
-      p.oval(x,y-35,6,7,'#c8b18a');
-      p.poly([[x-7,y-36],[x-6,y-43],[x,y-46],[x+6,y-43],[x+7,y-36],[x+1,y-39]],'#48584e');
-      p.line([[x+13,y-7],[x+14,y-46]],'#d3c297',2);
-    });
+    p.box(0,0,375,88,'#263c31');
+    if(chest)return;
     const x=310,y=18;
     p.oval(x+2,y+53,31,8,'#52654d');
     p.poly([[x-25,y+28],[x+14,y+25],[x+29,y+32],[x+27,y+50],[x-19,y+55],[x-25,y+48]],'#a78044');
@@ -136,6 +141,7 @@ export function campaignCamp(ui: CocosUi, names: string[]) {
     p.line([[x-17,y+16],[x-16,y+51]],'#ead08a',3);p.line([[x+10,y+14],[x+13,y+49]],'#dfbf72',3);
     p.box(x-3,y+30,11,11,'#5c5740');p.box(x,y+32,6,7,'#edcf81');
   });
+  if(chest)ui.image('CampaignChestArt',chest,236,-296,72,72);
 }
 
 function cityBuilding(p: Paint, x: number, y: number, w: number, h: number, kind: string) {
@@ -172,6 +178,11 @@ export const CITY_BUILDINGS: CityBuilding[] = [
   {name:'军机营',hint:'调整编队',page:'formation',x:139,y:371,w:98,h:56,kind:'camp'}
 ];
 export function cityMap(ui:CocosUi,top=440,height=790) {
+  const frame = ArtService.frame('city_home_v2');
+  if (frame) {
+    ui.image('CityMapArt', frame, 0, 0, 720, 1280);
+    return;
+  }
   ui.scene('CityScenery',g=>{
     const p=new Paint(g,top,height,500);
     p.box(0,0,375,500,'#939e7c');

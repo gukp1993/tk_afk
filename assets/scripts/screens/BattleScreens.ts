@@ -1,5 +1,5 @@
 import { Color, LabelOutline, Tween, UIOpacity, Vec3 } from 'cc';
-import { CocosUi, hexColor as tone } from '../ui/CocosUi';
+import { CocosUi, hexColor as tone, rarityColors } from '../ui/CocosUi';
 import { ScreenContext } from './ScreenContext';
 import * as store from '../domain/store';
 import * as stages from '../domain/stages';
@@ -7,14 +7,16 @@ import * as items from '../domain/items';
 import * as config from '../domain/config';
 import * as fmt from '../domain/fmt';
 import * as progression from '../domain/progression';
+import * as heroData from '../domain/heroes';
 import { firstTimeOverlay } from './TutorialOverlay';
 import { AutoSummary } from '../services/AutoBattleSession';
+import { ArtService } from '../services/ArtService';
 
 let battleDetailOpen=false;
 let resultFxPlayed:any=null; // A5（规格 6.5-4）：同一 outcome 只播一次大字入场/描边闪（战报详情等重入不重播）
 const GOLD=tone('#e3ba70'), PAPER=tone('#f0dfbd'), DIM=tone('#a69776');
 const BG=tone('#1d120b'), CARD=tone('#2a1a18'), BLUE=tone('#4d91bd');
-const PURPLE=tone('#a678c5'), GREEN=tone('#7fbd94'), RED=tone('#bb614c');
+const GREEN=tone('#7fbd94'), RED=tone('#bb614c');
 
 function fighterPosition(side: string, slot: number): [number, number] {
   const frontX=[-215,0,215], backX=[-114,114];
@@ -46,9 +48,14 @@ function returnPage(ctx: ScreenContext) {
 
 function drawFighter(U: CocosUi, unit: any, index: number) {
   const [x,y]=fighterPosition(unit.side,unit.slot ?? index%5);
-  const rim=unit.side==='A'?([GOLD,BLUE,PURPLE,GOLD,BLUE][unit.slot%5]):([PURPLE,BLUE,RED,PURPLE,BLUE][unit.slot%5]);
-  U.panel(`Fighter${index}`,x,y,90,91,CARD,13,rim);
-  U.text(`FighterGlyph${index}`,unit.name.slice(0,1),x,y+2,76,53,PAPER);
+  const hero=unit.heroId?heroData.getHero(unit.heroId):null;
+  const rarity=hero?.rarity||1;
+  // 两个根名与 90×91 卡面尺寸是 BattleFx 驱动/蓄怒光框契约；立绘与品质框挂在 Glyph 根下同动。
+  U.panel(`Fighter${index}`,x,y,90,91,CARD,13,tone(rarityColors[rarity]),false);
+  U.heroIcon(`FighterGlyph${index}`,x,y,90,91,{
+    surname:unit.name.slice(0,1),faction:unit.faction||hero?.faction,rarity,
+    artKey:hero?unit.heroId:undefined
+  });
   if(unit.cc)U.text(`FighterCC${index}`,'✦',x+46,y+48,25,18,GOLD);
   U.progress(`HP${index}`,x,y-58,105,unit.hp/unit.maxHp,unit.side==='A'?GREEN:RED);
   U.progress(`Energy${index}`,x,y-69,105,(unit.energy||0)/100,GOLD);
@@ -65,26 +72,39 @@ function battleTimerInfo(ctx: ScreenContext): { text: string; urgent: boolean } 
 
 function drawField(U: CocosUi, ctx: ScreenContext, snapshot: any[]) {
   U.rect('BattleBackdrop',0,0,720,1280,BG);
-  U.text('BattleTitle',battleTitle(ctx),-82,592,520,27,GOLD);
+  const field=ArtService.frame('bg_main');
+  if(field){
+    U.image('BattleBackdropArt',field,0,0,720,1280);
+    U.rect('BattleBackdropShade',0,0,720,1280,new Color(9,15,18,118));
+  }
+  // 冷暖环境层位于单位与 fx 之下；只提示双方区域，保持中央大招/伤害数字通道清爽。
+  U.rect('EnemyFieldTone',0,322,720,438,new Color(70,83,109,35));
+  U.rect('AllyFieldTone',0,-294,720,416,new Color(124,88,37,30));
+  U.panel('BattleHeader',0,590,696,88,new Color(14,22,25,218),10,undefined,false);
+  U.text('BattleTitle',battleTitle(ctx),-75,592,510,27,GOLD);
   const timer=battleTimerInfo(ctx);
-  U.text('BattleTimer',timer.text,292,592,150,23,timer.urgent?RED:DIM);
+  U.text('BattleTimer',timer.text,282,592,138,23,timer.urgent?RED:PAPER);
   U.scene('BattleCenterLine',g=>{
     g.strokeColor=tone('#795b34');g.lineWidth=2;
     g.moveTo(-330,8);g.lineTo(330,8);g.stroke();
   });
-  U.panel('BattleVsBg',0,8,108,34,BG,4);
-  U.text('BattleVs','对 阵',0,8,92,18,DIM);
-  U.text('BattleLegend','绿条 生命 · 金条 怒气 · 卡边颜色=品质',-140,560,360,15,tone('#7c6a4e'));
-  // 实时输出对比条（研讨会十 D1）：底部细条按双方累计输出占比
+  U.panel('BattleVsBg',0,8,108,34,new Color(14,22,25,224),4,GOLD,false);
+  U.text('BattleVs','对 阵',0,8,92,18,PAPER);
+  U.panel('EnemyBanner',-278,109,126,32,new Color(34,52,74,220),5,BLUE,false);
+  U.text('EnemyBannerText','敌 军',-278,109,110,19,tone('#bad1e4'));
+  U.panel('AllyBanner',-278,-112,126,32,new Color(80,57,28,220),5,GOLD,false);
+  U.text('AllyBannerText','我 军',-278,-112,110,19,GOLD);
+  U.text('BattleLegend','绿条 生命 · 金条 怒气 · 卡边颜色=品质',0,560,650,16,tone('#c6b99b'));
+  // 输出对比放在中轴空带：原 y=-437/-455 与后排卡面、血怒条重叠，倍速重绘时尤其明显。
   {
     const tt=(ctx.fighting&&(ctx.fighting as any).sideTotals)?((ctx.fighting as any).sideTotals()):null;
     if(tt&&(tt.a>0||tt.b>0)){
       const total=Math.max(1,tt.a+tt.b);
       const wA=Math.max(0.06,tt.a/total), wB=1-wA;
-      U.rect('DmgBarBkg',0,-455,600,10,new Color(20,14,10,200));
-      U.rect('DmgBarA',-300+300*wA,-455,600*wA,10,new Color(120,180,130,220));
-      U.rect('DmgBarB',-300+600*wA+300*wB,-455,600*wB,10,new Color(190,90,80,220));
-      U.text('DmgBarTxt',`我军输出 ${fmt.fmtNum(tt.a)} · 敌军 ${fmt.fmtNum(tt.b)}`,0,-437,600,14,tone('#b8a888'));
+      U.rect('DmgBarBkg',0,-62,600,10,new Color(20,14,10,200));
+      U.rect('DmgBarA',-300+300*wA,-62,600*wA,10,new Color(120,180,130,220));
+      U.rect('DmgBarB',-300+600*wA+300*wB,-62,600*wB,10,new Color(190,90,80,220));
+      U.text('DmgBarTxt',`我军输出 ${fmt.fmtNum(tt.a)} · 敌军 ${fmt.fmtNum(tt.b)}`,0,-42,600,14,tone('#b8a888'));
     }
   }
   snapshot.forEach((unit,index)=>drawFighter(U,unit,index));

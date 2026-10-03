@@ -420,6 +420,8 @@ function createBattle(cfg) {
       for (const u of sides[tag]) {
         out.push({
           uid: u.uid, side: tag, slot: u.slot, name: u.name, hp: Math.floor(u.hp), maxHp: u.maxHp,
+          // 展示元数据：客户端据此读取原创立绘与英雄品质，不参与战斗计算。
+          heroId: u.heroId, faction: u.faction, cls: u.cls,
           shield: Math.floor(u.shield), energy: Math.floor(u.energy), alive: u.alive,
           cc: u.cc ? u.cc.kind : null, dots: u.dots.length
         });

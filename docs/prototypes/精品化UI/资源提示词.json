@@ -1,0 +1,66 @@
+{
+  "mode": "built-in image_gen",
+  "date": "2026-10-04",
+  "assets": [
+    {
+      "key": "battle",
+      "prompt": "Use case: stylized-concept. Asset type: portrait mobile game battlefield background, original Three Kingdoms fantasy, 720x1280 layout. Create a polished painterly 2.5D chibi RPG environment matching cute big-headed hand-painted Chinese generals, sophisticated ink jade / aged bronze gold palette. View from raised slightly isometric camera onto a broad ancient stone-and-earth military courtyard, fortress gateway and tiny distant banners confined to top 18%, warm light and distant hazy mountains, lanterns at edges, rich detailed carved stone corners, tranquil dusty ochre and deep jade tones. Central 70% is a quiet unobstructed battle floor for two teams of five portrait units at y 20-38% and 64-83%. Keep central battlefield low contrast and balanced, detailed structures confined to edges, subtle depth and atmosphere. Edge vignettes; no soldiers, no people, no text, no UI, no symbols, no logos. Full bleed portrait, premium finished original game concept art.",
+      "transparent_background": false,
+      "path": "assets/art-heroes/battles/bg_main.jpg"
+    },
+    {
+      "key": "home",
+      "prompt": "Use case: stylized-concept. Asset type: playable portrait home-town map background for original Three Kingdoms chibi RPG at 720x1280. Sophisticated hand-painted 2.5D isometric Chinese fortified garden town with jade green glazed roofs, warm lantern glow, peach trees, small river, stone pathways, gold sunlight and depth, welcoming premium cartoon fantasy, warm parchment ochre and muted jade palette matching big-headed painted generals. Layout production constraints: top 17% calm mountains and sky behind resource header; bottom 25% quiet earth and paved open plaza behind gameplay controls. Six distinct attractive roofs/buildings, positioned as follows by percent of full image: ornate recruiting pavilion centered 50% x 30% y; hero hall at 22% x 43% y; military drill hall at 78% x 43% y; forge at 22% x 58% y; bustling market pavilion at 78% x 58% y; command tent at 50% x 68% y. Connect using winding readable pale stone paths. Tiny props and plants only at sides, spacious clear composition, no people or text, no UI panels, no logos, full bleed portrait.",
+      "transparent_background": false,
+      "path": "assets/art-heroes/scenes/city_home_v2.jpg"
+    },
+    {
+      "key": "summon",
+      "prompt": "Use case: stylized-concept. Asset type: landscape header illustration for a Three Kingdoms chibi RPG recruiting pavilion, 2.4:1 horizontal composition. An exquisite hand-painted ancient Chinese pavilion at night with dark jade timber and brass ornament, warm amber lanterns, deep red drapes and a central glowing ceremonial recruitment scroll on a low carved desk. Two painted big-headed stylized hero silhouettes as stone guardians at far left/right, original visual design. Central vertical beam of golden motes, magical atmosphere, premium cozy strategy RPG, expressive shape language and detailed painterly materials. Upper half has dark quiet negative space for runtime title text; edges darker to ensure legibility. Gold, jade green, parchment, cinnabar. No text, no UI, no frames, no watermark, no existing IP. Intended 680x270 in-game hero banner, must remain readable small.",
+      "transparent_background": false,
+      "path": "assets/art-heroes/scenes/scene_summon_hall.jpg"
+    },
+    {
+      "key": "gold",
+      "prompt": "Use case: stylized-concept. Asset type: one mobile game UI inventory icon, centered isolated on genuinely transparent background. Original warm Q版 Three Kingdoms chibi RPG, premium hand-painted cartoon with soft dimensional shading and bold readable silhouette, aged gold edges and muted jade / cinnabar accents. Object fills 78% of square canvas. Must read clearly at 32px, no letters, no text, no border, no panel, no logos, no ground plane or cast shadow extending outside object. Subject: a short stack of three ancient bronze Chinese copper coins with square holes, golden bronze metal, small red cord accent.",
+      "transparent_background": true,
+      "path": "assets/resources/art/icons/gold.png"
+    },
+    {
+      "key": "gem",
+      "prompt": "Use case: stylized-concept. Asset type: one mobile game UI inventory icon, centered isolated on genuinely transparent background. Original warm Q版 Three Kingdoms chibi RPG, premium hand-painted cartoon with soft dimensional shading and bold readable silhouette, aged gold edges and muted jade / cinnabar accents. Object fills 78% of square canvas. Must read clearly at 32px, no letters, no text, no border, no panel, no logos, no ground plane or cast shadow extending outside object. Subject: one brilliant chunky golden Chinese sycee ingot, large simple bowl shape with warm orange shadows.",
+      "transparent_background": true,
+      "path": "assets/resources/art/icons/gem.png"
+    },
+    {
+      "key": "scroll",
+      "prompt": "Use case: stylized-concept. Asset type: one mobile game UI inventory icon, centered isolated on genuinely transparent background. Original warm Q版 Three Kingdoms chibi RPG, premium hand-painted cartoon with soft dimensional shading and bold readable silhouette, aged gold edges and muted jade / cinnabar accents. Object fills 78% of square canvas. Must read clearly at 32px, no letters, no text, no border, no panel, no logos, no ground plane or cast shadow extending outside object. Subject: one partly unrolled jade-and-parchment recruitment bamboo scroll tied with a red ribbon, attractive gold scroll caps.",
+      "transparent_background": true,
+      "path": "assets/resources/art/icons/scroll.png"
+    },
+    {
+      "key": "iron",
+      "prompt": "Use case: stylized-concept. Asset type: one mobile game UI inventory icon, centered isolated on genuinely transparent background. Original warm Q版 Three Kingdoms chibi RPG, premium hand-painted cartoon with soft dimensional shading and bold readable silhouette, aged gold edges and muted jade / cinnabar accents. Object fills 78% of square canvas. Must read clearly at 32px, no letters, no text, no border, no panel, no logos, no ground plane or cast shadow extending outside object. Subject: three dark bluish iron ingots stacked into a compact forge-material bundle, cool silver edge highlights.",
+      "transparent_background": true,
+      "path": "assets/resources/art/icons/iron.png"
+    },
+    {
+      "key": "token",
+      "prompt": "Use case: stylized-concept. Asset type: one mobile game UI inventory icon, centered isolated on genuinely transparent background. Original warm Q版 Three Kingdoms chibi RPG, premium hand-painted cartoon with soft dimensional shading and bold readable silhouette, aged gold edges and muted jade / cinnabar accents. Object fills 78% of square canvas. Must read clearly at 32px, no letters, no text, no border, no panel, no logos, no ground plane or cast shadow extending outside object. Subject: one carved bronze martial command token shaped as a vertical ceremonial military plaque, red tassel at bottom, no markings or writing.",
+      "transparent_background": true,
+      "path": "assets/resources/art/icons/token.png"
+    },
+    {
+      "key": "shard",
+      "prompt": "Use case: stylized-concept. Asset type: one mobile game UI inventory icon, centered isolated on genuinely transparent background. Original warm Q版 Three Kingdoms chibi RPG, premium hand-painted cartoon with soft dimensional shading and bold readable silhouette, aged gold edges and muted jade / cinnabar accents. Object fills 78% of square canvas. Must read clearly at 32px, no letters, no text, no border, no panel, no logos, no ground plane or cast shadow extending outside object. Subject: one fractured amethyst hero-soul crystal with two small floating gold-edged fragments, expressive purple faceted silhouette.",
+      "transparent_background": true,
+      "path": "assets/resources/art/icons/shard.png"
+    },
+    {
+      "key": "map",
+      "prompt": "Use case: stylized-concept. Asset type: square-ish mobile game campaign route map, final 720x660. Original painterly Q版 Three Kingdoms overworld map viewed from above, warm parchment and jade green palette, lush stylized rounded hills, elegant misty Chinese mountains, small villages, a winding turquoise river, an ancient distant fortress in upper third. Broad pale golden road connects exactly these normalized clear milestone locations: x40% y90%, x22% y72%, x58% y54%, x36% y34%, x65% y14%. Road flows in a zigzag from bottom to top between them, milestone spots kept spacious and clear for runtime flags. Rightmost 18% calm low detail for UI shortcuts. Rich stylized handpainted game production asset with charming simplified shapes, atmospheric depth, warm sunlight, readable scenery, avoid gritty realism. No characters, no labels, no flags, no UI, no text or logos. Full bleed composition.",
+      "transparent_background": false,
+      "path": "assets/art-heroes/scenes/map_campaign_v2.jpg"
+    }
+  ]
+}

@@ -1,0 +1,902 @@
+{
+  "visual": {
+    "results": [
+      {
+        "case": "native swipe",
+        "offset": 892.738,
+        "page": "journey"
+      },
+      {
+        "case": "home-0",
+        "expected": "summon",
+        "actual": "summon",
+        "pos": {
+          "x": 360,
+          "y": 340.2
+        }
+      },
+      {
+        "case": "home-1",
+        "expected": "heroes",
+        "actual": "heroes",
+        "pos": {
+          "x": 158.4,
+          "y": 493.79999999999995
+        }
+      },
+      {
+        "case": "home-2",
+        "expected": "arena",
+        "actual": "arena",
+        "pos": {
+          "x": 561.6,
+          "y": 493.79999999999995
+        }
+      },
+      {
+        "case": "home-3",
+        "expected": "armory",
+        "actual": "armory",
+        "pos": {
+          "x": 158.4,
+          "y": 685.8
+        }
+      },
+      {
+        "case": "home-4",
+        "expected": "shop",
+        "actual": "shop",
+        "pos": {
+          "x": 561.6,
+          "y": 685.8
+        }
+      },
+      {
+        "case": "home-5",
+        "expected": "formation",
+        "actual": "formation",
+        "pos": {
+          "x": 360,
+          "y": 845.8
+        }
+      },
+      {
+        "case": "current stage opens preview",
+        "actual": "stagePreview"
+      },
+      {
+        "case": "locked stage stays on map",
+        "page": "campaign",
+        "notice": "第 5 关 · 尚未解锁"
+      },
+      {
+        "case": "camp portrait and missing-art fallback",
+        "portrait": true,
+        "fallback": true
+      },
+      {
+        "case": "JourneyCard0Tap",
+        "expected": "tower",
+        "actual": "tower",
+        "pos": {
+          "x": 360,
+          "y": 486
+        }
+      },
+      {
+        "case": "JourneyCard1Tap",
+        "expected": "arena",
+        "actual": "arena",
+        "pos": {
+          "x": 360,
+          "y": 540
+        }
+      },
+      {
+        "case": "JourneyBountyTap",
+        "expected": "bounty",
+        "actual": "bounty",
+        "pos": {
+          "x": 360,
+          "y": 540
+        }
+      },
+      {
+        "case": "JourneyDungeonTap",
+        "expected": "dungeon",
+        "actual": "dungeon",
+        "pos": {
+          "x": 360,
+          "y": 540
+        }
+      },
+      {
+        "case": "JourneyWeeklyTap",
+        "expected": "expedition",
+        "actual": "expedition",
+        "pos": {
+          "x": 360,
+          "y": 540
+        }
+      },
+      {
+        "case": "JourneyHallTap",
+        "expected": "hall",
+        "actual": "hall",
+        "pos": {
+          "x": 360,
+          "y": 540
+        }
+      },
+      {
+        "case": "QuadEntryTap",
+        "expected": "quad",
+        "actual": "quad",
+        "pos": {
+          "x": 360,
+          "y": 540
+        }
+      },
+      {
+        "case": "JourneySeasonTap",
+        "expected": "season",
+        "actual": "season",
+        "pos": {
+          "x": 360,
+          "y": 540
+        }
+      },
+      {
+        "case": "JourneyWeekBossTap",
+        "expected": "weekboss",
+        "actual": "weekboss",
+        "pos": {
+          "x": 360,
+          "y": 620
+        }
+      },
+      {
+        "case": "JourneyWeeklyReplayTap",
+        "expected": "hall",
+        "actual": "hall",
+        "pos": {
+          "x": 360,
+          "y": 752
+        }
+      },
+      {
+        "case": "JourneyCard2Tap",
+        "expected": "armory",
+        "actual": "armory",
+        "pos": {
+          "x": 360,
+          "y": 928
+        }
+      },
+      {
+        "case": "JourneyCard3Tap",
+        "expected": "shop",
+        "actual": "shop",
+        "pos": {
+          "x": 360,
+          "y": 1060
+        }
+      },
+      {
+        "case": "agenda opens",
+        "actual": true
+      }
+    ],
+    "errors": []
+  },
+  "battle": {
+    "results": [
+      {
+        "case": "ten real portraits and crop roots",
+        "pass": true,
+        "actual": {
+          "page": "battle",
+          "bg": true,
+          "units": [
+            {
+              "i": 0,
+              "id": "liubei",
+              "portrait": true,
+              "frame": "liubei",
+              "root": "FighterGlyph0",
+              "mask": true,
+              "width": 90,
+              "height": 91
+            },
+            {
+              "i": 1,
+              "id": "guanyu",
+              "portrait": true,
+              "frame": "guanyu",
+              "root": "FighterGlyph1",
+              "mask": true,
+              "width": 90,
+              "height": 91
+            },
+            {
+              "i": 2,
+              "id": "zhangfei",
+              "portrait": true,
+              "frame": "zhangfei",
+              "root": "FighterGlyph2",
+              "mask": true,
+              "width": 90,
+              "height": 91
+            },
+            {
+              "i": 3,
+              "id": "zhaoyun",
+              "portrait": true,
+              "frame": "zhaoyun",
+              "root": "FighterGlyph3",
+              "mask": true,
+              "width": 90,
+              "height": 91
+            },
+            {
+              "i": 4,
+              "id": "zhugeliang",
+              "portrait": true,
+              "frame": "zhugeliang",
+              "root": "FighterGlyph4",
+              "mask": true,
+              "width": 90,
+              "height": 91
+            },
+            {
+              "i": 5,
+              "id": "caocao",
+              "portrait": true,
+              "frame": "caocao",
+              "root": "FighterGlyph5",
+              "mask": true,
+              "width": 90,
+              "height": 91
+            },
+            {
+              "i": 6,
+              "id": "zhangliao",
+              "portrait": true,
+              "frame": "zhangliao",
+              "root": "FighterGlyph6",
+              "mask": true,
+              "width": 90,
+              "height": 91
+            },
+            {
+              "i": 7,
+              "id": "xunyu",
+              "portrait": true,
+              "frame": "xunyu",
+              "root": "FighterGlyph7",
+              "mask": true,
+              "width": 90,
+              "height": 91
+            },
+            {
+              "i": 8,
+              "id": "zhouyu",
+              "portrait": true,
+              "frame": "zhouyu",
+              "root": "FighterGlyph8",
+              "mask": true,
+              "width": 90,
+              "height": 91
+            },
+            {
+              "i": 9,
+              "id": "guojia",
+              "portrait": true,
+              "frame": "guojia",
+              "root": "FighterGlyph9",
+              "mask": true,
+              "width": 90,
+              "height": 91
+            }
+          ]
+        }
+      },
+      {
+        "case": "generated battle backdrop present",
+        "pass": true
+      },
+      {
+        "case": "all-portrait skip -> result fx zero",
+        "pass": true
+      },
+      {
+        "case": "retry creates next battle",
+        "pass": true
+      },
+      {
+        "case": "retry skip -> result fx zero",
+        "pass": true
+      },
+      {
+        "case": "missing scene and hero art preserve native fallback",
+        "pass": true,
+        "actual": {
+          "backgroundArt": false,
+          "backgroundFallback": true,
+          "heroFallback": true,
+          "heroPicture": false
+        }
+      },
+      {
+        "case": "nine portraits + missing-art soldier fallback",
+        "pass": true,
+        "actual": {
+          "count": 10,
+          "portraitCount": 9,
+          "soldierId": "soldier_huangjin",
+          "soldierGlyph": true,
+          "soldierPic": false
+        }
+      },
+      {
+        "case": "Web fps >=55 at speed 1",
+        "pass": true,
+        "actual": {
+          "speed": 1,
+          "frames": 217,
+          "durationMs": 3599.8,
+          "fps": 60.003333518528805,
+          "battlePage": true
+        }
+      },
+      {
+        "case": "speed button cycles 1 -> 2",
+        "pass": true,
+        "actual": 2
+      },
+      {
+        "case": "Web fps >=55 at speed 2",
+        "pass": true,
+        "actual": {
+          "speed": 2,
+          "frames": 217,
+          "durationMs": 3599.8999999999996,
+          "fps": 60.00166671296426,
+          "battlePage": true
+        }
+      },
+      {
+        "case": "speed button cycles 2 -> 4",
+        "pass": true,
+        "actual": 4
+      },
+      {
+        "case": "Web fps >=55 at speed 4",
+        "pass": true,
+        "actual": {
+          "speed": 4,
+          "frames": 217,
+          "durationMs": 3599.9000000000015,
+          "fps": 60.00166671296422,
+          "battlePage": true
+        }
+      },
+      {
+        "case": "attack/hit portraits stay synchronized with Fighter roots",
+        "pass": true,
+        "actual": {
+          "frames": 807,
+          "lunge": 3573,
+          "shake": 1718,
+          "ultLunge": 623,
+          "failures": [],
+          "events": {
+            "act": 3562,
+            "hit": 8831,
+            "ult": 426,
+            "heal": 402,
+            "cc": 147,
+            "death": 1
+          }
+        }
+      },
+      {
+        "case": "output comparison stays clear of ten portraits and team/versus labels",
+        "pass": true,
+        "actual": {
+          "textY": -42,
+          "barY": -62,
+          "overlaps": [],
+          "textBarOverlap": false
+        }
+      },
+      {
+        "case": "speed button cycles 4 -> 1",
+        "pass": true
+      },
+      {
+        "case": "soldier fixture skip -> result clears battle/fx",
+        "pass": true
+      },
+      {
+        "case": "second result retry starts",
+        "pass": true
+      },
+      {
+        "case": "leaving live battle clears overlays",
+        "pass": true
+      }
+    ],
+    "errors": [],
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 404 (File not found)"
+    ],
+    "httpErrors": [],
+    "poseChecks": {
+      "frames": 858,
+      "lunge": 3687,
+      "shake": 1770,
+      "ultLunge": 641,
+      "failures": [],
+      "events": {
+        "act": 3673,
+        "hit": 9082,
+        "ult": 436,
+        "heal": 412,
+        "cc": 151,
+        "death": 1
+      }
+    },
+    "isolatedContext": true,
+    "testDoesNotEditProductionCode": true,
+    "sourceFix": "BattleScreens output layout y=-42/-62",
+    "networkFollowup": {
+      "console404Url": "http://localhost:7787/favicon.ico",
+      "responseHttpErrors": [],
+      "classification": "Chrome favicon lookup; no game artwork or runtime module failed in final run"
+    },
+    "fixtureDescription": "Isolated browser state. Portrait fixture uses elevated hp/spd to keep combat active and stress existing effect synchronization; does not change production rules or device data.",
+    "screenshots": [
+      "/Users/gukepeng/Desktop/ai/miniProgram/tk_afk/docs/prototypes/精品化UI/战斗十将立绘.png",
+      "/Users/gukepeng/Desktop/ai/miniProgram/tk_afk/docs/prototypes/精品化UI/战斗小兵回退.png",
+      "/Users/gukepeng/Desktop/ai/miniProgram/tk_afk/docs/prototypes/精品化UI/战斗缺图回退.png",
+      "/Users/gukepeng/Desktop/ai/miniProgram/tk_afk/docs/prototypes/精品化UI/战斗四倍速.png",
+      "/Users/gukepeng/Desktop/ai/miniProgram/tk_afk/docs/prototypes/精品化UI/战斗结算.png"
+    ]
+  },
+  "actions": [
+    {
+      "count": 3,
+      "height": 1280,
+      "errors": [],
+      "cancelTap": "UnivCancelTouch",
+      "blockedPage": "summon",
+      "blockedBalanceEqual": true,
+      "blockedStarEqual": true,
+      "afterPage": "summon",
+      "afterTap": "UnivGo2Touch",
+      "starBefore": 4,
+      "starAfter": 5,
+      "cardsBefore": 2,
+      "cardsAfter": 1
+    },
+    {
+      "count": 9,
+      "height": 1280,
+      "errors": [],
+      "cancelTap": "UnivCancelTouch",
+      "blockedPage": "summon",
+      "blockedBalanceEqual": true,
+      "blockedStarEqual": true,
+      "afterPage": "summon",
+      "afterTap": "UnivGo8Touch",
+      "starBefore": 4,
+      "starAfter": 5,
+      "cardsBefore": 2,
+      "cardsAfter": 1
+    },
+    {
+      "count": 16,
+      "height": 1280,
+      "errors": [],
+      "cancelTap": "UnivCancelTouch",
+      "blockedPage": "summon",
+      "blockedBalanceEqual": true,
+      "blockedStarEqual": true,
+      "afterPage": "summon",
+      "afterTap": "UnivGo15Touch",
+      "starBefore": 4,
+      "starAfter": 5,
+      "cardsBefore": 2,
+      "cardsAfter": 1
+    },
+    {
+      "count": 16,
+      "height": 1560,
+      "errors": [],
+      "cancelTap": "UnivCancelTouch",
+      "blockedPage": "summon",
+      "blockedBalanceEqual": true,
+      "blockedStarEqual": true,
+      "afterPage": "summon",
+      "afterTap": "UnivGo15Touch",
+      "starBefore": 4,
+      "starAfter": 5,
+      "cardsBefore": 2,
+      "cardsAfter": 1
+    }
+  ],
+  "verify": [
+    {
+      "count": 3,
+      "blockedAd": true,
+      "blockedNav": true,
+      "cancelled": true,
+      "cancelTap": "UnivCancelTouch",
+      "filterTap": "FactionTapwu",
+      "sortTap": "SortTaprarity",
+      "errors": [],
+      "diag": {
+        "diag": {
+          "ts": "2026-10-03T16:13:37.521Z",
+          "v": 8,
+          "playerLevel": 1,
+          "campaign": {
+            "cleared": 0,
+            "stars": 0
+          },
+          "currencies": {
+            "gold": 100000,
+            "gem": 1888,
+            "scroll": 12,
+            "token": 20,
+            "shard": 0,
+            "iron": 60,
+            "soul": 0,
+            "seals": 0,
+            "univSsr": 2,
+            "univSr": 0
+          },
+          "qualityShards": {
+            "1": 0,
+            "2": 0,
+            "3": 0,
+            "4": 0
+          },
+          "systems": {
+            "arena": {
+              "points": 1000,
+              "wins": 0,
+              "weekKey": "2026-W40"
+            },
+            "tower": {
+              "best": 0
+            },
+            "expedition": {
+              "best": 0
+            },
+            "dungeon": {
+              "bestGold": 0,
+              "bestTrain": 0,
+              "runsToday": 0
+            },
+            "weekBoss": {
+              "weekId": "",
+              "attempts": 0,
+              "bestPct": 0
+            },
+            "drill": {
+              "totalLevels": 0,
+              "trainedHeroes": 0
+            },
+            "awaken": {
+              "awakened": 0,
+              "tacticSum": 0
+            },
+            "borrow": {
+              "day": "",
+              "heroId": null
+            },
+            "roster": {
+              "owned": 3
+            },
+            "sevenDayClaimed": 0,
+            "fourteenClaimed": 0,
+            "achvClaimed": 0,
+            "weekly": {
+              "sealsEarned": 0,
+              "questsClaimed": 0
+            },
+            "quad": {
+              "weekId": "2026-W40",
+              "best": 0
+            },
+            "trials": {
+              "cleared": 0
+            },
+            "relics": {
+              "owned": 0,
+              "stones": 0,
+              "equipped": null
+            },
+            "season": {
+              "seasonNo": 1,
+              "medal": 0,
+              "earned": 0,
+              "scenesCleared": 0
+            },
+            "companion": {
+              "sent": 0,
+              "responds": 0
+            }
+          }
+        },
+        "page": "heroes",
+        "notice": "",
+        "sceneKey": "",
+        "fx": 0
+      }
+    },
+    {
+      "count": 9,
+      "blockedAd": true,
+      "blockedNav": true,
+      "cancelled": true,
+      "cancelTap": "UnivCancelTouch",
+      "filterTap": "FactionTapwu",
+      "sortTap": "SortTaprarity",
+      "errors": [],
+      "diag": {
+        "diag": {
+          "ts": "2026-10-03T16:13:48.781Z",
+          "v": 8,
+          "playerLevel": 1,
+          "campaign": {
+            "cleared": 0,
+            "stars": 0
+          },
+          "currencies": {
+            "gold": 100000,
+            "gem": 1888,
+            "scroll": 12,
+            "token": 20,
+            "shard": 0,
+            "iron": 60,
+            "soul": 0,
+            "seals": 0,
+            "univSsr": 2,
+            "univSr": 0
+          },
+          "qualityShards": {
+            "1": 0,
+            "2": 0,
+            "3": 0,
+            "4": 0
+          },
+          "systems": {
+            "arena": {
+              "points": 1000,
+              "wins": 0,
+              "weekKey": "2026-W40"
+            },
+            "tower": {
+              "best": 0
+            },
+            "expedition": {
+              "best": 0
+            },
+            "dungeon": {
+              "bestGold": 0,
+              "bestTrain": 0,
+              "runsToday": 0
+            },
+            "weekBoss": {
+              "weekId": "",
+              "attempts": 0,
+              "bestPct": 0
+            },
+            "drill": {
+              "totalLevels": 0,
+              "trainedHeroes": 0
+            },
+            "awaken": {
+              "awakened": 0,
+              "tacticSum": 0
+            },
+            "borrow": {
+              "day": "",
+              "heroId": null
+            },
+            "roster": {
+              "owned": 9
+            },
+            "sevenDayClaimed": 0,
+            "fourteenClaimed": 0,
+            "achvClaimed": 0,
+            "weekly": {
+              "sealsEarned": 0,
+              "questsClaimed": 0
+            },
+            "quad": {
+              "weekId": "2026-W40",
+              "best": 0
+            },
+            "trials": {
+              "cleared": 0
+            },
+            "relics": {
+              "owned": 0,
+              "stones": 0,
+              "equipped": null
+            },
+            "season": {
+              "seasonNo": 1,
+              "medal": 0,
+              "earned": 0,
+              "scenesCleared": 0
+            },
+            "companion": {
+              "sent": 0,
+              "responds": 0
+            }
+          }
+        },
+        "page": "heroes",
+        "notice": "",
+        "sceneKey": "",
+        "fx": 0
+      }
+    },
+    {
+      "count": 16,
+      "blockedAd": true,
+      "blockedNav": true,
+      "cancelled": true,
+      "cancelTap": "UnivCancelTouch",
+      "filterTap": "FactionTapwu",
+      "sortTap": "SortTaprarity",
+      "errors": [],
+      "diag": {
+        "diag": {
+          "ts": "2026-10-03T16:13:59.999Z",
+          "v": 8,
+          "playerLevel": 1,
+          "campaign": {
+            "cleared": 0,
+            "stars": 0
+          },
+          "currencies": {
+            "gold": 100000,
+            "gem": 1888,
+            "scroll": 12,
+            "token": 20,
+            "shard": 0,
+            "iron": 60,
+            "soul": 0,
+            "seals": 0,
+            "univSsr": 2,
+            "univSr": 0
+          },
+          "qualityShards": {
+            "1": 0,
+            "2": 0,
+            "3": 0,
+            "4": 0
+          },
+          "systems": {
+            "arena": {
+              "points": 1000,
+              "wins": 0,
+              "weekKey": "2026-W40"
+            },
+            "tower": {
+              "best": 0
+            },
+            "expedition": {
+              "best": 0
+            },
+            "dungeon": {
+              "bestGold": 0,
+              "bestTrain": 0,
+              "runsToday": 0
+            },
+            "weekBoss": {
+              "weekId": "",
+              "attempts": 0,
+              "bestPct": 0
+            },
+            "drill": {
+              "totalLevels": 0,
+              "trainedHeroes": 0
+            },
+            "awaken": {
+              "awakened": 0,
+              "tacticSum": 0
+            },
+            "borrow": {
+              "day": "",
+              "heroId": null
+            },
+            "roster": {
+              "owned": 16
+            },
+            "sevenDayClaimed": 0,
+            "fourteenClaimed": 0,
+            "achvClaimed": 0,
+            "weekly": {
+              "sealsEarned": 0,
+              "questsClaimed": 0
+            },
+            "quad": {
+              "weekId": "2026-W40",
+              "best": 0
+            },
+            "trials": {
+              "cleared": 0
+            },
+            "relics": {
+              "owned": 0,
+              "stones": 0,
+              "equipped": null
+            },
+            "season": {
+              "seasonNo": 1,
+              "medal": 0,
+              "earned": 0,
+              "scenesCleared": 0
+            },
+            "companion": {
+              "sent": 0,
+              "responds": 0
+            }
+          }
+        },
+        "page": "heroes",
+        "notice": "",
+        "sceneKey": "",
+        "fx": 0
+      }
+    }
+  ],
+  "draws": {
+    "report": [
+      {
+        "name": "scroll1",
+        "currencyDelta": 1,
+        "expectedCost": 1,
+        "totalDelta": 1,
+        "expectedDraws": 1,
+        "page": "summonResults",
+        "tap": "ConfirmDoTouch"
+      },
+      {
+        "name": "scroll10",
+        "currencyDelta": 10,
+        "expectedCost": 10,
+        "totalDelta": 10,
+        "expectedDraws": 10,
+        "page": "summonResults",
+        "tap": "ConfirmDoTouch"
+      },
+      {
+        "name": "gem1",
+        "currencyDelta": 100,
+        "expectedCost": 100,
+        "totalDelta": 1,
+        "expectedDraws": 1,
+        "page": "summonResults",
+        "tap": "ConfirmDoTouch"
+      },
+      {
+        "name": "gem10",
+        "currencyDelta": 900,
+        "expectedCost": 900,
+        "totalDelta": 10,
+        "expectedDraws": 10,
+        "page": "summonResults",
+        "tap": "ConfirmDoTouch"
+      }
+    ],
+    "errors": []
+  }
+}

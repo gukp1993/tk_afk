@@ -207,7 +207,7 @@ export class CocosBootstrap extends Component implements ScreenContext {
       });
     }
     if (this.notice) U.text('Notice', this.notice, 0, -510, 670, 20, palette.gold);
-    if(['home','journey','campaign','heroes','bag','summon'].includes(page)) {
+    if(['home','journey','campaign','heroes','bag','summon'].includes(page) && !heroScreens.isBlockingHeroModalOpen(page)) {
       U.rect('NavBackground', 0, -594, 720, 92, new Color(9, 31, 27, 248));
       U.line('NavGoldTop',[[-360,-548],[360,-548]],2,palette.gold);
       const nav: [Page,string,string][] = [['home','主城','城'],['journey','玩法','玩'],['campaign','战役','战'],['heroes','英雄','将'],['bag','背包','囊']];

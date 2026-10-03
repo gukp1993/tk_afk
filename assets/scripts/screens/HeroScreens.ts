@@ -1,5 +1,5 @@
 import { CocosUi, factionColors, palette, hexColor as tone, rarityColors } from '../ui/CocosUi';
-import { Color, Label, Node, Tween, UITransform, UIOpacity, Vec3 } from 'cc';
+import { Color, Label, Node, Tween, UITransform, UIOpacity, Vec3, view } from 'cc';
 import { ScreenContext } from './ScreenContext';
 import * as store from '../domain/store';
 import * as heroData from '../domain/heroes';
@@ -10,6 +10,7 @@ import * as fmt from '../domain/fmt';
 import * as progression from '../domain/progression';
 import { firstTimeOverlay } from './TutorialOverlay';
 import * as bios from '../domain/bios';
+import { ArtService } from '../services/ArtService';
 
 let trialPreviewHero = ''; // 名将试炼预览弹层当前对象（C2）
 const ink=tone('#171009'), panel=tone('#2e2113'), border=tone('#5a452a');
@@ -22,6 +23,11 @@ const sorts:[string,string][]=[['power','战力'],['rarity','品质'],['star','�
 const previewIds = ['zhaoyun','caocao','zhouyu','diaochan','zhugeliang'];
 let heroFaction='all',heroSort='power',showStarterPick=false,shardTier=0;
 let armoryItemId='';
+
+/** Bootstrap omits bottom navigation while these full-screen decisions own input. */
+export function isBlockingHeroModalOpen(page: string) {
+  return page === 'summon' ? univPickOpen : page === 'heroes' && (shardTier > 0 || (showStarterPick && store.firstWinChoice().available));
+}
 
 function chip(U: ScreenContext['ui'], name:string, label:string, x:number,y:number,w:number,active:boolean,action:()=>void) {
     U.panel(name,x,y,w,48,active?tone('#3a2a1b'):ink,24,active?gold:border);
@@ -75,39 +81,39 @@ export function heroes(ctx: ScreenContext) {
       U.text('HeroResourceText'+i,`${label} ${fmt.fmtNum(value)}`,x+14,608,133,21,paper);
     });
     U.text('HeroesTitle','群英录',-225,577,267,61,gold);
-    U.panel('HeroesFormation',260,515,184,63,new Color(96,70,37,239),8,gold);
-    U.seal('HeroesFormationIcon',197,515,43,'阵',palette.ink,palette.gold,palette.gold,21,'formation');
-    U.text('HeroesFormationText','调整编队',281,515,136,25,paper);
-    U.tap('HeroesFormationTap',260,515,184,63,()=>ctx.go('formation'));
+    U.panel('HeroesFormation',260,528,184,55,new Color(96,70,37,239),8,gold);
+    U.seal('HeroesFormationIcon',197,528,39,'阵',palette.ink,palette.gold,palette.gold,21,'formation');
+    U.text('HeroesFormationText','调整编队',281,528,136,23,paper);
+    U.tap('HeroesFormationTap',260,528,184,55,()=>ctx.go('formation'));
     const first=store.firstWinChoice().available;
     if(first){
-      U.panel('StarterReward',22,515,230,63,tone('#d9a94e'),7,gold);
-      U.text('StarterRewardText','首胜升星待选',22,515,213,23,ink);
-      U.tap('StarterRewardTap',22,515,230,63,()=>{showStarterPick=true;ctx.show('heroes');});
+      U.panel('StarterReward',22,528,230,55,tone('#d9a94e'),7,gold);
+      U.text('StarterRewardText','首胜升星待选',22,528,213,22,ink);
+      U.tap('StarterRewardTap',22,528,230,55,()=>{showStarterPick=true;ctx.show('heroes');});
     }else{
       const qs=store.qualityShardInfo();
-      U.panel('ShardEntry',22,515,230,63,tone('#3a2a1b'),7,gold);
-      U.text('ShardEntryText','碎片兑换 >',22,529,213,22,gold);
-      U.text('ShardEntrySub',`SSR${qs[4]} SR${qs[3]} R${qs[2]} N${qs[1]}`,30,501,206,15,dim);
-      U.tap('ShardEntryTap',22,515,230,63,()=>{shardTier=4;ctx.show('heroes');});
+      U.panel('ShardEntry',22,528,230,55,tone('#3a2a1b'),7,gold);
+      U.text('ShardEntryText','碎片兑换 >',22,540,213,20,gold);
+      U.text('ShardEntrySub',`SSR${qs[4]} SR${qs[3]} R${qs[2]} N${qs[1]}`,30,516,206,14,dim);
+      U.tap('ShardEntryTap',22,528,230,55,()=>{shardTier=4;ctx.show('heroes');});
     }
-    const sharedY=455,filterY=378,sortY=303;
-    U.panel('HeroOwnedPanel',0,sharedY,720,66,new Color(14,32,28,240),0,gold);
-    U.text('HeroSharedLevel',`主公 Lv.${store.playerLevel()} · 全体武将共享等级`,-134,sharedY,442,25,paper);
-    U.text('HeroOwned',`已拥有 ${allHeroes.length} / ${heroData.HEROES.length}`,261,sharedY,183,24,gold);
+    // Tools occupy 500..364; the grid gains 80px without reducing portrait size.
+    const sharedY=475,filterY=430,sortY=383;
+    U.panel('HeroOwnedPanel',0,sharedY,696,44,new Color(14,32,28,215),7,undefined,false);
+    U.text('HeroSharedLevel',`主公 Lv.${store.playerLevel()} · 全体武将共享等级`,-134,sharedY,442,21,paper);
+    U.text('HeroOwned',`已拥有 ${allHeroes.length} / ${heroData.HEROES.length}`,261,sharedY,183,20,gold);
     const factionXs=[-280,-140,0,140,280];
     factions.forEach(([key,label],i)=>{
       const x=factionXs[i],active=key===heroFaction;
-      if(active)U.panel('FactionActive'+key,x,filterY,79,79,new Color(35,48,38,145),39,gold);
-      U.seal('FactionBadge'+key,x,filterY,62,key==='all'?'全':label,tone(factionColors[key]||factionColors.all),active?gold:border,palette.text,25);
-      U.text('FactionLabel'+key,label,x,filterY,60,24,active?gold:paper);
-      U.tap('FactionTap'+key,x,filterY,116,82,()=>{if(key===heroFaction)return;heroFaction=key;CocosUi.resetScroll('HeroGrid');ctx.show('heroes');});
+      U.panel('FactionActive'+key,x,filterY,124,44,active?tone(factionColors[key]||factionColors.all):new Color(14,32,28,220),22,active?gold:border,false);
+      U.text('FactionLabel'+key,label,x,filterY,108,22,active?gold:paper);
+      U.tap('FactionTap'+key,x,filterY,124,44,()=>{if(key===heroFaction)return;heroFaction=key;CocosUi.resetScroll('HeroGrid');ctx.show('heroes');});
     });
     sorts.forEach(([key,label],i)=>{
       const x=-223+i*223,active=key===heroSort;
-      U.panel('Sort'+key,x,sortY,210,53,active?new Color(120,83,38,252):new Color(15,31,27,248),6,active?gold:border);
-      U.text('SortText'+key,label+(active?' ↓':''),x,sortY,188,23,active?gold:paper);
-      U.tap('SortTap'+key,x,sortY,210,53,()=>{if(key===heroSort)return;heroSort=key;CocosUi.resetScroll('HeroGrid');ctx.show('heroes');});
+      U.panel('Sort'+key,x,sortY,210,38,active?new Color(120,83,38,252):new Color(15,31,27,220),6,active?gold:border,false);
+      U.text('SortText'+key,label+(active?' ↓':''),x,sortY,188,21,active?gold:paper);
+      U.tap('SortTap'+key,x,sortY,210,38,()=>{if(key===heroSort)return;heroSort=key;CocosUi.resetScroll('HeroGrid');ctx.show('heroes');});
     });
     const scrollTop=sortY-39, scrollBottom=-510,viewH=scrollTop-scrollBottom;
     const rows=Math.ceil(list.length/3),pitch=310,contentH=Math.max(viewH,rows*pitch+16);
@@ -388,120 +394,135 @@ function wrapHeroText(value:string,max:number) {
 
 export function summon(ctx: ScreenContext) {
     const s=store.getState(),U=ctx.ui;
+    const layoutScale=Math.max(1,view.getVisibleSize().height/1280);
+    // Content budget: balances 632..590, title 587..544, banner 537..321,
+    // probabilities 313..242, draw actions 227..80, auxiliary panels 63..-439.
     U.rect('SummonBackdrop',0,0,720,1280,ink);
-    U.panel('GemBalance',-175,611,334,42,ink,21,border);
-    U.text('GemBalanceText',`元宝 ${fmt.fmtNum(s.res.gem)}`,-175,611,304,20,gold);
-    U.panel('ScrollBalance',175,611,334,42,ink,21,border);
-    U.text('ScrollBalanceText',`招募令 ${s.res.scroll}`,175,611,304,20,gold);
-    U.panel('SummonHall',0,442,686,288,panel,13,gold);
-    U.text('SummonHallTitle','召唤 · 点将台',0,552,600,42,gold);
-    U.text('SummonHallSubtitle','聚天下英杰 · 成千秋霸业',0,508,590,20,dim);
-    U.scene('SummonSealArt',g=>{
-      g.strokeColor=tone('#765a30');g.lineWidth=3;g.circle(0,436,74);g.stroke();
-      for(let i=0;i<12;i++){
-        const a=i*Math.PI/6;
-        g.moveTo(Math.cos(a)*84,436+Math.sin(a)*84);
-        g.lineTo(Math.cos(a)*111,436+Math.sin(a)*111);
-      }
-      g.stroke();
-    });
-    U.panel('SummonSeal',0,436,72,72,tone('#57402d'),10,gold);
-    U.text('SummonSealText','将',0,436,68,42,gold);
-    U.text('SummonRates','概率 SSR 2% · SR 10% · R 28% · N 60%',0,360,630,19,dim);
-    // R5 重排：软保底行上移 8px 到概率行正下方（旧 y=330 落在 SummonPool 面板 242..338 内被完全盖住）
-    U.text('SummonSoft','31 抽起 SSR 概率递增 · 40 抽必出 SSR',0,338,630,15,tone('#d9b06a'));
+    U.panel('GemBalance',-175,611,334,40,new Color(21,35,29,225),20,border,false);
+    U.seal('GemBalanceIcon',-311,611,29,'宝',palette.ink,gold,gold,15,'gem');
+    U.text('GemBalanceText',`元宝 ${fmt.fmtNum(s.res.gem)}`,-162,611,276,21,gold);
+    U.panel('ScrollBalance',175,611,334,40,new Color(21,35,29,225),20,border,false);
+    U.seal('ScrollBalanceIcon',39,611,29,'令',palette.ink,gold,gold,15,'scroll');
+    U.text('ScrollBalanceText',`招募令 ${s.res.scroll}`,188,611,276,21,gold);
+    U.text('SummonHallTitle','点 将 台',0,565,600,34,gold);
+    const hallArt=ArtService.frame('scene_summon_hall');
+    U.panel('SummonHall',0,429,686,216*layoutScale,panel,10,gold,false);
+    if(hallArt){
+      const art=U.image('SummonHallArt',hallArt,0,429,680,210*layoutScale);
+      art.getComponent(UITransform)!.setContentSize(680,210*layoutScale);
+      U.panel('SummonHallCaption',0,342,676,42*layoutScale,new Color(13,25,21,190),0,undefined,false);
+    }else{
+      U.scene('SummonSealArt',g=>{
+        g.strokeColor=tone('#765a30');g.lineWidth=3;g.circle(0,443,61);g.stroke();
+        for(let i=0;i<12;i++){
+          const a=i*Math.PI/6;
+          g.moveTo(Math.cos(a)*71,443+Math.sin(a)*71);
+          g.lineTo(Math.cos(a)*91,443+Math.sin(a)*91);
+        }
+        g.stroke();
+      });
+      U.panel('SummonSeal',0,443,72,72,tone('#57402d'),10,gold,false);
+      U.text('SummonSealText','将',0,443,68,42,gold);
+    }
+    U.text('SummonHallSubtitle','聚天下英杰 · 成千秋霸业',0,342,590,20,paper);
     const pity=store.summonPityInfo();
-    // R5：池面板下移并缩高（y=283 h=88 → 239..327），上让软保底行、下离抽卡按钮顶缘(229) 10px
-    U.panel('SummonPool',0,283,686,88,panel,9,border);
-    U.text('PoolTitle',`武将池 · ${heroData.HEROES.length} 将 · SSR 保底 ${pity.sinceSsr}/${pity.ssrHard} 抽`,-73,310,590,19,dim);
+    const rates=config.GACHA.rates;
     const rarity:[string,string,number][]=[['SSR','#e2b95f',4],['SR','#b37ac9',3],['R','#5f90c8',2],['N','#b9bec3',1]];
-    rarity.forEach(([name,hex],i)=>{
-      const x=-264+i*175;
-      U.panel('RarityMark'+i,x-47,285,19,19,tone(hex),2);
-      U.text('RarityName'+i,name,x+4,285,83,20,tone(hex));
-    });
-    // R5：计数行内移进面板安全区（旧 y=252 离底框仅 1.5px，数字被描金边线穿过）
-    U.text('PoolCounts',rarity.map(([name,,level])=>`${name} ${heroData.HEROES.filter((h:any)=>h.rarity===level).length}`).join(' · '),0,259,610,17,dim);
-    const draws:[string,string,string,string,()=>void][]=[
-      ['Single','招募 ×1','招募令 ×1','#392719',()=>ctx.confirm('确认招募','消耗招募令 ×1',()=>ctx.summonDraw('scroll1'))],
-      ['TenScroll','招募 ×10','招募令 ×10','#d9ac5f',()=>ctx.confirm('确认招募','消耗招募令 ×10',()=>ctx.summonDraw('scroll10'))],
-      ['SingleGem','元宝单抽',`元宝 ×${config.GACHA.singleGold}`,'#d9ac5f',()=>ctx.confirm('确认招募',`消耗元宝 ×${config.GACHA.singleGold}`,()=>ctx.summonDraw('gem1'))],
-      ['TenGem','元宝十连',`元宝 ×${config.GACHA.costTenGold}`,'#d9ac5f',()=>ctx.confirm('确认招募',`消耗元宝 ×${config.GACHA.costTenGold}`,()=>ctx.summonDraw('gem10'))]
+    U.text('SummonRates',rarity.map(([name])=>`${name} ${Math.round((rates as any)[name.toLowerCase()]*100)}%`).join(' · '),0,301,660,19,dim);
+    const soft=config.GACHA.pity?.soft;
+    U.text('SummonSoft',`${soft?`${soft.from} 抽起 SSR 概率递增 · `:''}${pity.ssrHard} 抽必出 SSR`,0,276,660,17,tone('#d9b06a'));
+    U.text('PoolTitle',`武将池 ${heroData.HEROES.length} 将 · SSR 保底 ${pity.sinceSsr}/${pity.ssrHard} 抽`,0,249,660,18,gold);
+    const scrollSingle=config.GACHA.costScroll,scrollTen=scrollSingle*10;
+    const draws:[string,string,string,string,number,number,boolean,()=>void][]=[
+      ['TenScroll','招募令十连',`招募令 ×${scrollTen}`,'#8c412b',-175,185,true,()=>ctx.confirm('确认招募',`消耗招募令 ×${scrollTen}`,()=>ctx.summonDraw('scroll10'))],
+      ['TenGem','元宝十连',`元宝 ×${config.GACHA.costTenGold}`,'#d9ac5f',175,185,true,()=>ctx.confirm('确认招募',`消耗元宝 ×${config.GACHA.costTenGold}`,()=>ctx.summonDraw('gem10'))],
+      ['Single','招募 ×1',`招募令 ×${scrollSingle}`,'#213a30',-175,104,false,()=>ctx.confirm('确认招募',`消耗招募令 ×${scrollSingle}`,()=>ctx.summonDraw('scroll1'))],
+      ['SingleGem','元宝单抽',`元宝 ×${config.GACHA.singleGold}`,'#213a30',175,104,false,()=>ctx.confirm('确认招募',`消耗元宝 ×${config.GACHA.singleGold}`,()=>ctx.summonDraw('gem1'))]
     ];
-    draws.forEach(([id,title,cost,hex,action],i)=>{
-      const x=-267+i*178,bg=tone(hex),dark=i===0;
-      U.panel(id,x,185,166,88,bg,9,gold);
-      U.text(id+'Title',title,x,204,150,26,dark?gold:ink);
-      U.text(id+'Cost',cost,x,165,150,17,dark?dim:tone('#573d1e'));
-      U.tap(id+'Tap',x,185,166,88,action);
+    draws.forEach(([id,title,cost,hex,x,y,primary,action])=>{
+      const dark=id!=='TenGem',h=primary?84:48;
+      U.panel(id,x,y,328,h,tone(hex),9,primary?gold:border,primary);
+      if(primary){
+        U.text(id+'Title',title,x,y+15,304,29,dark?paper:ink);
+        U.text(id+'Cost',cost,x,y-20,304,18,dark?gold:tone('#573d1e'));
+      }else U.text(id+'Title',`${title} · ${cost}`,x,y,304,20,paper);
+      U.tap(id+'Tap',x,y,328,h,action);
     });
-    // —— 招贤值 / 定向招募 / 万能 SSR 卡（下半屏）——
+    // Advertising and base controls are drawn before the modal, so no input crosses it.
+    U.panel('SummonAd',0,41,686,44,tone('#2b1e12'),8,border,false);
+    U.text('SummonAdText','看广告 · 免费招募令 ×1',0,41,640,20,gold);
+    U.tap('SummonAdTap',0,41,686,44,()=>ctx.playAd('summon',()=>{
+      store.applyReward({scroll:1});return {ok:true};
+    },'获得招募令 ×1'));
     const pts=store.summonPointsInfo();
-    U.panel('PointsPanel',0,-28,686,150,panel,9,border);
-    U.text('PointsTitle',`招贤值 · 累计 ${pts.total} 抽`,-190,15,320,24,gold);
+    U.panel('PointsPanel',0,-92,686,176*layoutScale,new Color(32,45,35,240),10,border,false);
+    U.text('PointsTitle',`招贤值 · 累计 ${pts.total} 抽`,-176,-33,330,24,gold);
     if(pts.canClaim){
       const ct=pts.list.find((x:any)=>x.claimable);
-      U.button('PointsClaim','可领：'+(ct?ct.label:''),170,15,300,46,()=>{
-        const r=store.claimSummonPoints(ct.tier);
-        ctx.tell(r,r.ok?'已领取 '+r.label:'');
+      U.button('PointsClaim','可领：'+(ct?ct.label:''),166,-33,312,42,()=>{
+        const r=store.claimSummonPoints(ct.tier);ctx.tell(r,r.ok?'已领取 '+r.label:'');
       },gold);
-    } else {
+    }else{
       const next=pts.list.find((x:any)=>!x.claimed);
-      U.text('PointsNext',next?`下一档 ${next.need} 抽：${next.label}`:'全部档位已领完',150,15,380,18,tone('#ad9977'));
+      U.text('PointsNext',next?`下一档 ${next.need} 抽：${next.label}`:'全部档位已领完',154,-33,346,17,dim);
     }
+    U.line('PointsDivider',[[-319,-64],[319,-64]],1,border);
     pts.list.forEach((t:any,i:number)=>{
-      const x=-264+i*132,y=-48;
-      U.panel('PointTier'+i,x,y,124,66,t.claimed?tone('#26301f'):t.claimable?tone('#3a2c17'):ink,7,t.claimable?gold:border);
-      U.text('PointNeed'+i,t.need+' 抽',x,y+10,116,17,t.claimable?gold:dim);
-      U.text('PointLabel'+i,t.claimed?'已领':t.label,x,y-14,116,15,t.claimed?tone('#6f8a5f'):dim);
-      if(t.claimable)U.tap('PointTap'+i,x,y,124,66,()=>{const r=store.claimSummonPoints(t.tier);ctx.tell(r,r.ok?'已领取 '+r.label:'');});
+      const x=-264+i*132,y=-117;
+      U.panel('PointTier'+i,x,y,124,78,t.claimed?tone('#26301f'):t.claimable?tone('#3a2c17'):ink,7,t.claimable?gold:border,false);
+      U.text('PointNeed'+i,t.need+' 抽',x,y+23,116,18,t.claimable?gold:paper);
+      U.textBlock('PointLabel'+i,t.claimed?'已领':t.label.replace(/ ×(\d+)$/, '\n×$1'),x,y-16,112,42,16,t.claimed?tone('#6f8a5f'):dim);
+      if(t.claimable)U.tap('PointTap'+i,x,y,124,78,()=>{const r=store.claimSummonPoints(t.tier);ctx.tell(r,r.ok?'已领取 '+r.label:'');});
     });
     const tk=store.summonTicketInfo();
-    U.panel('TicketPanel',0,-186,686,120,panel,9,border);
-    U.text('TicketTitle','定向招募',-278,-150,160,22,gold);
-    U.text('TicketInfo',`券 ${tk.stock} 张 · 本周已用 ${tk.used}/${tk.limit} · 每 10 抽赠 1 张`,130,-150,440,17,dim);
-    U.text('TicketHint','券激活后下一组十连：SR 以上 70% 落所选阵营',130,-178,440,15,tone('#ad9977'));
-    (config.FACTIONS ? Object.keys(config.FACTIONS) : []).forEach((fk:any,i:number)=>{
-      const x=-258+i*150,f=(config.FACTIONS as any)[fk];
-      const active=tk.activeFocus===fk;
-      const can=tk.canArm||active;
-      U.panel('FactionBtn'+i,x,-212,142,44,active?tone('#45321b'):ink,8,active?gold:border);
-      U.text('FactionTxt'+i,(active?'● ':'')+f.name+(active?' 定向中':''),x,-212,134,20,active?gold:LIGHT);
-      if(can)U.tap('FactionTap'+i,x,-212,142,44,()=>{
+    U.panel('TicketPanel',0,-272,686,144*layoutScale,new Color(32,45,35,240),10,border,false);
+    U.text('TicketTitle','定向招募',-256,-222,164,23,gold);
+    U.text('TicketInfo',`券 ${tk.stock} 张 · 本周已用 ${tk.used}/${tk.limit}`,102,-222,454,19,paper);
+    U.text('TicketHint',`每 ${config.SUMMON_TICKET.perPulls} 抽赠券 · 激活后下一组十连，SR 以上 ${Math.round(config.SUMMON_TICKET.focusShare*100)}% 为所选阵营`,0,-255,636,16,dim);
+    Object.keys(config.FACTIONS||{}).forEach((fk:any,i:number)=>{
+      const x=-249+i*166,f=(config.FACTIONS as any)[fk],active=tk.activeFocus===fk,can=tk.canArm||active;
+      U.panel('FactionBtn'+i,x,-304,154,48,active?tone('#45321b'):ink,8,active?gold:border,false);
+      U.text('FactionTxt'+i,(active?'● ':'')+f.name+(active?' 定向中':''),x,-304,142,20,active?gold:can?paper:dim);
+      if(can)U.tap('FactionTap'+i,x,-304,154,48,()=>{
         const r=store.setSummonFocus(active?null:fk);
         ctx.tell(r,r.ok?(r.focus?'已定向：'+(config.FACTIONS as any)[r.focus].name+'（下一组十连生效）':'已取消定向'):'');
       });
     });
+    const univTargets=heroData.HEROES.filter((hh:any)=>hh.rarity===4&&s.roster[hh.id]&&s.roster[hh.id].star<rarityMax(hh.rarity))
+      .sort((x:any,y:any)=>s.roster[x.id].star-s.roster[y.id].star);
     if((s.res as any).univSsr>0){
-      const univTargets=heroData.HEROES.filter((hh:any)=>hh.rarity===4&&s.roster[hh.id]&&s.roster[hh.id].star<4).length;
-      U.panel('UnivPanel',0,-300,686,72,tone('#3a2c17'),9,gold);
-      U.text('UnivTitle',univTargets?`万能 SSR 卡 ×${(s.res as any).univSsr} · 可指定一只未满星 SSR 升星`:`万能 SSR 卡 ×${(s.res as any).univSsr} · SSR 已全部满星，暂无目标`,-140,-246,460,20,univTargets?gold:dim);
-      U.button('UnivUse',univTargets?'使 用':'无目标',240,-300,170,54,()=>{if(!univTargets)return;univPickOpen=true;ctx.show('summon');},univTargets?gold:tone('#423022'));
+      U.panel('UnivPanel',0,-398,686,82*layoutScale,tone('#3a2c17'),9,gold,false);
+      U.text('UnivTitle',`万能 SSR 卡 ×${(s.res as any).univSsr}`,-82,-380,468,22,gold);
+      U.text('UnivHint',univTargets.length?'指定已拥有的未满星 SSR 升星':'SSR 已全部满星，暂无目标',-82,-412,468,17,dim);
+      U.button('UnivUse',univTargets.length?'使 用':'无目标',264,-398,122,56,()=>{
+        if(!univTargets.length)return;univPickOpen=true;CocosUi.resetScroll('UnivTargets');ctx.show('summon');
+      },univTargets.length?gold:tone('#423022'));
     }
+    U.text('SummonGrowthHint','同名武将自动升星 · 满星重复卡按品质转化',0,-481,660,17,dim);
     if(univPickOpen){
-      const owned=heroData.HEROES.filter((hh:any)=>hh.rarity===4&&s.roster[hh.id]&&s.roster[hh.id].star<4)
-        .sort((x:any,y:any)=>s.roster[x.id].star-s.roster[y.id].star);
-      U.rect('UnivShade',0,0,720,1280,tone('#120c07')).on(Node.EventType.TOUCH_END,()=>{});
-      U.panel('UnivPanel2',0,0,658,900,tone('#251b14'),12,gold);
-      U.text('UnivHeading',`选择万能卡目标（${owned.length} 只未满星）`,0,390,560,28,gold);
-      U.text('UnivHint','按当前星级从低到高排列',0,348,560,16,dim);
-      owned.forEach((hh:any,i:number)=>{
-        const y=290-i*84;
-        U.panel('UnivRow'+i,0,y,600,74,panel,8,border);
-        U.text('UnivName'+i,hh.name+'（★'+s.roster[hh.id].star+'）',-160,y,320,22,paper);
-        U.button('UnivGo'+i,'升星',225,y,130,50,()=>{
-          const r=store.useUniversalSsr(hh.id);
-          univPickOpen=false;
-          ctx.tell(r,r.ok?(r.isNew?'解锁 '+hh.name:hh.name+' 升至 ★'+r.star):'');
-        },gold);
+      U.rect('UnivShade',0,0,720,1280,new Color(10,12,9,235));
+      U.tap('UnivShadeBlock',0,0,720,1280,()=>{});
+      U.panel('UnivPanel2',0,0,658,900*layoutScale,tone('#251b14'),12,gold);
+      U.tap('UnivPanelBlock',0,0,658,900,()=>{});
+      U.text('UnivHeading',`选择万能卡目标（${univTargets.length} 名未满星）`,0,390,600,27,gold);
+      U.text('UnivHint','按当前星级从低到高排列',0,348,600,18,dim);
+      // Fixed header and footer surround a clipped 660px list; all 16 SSRs remain reachable.
+      const viewH=660,contentH=Math.max(viewH,univTargets.length*84+12);
+      U.scroll('UnivTargets',0,-20,612,viewH,contentH,V=>{
+        univTargets.forEach((hh:any,i:number)=>{
+          const y=contentH/2-42-i*84;
+          V.panel('UnivRow'+i,0,y,600,74,panel,8,border,false);
+          V.heroIcon('UnivFace'+i,-254,y,54,62,{surname:hh.surname||hh.name[0],faction:hh.faction,rarity:hh.rarity,artKey:hh.id});
+          V.text('UnivName'+i,hh.name+'（★'+s.roster[hh.id].star+'）',-50,y,330,22,paper);
+          V.button('UnivGo'+i,'升星',223,y,130,50,()=>{
+            const r=store.useUniversalSsr(hh.id);univPickOpen=false;
+            ctx.tell(r,r.ok?(r.isNew?'解锁 '+hh.name:hh.name+' 升至 ★'+r.star):'');
+          },gold);
+        });
+        if(!univTargets.length)V.text('UnivEmpty','暂无可升星目标',0,0,560,23,dim);
       });
       U.button('UnivCancel','取消',0,-400,280,54,()=>{univPickOpen=false;ctx.show('summon');},tone('#423022'));
     }
-    U.panel('SummonAd',0,76,678,46,tone('#2b1e12'),8,border);
-    U.text('SummonAdText','看广告 · 免费招募令 ×1',0,76,618,20,gold);
-    U.tap('SummonAdTap',0,76,678,46,()=>ctx.playAd('summon',()=>{
-      store.applyReward({scroll:1});return {ok:true};
-    },'获得招募令 ×1'));
   }
 
 export function summonDraw(ctx: ScreenContext, type: string) {
