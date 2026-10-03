@@ -315,8 +315,14 @@ export class CocosUi {
       const p = CocosUi.pulses[i];
       p.elapsed += dt;
       const t = Math.min(1, p.elapsed / 0.2);
-      if (p.node.isValid) { const s = 1.15 - 0.15 * t; p.node.setScale(new Vec3(s, s, 1)); if (t >= 1) p.node.setScale(new Vec3(1, 1, 1)); }
-      CocosUi.pulses.splice(i, 1);
+      // D4 修复（第二轮补查）：播满 0.2s 才移除并复位——原实现每帧无条件 splice，脉冲只播一帧、pill 永久停 1.07 倍
+      if (t >= 1) {
+        if (p.node.isValid) p.node.setScale(new Vec3(1, 1, 1));
+        CocosUi.pulses.splice(i, 1);
+      } else if (p.node.isValid) {
+        const s = 1.15 - 0.15 * t;
+        p.node.setScale(new Vec3(s, s, 1));
+      }
     }
   }
   static floatText(parent: Node, x: number, y: number, text: string, color: Color) {

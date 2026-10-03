@@ -577,9 +577,17 @@ export function summonResults(ctx: ScreenContext) {
         new Tween(op).delay(0.12 + seq * 0.09).to(0.14, { opacity: 0 }).start();
       });
     }
-    // SSR 登场引言（研讨会六 C2）：本抽出新 SSR 时展示专属登场卡（quote 复用，零新文案）
+    // 抽卡差页引导（研讨会二 P2）：SSR 缺口 + 保底余量 + 品质碎片兑换推荐
     {
-      const debut=ctx.lastSummon.find((r2:any)=>{const hh=heroData.getHero(r2.id);return hh&&hh.rarity===4&&r2.isNew;});
+      const gap=store.summonGapInfo();
+      U.panel('DrawGap',0,-300,660,140,tone('#312218'),9,tone('#795b34'));
+      U.text('DrawGapTitle',`SSR 收集 ${gap.ownedFull}/${gap.total} · 硬保底还剩 ${gap.pityLeft} 抽`,0,-266,630,19,gold);
+      const gapText=gap.gaps.length?gap.gaps.map((g:any)=>`${g.name}·${g.kind==='missing'?'未获得':'★'+g.star}`).join('  '):'SSR 已全部满星';
+      U.text('DrawGapList',`缺口：${gapText}`,0,-296,630,17,paper);
+      U.text('DrawGapEx',gap.exchange?`品质碎片 ${gap.shard}/${gap.need} · 可兑换「${gap.exchange.name}」`:gap.gaps.length?`品质碎片 ${gap.shard}/${gap.need} · 集满可兑换缺口 SSR`:`品质碎片 ${gap.shard}/${gap.need}`,0,-324,630,17,tone('#d9b06a'));
+    }
+
+      const debut = ctx.lastSummon.find((r2:any)=>{const hh=heroData.getHero(r2.id);return hh&&hh.rarity===4&&r2.isNew;});
       if(debut){
         // 新 SSR 高光浮层：压在 SSR 信息栏上方短暂展示（网格与按钮间无 84px 空带），4s 后淡出自毁；信息栏随浮层消失恢复
         const dh=heroData.getHero(debut.id);
@@ -590,18 +598,7 @@ export function summonResults(ctx: ScreenContext) {
         const debutOp=debutCard.addComponent(UIOpacity);
         new Tween(debutCard).delay(3.6).to(0.4,{scale:new Vec3(0.9,0.9,1)}).call(()=>{if(debutCard.isValid)debutCard.destroy();}).start();
         new Tween(debutOp).delay(3.6).to(0.4,{opacity:0}).start();
-      }
-    }
-    // 抽卡差页引导（研讨会二 P2）：SSR 缺口 + 保底余量 + 品质碎片兑换推荐
-    {
-      const gap=store.summonGapInfo();
-      U.panel('DrawGap',0,-300,660,140,tone('#312218'),9,tone('#795b34'));
-      U.text('DrawGapTitle',`SSR 收集 ${gap.ownedFull}/${gap.total} · 硬保底还剩 ${gap.pityLeft} 抽`,0,-266,630,19,gold);
-      const gapText=gap.gaps.length?gap.gaps.map((g:any)=>`${g.name}·${g.kind==='missing'?'未获得':'★'+g.star}`).join('  '):'SSR 已全部满星';
-      U.text('DrawGapList',`缺口：${gapText}`,0,-296,630,17,paper);
-      U.text('DrawGapEx',gap.exchange?`品质碎片 ${gap.shard}/${gap.need} · 可兑换「${gap.exchange.name}」`:gap.gaps.length?`品质碎片 ${gap.shard}/${gap.need} · 集满可兑换缺口 SSR`:`品质碎片 ${gap.shard}/${gap.need}`,0,-324,630,17,tone('#d9b06a'));
-    }
-    U.panel('DrawContinue',-169,-478,298,62,tone('#d9a94e'),9,gold);
+      }    U.panel('DrawContinue',-169,-478,298,62,tone('#d9a94e'),9,gold);
     U.text('DrawContinueText','继续招募',-169,-478,275,23,ink);
     U.tap('DrawContinueTap',-169,-478,298,62,()=>ctx.go('summon'));
     U.panel('DrawRoster',169,-478,298,62,tone('#3d6653'),9,gold);
