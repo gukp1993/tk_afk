@@ -17,6 +17,15 @@
 
 ## 最近交接（新 → 旧）
 
+### 本机终端与 Git 代理配置 · Codex · 已实施待验收
+
+时间：2026-10-03 15:40（Asia/Shanghai）；执行者：Codex；状态：已实施待验收。
+
+- 用户要求本机工具走已开启的 VPN，并明确“不能开全局模式”；huahe 已恢复智能模式（界面实拍确认），后续沿用客户端规则分流，不启用全局模式。
+- 用户级配置：~/.zshenv 补齐大小写 HTTP/HTTPS/ALL/NO_PROXY，SOCKS 使用 socks5h；Git 全局 http.proxy 指向本机 127.0.0.1:7890；~/.ssh/config 的 GitHub SSH 经同一入口。修改前已备份至 ~/.config/network-proxy/backups/20261003-153838/。
+- 验证：zsh 配置语法通过；新 shell HTTPS 访问 GitHub 返回 200、连接对端确认为本机代理；GitHub SSH 仓库远端读取成功。配置只影响本机，仓库仅追加交接，已有游戏代码与美术未提交改动未纳入。
+
+
 ### U3 角标间距 + 资源 pill 组件化 · zcode · 已实施待验收
 
 时间：2026-10-03 04:40（Asia/Shanghai）；执行者：zcode；状态：已实施待验收（三线跳批：A3 代理占用 BattleFx，避让做 UI 线）。
