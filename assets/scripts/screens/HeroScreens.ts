@@ -581,7 +581,7 @@ export function summonResults(ctx: ScreenContext) {
     {
       const gap=store.summonGapInfo();
       U.panel('DrawGap',0,-300,660,140,tone('#312218'),9,tone('#795b34'));
-      U.text('DrawGapTitle',`SSR 收集 ${gap.ownedFull}/${gap.total} · 硬保底还剩 ${gap.pityLeft} 抽`,0,-266,630,19,gold);
+      U.text('DrawGapTitle',`SSR 满星 ${gap.ownedFull}/${gap.total} · 硬保底还剩 ${gap.pityLeft} 抽`,0,-266,630,19,gold); // D2：口径如实（ownedFull=满星数，防'抽到新 SSR 仍 0/16'误读）
       const gapText=gap.gaps.length?gap.gaps.map((g:any)=>`${g.name}·${g.kind==='missing'?'未获得':'★'+g.star}`).join('  '):'SSR 已全部满星';
       U.text('DrawGapList',`缺口：${gapText}`,0,-296,630,17,paper);
       U.text('DrawGapEx',gap.exchange?`品质碎片 ${gap.shard}/${gap.need} · 可兑换「${gap.exchange.name}」`:gap.gaps.length?`品质碎片 ${gap.shard}/${gap.need} · 集满可兑换缺口 SSR`:`品质碎片 ${gap.shard}/${gap.need}`,0,-324,630,17,tone('#d9b06a'));
