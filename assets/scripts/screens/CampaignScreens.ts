@@ -737,7 +737,7 @@ export function shop(ctx: ScreenContext) {
       U.tap('ShopPickPanelBlock',0,0,658,974,()=>{});
       U.text('ShopPickHeading',rarity===4?'自 选 SSR 名 将':'自 选 SR 名 将',0,449,595,29,GOLD);
       const list=heroes.HEROES.filter((hero:any)=>hero.rarity===rarity),rows=Math.ceil(list.length/3),ch=188,gridH=Math.max(720,rows*ch+12);
-      U.scroll('ShopPickGrid',0,-19,622,811,gridH,(V)=>{
+      U.scroll('ShopPickGrid',0,-19,622,804,gridH,(V)=>{ // D3：视口底缘与暂不选择按钮让出 5px 间隙（原 811 相切裁卡）
         list.forEach((hero:any,i:number)=>{
           const x=-206+i%3*206,y=gridH/2-94-Math.floor(i/3)*ch;
           V.panel('ShopPickCard'+i,x,y,185,177,tone('#322319'),8,rarity===4?GOLD:tone('#795b34'));
