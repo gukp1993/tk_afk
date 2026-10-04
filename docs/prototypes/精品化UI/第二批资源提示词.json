@@ -1,0 +1,51 @@
+[
+  {
+    "key": "nav_home",
+    "prompt": "Use case: stylized-concept. Asset type: small game navigation icon for original Three Kingdoms chibi idle card game. Single miniature emerald green tiled ancient Chinese city gate, warm golden roof edging and red door, premium hand painted 3D cartoon finish, unmistakable silhouette at 48 pixels. Centered front three-quarter view, fills 80 percent of square, soft warm light, restrained details. Genuine transparent background. No circle, no panel, no lettering, no watermark, no external shadow extending past square. Match jade green, vermilion, warm brass art direction.",
+    "source": "/Users/gukepeng/.codex/generated_images/01a0ffa9-8f17-7be2-9930-d060d9475070/exec-9c17dc0f-0ebd-4f3b-ab42-af5f80a0d557.png",
+    "tool": "built-in image_gen",
+    "runtime": "assets/resources/art/icons/nav_home.png"
+  },
+  {
+    "key": "nav_journey",
+    "prompt": "Use case: stylized-concept. Asset type: small game navigation icon for original Three Kingdoms chibi idle card game. Single partially unrolled ancient parchment adventure map with a jade green rolled edge and a miniature vermilion route marker, warm brass fittings, premium hand painted 3D cartoon finish, unmistakable silhouette at 48 pixels. Centered fills 80 percent of square, restrained details. Genuine transparent background. No circle, no panel, no letters or readable map text, no watermark. Warm ivory jade green vermilion palette.",
+    "source": "/Users/gukepeng/.codex/generated_images/01a0ffa9-8f17-7be2-9930-d060d9475070/exec-d725aa00-3210-4c04-b327-63a9191071b5.png",
+    "tool": "built-in image_gen",
+    "runtime": "assets/resources/art/icons/nav_journey.png"
+  },
+  {
+    "key": "nav_campaign",
+    "prompt": "Use case: stylized-concept. Asset type: small game navigation icon for original Three Kingdoms chibi idle card game. Two crossed ancient Chinese dao sabres behind a small vermilion war pennant, warm brass guards and jade green ties, premium hand painted 3D cartoon finish, unmistakable strong silhouette at 48 pixels. Centered fills 80 percent of square, restrained details and soft warm light. Genuine transparent background. No circle, no panel, no lettering, no watermark.",
+    "source": "/Users/gukepeng/.codex/generated_images/01a0ffa9-8f17-7be2-9930-d060d9475070/exec-e2515f1a-f432-426d-baeb-02ad9ade54f6.png",
+    "tool": "built-in image_gen",
+    "runtime": "assets/resources/art/icons/nav_campaign.png"
+  },
+  {
+    "key": "nav_heroes",
+    "prompt": "Use case: stylized-concept. Asset type: small game navigation icon for original Three Kingdoms chibi idle card game. Single ornate ancient Chinese general helmet with a short vermilion plume, jade green cheek guards and warm brass trim, premium hand painted 3D cartoon finish, unmistakable silhouette at 48 pixels. Centered front three-quarter view fills 80 percent square, restrained detail soft warm light. Genuine transparent background. No face, no circle, no panel, no lettering, no watermark.",
+    "source": "/Users/gukepeng/.codex/generated_images/01a0ffa9-8f17-7be2-9930-d060d9475070/exec-6d691fb4-fdfb-4894-871d-6a070e614f12.png",
+    "tool": "built-in image_gen",
+    "runtime": "assets/resources/art/icons/nav_heroes.png"
+  },
+  {
+    "key": "nav_bag",
+    "prompt": "Use case: stylized-concept. Asset type: small game navigation icon for original Three Kingdoms chibi idle card game. Single small jade green brocade drawstring inventory pouch tied with vermilion cord and a warm brass coin clasp, premium hand painted 3D cartoon finish, unmistakable silhouette at 48 pixels. Centered fills 80 percent square, restrained detail soft warm light. Genuine transparent background. No circle, no panel, no lettering, no watermark.",
+    "source": "/Users/gukepeng/.codex/generated_images/01a0ffa9-8f17-7be2-9930-d060d9475070/exec-9875478d-2353-4401-b819-851eaf30f8eb.png",
+    "tool": "built-in image_gen",
+    "runtime": "assets/resources/art/icons/nav_bag.png"
+  },
+  {
+    "key": "scene_armory",
+    "prompt": "Use case: stylized-concept. Asset type: portrait 9:16 background of an original Three Kingdoms chibi idle game armory screen. Beautiful atmospheric Chinese forge pavilion at dusk, emerald tiled roof, brass and dark wooden racks with original ancient Chinese dao weapons, bronze armor and silk banners at far left and right edges. A small warm orange forge glow near bottom right, distant green mountains seen through pavilion. Central 65 percent is quiet dark jade and charcoal with subtle haze and very sparse details, deliberately empty for six equipment UI cards and readable white text. Top center quiet for heading. Bottom quiet for navigation. Premium hand-painted stylized 3D game art, tactile materials, restrained vermilion and warm gold. No text, no UI, no people, no watermark.",
+    "source": "/Users/gukepeng/.codex/generated_images/01a0ffa9-8f17-7be2-9930-d060d9475070/exec-857843f2-5849-4d7f-815b-939c7ee52bcd.png",
+    "tool": "built-in image_gen",
+    "runtime": "assets/art-heroes/scenes/scene_armory.jpg"
+  },
+  {
+    "key": "title_home_v2",
+    "prompt": "Use case: logo-brand. Asset type: transparent calligraphic Chinese title wordmark for original Three Kingdoms chibi idle card game. Text verbatim: \"挂机定三国\". Exactly these five Chinese characters only, arranged in one horizontal line, legible powerful Chinese brush calligraphy with restrained warm gold foil strokes, dark jade thin edging to retain contrast over ivory parchment, beautiful energetic handwritten forms, premium artisanal game title. Wide approximately 4:1 composition, all strokes safely inside frame, transparent background, no decorative seal, no emblem, no extra characters, no panel, no watermark.",
+    "source": "/Users/gukepeng/.codex/generated_images/01a0ffa9-8f17-7be2-9930-d060d9475070/exec-8a2a1256-d4e6-4d7e-9483-d54a8cbdeb40.png",
+    "tool": "built-in image_gen",
+    "runtime": "assets/art-heroes/ui/title_home_v2.png"
+  }
+]

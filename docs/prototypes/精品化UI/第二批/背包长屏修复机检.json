@@ -1,0 +1,131 @@
+{
+  "results": [
+    {
+      "case": "bag card 0",
+      "ok": true,
+      "page": "heroes"
+    },
+    {
+      "case": "bag card 1",
+      "ok": true,
+      "page": "armory"
+    },
+    {
+      "case": "bag card 2",
+      "ok": true,
+      "page": "shop"
+    },
+    {
+      "case": "bag card 3",
+      "ok": true,
+      "page": "summon"
+    },
+    {
+      "case": "bag card 4",
+      "ok": true,
+      "page": "shop"
+    },
+    {
+      "case": "bag card 5",
+      "ok": true,
+      "page": "shop"
+    },
+    {
+      "case": "bag armory tab",
+      "ok": true
+    },
+    {
+      "case": "bag artwork 1280",
+      "ok": true
+    },
+    {
+      "case": "bag internal margins 1280",
+      "ok": true,
+      "margins": [
+        {
+          "i": 0,
+          "iconTop": 14.5,
+          "nameTop": 14.899999999999999,
+          "linkBottom": 14.799999999999999
+        },
+        {
+          "i": 1,
+          "iconTop": 14.5,
+          "nameTop": 14.899999999999999,
+          "linkBottom": 14.799999999999999
+        },
+        {
+          "i": 2,
+          "iconTop": 14.5,
+          "nameTop": 14.899999999999999,
+          "linkBottom": 14.799999999999999
+        },
+        {
+          "i": 3,
+          "iconTop": 14.5,
+          "nameTop": 14.899999999999999,
+          "linkBottom": 14.799999999999999
+        },
+        {
+          "i": 4,
+          "iconTop": 14.5,
+          "nameTop": 14.899999999999999,
+          "linkBottom": 14.799999999999999
+        },
+        {
+          "i": 5,
+          "iconTop": 14.5,
+          "nameTop": 14.899999999999999,
+          "linkBottom": 14.799999999999999
+        }
+      ]
+    },
+    {
+      "case": "bag artwork 1600",
+      "ok": true
+    },
+    {
+      "case": "bag internal margins 1600",
+      "ok": true,
+      "margins": [
+        {
+          "i": 0,
+          "iconTop": 14.5,
+          "nameTop": 14.899999999999999,
+          "linkBottom": 14.799999999999999
+        },
+        {
+          "i": 1,
+          "iconTop": 14.5,
+          "nameTop": 14.899999999999999,
+          "linkBottom": 14.799999999999999
+        },
+        {
+          "i": 2,
+          "iconTop": 14.5,
+          "nameTop": 14.899999999999999,
+          "linkBottom": 14.799999999999999
+        },
+        {
+          "i": 3,
+          "iconTop": 14.5,
+          "nameTop": 14.899999999999999,
+          "linkBottom": 14.799999999999999
+        },
+        {
+          "i": 4,
+          "iconTop": 14.5,
+          "nameTop": 14.899999999999999,
+          "linkBottom": 14.799999999999999
+        },
+        {
+          "i": 5,
+          "iconTop": 14.5,
+          "nameTop": 14.899999999999999,
+          "linkBottom": 14.799999999999999
+        }
+      ]
+    }
+  ],
+  "errors": []
+}

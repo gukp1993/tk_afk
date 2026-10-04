@@ -78,7 +78,8 @@ export function heroes(ctx: ScreenContext) {
       const x=i===0?60:250;
       U.panel('HeroResource'+i,x,608,179,44,new Color(19,32,27,240),22,gold);
       U.seal('HeroResourceIcon'+i,x-64,608,33,i===0?'钱':'宝',palette.ink,palette.gold,palette.gold,Math.round(33*0.5),i===0?'gold':'gem');
-      U.text('HeroResourceText'+i,`${label} ${fmt.fmtNum(value)}`,x+14,608,133,21,paper);
+      const amount=U.text('HeroResourceText'+i,`${label} ${fmt.fmtNum(value)}`,x+14,608,133,21,paper);
+      amount.getComponent(Label)!.enableWrapText=false;
     });
     U.text('HeroesTitle','群英录',-225,577,267,61,gold);
     U.panel('HeroesFormation',260,528,184,55,new Color(96,70,37,239),8,gold);
@@ -813,50 +814,136 @@ export function achvView(ctx: ScreenContext) {
   });
 }
 
+/** 单行军械标签按实际行高预算；长属性继续 SHRINK，不换行挤占相邻信息。 */
+function armoryLine(U: CocosUi,name:string,value:string,x:number,y:number,w:number,size:number,color:Color) {
+  const n=U.text(name,value,x,y,w,size,color);
+  n.getComponent(UITransform)!.setContentSize(w,Math.ceil(size*1.3+2));
+  n.getComponent(Label)!.enableWrapText=false;
+  return n;
+}
+
+/** 六部位陈列标记：有正式素材时换图，无图保留原生可辨轮廓，不伪造图片资产。 */
+function armoryEmblem(U:CocosUi,name:string,slot:string,x:number,y:number,rim:Color) {
+  U.panel(name+'Plinth',x,y,66,72,new Color(12,26,24,225),8,rim,false);
+  if(ArtService.has('armory_'+slot)){
+    U.seal(name,x,y,64,'',palette.ink,rim,LIGHT,24,'armory_'+slot);
+    return;
+  }
+  const metal=tone('#b9c6bd'),shine=tone('#ece9d6'),bronze=tone('#b99b64'),dark=tone('#344d45'),leather=tone('#78654b'),red=tone('#9b5144');
+  U.scene(name,g=>{
+    const poly=(points:number[][],fill:Color,edge?:Color)=>{
+      g.fillColor=fill;g.moveTo(x+points[0][0],y+points[0][1]);
+      points.slice(1).forEach(p=>g.lineTo(x+p[0],y+p[1]));g.close();g.fill();
+      if(edge){g.strokeColor=edge;g.lineWidth=1.2;g.stroke();}
+    };
+    const line=(points:number[][],color:Color,width=1.5)=>{
+      g.strokeColor=color;g.lineWidth=width;g.moveTo(x+points[0][0],y+points[0][1]);
+      points.slice(1).forEach(p=>g.lineTo(x+p[0],y+p[1]));g.stroke();
+    };
+    const circle=(cx:number,cy:number,r:number,fill:Color,edge?:Color)=>{
+      g.fillColor=fill;g.circle(x+cx,y+cy,r);g.fill();
+      if(edge){g.strokeColor=edge;g.lineWidth=1.3;g.circle(x+cx,y+cy,r);g.stroke();}
+    };
+    if(slot==='weapon'){
+      poly([[-13,-15],[10,23],[19,29],[15,8],[-5,-20]],metal,bronze);
+      line([[-7,-12],[14,22]],shine,2);
+      poly([[-24,-27],[-18,-14],[-12,-18],[-18,-31]],red,bronze);
+      line([[-24,-16],[-7,-26]],bronze,4);
+      line([[-21,-23],[-16,-26]],bronze,1);
+      circle(-21,-28,2.2,bronze);
+    }else if(slot==='armor'){
+      poly([[-18,21],[-8,26],[-5,17],[5,17],[8,26],[18,21],[22,-17],[13,-26],[-13,-26],[-22,-17]],dark,bronze);
+      poly([[-19,18],[-28,9],[-24,0],[-17,3]],leather,bronze);
+      poly([[19,18],[28,9],[24,0],[17,3]],leather,bronze);
+      for(let row=0;row<4;row++)for(let col=0;col<5;col++){
+        const px=-14+col*7,py=10-row*8;
+        poly([[px-2.6,py+3],[px+2.6,py+3],[px+2.4,py-2.8],[px,py-4],[px-2.4,py-2.8]],row%2?metal:leather);
+      }
+      line([[-19,-15],[19,-15]],bronze,3);circle(0,-15,2.4,red,bronze);
+    }else if(slot==='helm'){
+      poly([[-21,-4],[-18,11],[-9,22],[0,26],[9,22],[18,11],[21,-4]],metal,bronze);
+      poly([[-21,-4],[-24,-20],[-13,-27],[-9,-4]],dark,bronze);
+      poly([[21,-4],[24,-20],[13,-27],[9,-4]],dark,bronze);
+      poly([[-16,-5],[-8,3],[8,3],[16,-5],[8,-11],[-8,-11]],dark,bronze);
+      line([[0,24],[0,1],[4,-7]],bronze,2);
+      poly([[-4,25],[-4,30],[7,29],[4,23]],red,bronze);
+      line([[-15,10],[-10,16]],shine,2);
+    }else if(slot==='boots'){
+      poly([[-22,20],[-5,20],[-7,-4],[1,-14],[-1,-22],[-23,-22],[-26,-15],[-20,-7]],dark,bronze);
+      poly([[1,25],[18,25],[17,0],[26,-13],[23,-24],[3,-24],[-1,-17],[3,-7]],leather,bronze);
+      line([[-23,15],[-5,15]],bronze,3);line([[1,20],[18,20]],bronze,3);
+      line([[-23,-20],[-1,-20]],metal,2);line([[3,-22],[23,-22]],metal,2);
+      line([[7,11],[14,5],[7,1],[14,-5]],bronze,1.3);
+    }else if(slot==='jade'){
+      line([[0,26],[0,17]],bronze,2);
+      circle(0,4,20,tone('#769f8c'),bronze);circle(0,4,9.5,dark,bronze);
+      line([[-13,9],[-9,17],[0,21]],shine,1.8);
+      line([[0,-16],[0,-26]],red,3);circle(0,-22,3.2,red,bronze);
+      line([[-4,-24],[-7,-31]],red,2);line([[0,-24],[0,-32]],red,2);line([[4,-24],[7,-31]],red,2);
+    }else{
+      poly([[-25,-11],[-25,9],[-17,9],[-14,19],[-1,22],[11,17],[24,14],[24,-11],[15,-16],[-18,-16]],bronze,dark);
+      poly([[-16,4],[-9,12],[1,13],[12,6],[17,5],[15,-3],[-12,-3]],dark);
+      line([[0,19],[0,-15]],shine,1.4);line([[-18,-12],[-13,-27]],red,2.5);
+      circle(-15,-23,3,red,bronze);line([[-15,-25],[-18,-31]],red,2);
+      line([[-19,2],[-26,5]],bronze,3);
+    }
+  });
+}
+
 export function armory(ctx: ScreenContext) {
     const s=store.getState(),U=ctx.ui;
     const recs:any[]=progression.getArmoryRecommendations(s,items);
     const unlocked=items.CATALOG.filter((item:any)=>s.armory.unlocked[item.id]).length;
     ctx.title('全军军械');
     U.backBar(()=>ctx.back('home'));
-    U.panel('ArmoryIron',-175,409,334,42,ink,10,border);
-    U.text('ArmoryIronText',`精铁 ${fmt.fmtNum(s.res.iron)}`,-175,409,310,19,gold);
-    U.panel('ArmoryCoins',175,409,334,42,ink,10,border);
-    U.text('ArmoryCoinsText',`铜钱 ${fmt.fmtNum(s.res.gold)}`,175,409,310,19,gold);
+    U.panel('ArmoryIron',-175,409,334,42,new Color(16,31,27,226),8,tone('#657466'),false);
+    U.seal('ArmoryIronIcon',-310,409,28,'铁',palette.ink,gold,gold,15,'iron');
+    armoryLine(U,'ArmoryIronText',`精铁 ${fmt.fmtNum(s.res.iron)}`,-157,409,274,21,paper);
+    U.panel('ArmoryCoins',175,409,334,42,new Color(16,31,27,226),8,tone('#657466'),false);
+    U.seal('ArmoryCoinsIcon',40,409,28,'钱',palette.ink,gold,gold,15,'gold');
+    armoryLine(U,'ArmoryCoinsText',`铜钱 ${fmt.fmtNum(s.res.gold)}`,193,409,274,21,paper);
     chip(U,'ArmoryOverviewTab','部位养成',-171,345,334,true,()=>ctx.show('armory'));
     chip(U,'ArmoryCatalogTab',`装备图鉴  ${unlocked}/${items.CATALOG.length}`,171,345,334,false,()=>ctx.go('armoryCatalog'));
     U.text('ArmoryIntro','',0,279,620,20,dim);
     if(recs.length){
-      U.panel('ArmoryRecommend',0,220,610,49,tone('#d9a94e'),7,gold);
-      U.text('ArmoryRecommendText',`免费启用推荐 · ${recs.length} 个部位`,0,220,586,20,ink);
-      U.tap('ArmoryRecommendTap',0,220,610,49,()=>{
+      // 留在页签与推荐态滚区之间，避免旧 y=220 压住第一排部位标题。
+      U.panel('ArmoryRecommend',0,272,610,49,tone('#d9a94e'),7,gold);
+      armoryLine(U,'ArmoryRecommendText',`免费启用推荐 · ${recs.length} 个部位`,0,272,586,20,ink);
+      U.tap('ArmoryRecommendTap',0,272,610,49,()=>{
         ctx.confirm('免费启用军械建议',recs.map(r=>`${r.slotName}：${r.fromName} → ${r.toName}`).join('；'),()=>ctx.tell(store.applyArmoryRecommendations(recs),`已为全军启用 ${recs.length} 件`));
       });
     }
     const top=recs.length?120:160,cardH=232,pitch=246;
     const viewTop=top+cardH/2,viewBottom=-499,viewH=viewTop-viewBottom;
-    const contentH=Math.max(viewH,3*pitch+190);
+    // 原 +190 裁掉既有套装三卡；+375 给最后一行卡底留 20px，视口与六卡屏幕位置不变。
+    const contentH=Math.max(viewH,3*pitch+375);
     U.scroll('ArmoryOverviewScroll',0,(viewTop+viewBottom)/2,700,viewH,contentH,V=>{
       items.ARMORY_SLOTS.forEach((slot:any,i:number)=>{
         const selected:any=items.CATALOG.find((item:any)=>item.id===s.armory.selected[slot.id]);
         const x=i%2?170:-170,y=contentH/2-cardH/2-Math.floor(i/2)*pitch;
-        V.panel('ArmorySlotCard'+i,x,y,324,cardH,panel,9,gold);
-        V.text('ArmorySlotName'+i,slot.name,x-71,y+85,155,25,gold);
-        V.text('ArmorySlotStar'+i,`★${s.armory.slotStars[slot.id]||0}`,x+115,y+85,62,21,gold);
+        const itemColor=selected?tone(items.GRADES[selected.q].color):tone('#839285');
+        V.panel('ArmorySlotCard'+i,x,y,324,cardH,new Color(19,34,29,238),9,tone('#6e7b60'),false);
+        armoryLine(V,'ArmorySlotName'+i,slot.name,x-71,y+85,155,25,paper);
+        armoryLine(V,'ArmorySlotStar'+i,`★${s.armory.slotStars[slot.id]||0}`,x+115,y+85,62,21,gold);
+        V.scene('ArmorySlotDivider'+i,g=>{
+          g.strokeColor=new Color(171,150,98,95);g.lineWidth=1;
+          g.moveTo(x-145,y+65);g.lineTo(x+145,y+65);g.stroke();
+        });
         {
           // 词条追求信息层（裁决 D）：只展示档位汇总，不改数值
           const badge=(store.armoryAffixBadges() as any)[slot.id];
-          if(badge)V.text('ArmorySlotFx'+i,badge.label,x+42,y+86,66,15,
+          if(badge)armoryLine(V,'ArmorySlotFx'+i,badge.label,x+42,y+86,66,15,
             badge.purple>=2?gold:badge.purple>=1?tone('#b57ce8'):dim);
         }
-        V.text('ArmorySlotItem'+i,selected?.name||'尚未选择军械',x,y+40,295,22,selected?tone(items.GRADES[selected.q].color):dim);
+        armoryEmblem(V,'ArmorySlotEmblem'+i,slot.id,x-112,y+27,itemColor);
+        armoryLine(V,'ArmorySlotItem'+i,selected?.name||'尚未选择军械',x+34,y+43,210,22,itemColor);
         if(selected){
-          V.text('ArmorySlotStats'+i,`${items.GRADES[selected.q].name} · ${armoryStats(selected.basePct||selected.stats)}`,x,y+10,296,17,dim);
-          if(selected.effect)V.text('ArmorySlotEffect'+i,armoryEffect(selected.effect),x,y-16,296,16,dim);
+          armoryLine(V,'ArmorySlotStats'+i,`${items.GRADES[selected.q].name} · ${armoryStats(selected.basePct||selected.stats)}`,x+34,y+12,210,17,tone('#bac7b9'));
+          if(selected.effect)armoryLine(V,'ArmorySlotEffect'+i,armoryEffect(selected.effect),x,y-22,296,16,tone('#bac7b9'));
         }
-        V.text('ArmorySlotNode'+i,nodeLineText(slot.id,s.armory.slotStars[slot.id]||0),x,y-44,296,16,tone('#e2c088'));
-        V.panel('ArmorySlotOpen'+i,x,y-88,295,43,tone('#39291a'),5,border);
-        V.text('ArmorySlotOpenText'+i,'查看图鉴',x,y-88,270,18,gold);
+        armoryLine(V,'ArmorySlotNode'+i,nodeLineText(slot.id,s.armory.slotStars[slot.id]||0),x,y-47,296,16,tone('#e2c088'));
+        V.panel('ArmorySlotOpen'+i,x,y-88,295,43,new Color(48,67,48,230),5,tone('#77856a'),false);
+        armoryLine(V,'ArmorySlotOpenText'+i,'查看图鉴',x,y-88,270,19,paper);
         V.tap('ArmorySlotTap'+i,x,y,324,cardH,()=>{ctx.selectedArmorySlot=slot.id;CocosUi.resetScroll('CatalogScroll');ctx.go('armoryCatalog');});
       });
       const bonus:any=store.getArmoryBonuses(),summaryY=contentH/2-3*pitch-42;

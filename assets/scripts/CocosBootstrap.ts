@@ -83,7 +83,7 @@ export class CocosBootstrap extends Component implements ScreenContext {
     this.hookDiag();
     // 美术预加载（2026-10-02 美术阶段）：装载完成后重绘一次当前菜单页，让已交付立绘/图标立即生效
     ArtService.preload((n) => {
-      if (n > 0 && this.page && ['home', 'journey', 'campaign', 'stagePreview', 'heroes', 'heroDetail', 'formation', 'formationPick', 'bag', 'summon', 'summonResults', 'shop'].indexOf(this.page) >= 0) {
+      if (n > 0 && this.page && ['home', 'journey', 'campaign', 'stagePreview', 'heroes', 'heroDetail', 'formation', 'formationPick', 'bag', 'summon', 'summonResults', 'shop', 'armory', 'armoryCatalog', 'armoryBox'].indexOf(this.page) >= 0) {
         try { this.show(this.page); } catch (e) { /* 重绘失败静默，保留占位页 */ }
       }
     });
@@ -163,7 +163,7 @@ export class CocosBootstrap extends Component implements ScreenContext {
     const U = this.ui = new CocosUi(this.content,verticalScale), s = store.getState();
     U.rect('Backdrop', 0, 0, 720, 1280, hexColor('#171009'));
     // 页面背景（2026-10-03 美术阶段）：分包 scene_<page>.jpg 有图用图、无图回退纯色；叠压暗层保 UI 可读
-    const sceneKey = ({ home: 'scene_home', journey: 'scene_journey', campaign: 'scene_campaign', stagePreview: 'scene_campaign', heroes: 'scene_heroes', bag: 'scene_bag' } as Record<string, string | undefined>)[page];
+    const sceneKey = ({ home: 'scene_home', journey: 'scene_journey', campaign: 'scene_campaign', stagePreview: 'scene_campaign', heroes: 'scene_heroes', bag: 'scene_bag', shop: 'scene_bag', armory: 'scene_armory', armoryCatalog: 'scene_armory', armoryBox: 'scene_armory' } as Record<string, string | undefined>)[page];
     const sceneFrame = sceneKey ? ArtService.frame(sceneKey) : null;
     if (sceneFrame) {
       U.image('BackdropArt', sceneFrame, 0, 0, 720, 1280);
@@ -214,9 +214,12 @@ export class CocosBootstrap extends Component implements ScreenContext {
       const badges = store.navBadges() as Record<string, boolean>;
       nav.forEach(([p,label,glyph], i) => {
         const x=-288+144*i, active=p===page || (p==='campaign'&&page==='stagePreview');
-        if(active) U.panel('NavActive'+p,x,-594,140,89,new Color(91,69,35,240),5,palette.gold);
-        U.seal('NavIcon'+p,x,-575,54,glyph,active?palette.gold:palette.ink,palette.gold,active?palette.ink:palette.gold,26,'nav_'+p);
-        U.text('NavLabel'+p,label,x,-620,123,23,active?palette.gold:palette.paper);
+        if(active) {
+          U.panel('NavActive'+p,x,-594,140,89,new Color(112,91,45,120),5,new Color(211,163,73,95),false);
+          U.line('NavActiveTop'+p,[[x-48,-551],[x+48,-551]],3,palette.gold);
+        }
+        U.seal('NavIcon'+p,x,-577,46,glyph,active?palette.gold:palette.ink,palette.gold,active?palette.ink:palette.gold,26,'nav_'+p);
+        U.text('NavLabel'+p,label,x,-620,123,21,active?palette.gold:palette.paper);
         if(badges[p])U.dot('NavDot'+p,x+52,-566);
         U.tap('Nav'+p,x,-594,138,90,()=>this.go(p));
       });
@@ -392,6 +395,11 @@ export class CocosBootstrap extends Component implements ScreenContext {
     if(this.adSeconds<=0)this.ui.button('AdClaim','领取奖励',158,-335,280,87,()=>this.claimAdReward(),palette.gold);
   }
   public title(text: string, sub = '') {
+    this.ui.panel('TitleBand',0,607,684,60,new Color(9,27,24,185),9,new Color(177,139,75,125),false);
+    if (text.length <= 10) {
+      this.ui.line('TitleLeftFlourish',[[-313,608],[-248,608]],1,palette.gold);
+      this.ui.line('TitleRightFlourish',[[248,608],[313,608]],1,palette.gold);
+    }
     this.ui.text('Title', text, 0, 609, 650, 35, palette.gold);
     if (sub) this.ui.text('Subtitle', sub, 0, 563, 650, 19, palette.muted);
   }

@@ -1,0 +1,114 @@
+{
+  "reviewer": "interaction_audit（独立QA；未修改业务源码）",
+  "status": "组合预览测试通过；微信设备体验待用户实机验收",
+  "totalAssertions": 639,
+  "suites": {
+    "navigation": {
+      "assertions": 222,
+      "exitCode": 0,
+      "rawEvidence": "/tmp/tk-ui-second/navigation-report.json"
+    },
+    "shop": {
+      "assertions": 79,
+      "exitCode": 0,
+      "rawEvidence": "/tmp/tk-ui-second/shop-report.json"
+    },
+    "armory": {
+      "assertions": 54,
+      "exitCode": 0,
+      "rawEvidence": "/tmp/tk-ui-second/armory-report.json"
+    },
+    "style": {
+      "assertions": 100,
+      "exitCode": 0,
+      "rawEvidence": "/tmp/tk-ui-second/style-report.json"
+    },
+    "fallback": {
+      "assertions": 80,
+      "exitCode": 0,
+      "rawEvidence": "/tmp/tk-ui-second/fallback-report.json"
+    },
+    "polish": {
+      "assertions": 94,
+      "exitCode": 0,
+      "rawEvidence": "/tmp/tk-ui-second/polish-report.json"
+    },
+    "cold-armory": {
+      "assertions": 10,
+      "exitCode": 0,
+      "rawEvidence": "/tmp/tk-ui-second/cold-armory-report.json"
+    }
+  },
+  "viewport": [
+    {
+      "width": 720,
+      "height": 1280
+    },
+    {
+      "width": 720,
+      "height": 1600
+    }
+  ],
+  "saveIsolation": "每项测试使用新浏览器上下文和仅该上下文存档fixture；没有读写真机存档",
+  "errors": "全部执行套件零pageerror",
+  "scenarios": [
+    "5导航真实点击、唯一选中、实际图标与红点规则源对照",
+    "主城2快捷入口、背包6资源卡与4底入口",
+    "商店购买精确扣款入账、取消/不足/售罄不扣款、SSR选择取消保留券",
+    "军械6槽真实点击路由、SSR长名称和效果、滚尾与两高度",
+    "native美术全部不可加载后5导航与6背包入口仍可操作",
+    "标题/正文/数字字体分层，极大余额999999999999，英雄资源额单行",
+    "6装备图加载和64×64实际尺寸",
+    "冷启动图片延迟4秒后无需操作军械自动换装图标/背景"
+  ],
+  "reviewClosures": [
+    {
+      "issue": "军械预载完成不自动换装",
+      "status": "已补三军械页重绘白名单；cold-armory 10断言与前后实拍关闭"
+    },
+    {
+      "issue": "未获得正文保留Kaiti",
+      "status": "LockedTag改sans-serif；polish实际字体检查关闭"
+    },
+    {
+      "issue": "英雄资源极大余额换行",
+      "status": "HeroResourceText关闭自动换行沿SHRINK；polish两高度断言和实拍关闭"
+    }
+  ],
+  "screenshots": [
+    "独立-主城-1280.png",
+    "独立-主城-1600.png",
+    "独立-玩法-1280.png",
+    "独立-玩法-1600.png",
+    "独立-战役-1280.png",
+    "独立-战役-1600.png",
+    "独立-英雄-1280.png",
+    "独立-英雄-1600.png",
+    "独立-召唤-1280.png",
+    "独立-召唤-1600.png",
+    "独立-背包-1280.png",
+    "独立-背包-1600.png",
+    "独立-军械-1280.png",
+    "独立-军械-1600.png",
+    "独立-集市-1280.png",
+    "独立-集市-1600.png",
+    "独立-军械滚尾-1280.png",
+    "独立-军械滚尾-1600.png",
+    "独立-长标题确认-1280.png",
+    "独立-长标题确认-1600.png",
+    "独立-主城缺图-1280.png",
+    "独立-主城缺图-1600.png",
+    "独立-军械慢加载前.png",
+    "独立-军械慢加载后.png"
+  ],
+  "buildEvidence": {
+    "lastWeb": "/tmp/tk-ui-second-web-numberfix.log（15:20:29成功）",
+    "interactionRegression": "早前12:29交互结果保留；六军械槽已在最终6图片包再跑54项；最终94项视觉/字体补测关闭后续改动",
+    "coldLoad": "/tmp/tk-ui-second-web-coldfix.log包执行；后续仅文字规则及nowrap改动"
+  },
+  "limits": [
+    "这是Web快速预览及源码独立评审，不替代微信真机UI/性能验收",
+    "断言数包括节点存在、可见性等支撑断言；不表示639个独立业务场景"
+  ],
+  "unresolvedBlockers": []
+}

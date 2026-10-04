@@ -1,0 +1,44 @@
+[
+  {
+    "key": "armory_weapon",
+    "prompt": "Use case: stylized-concept. Asset type: transparent equipment slot icon for an original Three Kingdoms chibi idle card game. Subject: a single ancient Chinese short dao sabre, gently curved polished steel blade, jade green grip wrapped in dark leather, small brass guard and vermilion tassel, diagonal full-length silhouette. Premium hand painted 3D cartoon game inventory art, tactile polished material, precise clean edges, strong unmistakable silhouette when reduced to 64 pixels. Centered square composition, fill 82 percent of canvas, soft warm studio light. Genuine transparent background. No person, no text, no watermark, no panel, no circle frame, no rarity aura, no surrounding objects. Match warm brass jade green vermilion palette of game navigation icons.",
+    "source": "/Users/gukepeng/.codex/generated_images/01a0ffa9-8f17-7be2-9930-d060d9475070/exec-34b7ded9-93ed-4e07-8d0f-6accdf7ef036.png",
+    "tool": "built-in image_gen",
+    "runtime": "assets/resources/art/icons/armory_weapon.png"
+  },
+  {
+    "key": "armory_armor",
+    "prompt": "Use case: stylized-concept. Asset type: transparent equipment slot icon for an original Three Kingdoms chibi idle card game. Subject: a single ancient Chinese lamellar cuirass, rows of overlapping dark jade steel plates, restrained brass fasteners, sturdy leather shoulder straps and vermilion belt, front view, no body. Premium hand painted 3D cartoon game inventory art, tactile polished material, precise clean edges, strong unmistakable silhouette when reduced to 64 pixels. Centered square composition, fill 82 percent of canvas, soft warm studio light. Genuine transparent background. No person, no text, no watermark, no panel, no circle frame, no rarity aura, no surrounding objects. Match warm brass jade green vermilion palette of game navigation icons.",
+    "source": "/Users/gukepeng/.codex/generated_images/01a0ffa9-8f17-7be2-9930-d060d9475070/exec-1ee8f984-c86c-4f70-8ced-21dc9b28d35e.png",
+    "tool": "built-in image_gen",
+    "runtime": "assets/resources/art/icons/armory_armor.png"
+  },
+  {
+    "key": "armory_helm",
+    "prompt": "Use case: stylized-concept. Asset type: transparent equipment slot icon for an original Three Kingdoms chibi idle card game. Subject: a single ancient Chinese general helmet, dark jade metal shell, restrained brass brow rim and cheek guards, short vermilion plume, three quarter view, no face. Premium hand painted 3D cartoon game inventory art, tactile polished material, precise clean edges, strong unmistakable silhouette when reduced to 64 pixels. Centered square composition, fill 82 percent of canvas, soft warm studio light. Genuine transparent background. No person, no text, no watermark, no panel, no circle frame, no rarity aura, no surrounding objects. Match warm brass jade green vermilion palette of game navigation icons.",
+    "source": "/Users/gukepeng/.codex/generated_images/01a0ffa9-8f17-7be2-9930-d060d9475070/exec-4bca728c-542b-4b31-82af-41ba8bb3727a.png",
+    "tool": "built-in image_gen",
+    "runtime": "assets/resources/art/icons/armory_helm.png"
+  },
+  {
+    "key": "armory_boots",
+    "prompt": "Use case: stylized-concept. Asset type: transparent equipment slot icon for an original Three Kingdoms chibi idle card game. Subject: a matched pair of ancient Chinese military boots, charcoal leather with jade green cuffs and restrained brass buckles, a small vermilion cord, three quarter view. Premium hand painted 3D cartoon game inventory art, tactile polished material, precise clean edges, strong unmistakable silhouette when reduced to 64 pixels. Centered square composition, fill 82 percent of canvas, soft warm studio light. Genuine transparent background. No person, no text, no watermark, no panel, no circle frame, no rarity aura, no surrounding objects. Match warm brass jade green vermilion palette of game navigation icons.",
+    "source": "/Users/gukepeng/.codex/generated_images/01a0ffa9-8f17-7be2-9930-d060d9475070/exec-1c588f2f-b51b-415e-afa9-6398acd0456f.png",
+    "tool": "built-in image_gen",
+    "runtime": "assets/resources/art/icons/armory_boots.png"
+  },
+  {
+    "key": "armory_jade",
+    "prompt": "Use case: stylized-concept. Asset type: transparent equipment slot icon for an original Three Kingdoms chibi idle card game. Subject: a single ancient Chinese circular jade pendant, translucent pale green carved jade ring, warm brass hanging loop, short vermilion cord tassel, front three quarter view. Premium hand painted 3D cartoon game inventory art, tactile polished material, precise clean edges, strong unmistakable silhouette when reduced to 64 pixels. Centered square composition, fill 82 percent of canvas, soft warm studio light. Genuine transparent background. No person, no text, no watermark, no panel, no circle frame, no rarity aura, no surrounding objects. Match warm brass jade green vermilion palette of game navigation icons.",
+    "source": "/Users/gukepeng/.codex/generated_images/01a0ffa9-8f17-7be2-9930-d060d9475070/exec-5a3b14a2-a60f-4751-86cc-e562a7bcb51c.png",
+    "tool": "built-in image_gen",
+    "runtime": "assets/resources/art/icons/armory_jade.png"
+  },
+  {
+    "key": "armory_seal",
+    "prompt": "Use case: stylized-concept. Asset type: transparent equipment slot icon for an original Three Kingdoms chibi idle card game. Subject: a single ancient Chinese bronze tiger-shaped military tally, elegant compact tiger silhouette with subtle jade green patina and warm brass highlights, short vermilion tie, three quarter view, no readable writing. Premium hand painted 3D cartoon game inventory art, tactile polished material, precise clean edges, strong unmistakable silhouette when reduced to 64 pixels. Centered square composition, fill 82 percent of canvas, soft warm studio light. Genuine transparent background. No person, no text, no watermark, no panel, no circle frame, no rarity aura, no surrounding objects. Match warm brass jade green vermilion palette of game navigation icons.",
+    "source": "/Users/gukepeng/.codex/generated_images/01a0ffa9-8f17-7be2-9930-d060d9475070/exec-76d2a834-8336-41d3-af08-b047eab9dafc.png",
+    "tool": "built-in image_gen",
+    "runtime": "assets/resources/art/icons/armory_seal.png"
+  }
+]

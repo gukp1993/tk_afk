@@ -160,7 +160,7 @@ export class CocosUi {
       tag.addComponent(UITransform).setContentSize(Math.min(w - 14, 130), tagH);
       const tl = tag.addComponent(Label);
       tl.string = '未获得';
-      tl.fontFamily = 'Kaiti SC';
+      tl.fontFamily = 'sans-serif';
       tl.fontSize = Math.round(tagH * 0.62);
       tl.lineHeight = tl.fontSize * 1.2;
       tl.color = palette.muted;
@@ -439,8 +439,10 @@ export class CocosUi {
     node.addComponent(UITransform).setContentSize(w, Math.max(size * 2.4, 46));
     const label = node.addComponent(Label);
     label.string = value;
-    // Match the Canvas edition's Kaiti-first typography on every native page.
-    label.fontFamily = 'Kaiti SC';
+    // Decorative headings use serif; dense copy and values use the platform's legible UI face.
+    const decorative = size >= 28 && !/Count|Value|Power|Exp|Stats|Timer|Price|Balance/.test(name);
+    label.fontFamily = decorative ? 'serif' : 'sans-serif';
+    label.isBold = size >= 28 || (size >= 21 && /Title|Name|Button|Action|NavLabel/.test(name));
     label.fontSize = size;
     label.lineHeight = size * 1.3;
     label.color = color;
@@ -452,7 +454,8 @@ export class CocosUi {
       outline.color = new Color(20, 25, 20, 190);
       outline.width = 1;
     }
-    if (name === 'CityTitle' && value === '挂机定三国' && this.skin(node, 'ui_logo', w, 40, false)) label.enabled = false;
+    if (name === 'CityTitle' && value === '挂机定三国' &&
+      (this.skin(node, 'title_home_v2', w, 52, false) || this.skin(node, 'ui_logo', w, 40, false))) label.enabled = false;
     this.parent.addChild(node);
     this.nodes.set(name, node);
     return node;

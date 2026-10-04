@@ -286,8 +286,8 @@ export function home(ctx: ScreenContext) {
     });
     [['quests','令','每日任务',-289],['bag','囊','背包',289]].forEach(([page,glyph,label,x],i)=>{
       const px=Number(x);
-      U.panel('CityShortcut'+i,px,387,110,101,tone('#e8dcc0'),8,tone('#74684a'));
-      U.text('CityShortcutGlyph'+i,String(glyph),px,407,93,37,tone('#677767'));
+      U.panel('CityShortcut'+i,px,387,110,101,tone('#e8dcc0'),8,tone('#aa9a76'),false);
+      U.seal('CityShortcutGlyph'+i,px,405,48,String(glyph),tone('#526958'),GOLD,GOLD,28,page==='bag'?'nav_bag':'scroll');
       U.text('CityShortcutLabel'+i,String(label),px,366,100,17,INK);
       U.tap('CityShortcutTap'+i,px,387,110,101,()=>ctx.go(page as Page));
     });
@@ -343,9 +343,10 @@ export function home(ctx: ScreenContext) {
     const res:[string,string,number][]=[['铜钱','gold',s.res.gold],['元宝','gem',s.res.gem],['招募令','scroll',s.res.scroll],['精铁','iron',s.res.iron]];
     res.forEach(([label,key,value],i)=>{
       const x=-261+i*174;
-      U.panel('CityRes'+key,x,521,164,44,tone('#ddd0b2'),7,tone('#aa9a76'));
-      U.text('CityResLabel'+key,label,x-36,521,84,17,tone('#766a51'));
-      U.text('CityResValue'+key,fmt.fmtNum(value),x+43,521,79,19,INK);
+      U.panel('CityRes'+key,x,521,164,44,tone('#ddd0b2'),7,tone('#aa9a76'),false);
+      U.seal('CityResIcon'+key,x-55,521,28,label[0],tone('#526958'),GOLD,GOLD,15,key);
+      U.text('CityResLabel'+key,label,x+18,531,105,13,tone('#766a51'));
+      U.text('CityResValue'+key,fmt.fmtNum(value),x+18,513,105,18,INK);
     });
   }
 
@@ -541,28 +542,29 @@ export function dungeonView(ctx: ScreenContext) {
 
 export function bag(ctx: ScreenContext) {
     const s=store.getState(),U=ctx.ui;ctx.title('背包','查看物资 · 了解用途 · 管理装备');
+    // 卡片高度固定，卡内偏移抵消页面纵向适配，长屏也保留图文边距。
+    const cardInsetScale=1280/view.getVisibleSize().height;
     U.panel('BagResourcesTab',-169,385,308,63,palette.gold,9);
     U.text('BagResourcesText','资源道具',-169,385,283,24,INK);
     U.panel('BagArmoryTab',169,385,308,63,tone('#342518'),9,GOLD);
     U.text('BagArmoryText','军械图鉴',169,385,280,23,GOLD);
     U.tap('BagArmoryTap',169,385,308,63,()=>ctx.go('armory'));
     const resources:any[]=[
-      ['钱','铜钱',s.res.gold,'英雄升星与军械部位升星','去培养英雄','heroes'],
-      ['铁','精铁',s.res.iron,'解锁军械图鉴、培养部位','去军械图鉴','armory'],
-      ['宝','元宝',s.res.gem,'召唤英雄、购买集市物资','前往集市','shop'],
-      ['令','招募令',s.res.scroll,'在召唤页面招募新英雄','去召唤英雄','summon'],
-      ['武','演武令',s.res.token,'在集市兑换招募令、自选卡','前往集市','shop'],
-      ['魂','英雄碎片',s.res.shard,'在集市兑换英雄自选卡','前往集市','shop']
+      ['钱','铜钱',s.res.gold,'英雄升星与军械部位升星','去培养英雄','heroes','gold'],
+      ['铁','精铁',s.res.iron,'解锁军械图鉴、培养部位','去军械图鉴','armory','iron'],
+      ['宝','元宝',s.res.gem,'召唤英雄、购买集市物资','前往集市','shop','gem'],
+      ['令','招募令',s.res.scroll,'在召唤页面招募新英雄','去召唤英雄','summon','scroll'],
+      ['武','演武令',s.res.token,'在集市兑换招募令、自选卡','前往集市','shop','token'],
+      ['魂','英雄碎片',s.res.shard,'在集市兑换英雄自选卡','前往集市','shop','shard']
     ];
-    resources.forEach(([glyph,name,n,desc,action,page],i)=>{
+    resources.forEach(([glyph,name,n,desc,action,page,artKey],i)=>{
       const x=i%2?169:-169,y=208-Math.floor(i/2)*210;
-      U.panel('BagCard'+i,x,y,310,193,tone('#302219'),9,tone('#795b34'));
-      U.panel('BagMarkPanel'+i,x-105,y+54,56,56,tone('#443421'),7);
-      U.text('BagMark'+i,glyph,x-105,y+54,46,34,GOLD);
-      U.text('BagCardName'+i,name,x+28,y+66,178,24,LIGHT);
-      U.text('BagCardCount'+i,fmt.fmtNum(n),x+28,y+34,178,28,GOLD);
-      U.text('BagCardDesc'+i,desc,x,y-17,282,19,tone('#ad9977'));
-      U.text('BagCardLink'+i,action+' >',x,y-70,275,18,GOLD);
+      U.panel('BagCard'+i,x,y,310,193,tone('#302a22'),9,tone('#806c49'),false);
+      U.seal('BagMark'+i,x-105,y+54*cardInsetScale,56,glyph,tone('#443421'),GOLD,GOLD,34,artKey);
+      U.text('BagCardName'+i,name,x+28,y+66*cardInsetScale,178,24,LIGHT);
+      U.text('BagCardCount'+i,fmt.fmtNum(n),x+28,y+34*cardInsetScale,178,28,GOLD);
+      U.text('BagCardDesc'+i,desc,x,y-17*cardInsetScale,282,19,tone('#ad9977'));
+      U.text('BagCardLink'+i,action+' >',x,y-70*cardInsetScale,275,18,GOLD);
       U.tap('BagCardTap'+i,x,y,310,193,()=>ctx.go(page));
     });
     // 神兵阁（研讨会十三案二）：通关 160 关解锁后追加第四入口行（行距收紧保 -548 红线）
@@ -573,7 +575,7 @@ export function bag(ctx: ScreenContext) {
     const eStep=relicUnlocked?56:64, eStart=relicUnlocked?-350:-372, eH=relicUnlocked?48:52;
     entries.forEach(([glyph,label,page]:any,i:number)=>{
       const ey=eStart-i*eStep;
-      U.panel('BagEntry'+i,0,ey,682,eH,tone('#312218'),8,tone('#795b34'));
+      U.panel('BagEntry'+i,0,ey,682,eH,tone('#302a22'),8,tone('#806c49'),false);
       U.text('BagEntryGlyph'+i,String(glyph),-290,ey,44,30,GOLD);
       U.text('BagEntryLabel'+i,String(label),-128,ey,400,19,LIGHT);
       U.text('BagEntryGo'+i,'>',290,ey,40,19,GOLD);
@@ -629,6 +631,30 @@ export function quests(ctx: ScreenContext) {
     U.button('QuestBack','返 回',167,-484,315,63,()=>ctx.back('campaign'),palette.paperDark);
 }
 
+// 商品图章与价签共用物资图；自选券保留品质边色并以招募卷轴表示。
+function shopProductMark(V: ScreenContext['ui'], name: string, good: any, y: number) {
+  const give=good.give||{};
+  const key=give.gold?'gold':give.scroll?'scroll':give.shard?'shard':give.token?'token':give.armoryBox?'iron':'scroll';
+  const rarity=give.ssrPick||give.armoryBox===3?4:give.srPick||give.armoryBox===2?3:0;
+  const border=rarity===4?GOLD:rarity===3?tone('#bd91da'):tone('#806c49');
+  V.panel(name+'Frame',-280,y,64,64,tone('#3c352b'),9,border,false);
+  V.seal(name,-280,y,56,good.name[0],tone('#443421'),border,GOLD,28,key);
+}
+
+function shopPrice(V: ScreenContext['ui'], name: string, good: any, y: number, status: string,
+  fill: Color, action: () => void) {
+  V.panel(name,233,y,198,62,fill,8,tone('#a58c5a'),false);
+  const light=fill.r*.299+fill.g*.587+fill.b*.114>145;
+  const color=light?INK:LIGHT;
+  if(status) V.text(name+'Text',status,233,y,182,22,color);
+  else {
+    V.seal(name+'Currency',164,y,28,store.CURRENCY_NAME[good.cur]?.[0]||'币',tone('#443421'),GOLD,GOLD,16,good.cur);
+    V.text(name+'Text',fmt.fmtNum(good.price),251,y+10,137,23,color);
+    V.text(name+'CurrencyName',store.CURRENCY_NAME[good.cur],251,y-15,137,14,color);
+  }
+  V.tap(name+'Touch',233,y,198,62,action);
+}
+
 let shopPickRarity=0;
 export function shop(ctx: ScreenContext) {
     store.checkDailyReset();
@@ -647,38 +673,41 @@ export function shop(ctx: ScreenContext) {
     const roamerBlockH=roamerRows?60+roamerRows*101:0;
     const height=top+443,contentH=Math.max(height,goods.length*101+62+roamerBlockH);
     U.scroll('ShopGoods',0,(top-443)/2,680,height,contentH,(V)=>{
-      let row=0;
+      let cursor=contentH/2;
       if(roamerRows){
-        V.text('RoamerTitle','神秘商人 · 今日限量（跨日换新）',0,contentH/2-roamerBlockH+30,600,22,GOLD);
+        V.text('RoamerTitle','神秘商人 · 今日限量（跨日换新）',0,cursor-27,600,22,GOLD);
+        cursor-=60;
         roamer.goods.forEach((good:any,ri:number)=>{
-          const y=contentH/2-51-row*101;row++;
-          V.panel('RoamerGood'+ri,0,y,662,92,tone('#3a2c17'),8,GOLD);
-          V.text('RoamerName'+ri,good.name,-150,y+19,334,26,LIGHT);
-          V.text('RoamerLimit'+ri,good.bought?'今日已购 · 明日换新':'限量 1 件 · 今日有效',-187,y-21,300,18,good.bought?tone('#6f8a5f'):tone('#d9a94e'));
-          V.button('RoamerBuy'+ri,good.bought?'已购':`${fmt.fmtNum(good.price)} ${store.CURRENCY_NAME[good.cur]}`,233,y,198,62,()=>{
+          const y=cursor-51;cursor-=101;
+          V.panel('RoamerGood'+ri,0,y,662,92,tone('#343026'),8,tone('#a58c5a'),false);
+          shopProductMark(V,'RoamerIcon'+ri,good,y);
+          V.text('RoamerName'+ri,good.name,-54,y+18,332,24,LIGHT);
+          V.text('RoamerLimit'+ri,good.bought?'今日已购 · 明日换新':'限量 1 件 · 今日有效',-54,y-20,332,16,good.bought?tone('#92ad7c'):tone('#d9bd7b'));
+          shopPrice(V,'RoamerBuy'+ri,good,y,good.bought?'已购':'',good.bought||s.res[good.cur]<good.price?tone('#423a2d'):palette.red,()=>{
             if(good.bought)return;
             ctx.confirm('确认购买',`向神秘商人购买 ${good.name}；消耗 ${fmt.fmtNum(good.price)} ${store.CURRENCY_NAME[good.cur]}。`,()=>{
               ctx.tell(store.buyRoamer(good.id),`购得 ${good.name}`);
             });
-          },good.bought||s.res[good.cur]<good.price?tone('#423022'):palette.red);
+          });
         });
       }
       goods.forEach((good:any,i:number)=>{
-        const y=contentH/2-51-(row+i)*101,bought=s.buyLog.buys[good.id]||0,sold=bought>=good.limit,afford=s.res[good.cur]>=good.price;
-        V.panel('ShopGood'+i,0,y,662,92,tone('#312218'),8,tone('#795b34'));
-        V.text('ShopName'+i,good.name,-150,y+19,334,26,good.give.ssrPick?GOLD:LIGHT);
-        V.text('ShopLimit'+i,`限购 ${bought}/${good.limit}`,-187,y-21,249,18,tone('#ad9977'));
-        if(good.give.srPick||good.give.ssrPick)V.text('ShopChoiceTag'+i,'自选',58,y+19,77,17,GOLD);
-        V.button('ShopBuy'+i,sold?'售罄':`${fmt.fmtNum(good.price)} ${store.CURRENCY_NAME[good.cur]}`,233,y,198,62,()=>{
+        const y=cursor-51-i*101,bought=s.buyLog.buys[good.id]||0,sold=bought>=good.limit,afford=s.res[good.cur]>=good.price;
+        V.panel('ShopGood'+i,0,y,662,92,tone('#302a22'),8,tone('#806c49'),false);
+        shopProductMark(V,'ShopIcon'+i,good,y);
+        V.text('ShopName'+i,good.name,-54,y+18,332,24,good.give.ssrPick?GOLD:LIGHT);
+        const choice=good.give.srPick||good.give.ssrPick?' · 自选':'';
+        V.text('ShopLimit'+i,`限购 ${bought}/${good.limit}${choice}${!sold&&!afford?' · 余额不足':''}`,-54,y-20,332,16,tone('#c1ae87'));
+        shopPrice(V,'ShopBuy'+i,good,y,sold?'售罄':'',sold||!afford?tone('#423a2d'):palette.gold,()=>{
           if(sold||!afford)return;
           ctx.confirm('确认兑换',`购买 ${good.name}；消耗 ${fmt.fmtNum(good.price)} ${store.CURRENCY_NAME[good.cur]}。持有 ${fmt.fmtNum(s.res[good.cur])} → 兑换后 ${fmt.fmtNum(s.res[good.cur]-good.price)}`,()=>{
             const r=store.buyGood(good.id);
             if(r.ok&&(good.give.srPick||good.give.ssrPick))shopPickRarity=good.give.ssrPick?4:3;
             ctx.tell(r,`购得 ${good.name}`);
           });
-        },sold||!afford?tone('#423022'):palette.gold);
+        });
       });
-      V.text('ShopTip','满星后的同名卡可兑换碎片；关闭自选窗口不会消耗自选券。',0,contentH/2-51-(row+goods.length)*101-16,645,16,tone('#ad9977'));
+      V.text('ShopTip','满星后的同名卡可兑换碎片；关闭自选窗口不会消耗自选券。',0,cursor-goods.length*101-25,645,16,tone('#ad9977'));
     });
     U.button('ShopBack','返 回',0,-493,298,56,()=>{shopPickRarity=0;ctx.back('journey');},palette.paperDark);
     if(shopPickRarity){

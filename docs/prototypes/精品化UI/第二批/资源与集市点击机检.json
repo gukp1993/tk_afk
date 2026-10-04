@@ -1,0 +1,120 @@
+{
+  "results": [
+    {
+      "case": "home four currency icons",
+      "ok": true,
+      "values": [
+        "1.2亿",
+        "5555",
+        "12",
+        "2.2万"
+      ]
+    },
+    {
+      "case": "home shortcuts artwork",
+      "ok": true
+    },
+    {
+      "case": "home shortcut 0",
+      "ok": true,
+      "page": "quests"
+    },
+    {
+      "case": "home shortcut 1",
+      "ok": true,
+      "page": "bag"
+    },
+    {
+      "case": "bag six currency icons",
+      "ok": true
+    },
+    {
+      "case": "bag card 0",
+      "ok": true,
+      "page": "heroes"
+    },
+    {
+      "case": "bag card 1",
+      "ok": true,
+      "page": "armory"
+    },
+    {
+      "case": "bag card 2",
+      "ok": true,
+      "page": "shop"
+    },
+    {
+      "case": "bag card 3",
+      "ok": true,
+      "page": "summon"
+    },
+    {
+      "case": "bag card 4",
+      "ok": true,
+      "page": "shop"
+    },
+    {
+      "case": "bag card 5",
+      "ok": true,
+      "page": "shop"
+    },
+    {
+      "case": "bag armory tab",
+      "ok": true
+    },
+    {
+      "case": "shop seven product icons and currency tags",
+      "ok": true,
+      "regularCount": 5,
+      "merchantCount": 2
+    },
+    {
+      "case": "merchant heading above merchant rows",
+      "ok": true,
+      "gap": 38
+    },
+    {
+      "case": "purchase opens confirmation",
+      "ok": true
+    },
+    {
+      "case": "purchase changes balance and displays sold",
+      "ok": true,
+      "gem": 5550,
+      "gold": 123556789
+    },
+    {
+      "case": "sold click does not buy",
+      "ok": true
+    },
+    {
+      "case": "insufficient balance no buy and readable state",
+      "ok": true
+    },
+    {
+      "case": "merchant purchase confirmation",
+      "ok": true
+    },
+    {
+      "case": "merchant purchase updates label",
+      "ok": true
+    },
+    {
+      "case": "SR self choice after buying",
+      "ok": true
+    },
+    {
+      "case": "choice close preserves voucher",
+      "ok": true
+    },
+    {
+      "case": "choice reopens",
+      "ok": true
+    },
+    {
+      "case": "choice consumes one voucher",
+      "ok": true
+    }
+  ],
+  "errors": []
+}
