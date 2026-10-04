@@ -1,0 +1,42 @@
+{
+  "found": {
+    "seed": 4,
+    "time": 23.066666666666972,
+    "caster": "huangzhong",
+    "uid": "A0",
+    "targets": [
+      "B0",
+      "A3",
+      "A4"
+    ],
+    "real": [
+      "B0"
+    ],
+    "segment": [
+      {
+        "e": "ult",
+        "uid": "A0",
+        "skill": "百步穿杨",
+        "scope": "single"
+      },
+      {
+        "e": "hit",
+        "uid": "B0",
+        "src": "A0",
+        "amount": 1851,
+        "crit": false,
+        "kind": "ult"
+      },
+      {
+        "e": "heal",
+        "uid": "A3",
+        "amount": 168
+      },
+      {
+        "e": "heal",
+        "uid": "A4",
+        "amount": 168
+      }
+    ]
+  }
+}

@@ -12,10 +12,12 @@ import { SpriteFrame, assetManager, resources } from 'cc';
 const frames = new Map<string, SpriteFrame>();
 let iconsReady = false;
 let heroesReady = false;
+let scenesReady = false;
 
 export const ArtService = {
   get ready() { return heroesReady; },
   get iconsReady() { return iconsReady; },
+  get scenesReady() { return scenesReady; },
   /** 查已加载立绘/图标；未加载或不存在返回 null（调用方回退占位）。 */
   frame(key: string): SpriteFrame | null { return frames.get(key) || null; },
   has(key: string) { return frames.has(key); },
@@ -30,19 +32,39 @@ export const ArtService = {
       frames.set(f.name, f);
     });
   },
-  /** 两段加载：图标随主包立即可载；立绘走分包 bundle。每段完成回调一次（驱动菜单页重绘换装）。 */
-  preload(done?: (n: number) => void) {
+  /** 场景优先：首屏等待场景与界面图；武将立绘继续后台载入，避免旧地图闪现。 */
+  preload(done?: (n: number) => void, firstScreenReady?: () => void) {
+    let announced = false;
+    const checkFirstScreen = () => {
+      if (!announced && scenesReady && iconsReady) {
+        announced = true;
+        firstScreenReady?.();
+      }
+    };
     resources.loadDir('art', SpriteFrame, (err, out) => {
       this.collect(out as SpriteFrame[]);
       iconsReady = true;
+      checkFirstScreen();
       if (done) done(frames.size);
     });
     assetManager.loadBundle('art-heroes', (bErr, bundle) => {
-      if (bErr || !bundle) { heroesReady = true; if (done) done(frames.size); return; }
-      bundle.loadDir('', SpriteFrame, (lErr, out) => {
-        this.collect(out as SpriteFrame[]);
-        heroesReady = true;
+      if (bErr || !bundle) {
+        scenesReady = heroesReady = true;
+        checkFirstScreen();
         if (done) done(frames.size);
+        return;
+      }
+      bundle.loadDir('scenes', SpriteFrame, (sceneErr, scenes) => {
+        this.collect(scenes as SpriteFrame[]);
+        scenesReady = true;
+        checkFirstScreen();
+        if (done) done(frames.size);
+        // 已载场景由资源缓存复用；其余立绘和品牌题字不阻塞首屏地图。
+        bundle.loadDir('', SpriteFrame, (lErr, out) => {
+          this.collect(out as SpriteFrame[]);
+          heroesReady = true;
+          if (done) done(frames.size);
+        });
       });
     });
   }

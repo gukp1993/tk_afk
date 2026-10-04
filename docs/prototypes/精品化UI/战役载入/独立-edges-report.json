@@ -1,0 +1,31 @@
+{
+  "suite": "edges",
+  "passed": 43,
+  "rows": [
+    {
+      "status": "fulfilled",
+      "name": "failure"
+    },
+    {
+      "status": "fulfilled",
+      "name": "icons-failure"
+    },
+    {
+      "status": "fulfilled",
+      "name": "skip"
+    },
+    {
+      "status": "fulfilled",
+      "name": "skip-target"
+    },
+    {
+      "status": "fulfilled",
+      "name": "transient"
+    },
+    {
+      "status": "fulfilled",
+      "name": "destroy"
+    }
+  ],
+  "failures": 0
+}

@@ -1,0 +1,1470 @@
+{
+  "results": [
+    {
+      "case": "six styles collected from actual rules",
+      "pass": true,
+      "keys": [
+        "attack-magic",
+        "attack-melee",
+        "attack-ranged",
+        "ult-magic",
+        "ult-melee",
+        "ult-ranged"
+      ]
+    },
+    {
+      "case": "attack-melee finite lifetime",
+      "pass": true,
+      "finalTime": 0.36
+    },
+    {
+      "case": "attack-melee moving release then impact",
+      "pass": true,
+      "times": [
+        0.05,
+        0.13,
+        0.26,
+        0.36
+      ]
+    },
+    {
+      "case": "attack-ranged finite lifetime",
+      "pass": true,
+      "finalTime": 0.36
+    },
+    {
+      "case": "attack-ranged moving release then impact",
+      "pass": true,
+      "times": [
+        0.05,
+        0.13,
+        0.26,
+        0.36
+      ]
+    },
+    {
+      "case": "attack-magic finite lifetime",
+      "pass": true,
+      "finalTime": 0.36
+    },
+    {
+      "case": "attack-magic moving release then impact",
+      "pass": true,
+      "times": [
+        0.05,
+        0.13,
+        0.26,
+        0.36
+      ]
+    },
+    {
+      "case": "ult-melee banner clear of every name HP and energy bar",
+      "pass": true,
+      "actual": {
+        "count": 1,
+        "overlap": []
+      }
+    },
+    {
+      "case": "ult-melee damage begins at impact",
+      "pass": true,
+      "damageCounts": [
+        0,
+        0,
+        3,
+        3
+      ]
+    },
+    {
+      "case": "ult-melee finite lifetime",
+      "pass": true,
+      "finalTime": 0.82
+    },
+    {
+      "case": "ult-melee charge release impact stages",
+      "pass": true,
+      "times": [
+        0.08,
+        0.31,
+        0.6,
+        0.82
+      ]
+    },
+    {
+      "case": "ult-ranged banner clear of every name HP and energy bar",
+      "pass": true,
+      "actual": {
+        "count": 1,
+        "overlap": []
+      }
+    },
+    {
+      "case": "ult-ranged damage begins at impact",
+      "pass": true,
+      "damageCounts": [
+        0,
+        0,
+        1,
+        1
+      ]
+    },
+    {
+      "case": "ult-ranged finite lifetime",
+      "pass": true,
+      "finalTime": 0.82
+    },
+    {
+      "case": "ult-ranged charge release impact stages",
+      "pass": true,
+      "times": [
+        0.08,
+        0.31,
+        0.6,
+        0.82
+      ]
+    },
+    {
+      "case": "ult-magic banner clear of every name HP and energy bar",
+      "pass": true,
+      "actual": {
+        "count": 1,
+        "overlap": []
+      }
+    },
+    {
+      "case": "ult-magic damage begins at impact",
+      "pass": true,
+      "damageCounts": [
+        0,
+        0,
+        5,
+        5
+      ]
+    },
+    {
+      "case": "ult-magic finite lifetime",
+      "pass": true,
+      "finalTime": 0.82
+    },
+    {
+      "case": "ult-magic charge release impact stages",
+      "pass": true,
+      "times": [
+        0.08,
+        0.31,
+        0.6,
+        0.82
+      ]
+    },
+    {
+      "case": "unknown class uses pulse fallback",
+      "pass": true
+    },
+    {
+      "case": "phase clock and expiration speed 1",
+      "pass": true,
+      "actual": {
+        "elapsed": 0.1,
+        "remaining": 0
+      }
+    },
+    {
+      "case": "phase clock and expiration speed 2",
+      "pass": true,
+      "actual": {
+        "elapsed": 0.2,
+        "remaining": 0
+      }
+    },
+    {
+      "case": "phase clock and expiration speed 4",
+      "pass": true,
+      "actual": {
+        "elapsed": 0.4,
+        "remaining": 0
+      }
+    },
+    {
+      "case": "skill/attack/node budgets bounded",
+      "pass": true,
+      "actual": {
+        "skills": 3,
+        "attacks": 1,
+        "pending": 9,
+        "banners": 1,
+        "nodes": [
+          3,
+          11,
+          11,
+          5
+        ]
+      }
+    },
+    {
+      "case": "explicit reset clears every overlay",
+      "pass": true
+    },
+    {
+      "case": "HOT heal never becomes Huang Zhong arrow target",
+      "pass": true,
+      "actual": {
+        "time": 23.066666666666972,
+        "events": [
+          {
+            "e": "ult",
+            "uid": "A0",
+            "skill": "百步穿杨",
+            "scope": "single",
+            "cast": "A0"
+          },
+          {
+            "e": "hit",
+            "uid": "B0",
+            "src": "A0",
+            "amount": 1851,
+            "crit": false,
+            "kind": "ult",
+            "cast": "A0"
+          },
+          {
+            "e": "heal",
+            "uid": "A3",
+            "amount": 168
+          },
+          {
+            "e": "heal",
+            "uid": "A4",
+            "amount": 168
+          }
+        ],
+        "lights": [
+          {
+            "uid": "A0",
+            "targetNodes": [
+              "FighterGlyph5"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "case": "real direct healing waits for impact and uses green + text",
+      "pass": true,
+      "actual": {
+        "before": 0,
+        "pending": 0,
+        "labels": [
+          {
+            "name": "BfxHeal",
+            "text": "+1158",
+            "color": {
+              "r": 143,
+              "g": 229,
+              "b": 184
+            }
+          },
+          {
+            "name": "BfxHeal",
+            "text": "+1158",
+            "color": {
+              "r": 143,
+              "g": 229,
+              "b": 184
+            }
+          },
+          {
+            "name": "BfxHeal",
+            "text": "+1158",
+            "color": {
+              "r": 143,
+              "g": 229,
+              "b": 184
+            }
+          },
+          {
+            "name": "BfxHeal",
+            "text": "+1158",
+            "color": {
+              "r": 143,
+              "g": 229,
+              "b": 184
+            }
+          },
+          {
+            "name": "BfxHeal",
+            "text": "+1158",
+            "color": {
+              "r": 143,
+              "g": 229,
+              "b": 184
+            }
+          }
+        ]
+      }
+    },
+    {
+      "case": "true lethal ult follows agreed death queue cleanup",
+      "pass": true,
+      "actual": {
+        "hp": 5000,
+        "seed": 18,
+        "time": 10.599999999999973,
+        "victim": "B2",
+        "events": [
+          {
+            "e": "ult",
+            "uid": "A4",
+            "skill": "八阵图",
+            "scope": "all",
+            "cast": "A4"
+          },
+          {
+            "e": "hit",
+            "uid": "B2",
+            "src": "A4",
+            "amount": 2940,
+            "crit": false,
+            "kind": "ult",
+            "cast": "A4"
+          },
+          {
+            "e": "death",
+            "uid": "B2",
+            "cast": "A4"
+          },
+          {
+            "e": "end",
+            "winner": "A",
+            "duration": 10.599999999999973,
+            "cast": "A4"
+          }
+        ],
+        "victimPending": 0,
+        "after": 0
+      }
+    },
+    {
+      "case": "exact impact/number boundary at speed 1",
+      "pass": true,
+      "actual": {
+        "before": {
+          "numbers": 0,
+          "pending": 1,
+          "impact": false
+        },
+        "after": {
+          "numbers": 1,
+          "pending": 0,
+          "impact": true
+        }
+      }
+    },
+    {
+      "case": "exact impact/number boundary at speed 2",
+      "pass": true,
+      "actual": {
+        "before": {
+          "numbers": 0,
+          "pending": 1,
+          "impact": false
+        },
+        "after": {
+          "numbers": 1,
+          "pending": 0,
+          "impact": true
+        }
+      }
+    },
+    {
+      "case": "exact impact/number boundary at speed 4",
+      "pass": true,
+      "actual": {
+        "before": {
+          "numbers": 0,
+          "pending": 1,
+          "impact": false
+        },
+        "after": {
+          "numbers": 1,
+          "pending": 0,
+          "impact": true
+        }
+      }
+    },
+    {
+      "case": "slide-in banner clear at viewport 1280",
+      "pass": true,
+      "actual": {
+        "count": 1,
+        "position": {
+          "x": 0,
+          "y": 22,
+          "z": 0
+        },
+        "overlap": [],
+        "pending": 1
+      }
+    },
+    {
+      "case": "slide-in banner clear at viewport 1600",
+      "pass": true,
+      "actual": {
+        "count": 1,
+        "position": {
+          "x": 0,
+          "y": 24,
+          "z": 0
+        },
+        "overlap": [],
+        "pending": 1
+      }
+    },
+    {
+      "case": "nine portraits + missing-art soldier fallback",
+      "pass": true,
+      "actual": {
+        "count": 10,
+        "portraitCount": 9,
+        "soldierId": "soldier_huangjin",
+        "soldierGlyph": true,
+        "soldierPic": false
+      }
+    },
+    {
+      "case": "Web fps >=55 at speed 1",
+      "pass": true,
+      "actual": {
+        "speed": 1,
+        "frames": 217,
+        "durationMs": 3599.7999999999993,
+        "fps": 60.00333351852882,
+        "battlePage": true
+      }
+    },
+    {
+      "case": "speed button cycles 1 -> 2",
+      "pass": true,
+      "actual": 2
+    },
+    {
+      "case": "Web fps >=55 at speed 2",
+      "pass": true,
+      "actual": {
+        "speed": 2,
+        "frames": 217,
+        "durationMs": 3599.7999999999993,
+        "fps": 60.00333351852882,
+        "battlePage": true
+      }
+    },
+    {
+      "case": "speed button cycles 2 -> 4",
+      "pass": true,
+      "actual": 4
+    },
+    {
+      "case": "Web fps >=55 at speed 4",
+      "pass": true,
+      "actual": {
+        "speed": 4,
+        "frames": 217,
+        "durationMs": 3599.7999999999993,
+        "fps": 60.00333351852882,
+        "battlePage": true
+      }
+    },
+    {
+      "case": "attack/hit portraits stay synchronized with Fighter roots",
+      "pass": true,
+      "actual": {
+        "frames": 737,
+        "lunge": 3041,
+        "shake": 1926,
+        "ultLunge": 633,
+        "failures": [],
+        "events": {
+          "act": 3611,
+          "hit": 9840,
+          "ult": 575,
+          "heal": 407,
+          "death": 2,
+          "end": 1,
+          "cc": 153
+        },
+        "peakSkills": 4,
+        "peakAttacks": 7
+      }
+    },
+    {
+      "case": "output comparison stays clear of ten portraits and team/versus labels",
+      "pass": true,
+      "actual": {
+        "textY": -42,
+        "barY": -62,
+        "overlaps": [],
+        "textBarOverlap": false
+      }
+    },
+    {
+      "case": "speed button cycles 4 -> 1",
+      "pass": true
+    },
+    {
+      "case": "soldier fixture skip -> result clears battle/fx",
+      "pass": true
+    },
+    {
+      "case": "second result retry starts",
+      "pass": true
+    },
+    {
+      "case": "leaving live battle clears overlays",
+      "pass": true
+    },
+    {
+      "case": "zero pageerror",
+      "pass": true,
+      "actual": []
+    }
+  ],
+  "errors": [],
+  "consoleErrors": [
+    "Failed to load resource: the server responded with a status of 404 (File not found)"
+  ],
+  "httpErrors": [],
+  "poseChecks": {
+    "frames": 782,
+    "lunge": 3117,
+    "shake": 1964,
+    "ultLunge": 641,
+    "failures": [],
+    "events": {
+      "act": 3681,
+      "hit": 10024,
+      "ult": 583,
+      "heal": 412,
+      "death": 2,
+      "end": 1,
+      "cc": 155
+    },
+    "peakSkills": 4,
+    "peakAttacks": 7
+  },
+  "isolatedContext": true,
+  "testDoesNotEditProductionCode": true,
+  "animationEvidence": "24 timed rendered frames from six real rule event sequences, 3 pulse fallback frames plus live WebM",
+  "phaseEvidence": [
+    {
+      "key": "attack-melee",
+      "time": 0.05,
+      "state": [
+        {
+          "uid": "A1",
+          "style": "melee",
+          "ultimate": false,
+          "elapsed": 0.05,
+          "source": [
+            0,
+            -200.08333333333334
+          ],
+          "charge": null,
+          "targets": [
+            {
+              "release": {
+                "active": true,
+                "opacity": 209,
+                "pos": [
+                  -104.09786256268374,
+                  12.842371107508967
+                ],
+                "scale": 1
+              },
+              "impact": {
+                "active": false,
+                "opacity": 245,
+                "scale": 0.45
+              }
+            }
+          ]
+        }
+      ],
+      "damageCount": 1
+    },
+    {
+      "key": "attack-melee",
+      "time": 0.13,
+      "state": [
+        {
+          "uid": "A1",
+          "style": "melee",
+          "ultimate": false,
+          "elapsed": 0.13,
+          "source": [
+            0,
+            -196.04166666666666
+          ],
+          "charge": null,
+          "targets": [
+            {
+              "release": {
+                "active": true,
+                "opacity": 191,
+                "pos": [
+                  -196.01289301489007,
+                  210.96902081404178
+                ],
+                "scale": 1
+              },
+              "impact": {
+                "active": false,
+                "opacity": 245,
+                "scale": 0.45
+              }
+            }
+          ]
+        }
+      ],
+      "damageCount": 1
+    },
+    {
+      "key": "attack-melee",
+      "time": 0.26,
+      "state": [
+        {
+          "uid": "A1",
+          "style": "melee",
+          "ultimate": false,
+          "elapsed": 0.26,
+          "source": [
+            0,
+            -203.83333333333334
+          ],
+          "charge": null,
+          "targets": [
+            {
+              "release": {
+                "active": false,
+                "opacity": 180,
+                "pos": [
+                  -215,
+                  245.00000000000003
+                ],
+                "scale": 1
+              },
+              "impact": {
+                "active": true,
+                "opacity": 122,
+                "scale": 0.9375000406249976
+              }
+            }
+          ]
+        }
+      ],
+      "damageCount": 1
+    },
+    {
+      "key": "attack-melee",
+      "time": 0.36,
+      "state": [],
+      "damageCount": 1
+    },
+    {
+      "key": "attack-ranged",
+      "time": 0.05,
+      "state": [
+        {
+          "uid": "B4",
+          "style": "ranged",
+          "ultimate": false,
+          "elapsed": 0.05,
+          "source": [
+            114,
+            472.0833333333333
+          ],
+          "charge": null,
+          "targets": [
+            {
+              "release": {
+                "active": true,
+                "opacity": 209,
+                "pos": [
+                  49.94496601917538,
+                  228.44902534722218
+                ],
+                "scale": 1
+              },
+              "impact": {
+                "active": false,
+                "opacity": 245,
+                "scale": 0.45
+              }
+            }
+          ]
+        }
+      ],
+      "damageCount": 1
+    },
+    {
+      "key": "attack-ranged",
+      "time": 0.13,
+      "state": [
+        {
+          "uid": "B4",
+          "style": "ranged",
+          "ultimate": false,
+          "elapsed": 0.13,
+          "source": [
+            114,
+            468.0416666666667
+          ],
+          "charge": null,
+          "targets": [
+            {
+              "release": {
+                "active": true,
+                "opacity": 191,
+                "pos": [
+                  -48.79029081412949,
+                  -162.48847442824075
+                ],
+                "scale": 1
+              },
+              "impact": {
+                "active": false,
+                "opacity": 245,
+                "scale": 0.45
+              }
+            }
+          ]
+        }
+      ],
+      "damageCount": 1
+    },
+    {
+      "key": "attack-ranged",
+      "time": 0.26,
+      "state": [
+        {
+          "uid": "B4",
+          "style": "ranged",
+          "ultimate": false,
+          "elapsed": 0.26,
+          "source": [
+            114,
+            475.8333333333333
+          ],
+          "charge": null,
+          "targets": [
+            {
+              "release": {
+                "active": false,
+                "opacity": 180,
+                "pos": [
+                  -114,
+                  -404.99999999999994
+                ],
+                "scale": 1
+              },
+              "impact": {
+                "active": true,
+                "opacity": 122,
+                "scale": 0.9375000406249976
+              }
+            }
+          ]
+        }
+      ],
+      "damageCount": 1
+    },
+    {
+      "key": "attack-ranged",
+      "time": 0.36,
+      "state": [],
+      "damageCount": 1
+    },
+    {
+      "key": "attack-magic",
+      "time": 0.05,
+      "state": [
+        {
+          "uid": "B3",
+          "style": "magic",
+          "ultimate": false,
+          "elapsed": 0.05,
+          "source": [
+            -114,
+            472.0833333333333
+          ],
+          "charge": null,
+          "targets": [
+            {
+              "release": {
+                "active": true,
+                "opacity": 209,
+                "pos": [
+                  -114.7216879808246,
+                  228.44902534722218
+                ],
+                "scale": 1
+              },
+              "impact": {
+                "active": false,
+                "opacity": 245,
+                "scale": 0.45
+              }
+            }
+          ]
+        }
+      ],
+      "damageCount": 1
+    },
+    {
+      "key": "attack-magic",
+      "time": 0.13,
+      "state": [
+        {
+          "uid": "B3",
+          "style": "magic",
+          "ultimate": false,
+          "elapsed": 0.13,
+          "source": [
+            -114,
+            468.0416666666667
+          ],
+          "charge": null,
+          "targets": [
+            {
+              "release": {
+                "active": true,
+                "opacity": 191,
+                "pos": [
+                  -112.12361148079614,
+                  -162.48847442824075
+                ],
+                "scale": 1
+              },
+              "impact": {
+                "active": false,
+                "opacity": 245,
+                "scale": 0.45
+              }
+            }
+          ]
+        }
+      ],
+      "damageCount": 1
+    },
+    {
+      "key": "attack-magic",
+      "time": 0.26,
+      "state": [
+        {
+          "uid": "B3",
+          "style": "magic",
+          "ultimate": false,
+          "elapsed": 0.26,
+          "source": [
+            -114,
+            475.8333333333333
+          ],
+          "charge": null,
+          "targets": [
+            {
+              "release": {
+                "active": false,
+                "opacity": 180,
+                "pos": [
+                  -114,
+                  -404.99999999999994
+                ],
+                "scale": 1
+              },
+              "impact": {
+                "active": true,
+                "opacity": 122,
+                "scale": 0.9375000406249976
+              }
+            }
+          ]
+        }
+      ],
+      "damageCount": 1
+    },
+    {
+      "key": "attack-magic",
+      "time": 0.36,
+      "state": [],
+      "damageCount": 1
+    },
+    {
+      "key": "ult-melee",
+      "time": 0.08,
+      "state": [
+        {
+          "uid": "A1",
+          "style": "melee",
+          "ultimate": true,
+          "elapsed": 0.08,
+          "source": [
+            0,
+            -195.55555555555554
+          ],
+          "charge": {
+            "active": true,
+            "opacity": 158,
+            "scale": 0.832
+          },
+          "targets": [
+            {
+              "release": {
+                "active": false,
+                "opacity": 220,
+                "pos": [
+                  0,
+                  -195.55555555555554
+                ],
+                "scale": 0.7
+              },
+              "impact": {
+                "active": false,
+                "opacity": 245,
+                "scale": 0.45
+              }
+            },
+            {
+              "release": {
+                "active": false,
+                "opacity": 220,
+                "pos": [
+                  0,
+                  -195.55555555555554
+                ],
+                "scale": 0.7
+              },
+              "impact": {
+                "active": false,
+                "opacity": 245,
+                "scale": 0.45
+              }
+            },
+            {
+              "release": {
+                "active": false,
+                "opacity": 220,
+                "pos": [
+                  0,
+                  -195.55555555555554
+                ],
+                "scale": 0.7
+              },
+              "impact": {
+                "active": false,
+                "opacity": 245,
+                "scale": 0.45
+              }
+            }
+          ]
+        }
+      ],
+      "damageCount": 0
+    },
+    {
+      "key": "ult-melee",
+      "time": 0.31,
+      "state": [
+        {
+          "uid": "A1",
+          "style": "melee",
+          "ultimate": true,
+          "elapsed": 0.31,
+          "source": [
+            0,
+            -195.94140625
+          ],
+          "charge": {
+            "active": false,
+            "opacity": 230,
+            "scale": 1
+          },
+          "targets": [
+            {
+              "release": {
+                "active": true,
+                "opacity": 204,
+                "pos": [
+                  -135.74618279336707,
+                  82.45911809407824
+                ],
+                "scale": 0.9831650102096756
+              },
+              "impact": {
+                "active": false,
+                "opacity": 245,
+                "scale": 0.45
+              }
+            },
+            {
+              "release": {
+                "active": true,
+                "opacity": 204,
+                "pos": [
+                  0,
+                  82.45911809407824
+                ],
+                "scale": 0.9831650102096756
+              },
+              "impact": {
+                "active": false,
+                "opacity": 245,
+                "scale": 0.45
+              }
+            },
+            {
+              "release": {
+                "active": true,
+                "opacity": 204,
+                "pos": [
+                  135.74618279336707,
+                  82.45911809407824
+                ],
+                "scale": 0.9831650102096756
+              },
+              "impact": {
+                "active": false,
+                "opacity": 245,
+                "scale": 0.45
+              }
+            }
+          ]
+        }
+      ],
+      "damageCount": 0
+    },
+    {
+      "key": "ult-melee",
+      "time": 0.6,
+      "state": [
+        {
+          "uid": "A1",
+          "style": "melee",
+          "ultimate": true,
+          "elapsed": 0.6,
+          "source": [
+            0,
+            -208
+          ],
+          "charge": {
+            "active": false,
+            "opacity": 230,
+            "scale": 1
+          },
+          "targets": [
+            {
+              "release": {
+                "active": false,
+                "opacity": 180,
+                "pos": [
+                  -215,
+                  245
+                ],
+                "scale": 0.7
+              },
+              "impact": {
+                "active": true,
+                "opacity": 153,
+                "scale": 0.9984375351562489
+              }
+            },
+            {
+              "release": {
+                "active": false,
+                "opacity": 180,
+                "pos": [
+                  0,
+                  245
+                ],
+                "scale": 0.7
+              },
+              "impact": {
+                "active": true,
+                "opacity": 153,
+                "scale": 0.9984375351562489
+              }
+            },
+            {
+              "release": {
+                "active": false,
+                "opacity": 180,
+                "pos": [
+                  215,
+                  245
+                ],
+                "scale": 0.7
+              },
+              "impact": {
+                "active": true,
+                "opacity": 153,
+                "scale": 0.9984375351562489
+              }
+            }
+          ]
+        }
+      ],
+      "damageCount": 3
+    },
+    {
+      "key": "ult-melee",
+      "time": 0.82,
+      "state": [],
+      "damageCount": 3
+    },
+    {
+      "key": "ult-ranged",
+      "time": 0.08,
+      "state": [
+        {
+          "uid": "A3",
+          "style": "ranged",
+          "ultimate": true,
+          "elapsed": 0.08,
+          "source": [
+            -114,
+            -392.55555555555554
+          ],
+          "charge": {
+            "active": true,
+            "opacity": 158,
+            "scale": 0.832
+          },
+          "targets": [
+            {
+              "release": {
+                "active": false,
+                "opacity": 220,
+                "pos": [
+                  -114,
+                  -392.55555555555554
+                ],
+                "scale": 0.7
+              },
+              "impact": {
+                "active": false,
+                "opacity": 245,
+                "scale": 0.45
+              }
+            }
+          ]
+        }
+      ],
+      "damageCount": 0
+    },
+    {
+      "key": "ult-ranged",
+      "time": 0.31,
+      "state": [
+        {
+          "uid": "A3",
+          "style": "ranged",
+          "ultimate": true,
+          "elapsed": 0.31,
+          "source": [
+            -114,
+            -392.94140625
+          ],
+          "charge": {
+            "active": false,
+            "opacity": 230,
+            "scale": 1
+          },
+          "targets": [
+            {
+              "release": {
+                "active": true,
+                "opacity": 204,
+                "pos": [
+                  -153.6785750357143,
+                  -142.32154529673554
+                ],
+                "scale": 0.9831650102096756
+              },
+              "impact": {
+                "active": false,
+                "opacity": 245,
+                "scale": 0.45
+              }
+            }
+          ]
+        }
+      ],
+      "damageCount": 0
+    },
+    {
+      "key": "ult-ranged",
+      "time": 0.6,
+      "state": [
+        {
+          "uid": "A3",
+          "style": "ranged",
+          "ultimate": true,
+          "elapsed": 0.6,
+          "source": [
+            -114,
+            -405
+          ],
+          "charge": {
+            "active": false,
+            "opacity": 230,
+            "scale": 1
+          },
+          "targets": [
+            {
+              "release": {
+                "active": false,
+                "opacity": 180,
+                "pos": [
+                  -215,
+                  245
+                ],
+                "scale": 0.7
+              },
+              "impact": {
+                "active": true,
+                "opacity": 153,
+                "scale": 0.9984375351562489
+              }
+            }
+          ]
+        }
+      ],
+      "damageCount": 1
+    },
+    {
+      "key": "ult-ranged",
+      "time": 0.82,
+      "state": [],
+      "damageCount": 1
+    },
+    {
+      "key": "ult-magic",
+      "time": 0.08,
+      "state": [
+        {
+          "uid": "B3",
+          "style": "magic",
+          "ultimate": true,
+          "elapsed": 0.08,
+          "source": [
+            -114,
+            467.55555555555554
+          ],
+          "charge": {
+            "active": true,
+            "opacity": 158,
+            "scale": 0.832
+          },
+          "targets": [
+            {
+              "release": {
+                "active": false,
+                "opacity": 220,
+                "pos": [
+                  -114,
+                  467.55555555555554
+                ],
+                "scale": 0.7
+              },
+              "impact": {
+                "active": false,
+                "opacity": 245,
+                "scale": 0.45
+              }
+            },
+            {
+              "release": {
+                "active": false,
+                "opacity": 220,
+                "pos": [
+                  -114,
+                  467.55555555555554
+                ],
+                "scale": 0.7
+              },
+              "impact": {
+                "active": false,
+                "opacity": 245,
+                "scale": 0.45
+              }
+            },
+            {
+              "release": {
+                "active": false,
+                "opacity": 220,
+                "pos": [
+                  -114,
+                  467.55555555555554
+                ],
+                "scale": 0.7
+              },
+              "impact": {
+                "active": false,
+                "opacity": 245,
+                "scale": 0.45
+              }
+            }
+          ]
+        }
+      ],
+      "damageCount": 0
+    },
+    {
+      "key": "ult-magic",
+      "time": 0.31,
+      "state": [
+        {
+          "uid": "B3",
+          "style": "magic",
+          "ultimate": true,
+          "elapsed": 0.31,
+          "source": [
+            -114,
+            467.94140625
+          ],
+          "charge": {
+            "active": false,
+            "opacity": 230,
+            "scale": 1
+          },
+          "targets": [
+            {
+              "release": {
+                "active": true,
+                "opacity": 204,
+                "pos": [
+                  -153.6785750357143,
+                  202.39297251102124
+                ],
+                "scale": 0.9831650102096756
+              },
+              "impact": {
+                "active": false,
+                "opacity": 245,
+                "scale": 0.45
+              }
+            },
+            {
+              "release": {
+                "active": true,
+                "opacity": 204,
+                "pos": [
+                  -69.21428164285715,
+                  202.39297251102124
+                ],
+                "scale": 0.9831650102096756
+              },
+              "impact": {
+                "active": false,
+                "opacity": 245,
+                "scale": 0.45
+              }
+            },
+            {
+              "release": {
+                "active": true,
+                "opacity": 204,
+                "pos": [
+                  15.25001174999997,
+                  202.39297251102124
+                ],
+                "scale": 0.9831650102096756
+              },
+              "impact": {
+                "active": false,
+                "opacity": 245,
+                "scale": 0.45
+              }
+            }
+          ]
+        }
+      ],
+      "damageCount": 0
+    },
+    {
+      "key": "ult-magic",
+      "time": 0.6,
+      "state": [
+        {
+          "uid": "B3",
+          "style": "magic",
+          "ultimate": true,
+          "elapsed": 0.6,
+          "source": [
+            -114,
+            480
+          ],
+          "charge": {
+            "active": false,
+            "opacity": 230,
+            "scale": 1
+          },
+          "targets": [
+            {
+              "release": {
+                "active": false,
+                "opacity": 180,
+                "pos": [
+                  -215,
+                  -208
+                ],
+                "scale": 0.7
+              },
+              "impact": {
+                "active": true,
+                "opacity": 153,
+                "scale": 0.9984375351562489
+              }
+            },
+            {
+              "release": {
+                "active": false,
+                "opacity": 180,
+                "pos": [
+                  0,
+                  -208
+                ],
+                "scale": 0.7
+              },
+              "impact": {
+                "active": true,
+                "opacity": 153,
+                "scale": 0.9984375351562489
+              }
+            },
+            {
+              "release": {
+                "active": false,
+                "opacity": 180,
+                "pos": [
+                  215,
+                  -208
+                ],
+                "scale": 0.7
+              },
+              "impact": {
+                "active": true,
+                "opacity": 153,
+                "scale": 0.9984375351562489
+              }
+            }
+          ]
+        }
+      ],
+      "damageCount": 5
+    },
+    {
+      "key": "ult-magic",
+      "time": 0.82,
+      "state": [],
+      "damageCount": 5
+    }
+  ]
+}

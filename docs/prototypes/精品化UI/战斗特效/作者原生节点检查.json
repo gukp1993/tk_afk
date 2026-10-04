@@ -1,0 +1,6 @@
+{
+  "status": "PASS",
+  "assertions": 569,
+  "source": "current BattleFx.ts transpiled, deterministic native node stubs; not Web/device acceptance",
+  "drawCalls": 9617
+}

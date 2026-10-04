@@ -1,4 +1,4 @@
-import { Graphics, UITransform, view } from 'cc';
+import { Graphics, UITransform, UIOpacity, tween, view } from 'cc';
 import { CocosUi, hexColor as color } from './CocosUi';
 import { ArtService } from '../services/ArtService';
 
@@ -82,50 +82,40 @@ function fortress(p: Paint, x: number, y: number, s: number) {
 export const CAMPAIGN_ROUTE: Point[] = [[.40,.90],[.22,.72],[.58,.54],[.36,.34],[.65,.14]];
 // 生成地图的实拍圆盘中心：与图片中的道路逐点对齐，旧几何地图仍使用原路线。
 export const CAMPAIGN_ART_ROUTE: Point[] = [[270/720,545/660],[170/720,351/660],[398/720,276/660],[237/720,157/660],[415/720,94/660]];
+let deferredCampaignMap = false;
+
 export function campaignMap(ui: CocosUi, top = 420, height = 660) {
   const frame = ArtService.frame('map_campaign_v2');
   if (frame) {
     const art=ui.image('CampaignMapArt', frame, 0, top - height / 2, 720, height);
     // image 的短面板尺寸保持原高；地图属于纵向场景，须与旗点一起适配长屏。
     art.getComponent(UITransform)!.setContentSize(720,height*Math.max(1,view.getVisibleSize().height/1280));
+    if (deferredCampaignMap) {
+      deferredCampaignMap = false;
+      const opacity = art.addComponent(UIOpacity);
+      opacity.opacity = 0;
+      tween(opacity).to(0.2, { opacity: 255 }).start();
+    }
     return;
   }
-  ui.scene('CampaignScenery', g => {
+  // 缺图或玩家主动跳过加载也不再显示旧版地图，避免晚到资源造成旧景闪换。
+  deferredCampaignMap = true;
+  ui.scene('CampaignMapPending', g => {
     const p = new Paint(g, top, height, 440);
-    p.box(0,0,375,440,'#b2bc99');
-    p.poly([[0,105],[62,87],[111,117],[160,94],[211,115],[271,82],[375,98],[375,0],[0,0]],'#c2c4a1');
-    mountain(p,30,113,117,134,true); mountain(p,105,54,107,104,true);
-    mountain(p,318,119,130,140,true); mountain(p,373,204,117,159,false);
-    p.poly([[0,224],[54,202],[88,212],[76,251],[13,272],[0,306]],'#bac19d');
-    p.poly([[138,280],[186,251],[237,267],[279,302],[255,330],[191,323],[150,305]],'#c2bf91');
-    const river=curve([[-24,125],[51,143],[94,186],[163,199],[274,257],[320,315],[284,375],[333,459]]);
-    p.line(river,'#91a687',36); p.line(river,'#d0c89f',31); p.line(river,'#68998b',26); p.line(river,'#83ada0',19);
-    p.poly([[152,192],[161,186],[183,204],[175,211]],'#7d8e74'); p.poly([[151,187],[160,181],[184,201],[175,207]],'#c9c39c');
-    const road=curve(CAMPAIGN_ROUTE.map(([x,y])=>[x*375,y*440] as Point));
-    p.line(road,'#9b9d76',20); p.line(road,'#d6c994',15); p.line(road,'#e4d5a5',8);
-    village(p,47,251,.88); village(p,280,169,.7); village(p,235,358,.82); fortress(p,227,45,.84);
-    mountain(p,-4,406,79,117,false); mountain(p,355,444,80,122,false);
-    ([[18,169,.7],[40,174,.9],[11,201,.8],[269,119,.72],[291,129,.68],[265,323,.6],[285,330,.8],[334,220,.9],[350,241,.75],[47,403,.85],[73,423,.6]] as number[][]).forEach(([x,y,s])=>pine(p,x,y,s));
+    p.box(0, 0, 375, 440, '#172f29');
+    for (let i = 0; i < 5; i++) {
+      p.line(curve([[-20, 70+i*68], [100, 30+i*68], [235, 95+i*68], [395, 48+i*68]]), '#29483b', 2);
+    }
   });
+  ui.text('CampaignMapPendingText', ArtService.scenesReady ? '山河图暂未载入' : '山河图载入中…', 0, top-height+35, 420, 18, color('#b7bc9a'));
+
 }
 
 export function campaignFlag(ui: CocosUi, name: string, px: number, py: number, n: number, state: 'current'|'cleared'|'locked', action: () => void) {
   const x=px*720/375-360, y=420-py*660/440;
-  if(ArtService.has('map_campaign_v2')){
-    ui.panel(name+'Marker',x,y,44,44,state==='current'?color('#aa472d'):state==='cleared'?color('#426650'):color('#5f6652'),22,state==='current'?color('#f4d485'):color('#cab687'),false);
-    ui.text(name+'Number',state==='cleared'?'✓':String(n),x,y,40,24,color('#fff0bf'));
-    ui.tap(name,x,y,76,76,action);
-    return;
-  }
-  ui.scene(name+'Art',g=>{
-    const p=new Paint(g,420,660,440);
-    p.oval(px,py+2,state==='current'?21:16,state==='current'?8:5,state==='current'?'#e8d190':'#8e9b7b');
-    p.line([[px,py],[px,py-38]],'#685f48',2);
-    p.poly([[px+1,py-37],[px+28,py-33],[px+22,py-24],[px+26,py-17],[px+1,py-20]],state==='current'?'#a3533c':state==='cleared'?'#507d6a':'#89967d');
-    if(state==='current')p.poly([[px-7,py-47],[px+1,py-42],[px+9,py-47],[px+1,py-44]],'#f7df98');
-  });
-  ui.text(name+'Number',state==='cleared'?'✓':String(n),x+23,y+39,43,19,state==='current'?color('#fff0bf'):color('#e5e5c5'));
-  ui.tap(name,x+17,y+29,76,87,action);
+  ui.panel(name+'Marker',x,y,44,44,state==='current'?color('#aa472d'):state==='cleared'?color('#426650'):color('#5f6652'),22,state==='current'?color('#f4d485'):color('#cab687'),false);
+  ui.text(name+'Number',state==='cleared'?'✓':String(n),x,y,40,24,color('#fff0bf'));
+  ui.tap(name,x,y,76,76,action);
 }
 
 export function campaignCamp(ui: CocosUi) {

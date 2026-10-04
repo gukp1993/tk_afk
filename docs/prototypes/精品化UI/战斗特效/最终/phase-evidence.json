@@ -1,0 +1,914 @@
+[
+  {
+    "key": "attack-melee",
+    "time": 0.05,
+    "state": [
+      {
+        "uid": "A1",
+        "style": "melee",
+        "ultimate": false,
+        "elapsed": 0.05,
+        "source": [
+          0,
+          -200.08333333333334
+        ],
+        "charge": null,
+        "targets": [
+          {
+            "release": {
+              "active": true,
+              "opacity": 209,
+              "pos": [
+                -104.09786256268374,
+                12.842371107508967
+              ],
+              "scale": 1
+            },
+            "impact": {
+              "active": false,
+              "opacity": 245,
+              "scale": 0.45
+            }
+          }
+        ]
+      }
+    ],
+    "damageCount": 1
+  },
+  {
+    "key": "attack-melee",
+    "time": 0.13,
+    "state": [
+      {
+        "uid": "A1",
+        "style": "melee",
+        "ultimate": false,
+        "elapsed": 0.13,
+        "source": [
+          0,
+          -196.04166666666666
+        ],
+        "charge": null,
+        "targets": [
+          {
+            "release": {
+              "active": true,
+              "opacity": 191,
+              "pos": [
+                -196.01289301489007,
+                210.96902081404178
+              ],
+              "scale": 1
+            },
+            "impact": {
+              "active": false,
+              "opacity": 245,
+              "scale": 0.45
+            }
+          }
+        ]
+      }
+    ],
+    "damageCount": 1
+  },
+  {
+    "key": "attack-melee",
+    "time": 0.26,
+    "state": [
+      {
+        "uid": "A1",
+        "style": "melee",
+        "ultimate": false,
+        "elapsed": 0.26,
+        "source": [
+          0,
+          -203.83333333333334
+        ],
+        "charge": null,
+        "targets": [
+          {
+            "release": {
+              "active": false,
+              "opacity": 180,
+              "pos": [
+                -215,
+                245.00000000000003
+              ],
+              "scale": 1
+            },
+            "impact": {
+              "active": true,
+              "opacity": 122,
+              "scale": 0.9375000406249976
+            }
+          }
+        ]
+      }
+    ],
+    "damageCount": 1
+  },
+  {
+    "key": "attack-melee",
+    "time": 0.36,
+    "state": [],
+    "damageCount": 1
+  },
+  {
+    "key": "attack-ranged",
+    "time": 0.05,
+    "state": [
+      {
+        "uid": "B4",
+        "style": "ranged",
+        "ultimate": false,
+        "elapsed": 0.05,
+        "source": [
+          114,
+          472.0833333333333
+        ],
+        "charge": null,
+        "targets": [
+          {
+            "release": {
+              "active": true,
+              "opacity": 209,
+              "pos": [
+                49.94496601917538,
+                228.44902534722218
+              ],
+              "scale": 1
+            },
+            "impact": {
+              "active": false,
+              "opacity": 245,
+              "scale": 0.45
+            }
+          }
+        ]
+      }
+    ],
+    "damageCount": 1
+  },
+  {
+    "key": "attack-ranged",
+    "time": 0.13,
+    "state": [
+      {
+        "uid": "B4",
+        "style": "ranged",
+        "ultimate": false,
+        "elapsed": 0.13,
+        "source": [
+          114,
+          468.0416666666667
+        ],
+        "charge": null,
+        "targets": [
+          {
+            "release": {
+              "active": true,
+              "opacity": 191,
+              "pos": [
+                -48.79029081412949,
+                -162.48847442824075
+              ],
+              "scale": 1
+            },
+            "impact": {
+              "active": false,
+              "opacity": 245,
+              "scale": 0.45
+            }
+          }
+        ]
+      }
+    ],
+    "damageCount": 1
+  },
+  {
+    "key": "attack-ranged",
+    "time": 0.26,
+    "state": [
+      {
+        "uid": "B4",
+        "style": "ranged",
+        "ultimate": false,
+        "elapsed": 0.26,
+        "source": [
+          114,
+          475.8333333333333
+        ],
+        "charge": null,
+        "targets": [
+          {
+            "release": {
+              "active": false,
+              "opacity": 180,
+              "pos": [
+                -114,
+                -404.99999999999994
+              ],
+              "scale": 1
+            },
+            "impact": {
+              "active": true,
+              "opacity": 122,
+              "scale": 0.9375000406249976
+            }
+          }
+        ]
+      }
+    ],
+    "damageCount": 1
+  },
+  {
+    "key": "attack-ranged",
+    "time": 0.36,
+    "state": [],
+    "damageCount": 1
+  },
+  {
+    "key": "attack-magic",
+    "time": 0.05,
+    "state": [
+      {
+        "uid": "B3",
+        "style": "magic",
+        "ultimate": false,
+        "elapsed": 0.05,
+        "source": [
+          -114,
+          472.0833333333333
+        ],
+        "charge": null,
+        "targets": [
+          {
+            "release": {
+              "active": true,
+              "opacity": 209,
+              "pos": [
+                -114.7216879808246,
+                228.44902534722218
+              ],
+              "scale": 1
+            },
+            "impact": {
+              "active": false,
+              "opacity": 245,
+              "scale": 0.45
+            }
+          }
+        ]
+      }
+    ],
+    "damageCount": 1
+  },
+  {
+    "key": "attack-magic",
+    "time": 0.13,
+    "state": [
+      {
+        "uid": "B3",
+        "style": "magic",
+        "ultimate": false,
+        "elapsed": 0.13,
+        "source": [
+          -114,
+          468.0416666666667
+        ],
+        "charge": null,
+        "targets": [
+          {
+            "release": {
+              "active": true,
+              "opacity": 191,
+              "pos": [
+                -112.12361148079614,
+                -162.48847442824075
+              ],
+              "scale": 1
+            },
+            "impact": {
+              "active": false,
+              "opacity": 245,
+              "scale": 0.45
+            }
+          }
+        ]
+      }
+    ],
+    "damageCount": 1
+  },
+  {
+    "key": "attack-magic",
+    "time": 0.26,
+    "state": [
+      {
+        "uid": "B3",
+        "style": "magic",
+        "ultimate": false,
+        "elapsed": 0.26,
+        "source": [
+          -114,
+          475.8333333333333
+        ],
+        "charge": null,
+        "targets": [
+          {
+            "release": {
+              "active": false,
+              "opacity": 180,
+              "pos": [
+                -114,
+                -404.99999999999994
+              ],
+              "scale": 1
+            },
+            "impact": {
+              "active": true,
+              "opacity": 122,
+              "scale": 0.9375000406249976
+            }
+          }
+        ]
+      }
+    ],
+    "damageCount": 1
+  },
+  {
+    "key": "attack-magic",
+    "time": 0.36,
+    "state": [],
+    "damageCount": 1
+  },
+  {
+    "key": "ult-melee",
+    "time": 0.08,
+    "state": [
+      {
+        "uid": "A1",
+        "style": "melee",
+        "ultimate": true,
+        "elapsed": 0.08,
+        "source": [
+          0,
+          -195.55555555555554
+        ],
+        "charge": {
+          "active": true,
+          "opacity": 158,
+          "scale": 0.832
+        },
+        "targets": [
+          {
+            "release": {
+              "active": false,
+              "opacity": 220,
+              "pos": [
+                0,
+                -195.55555555555554
+              ],
+              "scale": 0.7
+            },
+            "impact": {
+              "active": false,
+              "opacity": 245,
+              "scale": 0.45
+            }
+          },
+          {
+            "release": {
+              "active": false,
+              "opacity": 220,
+              "pos": [
+                0,
+                -195.55555555555554
+              ],
+              "scale": 0.7
+            },
+            "impact": {
+              "active": false,
+              "opacity": 245,
+              "scale": 0.45
+            }
+          },
+          {
+            "release": {
+              "active": false,
+              "opacity": 220,
+              "pos": [
+                0,
+                -195.55555555555554
+              ],
+              "scale": 0.7
+            },
+            "impact": {
+              "active": false,
+              "opacity": 245,
+              "scale": 0.45
+            }
+          }
+        ]
+      }
+    ],
+    "damageCount": 0
+  },
+  {
+    "key": "ult-melee",
+    "time": 0.31,
+    "state": [
+      {
+        "uid": "A1",
+        "style": "melee",
+        "ultimate": true,
+        "elapsed": 0.31,
+        "source": [
+          0,
+          -195.94140625
+        ],
+        "charge": {
+          "active": false,
+          "opacity": 230,
+          "scale": 1
+        },
+        "targets": [
+          {
+            "release": {
+              "active": true,
+              "opacity": 204,
+              "pos": [
+                -135.74618279336707,
+                82.45911809407824
+              ],
+              "scale": 0.9831650102096756
+            },
+            "impact": {
+              "active": false,
+              "opacity": 245,
+              "scale": 0.45
+            }
+          },
+          {
+            "release": {
+              "active": true,
+              "opacity": 204,
+              "pos": [
+                0,
+                82.45911809407824
+              ],
+              "scale": 0.9831650102096756
+            },
+            "impact": {
+              "active": false,
+              "opacity": 245,
+              "scale": 0.45
+            }
+          },
+          {
+            "release": {
+              "active": true,
+              "opacity": 204,
+              "pos": [
+                135.74618279336707,
+                82.45911809407824
+              ],
+              "scale": 0.9831650102096756
+            },
+            "impact": {
+              "active": false,
+              "opacity": 245,
+              "scale": 0.45
+            }
+          }
+        ]
+      }
+    ],
+    "damageCount": 0
+  },
+  {
+    "key": "ult-melee",
+    "time": 0.6,
+    "state": [
+      {
+        "uid": "A1",
+        "style": "melee",
+        "ultimate": true,
+        "elapsed": 0.6,
+        "source": [
+          0,
+          -208
+        ],
+        "charge": {
+          "active": false,
+          "opacity": 230,
+          "scale": 1
+        },
+        "targets": [
+          {
+            "release": {
+              "active": false,
+              "opacity": 180,
+              "pos": [
+                -215,
+                245
+              ],
+              "scale": 0.7
+            },
+            "impact": {
+              "active": true,
+              "opacity": 153,
+              "scale": 0.9984375351562489
+            }
+          },
+          {
+            "release": {
+              "active": false,
+              "opacity": 180,
+              "pos": [
+                0,
+                245
+              ],
+              "scale": 0.7
+            },
+            "impact": {
+              "active": true,
+              "opacity": 153,
+              "scale": 0.9984375351562489
+            }
+          },
+          {
+            "release": {
+              "active": false,
+              "opacity": 180,
+              "pos": [
+                215,
+                245
+              ],
+              "scale": 0.7
+            },
+            "impact": {
+              "active": true,
+              "opacity": 153,
+              "scale": 0.9984375351562489
+            }
+          }
+        ]
+      }
+    ],
+    "damageCount": 3
+  },
+  {
+    "key": "ult-melee",
+    "time": 0.82,
+    "state": [],
+    "damageCount": 3
+  },
+  {
+    "key": "ult-ranged",
+    "time": 0.08,
+    "state": [
+      {
+        "uid": "A3",
+        "style": "ranged",
+        "ultimate": true,
+        "elapsed": 0.08,
+        "source": [
+          -114,
+          -392.55555555555554
+        ],
+        "charge": {
+          "active": true,
+          "opacity": 158,
+          "scale": 0.832
+        },
+        "targets": [
+          {
+            "release": {
+              "active": false,
+              "opacity": 220,
+              "pos": [
+                -114,
+                -392.55555555555554
+              ],
+              "scale": 0.7
+            },
+            "impact": {
+              "active": false,
+              "opacity": 245,
+              "scale": 0.45
+            }
+          }
+        ]
+      }
+    ],
+    "damageCount": 0
+  },
+  {
+    "key": "ult-ranged",
+    "time": 0.31,
+    "state": [
+      {
+        "uid": "A3",
+        "style": "ranged",
+        "ultimate": true,
+        "elapsed": 0.31,
+        "source": [
+          -114,
+          -392.94140625
+        ],
+        "charge": {
+          "active": false,
+          "opacity": 230,
+          "scale": 1
+        },
+        "targets": [
+          {
+            "release": {
+              "active": true,
+              "opacity": 204,
+              "pos": [
+                -153.6785750357143,
+                -142.32154529673554
+              ],
+              "scale": 0.9831650102096756
+            },
+            "impact": {
+              "active": false,
+              "opacity": 245,
+              "scale": 0.45
+            }
+          }
+        ]
+      }
+    ],
+    "damageCount": 0
+  },
+  {
+    "key": "ult-ranged",
+    "time": 0.6,
+    "state": [
+      {
+        "uid": "A3",
+        "style": "ranged",
+        "ultimate": true,
+        "elapsed": 0.6,
+        "source": [
+          -114,
+          -405
+        ],
+        "charge": {
+          "active": false,
+          "opacity": 230,
+          "scale": 1
+        },
+        "targets": [
+          {
+            "release": {
+              "active": false,
+              "opacity": 180,
+              "pos": [
+                -215,
+                245
+              ],
+              "scale": 0.7
+            },
+            "impact": {
+              "active": true,
+              "opacity": 153,
+              "scale": 0.9984375351562489
+            }
+          }
+        ]
+      }
+    ],
+    "damageCount": 1
+  },
+  {
+    "key": "ult-ranged",
+    "time": 0.82,
+    "state": [],
+    "damageCount": 1
+  },
+  {
+    "key": "ult-magic",
+    "time": 0.08,
+    "state": [
+      {
+        "uid": "B3",
+        "style": "magic",
+        "ultimate": true,
+        "elapsed": 0.08,
+        "source": [
+          -114,
+          467.55555555555554
+        ],
+        "charge": {
+          "active": true,
+          "opacity": 158,
+          "scale": 0.832
+        },
+        "targets": [
+          {
+            "release": {
+              "active": false,
+              "opacity": 220,
+              "pos": [
+                -114,
+                467.55555555555554
+              ],
+              "scale": 0.7
+            },
+            "impact": {
+              "active": false,
+              "opacity": 245,
+              "scale": 0.45
+            }
+          },
+          {
+            "release": {
+              "active": false,
+              "opacity": 220,
+              "pos": [
+                -114,
+                467.55555555555554
+              ],
+              "scale": 0.7
+            },
+            "impact": {
+              "active": false,
+              "opacity": 245,
+              "scale": 0.45
+            }
+          },
+          {
+            "release": {
+              "active": false,
+              "opacity": 220,
+              "pos": [
+                -114,
+                467.55555555555554
+              ],
+              "scale": 0.7
+            },
+            "impact": {
+              "active": false,
+              "opacity": 245,
+              "scale": 0.45
+            }
+          }
+        ]
+      }
+    ],
+    "damageCount": 0
+  },
+  {
+    "key": "ult-magic",
+    "time": 0.31,
+    "state": [
+      {
+        "uid": "B3",
+        "style": "magic",
+        "ultimate": true,
+        "elapsed": 0.31,
+        "source": [
+          -114,
+          467.94140625
+        ],
+        "charge": {
+          "active": false,
+          "opacity": 230,
+          "scale": 1
+        },
+        "targets": [
+          {
+            "release": {
+              "active": true,
+              "opacity": 204,
+              "pos": [
+                -153.6785750357143,
+                202.39297251102124
+              ],
+              "scale": 0.9831650102096756
+            },
+            "impact": {
+              "active": false,
+              "opacity": 245,
+              "scale": 0.45
+            }
+          },
+          {
+            "release": {
+              "active": true,
+              "opacity": 204,
+              "pos": [
+                -69.21428164285715,
+                202.39297251102124
+              ],
+              "scale": 0.9831650102096756
+            },
+            "impact": {
+              "active": false,
+              "opacity": 245,
+              "scale": 0.45
+            }
+          },
+          {
+            "release": {
+              "active": true,
+              "opacity": 204,
+              "pos": [
+                15.25001174999997,
+                202.39297251102124
+              ],
+              "scale": 0.9831650102096756
+            },
+            "impact": {
+              "active": false,
+              "opacity": 245,
+              "scale": 0.45
+            }
+          }
+        ]
+      }
+    ],
+    "damageCount": 0
+  },
+  {
+    "key": "ult-magic",
+    "time": 0.6,
+    "state": [
+      {
+        "uid": "B3",
+        "style": "magic",
+        "ultimate": true,
+        "elapsed": 0.6,
+        "source": [
+          -114,
+          480
+        ],
+        "charge": {
+          "active": false,
+          "opacity": 230,
+          "scale": 1
+        },
+        "targets": [
+          {
+            "release": {
+              "active": false,
+              "opacity": 180,
+              "pos": [
+                -215,
+                -208
+              ],
+              "scale": 0.7
+            },
+            "impact": {
+              "active": true,
+              "opacity": 153,
+              "scale": 0.9984375351562489
+            }
+          },
+          {
+            "release": {
+              "active": false,
+              "opacity": 180,
+              "pos": [
+                0,
+                -208
+              ],
+              "scale": 0.7
+            },
+            "impact": {
+              "active": true,
+              "opacity": 153,
+              "scale": 0.9984375351562489
+            }
+          },
+          {
+            "release": {
+              "active": false,
+              "opacity": 180,
+              "pos": [
+                215,
+                -208
+              ],
+              "scale": 0.7
+            },
+            "impact": {
+              "active": true,
+              "opacity": 153,
+              "scale": 0.9984375351562489
+            }
+          }
+        ]
+      }
+    ],
+    "damageCount": 5
+  },
+  {
+    "key": "ult-magic",
+    "time": 0.82,
+    "state": [],
+    "damageCount": 5
+  }
+]

@@ -1,0 +1,47 @@
+{
+  "seeds": 20,
+  "steps": 36020,
+  "tagged": 2444,
+  "healsInside": 590,
+  "healsOutside": 1049,
+  "counter": {
+    "frame": 1431,
+    "events": [
+      {
+        "e": "ult",
+        "uid": "A0",
+        "skill": "百步穿杨",
+        "scope": "single",
+        "cast": "A0"
+      },
+      {
+        "e": "hit",
+        "uid": "B0",
+        "src": "A0",
+        "amount": 1830,
+        "crit": false,
+        "kind": "ult",
+        "cast": "A0"
+      },
+      {
+        "e": "heal",
+        "uid": "B0",
+        "amount": 159
+      },
+      {
+        "e": "heal",
+        "uid": "B1",
+        "amount": 159
+      },
+      {
+        "e": "heal",
+        "uid": "B2",
+        "amount": 159
+      }
+    ],
+    "recipients": [
+      "B0"
+    ]
+  },
+  "numerics": "step events stripped of cast, snapshots and results exactly equal to HEAD"
+}

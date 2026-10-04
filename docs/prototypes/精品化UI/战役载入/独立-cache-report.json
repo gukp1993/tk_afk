@@ -1,0 +1,11 @@
+{
+  "suite": "cache",
+  "passed": 11,
+  "rows": [
+    {
+      "name": "cached",
+      "errors": []
+    }
+  ],
+  "failures": 0
+}

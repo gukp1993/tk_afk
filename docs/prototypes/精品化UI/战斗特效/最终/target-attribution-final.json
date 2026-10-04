@@ -1,0 +1,39 @@
+{
+  "time": 23.066666666666972,
+  "events": [
+    {
+      "e": "ult",
+      "uid": "A0",
+      "skill": "百步穿杨",
+      "scope": "single",
+      "cast": "A0"
+    },
+    {
+      "e": "hit",
+      "uid": "B0",
+      "src": "A0",
+      "amount": 1851,
+      "crit": false,
+      "kind": "ult",
+      "cast": "A0"
+    },
+    {
+      "e": "heal",
+      "uid": "A3",
+      "amount": 168
+    },
+    {
+      "e": "heal",
+      "uid": "A4",
+      "amount": 168
+    }
+  ],
+  "lights": [
+    {
+      "uid": "A0",
+      "targetNodes": [
+        "FighterGlyph5"
+      ]
+    }
+  ]
+}

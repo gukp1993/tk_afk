@@ -1,0 +1,23 @@
+{
+  "suite": "normal",
+  "passed": 36,
+  "rows": [
+    {
+      "name": "cold-1280",
+      "errors": []
+    },
+    {
+      "name": "cold-1600",
+      "errors": []
+    },
+    {
+      "name": "target",
+      "errors": []
+    },
+    {
+      "name": "cached",
+      "errors": []
+    }
+  ],
+  "failures": 0
+}

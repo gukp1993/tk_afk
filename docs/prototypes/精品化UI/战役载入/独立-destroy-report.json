@@ -1,0 +1,11 @@
+{
+  "suite": "destroy",
+  "passed": 4,
+  "rows": [
+    {
+      "name": "destroy",
+      "errors": []
+    }
+  ],
+  "failures": 0
+}

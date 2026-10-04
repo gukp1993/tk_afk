@@ -12,7 +12,7 @@ import * as fmt from '../domain/fmt';
 import { firstTimeOverlay } from './TutorialOverlay';
 import { recommendFormation } from '../domain/formation';
 import { ArtService } from '../services/ArtService';
-import { campaignMap, campaignFlag, campaignCamp, cityMap, CITY_BUILDINGS, CAMPAIGN_ROUTE, CAMPAIGN_ART_ROUTE } from '../ui/Scenery';
+import { campaignMap, campaignFlag, campaignCamp, cityMap, CITY_BUILDINGS, CAMPAIGN_ART_ROUTE } from '../ui/Scenery';
 
 const INK = tone('#3d4337'), PAPER = tone('#eee3bf'), GOLD = tone('#edcf88'), LIGHT = tone('#f5e8c9');
 let chapterMapOpen=false;
@@ -50,7 +50,7 @@ export function campaign(ctx: ScreenContext) {
   const verticalScale=Math.max(1,view.getVisibleSize().height/1280);
   campaignMap(U);
   const segmentStart = chapter.idx * stages.STAGES_PER_CH + 1 + (chapter.inCh < 5 ? 0 : 5);
-  const points: Array<[number,number]> = (ArtService.has('map_campaign_v2')?CAMPAIGN_ART_ROUTE:CAMPAIGN_ROUTE).map(([x,y])=>[x*375,y*440]);
+  const points: Array<[number,number]> = CAMPAIGN_ART_ROUTE.map(([x,y])=>[x*375,y*440]);
   points.forEach(([x,y], i) => {
     const n = segmentStart+i;
     campaignFlag(U,'StageFlag'+i,x,y,n,n===stage?'current':n<stage?'cleared':'locked',() => {
@@ -60,11 +60,11 @@ export function campaign(ctx: ScreenContext) {
   });
   const current=points[stage-segmentStart];
   if(current){const x=current[0]*720/375-360,y=420-current[1]*660/440;
-    const markerArt=ArtService.has('map_campaign_v2'),labelX=x+(markerArt?0:18),labelY=y-(markerArt?42:24);
+    const labelX=x,labelY=y-42;
     U.panel('CurrentStage',labelX,labelY,176,32,tone('#3c6255'),5,undefined,false);
     U.text('CurrentStageText',`第${stage}关${stage>stages.CHAPTERS.length*stages.STAGES_PER_CH?'·循环':''}`,labelX,labelY,165,17,LIGHT);
   }
-  U.text('MilestoneHint','主线里程碑：40/100 自选券 · 90/110/150 自选箱 · 120/140/160 完成礼',0,404,560,15,INK);
+  U.text('MilestoneHint','主线里程碑：40/100 自选券 · 90/110/150 自选箱 · 120/140/160 完成礼',0,404,560,15,ArtService.has('map_campaign_v2')?INK:LIGHT);
   const sd=store.sevenDayInfo();
   const fdBanner=store.fourteenDayInfo();
   if(sd.allDone&&!fdBanner.allDone){

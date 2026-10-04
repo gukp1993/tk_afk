@@ -2103,6 +2103,10 @@ const storeP2 = freshStore(); storeP2.load();
 
 // 名场面重演+周 Boss 换皮（四时战纪第二批）
 {
+  // 本节明确验W40；固定周键，避免真实日期跨周使既定fixture失效。
+  const originalSceneWeek = F.isoWeekKey;
+  F.isoWeekKey = () => '2026-W40';
+  try {
   global.wx._map.delete(SAVE_KEY);
   const storeN = freshStore(); storeN.load();
   const sN = storeN.getState();
@@ -2156,6 +2160,7 @@ const storeP2 = freshStore(); storeP2.load();
   const wbOld = stages.makeWeekBossEnemies('2026-W40', 100);
   C.SEASON.weekBossSkin = CSkin;
   check('SC12 无皮回退旧哈希选将', wbOld.units[0].hero.id !== 'zhangjiao' || wbOld.name.indexOf('黄天') < 0);
+  } finally { F.isoWeekKey = originalSceneWeek; }
 }
 
 // 存档往返加固（研讨十三新增字段全量）：改→save→新实例 load→逐字段断言

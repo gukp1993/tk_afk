@@ -1,0 +1,180 @@
+{
+  "reviewer": "interaction_audit (independent, read-only)",
+  "date": "2026-10-05",
+  "status": "Passed independent Web preview checks and code review; WeChat device acceptance remains pending.",
+  "build": "/tmp/tk-loading-fx-web.log 00:04:44 successful. This review covers loading files, not BattleFx.",
+  "assertions": 94,
+  "suites": {
+    "normal": {
+      "passed": 36,
+      "exitCode": 0,
+      "failures": 0
+    },
+    "edges": {
+      "passed": 43,
+      "exitCode": 0,
+      "failures": 0
+    },
+    "destroy": {
+      "passed": 4,
+      "exitCode": 0,
+      "failures": 0
+    },
+    "cache": {
+      "passed": 11,
+      "exitCode": 0,
+      "failures": 0
+    }
+  },
+  "assertionNote": "79 main assertions plus 4 destruction-timer and 11 actual cache supplement assertions. Includes support assertions and reruns; not 94 independent business scenarios.",
+  "profiles": [
+    {
+      "name": "cold-1280",
+      "height": 1280,
+      "samples": 1642,
+      "legacyGeometry": 0,
+      "pending": 0,
+      "fadingMap": 0,
+      "pageErrors": []
+    },
+    {
+      "name": "cold-1600",
+      "height": 1600,
+      "samples": 1641,
+      "legacyGeometry": 0,
+      "pending": 0,
+      "fadingMap": 0,
+      "pageErrors": []
+    },
+    {
+      "name": "target",
+      "height": 1280,
+      "samples": 1400,
+      "legacyGeometry": 0,
+      "pending": 0,
+      "fadingMap": 0,
+      "pageErrors": []
+    },
+    {
+      "name": "cached",
+      "height": 1280,
+      "samples": 154,
+      "legacyGeometry": 0,
+      "pending": 0,
+      "fadingMap": 0,
+      "pageErrors": []
+    },
+    {
+      "name": "failure",
+      "height": 1280,
+      "samples": 492,
+      "legacyGeometry": 0,
+      "pending": 30,
+      "fadingMap": 0,
+      "pageErrors": []
+    },
+    {
+      "name": "icons-failure",
+      "height": 1280,
+      "samples": 634,
+      "legacyGeometry": 0,
+      "pending": 0,
+      "fadingMap": 0,
+      "pageErrors": []
+    },
+    {
+      "name": "skip",
+      "height": 1280,
+      "samples": 891,
+      "legacyGeometry": 0,
+      "pending": 160,
+      "fadingMap": 10,
+      "pageErrors": []
+    },
+    {
+      "name": "skip-target",
+      "height": 1280,
+      "samples": 796,
+      "legacyGeometry": 0,
+      "pending": 8,
+      "fadingMap": 0,
+      "pageErrors": []
+    },
+    {
+      "name": "transient",
+      "height": 1280,
+      "samples": 544,
+      "legacyGeometry": 0,
+      "pending": 27,
+      "fadingMap": 10,
+      "pageErrors": []
+    },
+    {
+      "name": "destroy",
+      "height": 1280,
+      "samples": 650,
+      "legacyGeometry": 0,
+      "pending": 0,
+      "fadingMap": 0,
+      "pageErrors": []
+    }
+  ],
+  "frameSamples": 8844,
+  "legacyGeometrySamples": 0,
+  "closures": [
+    {
+      "issue": "Old map visible before scene assets",
+      "status": "Closed",
+      "evidence": "Clean Startup gate until icons and scenes complete; cold 1280/1600 rAF samples never show legacy map."
+    },
+    {
+      "issue": "Manual skip or transient failure exposes old map before retry",
+      "status": "Closed",
+      "evidence": "CampaignMapPending replaces old geometry. Skip and transient recovery show 0.2s opacity fade into the actual map."
+    },
+    {
+      "issue": "Pending flags and current-stage label move when assets arrive",
+      "status": "Closed",
+      "evidence": "CAMPAIGN_ART_ROUTE and circular markers used for both states. All sampled flag and label world coordinates remain identical."
+    },
+    {
+      "issue": "Late callbacks access destroyed Bootstrap",
+      "status": "Closed",
+      "evidence": "Both done and finishInitialLoading guard isValid; destruction test waits 9.2s: no redraw, no 8-second skip button, no pageerror."
+    }
+  ],
+  "verified": [
+    "Clean initial loading and correct first campaign on both viewport heights.",
+    "Clicking during loading does not change currencies.",
+    "Loading-time target bag and manual-skip actual bag navigation survive late callbacks.",
+    "8s timeout never automatically enters gameplay; explicit skip remains usable.",
+    "Scene image fails permanently, or map image first fails all 4 retries then recovers through bundle loading.",
+    "All resource icons fail: actual map still shown, no boot or navigation exception.",
+    "Cached hero-to-campaign navigation and cache-enabled reload without Playwright routing show no old map."
+  ],
+  "screenshots": [
+    "独立-cold-loading-1280.png",
+    "独立-cold-loading-1600.png",
+    "独立-cold-campaign-1280.png",
+    "独立-cold-campaign-1600.png",
+    "独立-slow-skip-ready.png",
+    "独立-slow-skipped.png",
+    "独立-slow-final.png",
+    "独立-transient-enter.png",
+    "独立-transient-final.png",
+    "独立-failed-campaign.png",
+    "独立-icons-failed-campaign.png",
+    "独立-pending-target-bag.png",
+    "独立-slow-target-bag.png",
+    "独立-cached-campaign.png"
+  ],
+  "script": "/tmp/tk-campaign-loading/check.cjs",
+  "notes": [
+    "Each test uses a fresh browser context and synthetic save. No real WeChat storage accessed.",
+    "Intentional native request failures cause expected network errors; every successful suite has zero pageerror.",
+    "An extra icon-failure fixture timed out with six concurrent browser processes. Standalone and final concurrency limit 2 passed; unproven concurrency timeout is not reported as a product defect.",
+    "This is Web preview evidence, not WeChat cold-start, memory or touchscreen device acceptance.",
+    "Portrait art may still update in the background; campaign map presentation stays stable."
+  ],
+  "unresolvedBlockers": []
+}

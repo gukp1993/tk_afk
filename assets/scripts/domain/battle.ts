@@ -10,6 +10,7 @@ const { makeRng } = __domain_rng;
 function createBattle(cfg) {
   const seed = cfg.seed || 1;
   const rng = makeRng(seed);
+  let activeCast = null; // 展示归属：仅覆盖一次大招的同步结算，绝不串入后续HOT/环境事件。
   const limit = cfg.timeLimit || BATTLE.TIME_LIMIT;
   // 机制词缀（additive：缺省即旧行为）env=全场周期真伤；reinforce=B 侧定时援军；healScale=分侧治疗系数
   const env = cfg.env && cfg.env.pctPerSec > 0 ? cfg.env : null;
@@ -141,7 +142,10 @@ function createBattle(cfg) {
   }
 
   // ---- 伤害/治疗 ----
-  function emit(ev) { events.push(ev); }
+  function emit(ev) {
+    if (activeCast) ev.cast = activeCast;
+    events.push(ev);
+  }
   function gainEnergy(u, amt) {
     u.energy = Math.min(BATTLE.ENERGY_MAX, u.energy + amt * (1 + (u.passive.energyGain || 0)));
   }
@@ -237,8 +241,12 @@ function createBattle(cfg) {
     const scope = fx.some(f => f.tgt === 'allEnemies') ? 'all'
       : fx.some(f => f.tgt === 'frontRow' || f.tgt === 'backRow') ? 'row' : 'single';
     lastUltCast = { uid: u.uid, name: u.ult.name, time };
-    emit({ e: 'ult', uid: u.uid, skill: u.ult.name, scope });
-    for (const f of fx) applyEffect(u, f);
+    const previousCast = activeCast;
+    activeCast = u.uid;
+    try {
+      emit({ e: 'ult', uid: u.uid, skill: u.ult.name, scope });
+      for (const f of fx) applyEffect(u, f);
+    } finally { activeCast = previousCast; }
   }
   function applyEffect(src, fx) {
     const tgts = resolveTargets(src, fx.tgt);

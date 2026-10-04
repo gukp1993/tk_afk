@@ -1,0 +1,20 @@
+{
+  "package": "final Web 2026-10-05 00:33:50",
+  "checks": 46,
+  "passed": 46,
+  "screenshots": 27,
+  "video": {
+    "path": "动画回归.webm",
+    "durationSeconds": 28.08,
+    "width": 720,
+    "height": 1280,
+    "recordingFps": 25,
+    "note": "录屏固定720×1280；1600长屏暂缩放装入录像，完整长屏见PNG。实测rAF性能约60.003fps，录像帧率不代表游戏帧率。"
+  },
+  "capture": "isolated Playwright Chrome local context; actual Cocos nodes and Graphics; 24 controlled frames from six real rule event packets + three fallback phase frames and live battle; screenshots preserved without image editing",
+  "limitations": [
+    "Web local performance is not WeChat device acceptance",
+    "lethal ult follows agreed death cleanup and may omit delayed killing number; no claim of complete last animation after settlement"
+  ],
+  "console404": "favicon.ico only"
+}

@@ -1,0 +1,37 @@
+{
+  "hp": 5000,
+  "seed": 18,
+  "time": 10.599999999999973,
+  "victim": "B2",
+  "events": [
+    {
+      "e": "ult",
+      "uid": "A4",
+      "skill": "八阵图",
+      "scope": "all",
+      "cast": "A4"
+    },
+    {
+      "e": "hit",
+      "uid": "B2",
+      "src": "A4",
+      "amount": 2940,
+      "crit": false,
+      "kind": "ult",
+      "cast": "A4"
+    },
+    {
+      "e": "death",
+      "uid": "B2",
+      "cast": "A4"
+    },
+    {
+      "e": "end",
+      "winner": "A",
+      "duration": 10.599999999999973,
+      "cast": "A4"
+    }
+  ],
+  "victimPending": 0,
+  "after": 0
+}

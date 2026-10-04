@@ -21,6 +21,8 @@ const { ccclass } = _decorator;
 export class CocosBootstrap extends Component implements ScreenContext {
   public page: Page = 'campaign';
   private content!: Node;
+  private initialArtPending = true;
+  private initialArtElapsed = 0;
   public ui!: CocosUi;
   public notice = '';
   private noticeAt = 0;
@@ -79,15 +81,39 @@ export class CocosBootstrap extends Component implements ScreenContext {
     this.node.addChild(this.content);
     game.on(Game.EVENT_HIDE, this.onHide, this);
     game.on(Game.EVENT_SHOW, this.onShow, this);
-    this.show('campaign');
+    this.drawInitialLoading();
     this.hookDiag();
+    // 超慢加载保留明确的进入选择，不自动露出旧地图再突变。
+    this.scheduleOnce(() => {
+      if (!this.initialArtPending) return;
+      this.ui.setText('StartupDetail', '场景加载较慢，可继续等待或先进入游戏');
+      this.ui.button('StartupSkip', '先进入游戏', 0, -140, 280, 56, () => this.finishInitialLoading(), palette.green);
+    }, 8);
     // 美术预加载（2026-10-02 美术阶段）：装载完成后重绘一次当前菜单页，让已交付立绘/图标立即生效
     ArtService.preload((n) => {
-      if (n > 0 && this.page && ['home', 'journey', 'campaign', 'stagePreview', 'heroes', 'heroDetail', 'formation', 'formationPick', 'bag', 'summon', 'summonResults', 'shop', 'armory', 'armoryCatalog', 'armoryBox'].indexOf(this.page) >= 0) {
+      if (!this.isValid) return;
+      if (!this.initialArtPending && n > 0 && this.page && ['home', 'journey', 'campaign', 'stagePreview', 'heroes', 'heroDetail', 'formation', 'formationPick', 'bag', 'summon', 'summonResults', 'shop', 'armory', 'armoryCatalog', 'armoryBox'].indexOf(this.page) >= 0) {
         try { this.show(this.page); } catch (e) { /* 重绘失败静默，保留占位页 */ }
       }
-    });
+    }, () => this.finishInitialLoading());
   }
+
+  private drawInitialLoading() {
+    const U = this.ui = new CocosUi(this.content, Math.max(1, view.getVisibleSize().height / 1280));
+    U.rect('StartupBackdrop', 0, 0, 720, 1280, new Color(12, 29, 26));
+    U.panel('StartupFrame', 0, 20, 610, 310, new Color(19, 43, 35, 235), 14, new Color(157, 126, 72, 145), false);
+    U.line('StartupTitleRule', [[-170, 25], [170, 25]], 1, palette.gold);
+    U.text('StartupTitle', '挂机定三国', 0, 100, 520, 42, palette.gold);
+    U.text('StartupStatus', '正在准备山河…', 0, -15, 510, 24, palette.text);
+    U.text('StartupDetail', '场景就绪后，即刻出征', 0, -67, 560, 18, palette.muted);
+  }
+
+  private finishInitialLoading() {
+    if (!this.initialArtPending || !this.isValid) return;
+    this.initialArtPending = false;
+    this.show(this.page);
+  }
+
   onDestroy() {
     game.off(Game.EVENT_HIDE, this.onHide, this);
     game.off(Game.EVENT_SHOW, this.onShow, this);
@@ -107,6 +133,11 @@ export class CocosBootstrap extends Component implements ScreenContext {
   }
 
   update(dt: number) {
+    if (this.initialArtPending) {
+      this.initialArtElapsed += dt;
+      this.ui.setText('StartupStatus', '正在准备山河' + '·'.repeat(1 + Math.floor(this.initialArtElapsed * 2) % 3));
+      return;
+    }
     CocosUi.updateFloaters(dt);
     CocosUi.updateFlyItems(dt);
     if (this.page === 'ad' && this.adPlacement && this.adSeconds > 0) {
@@ -154,6 +185,7 @@ export class CocosBootstrap extends Component implements ScreenContext {
     (globalThis as any).__tkNav = (p: string) => { try { this.show(p as any); return true; } catch (e) { return false; } };
   }
   public show(page: Page) {
+    if (this.initialArtPending) { this.page = page; return; }
     this.page = page;
     for (const child of this.content.children.slice()) child.destroy();
     // P1-① 防御清场（第二轮走查）：战斗 fx overlay 挂在常驻 fxLayer 上，任何非战斗页渲染时强制清空——

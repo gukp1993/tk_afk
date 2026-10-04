@@ -35,6 +35,8 @@ import { CocosUi, hexColor } from '../ui/CocosUi';
  *   首次致死只发 cheat、单位始终直立（无前置淡出）→ 从当前状态起播等效一次站立脉冲；
  *   "淡出中/已定格再被复活"的完整回升链路作为防御路径保留（规格 6.4 A3 的幽灵位防线）。
  * 由 `Bootstrap.update` 战斗分支驱动 `feed → tick(dt, speed)`，帧率无关（对齐 CocosUi.floaters 模式）。
+ * 追加原生技能光效：按 cls/faction 区分刀光、箭矢、法术/通用脉冲，大招分蓄力/释放/命中；
+ * 独立 lights 只读卡面锚点，沿真实事件受体驱动，有限数量/短寿命，同步倍速并纳入 live/reset。
  * - 视觉参数照抄旧 combatPopupDisplay/DmgNum/UltPopup 死路渲染路径（寿命/字号/配色/位移）。
  * - overlay 全部挂 `CocosUi.ensureFxLayer`（与 content 同坐标系，跨页存活）——所以进场/离场
  *   钩子必须全覆盖（startBattle/startWeekBoss/startReplay/finishBattle/go 离场）。
@@ -82,6 +84,43 @@ const REVIVE_DUR = 0.6;           // A3 复活回升：opacity→255 + 回升 + 
 const DMG_POP = 0.18;             // A5 暴击弹跳：首帧 scale 1.6→1（0.18s easeOut），普通字不变
 const DMG_POP_FROM = 1.6;         // A5 暴击弹跳起始缩放（规格字面）
 const MAX_DRIVEN = 12;            // 驱动型 fx（三类动效 + A3 淡出/复活按 kind 各自计）同类并存上限（场上单位 ≤11 含援军，足额）
+// 原生技能光效：最多 4 大招、8 普攻，每序列最多 11 节点（含根），只在生成时绘制 Graphics。
+const MAX_SKILL_FX = 4;
+const MAX_ATTACK_FX = 8;
+const SKILL_CHARGE = 0.20;
+const SKILL_RELEASE = 0.28;
+const SKILL_IMPACT = 0.32;
+const ATTACK_RELEASE = 0.18;
+const ATTACK_IMPACT = 0.16;
+
+type SkillStyle = 'melee' | 'ranged' | 'magic' | 'pulse';
+interface LightPart { node: Node; op: UIOpacity }
+interface LightTarget {
+  anchor: Node;
+  release: LightPart;
+  impact: LightPart;
+  spark: LightPart | null;
+}
+interface SkillLight {
+  root: Node;
+  uid: string;
+  source: Node;
+  style: SkillStyle;
+  ultimate: boolean;
+  elapsed: number;
+  charge: LightPart | null;
+  targets: LightTarget[];
+}
+interface PendingNumber {
+  light: SkillLight;
+  elapsed: number;
+  delay: number;
+  ev: { e: string; uid: string; src?: string; amount: number; crit?: boolean; kind?: string };
+  recipient: Node;
+  layer: Node;
+  ui: CocosUi;
+  indexByUid: Map<string, number>;
+}
 
 /** 被驱动的既有节点 + 归位基准（Fighter 与 Glyph 的 y 差 2px，各存各的 base）。
  * A3 淡出/复活额外持有透明度主写权：op 为该节点 UIOpacity（spawn 时 ensure 补挂），
@@ -107,6 +146,10 @@ interface BreathState { t: number; baseF: number; baseG: number; rimGold: Node |
 
 export class BattleFx {
   private static items: BfxItem[] = [];
+  /** 与既有八类动效分开驱动，只读单位节点、不接管卡面坐标/缩放/透明度。 */
+  private static lights: SkillLight[] = [];
+  /** 纯表现队列：大招数字到命中段才播，血量/效果在规则层仍即时结算。 */
+  private static pendingNumbers: PendingNumber[] = [];
   /** A4 怒气呼吸跨帧状态：uid → 常驻呼吸态（feed 按 snapshot 状态机进出；reset 清，跨场不残留）。 */
   private static breaths = new Map<string, BreathState>();
   /** A4：最近一帧 feed 的寻址上下文（呼吸写在 tick，需按 uid 解析节点；每帧刷新，
@@ -120,7 +163,9 @@ export class BattleFx {
 
   /** 现存 fx 数（__tkDiag().fx 机检：跨场残留断言用）。A4 起计入呼吸态（rim overlay 不入
    * items，泄漏时 fx 仍须非 0 才能被机检捕获；reset 双清，结算断言语义不变）。 */
-  static get live(): number { return BattleFx.items.length + BattleFx.breaths.size; }
+  static get live(): number {
+    return BattleFx.items.length + BattleFx.breaths.size + BattleFx.lights.length + BattleFx.pendingNumbers.length;
+  }
 
   /** 新战斗/离场重置：driven 节点先逐像素归位（防中途结束残留位移），overlay 全部销毁。
    * A3：淡出/复活遗留的半程透明度一并复位 255（节点通常随 show() 重建，此处兜节点复用场景），
@@ -138,6 +183,9 @@ export class BattleFx {
       if (f.node && f.node.isValid) { f.node.removeFromParent(); f.node.destroy(); }
     }
     BattleFx.items = [];
+    for (const light of BattleFx.lights) BattleFx.destroyLight(light);
+    BattleFx.lights = [];
+    BattleFx.pendingNumbers = [];
     for (const uid of Array.from(BattleFx.breaths.keys())) BattleFx.exitBreath(uid);
     BattleFx.breaths.clear();
     BattleFx.view = null;
@@ -165,17 +213,40 @@ export class BattleFx {
     BattleFx.scanEnergy(snapshot, ui, indexByUid, content);
     if (events && events.length) {
       const layer = CocosUi.ensureFxLayer(content);
-      for (const ev of events) {
+      const ultLights = new Map<string, SkillLight>();
+      for (let eventIndex = 0; eventIndex < events.length; eventIndex++) {
+        const ev = events[eventIndex];
         if (!ev) continue;
+        const castLight = ev.cast ? ultLights.get(ev.cast) : null;
         if (ev.e === 'hit') {
-          BattleFx.spawnDmgNum(layer, ui, ev, indexByUid);
-          BattleFx.spawnShake(ui, ev, indexByUid);
+          if (castLight) {
+            BattleFx.queueNumber(castLight, layer, ui, ev, indexByUid);
+          } else {
+            BattleFx.spawnDmgNum(layer, ui, ev, indexByUid);
+            BattleFx.spawnShake(ui, ev, indexByUid);
+          }
+        } else if (ev.e === 'heal') {
+          if (castLight) {
+            BattleFx.queueNumber(castLight, layer, ui, ev, indexByUid);
+          } else BattleFx.spawnDmgNum(layer, ui, ev, indexByUid);
         } else if (ev.e === 'ult') {
-          BattleFx.spawnUltBanner(layer, ui, ev, indexByUid);
+          const light = BattleFx.spawnLight(layer, ui, indexByUid, snapshot, ev.uid,
+            BattleFx.ultTargets(events, eventIndex, ev.uid), true);
+          if (light) ultLights.set(ev.uid, light);
+          BattleFx.spawnUltBanner(layer, ui, { ...ev, caster: snapshot[indexByUid.get(ev.uid)!]?.name }, indexByUid);
           BattleFx.spawnUltLunge(ui, ev, indexByUid);
-        } else if (ev.e === 'act') BattleFx.spawnLunge(ui, ev, indexByUid);
-        else if (ev.e === 'death') BattleFx.spawnDeathFade(ui, indexByUid, ev.uid);
-        else if (ev.e === 'cheat') BattleFx.spawnRevive(ui, indexByUid, ev.uid); // pct 字段为规则层语义，表现层不消费
+        } else if (ev.e === 'act') {
+          if (ev.type === 'atk' && ev.tgt) BattleFx.spawnLight(layer, ui, indexByUid, snapshot, ev.uid, [ev.tgt], false);
+          BattleFx.spawnLunge(ui, ev, indexByUid);
+        } else if (ev.e === 'death') {
+          BattleFx.cancelPendingNumbers(ev.uid);
+          BattleFx.cancelCharge(ev.uid);
+          BattleFx.spawnDeathFade(ui, indexByUid, ev.uid);
+        }
+        else if (ev.e === 'cheat') {
+          BattleFx.cancelPendingNumbers(ev.uid);
+          BattleFx.spawnRevive(ui, indexByUid, ev.uid); // pct 字段为规则层语义，表现层不消费
+        }
       }
     }
     // A3 兜底比对（规格 6.2-5：主触发是 cheat 事件，此处仅安全网）：复活补偿 + 重绘自愈。
@@ -333,6 +404,9 @@ export class BattleFx {
         BattleFx.items.splice(i, 1);
       }
     }
+    // 到达命中边界时先放出数字，再驱动光效同帧切入命中段。
+    BattleFx.tickPendingNumbers(advance);
+    BattleFx.tickLights(advance);
     // A4 怒气满常驻呼吸：每帧对态内单位重写缩放（tick 最后写 = 终态权威，正交于只写位移的
     // lunge/shake）并按 3Hz 切 rim visible（Graphics 已预制，零逐帧重绘）。节点按 view 每帧
     // 重新解析——整页重绘重建后自愈，无需 deadFaded 式状态机。
@@ -348,6 +422,289 @@ export class BattleFx {
         const hi = Math.floor(st.t * RIM_HZ) % 2 === 1;
         if (st.rimGold && st.rimGold.isValid) st.rimGold.active = !hi;
         if (st.rimHi && st.rimHi.isValid) st.rimHi.active = hi;
+      }
+    }
+  }
+
+  /** 只接受规则层在同步 castUlt 作用域标记的 cast 受体，最多三处代表目标。
+   * 无 cast 的后续 HOT/环境事件保持即时；buff/dot 无受体时回退施法者脉冲。 */
+  private static ultTargets(events: any[], start: number, uid: string): string[] {
+    const targets: string[] = [];
+    for (let i = start + 1; i < events.length; i++) {
+      const ev = events[i];
+      if (!ev) continue;
+      const recipient = ev.cast === uid && (ev.e === 'hit'
+        || ev.e === 'heal' || ev.e === 'shield' || ev.e === 'cc' || ev.e === 'ccImmune');
+      if (recipient && ev.uid && !targets.includes(ev.uid)) targets.push(ev.uid);
+      if (targets.length === 3) break;
+    }
+    return targets.length ? targets : [uid];
+  }
+
+  private static skillStyle(cls: string): SkillStyle {
+    if (cls === 'tank' || cls === 'warrior') return 'melee';
+    if (cls === 'archer') return 'ranged';
+    if (cls === 'mage' || cls === 'support') return 'magic';
+    return 'pulse';
+  }
+
+  private static lightColor(faction: string, style: SkillStyle): Color {
+    if (style === 'pulse') return GOLD;
+    if (faction === 'wei') return hexColor('#87c9f7');
+    if (faction === 'shu') return hexColor('#8fe5b8');
+    if (faction === 'wu') return hexColor('#ffbd78');
+    if (faction === 'qun') return hexColor('#d4a1fa');
+    return GOLD;
+  }
+
+  private static lightAnchor(ui: CocosUi, indexByUid: Map<string, number>, uid: string): Node | null {
+    const idx = indexByUid.get(uid);
+    if (idx === undefined) return null;
+    const node = ui.node('FighterGlyph' + idx) || ui.node('Fighter' + idx);
+    return node && node.isValid && isFinite(node.position.x) && isFinite(node.position.y) ? node : null;
+  }
+
+  private static makeLightPart(root: Node, name: string, draw: (g: Graphics) => void): LightPart {
+    const node = new Node(name);
+    node.addComponent(UITransform).setContentSize(120, 120);
+    const g = node.addComponent(Graphics);
+    draw(g);
+    const op = node.addComponent(UIOpacity);
+    root.addChild(node);
+    node.active = false;
+    return { node, op };
+  }
+
+  /** 精细星芒/符文均并入同一个 Graphics，不为每颗粒子增加节点。 */
+  private static star(g: Graphics, x: number, y: number, r: number) {
+    g.moveTo(x, y + r); g.lineTo(x + r * 0.28, y + r * 0.28);
+    g.lineTo(x + r, y); g.lineTo(x + r * 0.28, y - r * 0.28);
+    g.lineTo(x, y - r); g.lineTo(x - r * 0.28, y - r * 0.28);
+    g.lineTo(x - r, y); g.lineTo(x - r * 0.28, y + r * 0.28);
+    g.close(); g.fill();
+  }
+
+  private static drawCharge(g: Graphics, style: SkillStyle, color: Color) {
+    g.strokeColor = color; g.lineWidth = 2;
+    g.circle(0, 0, 38); g.stroke();
+    g.strokeColor = GOLD_HI; g.lineWidth = 1;
+    if (style === 'magic') {
+      g.circle(0, 0, 29); g.stroke();
+      // 断环与六瓣符文，相比实心光晕可保留立绘可读性。
+      for (let i = 0; i < 6; i++) {
+        const a = i * Math.PI / 3;
+        g.arc(0, 0, 44, a, a + 0.32, false); g.stroke();
+        const x = Math.cos(a) * 35, y = Math.sin(a) * 35;
+        g.moveTo(x - 3, y); g.lineTo(x, y + 4); g.lineTo(x + 3, y); g.lineTo(x, y - 4); g.close(); g.stroke();
+      }
+    } else {
+      for (let i = 0; i < 4; i++) {
+        const a = i * Math.PI / 2 + 0.3;
+        g.arc(0, 0, 43, a, a + 0.6, false); g.stroke();
+      }
+    }
+    g.fillColor = GOLD_HI;
+    for (let i = 0; i < 4; i++) {
+      const a = i * Math.PI / 2;
+      BattleFx.star(g, Math.cos(a) * 39, Math.sin(a) * 39, 3);
+    }
+  }
+
+  private static drawRelease(g: Graphics, style: SkillStyle, color: Color, ultimate: boolean) {
+    const size = ultimate ? 1 : 0.6;
+    g.strokeColor = color; g.fillColor = color;
+    if (style === 'melee') {
+      // 双层月牙：沿弹道 x 轴前行，头部明亮、尾部细薄。
+      g.lineWidth = 8 * size;
+      g.moveTo(-24 * size, -25 * size);
+      g.bezierCurveTo(38 * size, -17 * size, 38 * size, 17 * size, -24 * size, 25 * size); g.stroke();
+      g.strokeColor = GOLD_HI; g.lineWidth = 2 * size;
+      g.moveTo(-20 * size, -23 * size);
+      g.bezierCurveTo(30 * size, -15 * size, 30 * size, 15 * size, -20 * size, 23 * size); g.stroke();
+    } else if (style === 'ranged') {
+      g.lineWidth = 3 * size;
+      g.moveTo(-42 * size, 0); g.lineTo(17 * size, 0); g.stroke();
+      g.moveTo(24 * size, 0); g.lineTo(9 * size, 7 * size); g.lineTo(12 * size, 0);
+      g.lineTo(9 * size, -7 * size); g.close(); g.fill();
+      g.strokeColor = GOLD_HI; g.lineWidth = size;
+      g.moveTo(-30 * size, 0); g.lineTo(14 * size, 0); g.stroke();
+      if (ultimate) {
+        g.strokeColor = color; g.lineWidth = 1;
+        g.moveTo(-28, 8); g.lineTo(3, 8); g.moveTo(-28, -8); g.lineTo(3, -8); g.stroke();
+      }
+    } else {
+      g.lineWidth = 2;
+      g.circle(0, 0, (style === 'magic' ? 12 : 19) * size); g.stroke();
+      g.strokeColor = GOLD_HI; g.circle(0, 0, 6 * size); g.stroke();
+      g.fillColor = GOLD_HI; BattleFx.star(g, 0, 0, 9 * size);
+      g.fillColor = color;
+      for (let i = 0; i < 3; i++) g.circle((-18 - i * 9) * size, (i % 2 ? 4 : -3) * size, (3 - i * 0.6) * size);
+      g.fill();
+    }
+  }
+
+  private static drawImpact(g: Graphics, style: SkillStyle, color: Color, ultimate: boolean) {
+    const r = ultimate ? 27 : 13;
+    g.strokeColor = color; g.lineWidth = ultimate ? 3 : 1.6;
+    g.circle(0, 0, r); g.stroke();
+    g.strokeColor = GOLD_HI; g.lineWidth = 1;
+    if (style === 'melee') {
+      g.moveTo(-r, -r * 0.6); g.lineTo(r, r * 0.6);
+      g.moveTo(-r * 0.6, r); g.lineTo(r * 0.6, -r); g.stroke();
+    } else if (style === 'magic' && ultimate) {
+      g.circle(0, 0, r * 0.65); g.stroke();
+      for (let i = 0; i < 6; i++) {
+        const a = i * Math.PI / 3;
+        g.moveTo(Math.cos(a) * r * 0.55, Math.sin(a) * r * 0.55);
+        g.lineTo(Math.cos(a) * r * 0.86, Math.sin(a) * r * 0.86);
+      }
+      g.stroke();
+    } else {
+      g.moveTo(-r * 0.7, 0); g.lineTo(r * 0.7, 0);
+      g.moveTo(0, -r * 0.7); g.lineTo(0, r * 0.7); g.stroke();
+    }
+    g.fillColor = GOLD_HI; BattleFx.star(g, 0, 0, ultimate ? 8 : 4);
+  }
+
+  private static spawnLight(layer: Node, ui: CocosUi, indexByUid: Map<string, number>, snapshot: any[],
+    uid: string, targetUids: string[], ultimate: boolean): SkillLight | null {
+    const source = BattleFx.lightAnchor(ui, indexByUid, uid);
+    if (!source) return null;
+    // 不叠加同一施法者的同类序列；大招接管自己的短普攻，避免轮廓噪声。
+    if (BattleFx.lights.some(f => f.uid === uid && (f.ultimate || !ultimate))) return null;
+    if (ultimate) {
+      for (let i = BattleFx.lights.length - 1; i >= 0; i--) {
+        if (BattleFx.lights[i].uid !== uid) continue;
+        BattleFx.destroyLight(BattleFx.lights[i]); BattleFx.lights.splice(i, 1);
+      }
+    }
+    if (BattleFx.lights.filter(f => f.ultimate === ultimate).length >= (ultimate ? MAX_SKILL_FX : MAX_ATTACK_FX)) return null;
+    const targetNodes = targetUids.slice(0, ultimate ? 3 : 1)
+      .map(t => BattleFx.lightAnchor(ui, indexByUid, t)).filter((n): n is Node => !!n);
+    if (!targetNodes.length) return null;
+    const unit = snapshot[indexByUid.get(uid)!];
+    const style = BattleFx.skillStyle(unit && unit.cls);
+    const color = BattleFx.lightColor(unit && unit.faction, style);
+    const root = new Node(ultimate ? 'BfxSkill_' + style : 'BfxAttack_' + style);
+    root.addComponent(UITransform).setContentSize(720, 1280);
+    layer.addChild(root);
+    const charge = ultimate ? BattleFx.makeLightPart(root, 'BfxCharge', g => BattleFx.drawCharge(g, style, color)) : null;
+    const targets = targetNodes.map(anchor => ({
+      anchor,
+      release: BattleFx.makeLightPart(root, 'BfxRelease', g => BattleFx.drawRelease(g, style, color, ultimate)),
+      impact: BattleFx.makeLightPart(root, 'BfxImpact', g => BattleFx.drawImpact(g, style, color, ultimate)),
+      spark: ultimate ? BattleFx.makeLightPart(root, 'BfxSparks', g => {
+        g.fillColor = color;
+        BattleFx.star(g, -22, 5, 4); BattleFx.star(g, 19, 12, 3);
+        g.fillColor = GOLD_HI;
+        BattleFx.star(g, -8, 23, 3); BattleFx.star(g, 12, -5, 2);
+      }) : null,
+    }));
+    const light: SkillLight = { root, uid, source, style, ultimate, elapsed: 0, charge, targets };
+    BattleFx.lights.push(light);
+    BattleFx.updateLight(light); // 创建当帧即显示蓄力/弹道，不额外等待下一帧。
+    return light;
+  }
+
+  private static queueNumber(light: SkillLight, layer: Node, ui: CocosUi, ev: any, indexByUid: Map<string, number>) {
+    if (!light.root.isValid || BattleFx.pendingNumbers.length >= MAX_DMG_NUM) return;
+    const recipient = BattleFx.lightAnchor(ui, indexByUid, ev.uid);
+    if (!recipient) return;
+    BattleFx.pendingNumbers.push({ light, elapsed: 0,
+      delay: Math.max(0, SKILL_CHARGE + SKILL_RELEASE - light.elapsed),
+      ev: { e: ev.e, uid: ev.uid, src: ev.src, amount: ev.amount, crit: ev.crit, kind: ev.kind },
+      recipient, layer, ui, indexByUid });
+  }
+
+  private static cancelPendingNumbers(uid: string) {
+    BattleFx.pendingNumbers = BattleFx.pendingNumbers.filter(n => n.ev.uid !== uid && n.light.uid !== uid);
+  }
+
+  private static tickPendingNumbers(advance: number) {
+    for (let i = BattleFx.pendingNumbers.length - 1; i >= 0; i--) {
+      const n = BattleFx.pendingNumbers[i];
+      n.elapsed += advance;
+      if (!n.light.root.isValid || !n.light.source.isValid || !n.recipient.isValid || !n.layer.isValid) {
+        BattleFx.pendingNumbers.splice(i, 1); continue;
+      }
+      if (n.elapsed + 1e-8 < n.delay) continue;
+      BattleFx.spawnDmgNum(n.layer, n.ui, n.ev, n.indexByUid);
+      if (n.ev.e === 'hit') BattleFx.spawnShake(n.ui, n.ev, n.indexByUid);
+      BattleFx.pendingNumbers.splice(i, 1);
+    }
+  }
+
+  private static destroyLight(light: SkillLight) {
+    if (light.root.isValid) { light.root.removeFromParent(); light.root.destroy(); }
+  }
+
+  /** 死亡终止尚未释放的蓄力；已释放的命中保留，不改死亡/复活主信道。 */
+  private static cancelCharge(uid: string) {
+    for (let i = BattleFx.lights.length - 1; i >= 0; i--) {
+      const f = BattleFx.lights[i];
+      if (f.uid === uid && f.ultimate && f.elapsed < SKILL_CHARGE) {
+        BattleFx.destroyLight(f); BattleFx.lights.splice(i, 1);
+      }
+    }
+  }
+
+  private static tickLights(advance: number) {
+    for (let i = BattleFx.lights.length - 1; i >= 0; i--) {
+      const f = BattleFx.lights[i];
+      f.elapsed += advance;
+      const duration = f.ultimate ? SKILL_CHARGE + SKILL_RELEASE + SKILL_IMPACT : ATTACK_RELEASE + ATTACK_IMPACT;
+      // 页面重建/越界失效立即清场。死亡卡仍有效，因此真实致死命中能正常显示。
+      const anchors = [f.source, ...f.targets.map(t => t.anchor)];
+      if (!f.root.isValid || anchors.some(n => !n.isValid || !isFinite(n.position.x) || !isFinite(n.position.y))
+        || f.elapsed >= duration) {
+        BattleFx.destroyLight(f); BattleFx.lights.splice(i, 1); continue;
+      }
+      BattleFx.updateLight(f);
+    }
+  }
+
+  /** 三段共享一个模拟时钟，倍速/中途切速同步；只改原生节点，不逐帧绘制或建粒子。 */
+  private static updateLight(f: SkillLight) {
+    const chargeTime = f.ultimate ? SKILL_CHARGE : 0;
+    const releaseTime = f.ultimate ? SKILL_RELEASE : ATTACK_RELEASE;
+    const impactTime = f.ultimate ? SKILL_IMPACT : ATTACK_IMPACT;
+    const elapsed = f.elapsed;
+    const from = f.source.position;
+    if (f.charge) {
+      const q = Math.min(1, elapsed / chargeTime);
+      f.charge.node.active = elapsed + 1e-8 < chargeTime;
+      f.charge.node.setPosition(from.x, from.y, 0);
+      f.charge.node.setScale(0.72 + 0.28 * q, 0.72 + 0.28 * q, 1);
+      f.charge.node.angle = (f.style === 'magic' ? 90 : 35) * q;
+      f.charge.op.opacity = Math.round(110 + 120 * q);
+    }
+    // 同数字队列使用极小浮点容差，.20/.48 秒边界不会相差一帧。
+    const release = (elapsed - chargeTime + 1e-8) / releaseTime;
+    const impact = (elapsed - chargeTime - releaseTime + 1e-8) / impactTime;
+    for (const target of f.targets) {
+      const to = target.anchor.position;
+      const q = Math.max(0, Math.min(1, release));
+      const travel = f.style === 'melee' ? BattleFx.easeOutQuad(q) : q;
+      const dx = to.x - from.x, dy = to.y - from.y;
+      const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+      target.release.node.active = release >= 0 && release < 1;
+      target.release.node.setPosition(from.x + dx * travel, from.y + dy * travel, 0);
+      target.release.node.angle = f.style === 'pulse' ? q * 120 : angle;
+      const rs = f.ultimate ? 0.7 + 0.3 * Math.sin(q * Math.PI) : 1;
+      target.release.node.setScale(rs, rs, 1);
+      target.release.op.opacity = Math.round(220 - 40 * q);
+      target.impact.node.active = impact >= 0 && impact < 1;
+      const p = Math.max(0, Math.min(1, impact));
+      const size = 0.45 + BattleFx.easeOutQuad(p) * (f.ultimate ? 0.9 : 0.65);
+      target.impact.node.setPosition(to.x, to.y, 0);
+      target.impact.node.setScale(size, size, 1);
+      target.impact.node.angle = f.style === 'magic' ? p * 35 : angle;
+      target.impact.op.opacity = Math.round(245 * (1 - p));
+      if (target.spark) {
+        target.spark.node.active = impact >= 0 && impact < 1;
+        target.spark.node.setPosition(to.x, to.y + p * 18, 0);
+        target.spark.node.setScale(0.6 + p * 0.7, 0.6 + p * 0.7, 1);
+        target.spark.op.opacity = Math.round(220 * (1 - p));
       }
     }
   }
@@ -497,20 +854,21 @@ export class BattleFx {
     if (BattleFx.countKind('dmgNum') >= MAX_DMG_NUM) return;
     const anchor = BattleFx.anchorOf(indexByUid, ui, ev.uid);
     if (!anchor) return;
-    const crit = !!ev.crit;
+    const heal = ev.e === 'heal';
+    const crit = !heal && !!ev.crit;
     const fontSize = crit ? 32 : 24;
-    const node = new Node('BfxDmg');
+    const node = new Node(heal ? 'BfxHeal' : 'BfxDmg');
     // R2：锚点已改为视觉卡 Glyph——偏移收敛为头顶 -40（卡高约 91，上缘 -45 附近），不再叠 -130 死路偏移
     const baseX = anchor.x + Math.floor(Math.random() * 80 - 40);
     const baseY = anchor.y - 40;
     node.setPosition(new Vec3(baseX, baseY, 0));
     node.addComponent(UITransform).setContentSize(120, Math.max(fontSize * 2.4, 46));
     const label = node.addComponent(Label);
-    label.string = String(ev.amount);
-    label.fontFamily = 'Kaiti SC';
+    label.string = (heal ? '+' : '') + String(ev.amount);
+    label.fontFamily = 'sans-serif';
     label.fontSize = fontSize;
     label.lineHeight = fontSize * 1.3;
-    label.color = crit ? new Color(255, 120, 40, 255) : new Color(255, 255, 200, 255);
+    label.color = heal ? hexColor('#8fe5b8') : crit ? new Color(255, 120, 40, 255) : new Color(255, 255, 200, 255);
     label.horizontalAlign = Label.HorizontalAlign.CENTER;
     label.verticalAlign = Label.VerticalAlign.CENTER;
     label.overflow = Label.Overflow.SHRINK;
@@ -526,39 +884,47 @@ export class BattleFx {
   }
 
   /**
-   * 大招横幅（ult 事件）：施放者头顶（pos+(0,-80)），260×42 金框，1.2s 淡出。
+   * 大招横幅：中轴对阵区 440×38 金框，1.2s 淡出；只保留最新一条，避免压住单位状态。
    * A4 入场增强：亮金描边叠加层（子节点，同几何加粗一档）随滑入自 255 衰减至 0——
    * "描边加亮后回落金框"；Graphics 各画一次，动画全走 UIOpacity/位置，零逐帧重绘。
    */
   private static spawnUltBanner(layer: Node, ui: CocosUi, ev: any, indexByUid: Map<string, number>) {
     const anchor = BattleFx.anchorOf(indexByUid, ui, ev.uid);
     if (!anchor) return;
+    for (let i = BattleFx.items.length - 1; i >= 0; i--) {
+      const f = BattleFx.items[i];
+      if (f.kind !== 'ultBanner') continue;
+      if (f.node && f.node.isValid) { f.node.removeFromParent(); f.node.destroy(); }
+      BattleFx.items.splice(i, 1);
+    }
     const node = new Node('BfxUlt');
-    const baseX = anchor.x;
-    const baseY = anchor.y - 80;
+    const center = ui.node('BattleVsBg') || ui.node('BattleVs');
+    const baseX = 0;
+    const baseY = center && center.isValid ? center.position.y : 8;
     node.setPosition(new Vec3(baseX, baseY + BANNER_SLIDE_DIST, 0)); // 滑入起点：终位上方 14px
-    node.addComponent(UITransform).setContentSize(260, 42);
+    node.addComponent(UITransform).setContentSize(440, 38);
     const g = node.addComponent(Graphics);
     g.fillColor = new Color(46, 26, 12, 230);
-    g.roundRect(-130, -21, 260, 42, 6);
+    g.roundRect(-220, -19, 440, 38, 6);
     g.fill();
     g.strokeColor = GOLD;
     g.lineWidth = 2;
-    g.roundRect(-129, -20, 258, 40, 6);
+    g.roundRect(-219, -18, 438, 36, 6);
     g.stroke();
     const glow = new Node('BfxUltGlow');
-    glow.addComponent(UITransform).setContentSize(260, 42);
+    glow.addComponent(UITransform).setContentSize(440, 38);
     const gg = glow.addComponent(Graphics);
     gg.strokeColor = GOLD_HI;
     gg.lineWidth = 3.5;
-    gg.roundRect(-129, -20, 258, 40, 6);
+    gg.roundRect(-219, -18, 438, 36, 6);
     gg.stroke();
     node.addChild(glow);
     const textNode = new Node('BfxUltText');
-    textNode.addComponent(UITransform).setContentSize(250, 46);
+    textNode.addComponent(UITransform).setContentSize(420, 36);
     const label = textNode.addComponent(Label);
-    label.string = String(ev.skill || '');
-    label.fontFamily = 'Kaiti SC';
+    label.string = (ev.caster ? ev.caster + ' · ' : '') + String(ev.skill || '');
+    label.fontFamily = 'serif';
+    label.enableWrapText = false;
     label.fontSize = 20;
     label.lineHeight = 26;
     label.color = GOLD;
