@@ -1,0 +1,23 @@
+{
+  "batch": "第三批手机适配与次级场景",
+  "created": "2026-10-05",
+  "style": "原创三国氛围场景，深墨绿与旧金，写实水墨电影光感，竖版；中央留暗净空供UI排版，边缘提供环境细节；无文字、无人物、无标志；不要现代物件。工程输出压缩为720x1280 JPG，放入art-heroes微信分包。",
+  "assets": [
+    {
+      "key": "scene_arena_v2",
+      "file": "assets/art-heroes/scenes/scene_arena_v2.jpg",
+      "bytes": 129130,
+      "promptBrief": "群山云海中的古代三国演武擂台，夕阳从远处山脊照来，左右对称的木制观战楼、红色三国军旗、石质圆形竞技场，低对比的深色中央场地留出对手与榜单UI空间；华丽但沉稳。"
+    },
+    {
+      "key": "scene_heroic_hall",
+      "file": "assets/art-heroes/scenes/scene_heroic_hall.jpg",
+      "bytes": 143949,
+      "promptBrief": "原创三国名将殿堂内景，深墨绿木柱与暖金雕纹、对称灯笼和石阶，尽头开口望见山水晨光，中央地面保持暗净，四边布置卷轴与青铜器作为边饰；庄严、宁静、适合承载任务/图鉴/名人堂UI。"
+    }
+  ],
+  "notes": [
+    "图像由内置imagegen生成，工程JPEG与Creator meta保存在assets/art-heroes/scenes/。",
+    "文件大小为压缩后工程资源；不代表纹理解码后的设备显存占用。"
+  ]
+}

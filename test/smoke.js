@@ -6,6 +6,7 @@ const SAVE_KEY = 'sanguo_afk_save_v1';
 const storage = (() => { const m = new Map(); return {
   setStorageSync: (k, v) => m.set(k, v), getStorageSync: k => m.get(k), _map: m }; })();
 global.wx = storage; // utils/platform.js 在 require 时读取
+const platform = require('../utils/platform');
 
 const C = require('../utils/config');
 const H = require('../utils/heroes');
@@ -19,6 +20,19 @@ function check(name, cond) {
   if (cond) { passed++; } else { failed++; console.error('  FAIL [' + section + '] ' + name); }
 }
 function head(name) { section = name; }
+
+head('phone safe area');
+storage.getWindowInfo = () => ({ windowWidth: 360, screenHeight: 740, safeArea: { top: 28, bottom: 710 } });
+const phoneInsets = platform.safeAreaInsets();
+check('safe-area insets convert CSS pixels to 720 design units', phoneInsets.top === 56 && phoneInsets.bottom === 60);
+storage.getWindowInfo = () => ({ windowWidth: 0, screenHeight: 0 });
+const missingInsets = platform.safeAreaInsets();
+check('missing device size falls back to zero insets', missingInsets.top === 0 && missingInsets.bottom === 0);
+storage.getWindowInfo = () => { throw new Error('test error'); };
+const failedInsets = platform.safeAreaInsets();
+check('platform exception falls back to zero insets', failedInsets.top === 0 && failedInsets.bottom === 0);
+delete storage.getWindowInfo;
+
 function freshStore() {
   delete require.cache[require.resolve('../utils/store')];
   return require('../utils/store');

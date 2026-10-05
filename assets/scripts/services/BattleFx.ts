@@ -1,6 +1,5 @@
-import { Color, Graphics, Label, LabelOutline, Node, Sprite, UIOpacity, UITransform, Vec3 } from 'cc';
+import { Color, Graphics, Label, LabelOutline, Node, UIOpacity, UITransform, Vec3, view } from 'cc';
 import { CocosUi, hexColor } from '../ui/CocosUi';
-import { ArtService } from './ArtService';
 import * as heroData from '../domain/heroes';
 
 /**
@@ -101,7 +100,7 @@ const ULT_SCENE_FIELD_BOTTOM = -520;
 
 type UltimateMotif = 'blossom'|'dragon'|'shock'|'multi'|'bagua'|'arrow'|'command'|'eclipse'|'crossed'|'charge'|'wave'|'spear'|'firegrid'|'halberd'|'dance'|'vortex';
 interface UltimateSceneSpec { uid: string; heroId: string; name: string; faction: string; skill: string }
-interface UltimateSceneFx { root: Node; motif: Node; portrait: Node | null; elapsed: number; spec: UltimateSceneSpec }
+interface UltimateSceneFx { root: Node; motif: Node; elapsed: number; spec: UltimateSceneSpec }
 interface UltimateTheme { motif: UltimateMotif; primary: Color; accent: Color }
 const ULTIMATE_THEMES: Record<string, UltimateTheme> = {
   liubei: { motif:'blossom', primary:hexColor('#73c9a2'), accent:hexColor('#f3cf79') },
@@ -186,7 +185,7 @@ export class BattleFx {
   private static breaths = new Map<string, BreathState>();
   /** A4：最近一帧 feed 的寻址上下文（呼吸写在 tick，需按 uid 解析节点；每帧刷新，
    * reset 置空——feed 只在 battle 页调用，离开即失效）。 */
-  private static view: { ui: CocosUi; indexByUid: Map<string, number> } | null = null;
+  private static view: { ui: CocosUi; indexByUid: Map<string, number>; content: Node } | null = null;
   /** A3 阵亡淡出跨帧状态：uid → 已进入/正在进入透明终态（death 事件置入，cheat/兜底复活
    * 移除；reset 清，跨场不残留）。供 snapshot.alive 兜底比对与重绘自愈。 */
   private static deadFaded = new Map<string, true>();
@@ -201,6 +200,8 @@ export class BattleFx {
   }
 
   static get ultimateScenesLive() { return (BattleFx.ultimateScene ? 1 : 0) + BattleFx.ultimateSceneQueue.length; }
+  /** Pending result transition budget: active scene plus the bounded two-scene queue. */
+  static get ultimateSceneMaxTail() { return ULT_SCENE_LIFE * (MAX_ULT_SCENE_QUEUE + 1) + 0.15; }
 
   /** 新战斗/离场重置：driven 节点先逐像素归位（防中途结束残留位移），overlay 全部销毁。
    * A3：淡出/复活遗留的半程透明度一并复位 255（节点通常随 show() 重建，此处兜节点复用场景），
@@ -245,7 +246,7 @@ export class BattleFx {
     if (!ui || !content || !snapshot || !snapshot.length) return;
     const indexByUid = new Map<string, number>();
     for (let i = 0; i < snapshot.length; i++) indexByUid.set(snapshot[i].uid, i);
-    BattleFx.view = { ui, indexByUid }; // A4：呼吸写在 tick，此处每帧刷新寻址上下文
+    BattleFx.view = { ui, indexByUid, content }; // A4：呼吸写在 tick，此处每帧刷新寻址上下文
     // A4 怒气满呼吸状态机（先于事件，理由见方法注释；无槽位竞争——呼吸只写 scale 且为终态权威）。
     BattleFx.scanEnergy(snapshot, ui, indexByUid, content);
     if (events && events.length) {
@@ -270,7 +271,7 @@ export class BattleFx {
           const caster = snapshot[indexByUid.get(ev.uid)!];
           const definition = caster && caster.heroId ? heroData.getHero(caster.heroId) : null;
           if (caster && definition && definition.rarity === 4) {
-            BattleFx.queueUltimateScene(layer, {
+            BattleFx.queueUltimateScene(CocosUi.ensureBattleSceneLayer(content, ui.node('BattleHeader')), {
               uid: ev.uid, heroId: caster.heroId, name: caster.name || '', faction: caster.faction || '', skill: String(ev.skill || '')
             });
           }
@@ -491,8 +492,12 @@ export class BattleFx {
 
   private static createUltimateScene(layer: Node, spec: UltimateSceneSpec): UltimateSceneFx {
     const theme = ULTIMATE_THEMES[spec.heroId];
+    const verticalScale = Math.max(1, view.getVisibleSize().height / 1280);
     const root = new Node('BfxUltimateScene_' + spec.heroId);
     root.addComponent(UITransform).setContentSize(720, 1280);
+    // Keep the scene aligned with the battle field on tall phones, where page coordinates
+    // are expanded vertically by CocosUi's FIXED_WIDTH layout.
+    root.setScale(new Vec3(1, verticalScale, 1));
     const rootOpacity = root.addComponent(UIOpacity);
     const wash = new Node('SceneWash');
     wash.addComponent(UITransform).setContentSize(720, ULT_SCENE_FIELD_TOP - ULT_SCENE_FIELD_BOTTOM);
@@ -509,24 +514,10 @@ export class BattleFx {
     BattleFx.drawUltimateMotif(mg, theme.motif, theme.primary, theme.accent);
     root.addChild(motif);
 
-    let portrait: Node | null = null;
-    const frame = ArtService.frame(spec.heroId);
-    if (frame) {
-      portrait = new Node('ScenePortrait_' + spec.heroId);
-      portrait.addComponent(UITransform).setContentSize(268, 358);
-      const sprite = portrait.addComponent(Sprite);
-      sprite.spriteFrame = frame;
-      sprite.sizeMode = Sprite.SizeMode.CUSTOM;
-      sprite.trim = false;
-      portrait.getComponent(UITransform)!.setContentSize(268, 358);
-      const opacity = portrait.addComponent(UIOpacity);
-      opacity.opacity = 174;
-      root.addChild(portrait);
-    }
     layer.addChild(root);
     rootOpacity.opacity = 0;
     motif.setScale(new Vec3(0.72, 0.72, 1));
-    return { root, motif, portrait, elapsed: 0, spec };
+    return { root, motif, elapsed: 0, spec };
   }
 
   private static destroyUltimateScene() {
@@ -539,12 +530,20 @@ export class BattleFx {
   private static tickUltimateScene(advance: number) {
     if (!BattleFx.ultimateScene && BattleFx.ultimateSceneQueue.length) {
       const next = BattleFx.ultimateSceneQueue.shift()!;
-      const layer = CocosUi.fxLayer;
+      const state = BattleFx.view;
+      const layer = state ? CocosUi.ensureBattleSceneLayer(state.content, state.ui.node('BattleHeader')) : null;
       if (layer && layer.isValid) BattleFx.ultimateScene = BattleFx.createUltimateScene(layer, next);
     }
     const f = BattleFx.ultimateScene;
     if (!f) return;
-    if (!f.root.isValid) { BattleFx.ultimateScene = null; return; }
+    if (!f.root.isValid) {
+      // Page redraws such as changing speed destroy the content child layer. Replay the
+      // interrupted scene at the head of the bounded queue under the rebuilt battle HUD.
+      BattleFx.ultimateScene = null;
+      if (BattleFx.ultimateSceneQueue.length >= MAX_ULT_SCENE_QUEUE) BattleFx.ultimateSceneQueue.pop();
+      BattleFx.ultimateSceneQueue.unshift(f.spec);
+      return;
+    }
     f.elapsed += advance;
     const t = Math.min(1, f.elapsed / ULT_SCENE_LIFE);
     const opacity = f.elapsed < 0.16 ? 205 * BattleFx.easeOutQuad(f.elapsed / 0.16)
@@ -556,11 +555,6 @@ export class BattleFx {
       : 1.04 + 0.12 * BattleFx.easeOutQuad(impact);
     f.motif.setScale(new Vec3(scale, scale, 1));
     f.motif.angle = (f.spec.heroId === 'simayi' || f.spec.heroId === 'zhugeliang' ? 28 : -12) * t;
-    if (f.portrait && f.portrait.isValid) {
-      const s = 0.76 + 0.16 * BattleFx.easeOutQuad(Math.min(1, f.elapsed / 0.34));
-      f.portrait.setScale(new Vec3(s, s, 1));
-      f.portrait.setPosition(0, -14 * impact, 0);
-    }
     if (f.elapsed >= ULT_SCENE_LIFE) BattleFx.destroyUltimateScene();
   }
 

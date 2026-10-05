@@ -29,4 +29,20 @@ function onAppShow(fn) {
   } catch (e) { /* 静默 */ }
   return () => {};
 }
-module.exports = { name, api, vibrateShort, vibrateLong, launchQuery, onAppShow };
+// 统一返回720宽设计坐标系中的安全区留白；读取失败/网页端返回0，不依赖页面直接访问平台全局。
+function safeAreaInsets() {
+  try {
+    if (!api) return { top: 0, bottom: 0 };
+    const info = api.getWindowInfo ? api.getWindowInfo() : (api.getSystemInfoSync ? api.getSystemInfoSync() : null);
+    const safe = info && info.safeArea;
+    const width = Number(info && (info.windowWidth || info.screenWidth));
+    const height = Number(info && (info.screenHeight || info.windowHeight));
+    if (!safe || !width || !height) return { top: 0, bottom: 0 };
+    const scale = 720 / width;
+    return {
+      top: Math.max(0, Math.min(100, Number(safe.top || 0) * scale)),
+      bottom: Math.max(0, Math.min(100, (height - Number(safe.bottom || height)) * scale))
+    };
+  } catch (e) { return { top: 0, bottom: 0 }; }
+}
+module.exports = { name, api, vibrateShort, vibrateLong, launchQuery, onAppShow, safeAreaInsets };

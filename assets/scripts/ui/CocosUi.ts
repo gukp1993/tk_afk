@@ -318,6 +318,19 @@ export class CocosUi {
 
   /** 领取飞字（研讨会七 P4）：浮空文字上移淡出后自毁；挂 fxLayer 不随 content 清理销毁。 */
   static fxLayer: Node | null = null;
+  static battleSceneLayer: Node | null = null;
+  static battleSceneParent: Node | null = null;
+  /** SSR场景层插在战斗背景之后、单位与HUD之前，使主题符纹全屏出现但不压住战斗信息。 */
+  static ensureBattleSceneLayer(parent: Node, before?: Node | null) {
+    if (CocosUi.battleSceneLayer && CocosUi.battleSceneLayer.isValid && CocosUi.battleSceneParent === parent) return CocosUi.battleSceneLayer;
+    const layer = new Node('BattleSceneFxLayer');
+    parent.addChild(layer);
+    const insertAt = before && before.isValid && before.parent === parent ? before.getSiblingIndex() : 1;
+    layer.setSiblingIndex(Math.max(0, Math.min(insertAt, parent.children.length - 1)));
+    CocosUi.battleSceneLayer = layer;
+    CocosUi.battleSceneParent = parent;
+    return layer;
+  }
   static ensureFxLayer(parent: Node) {
     if (!CocosUi.fxLayer || !CocosUi.fxLayer.isValid) {
       CocosUi.fxLayer = new Node('FxLayer');

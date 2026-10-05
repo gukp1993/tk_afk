@@ -45,6 +45,7 @@ export class CocosBootstrap extends Component implements ScreenContext {
   public battleDiff = 1;
   public battleArenaSeed = 0;
   private refreshTime = 0;
+  private battleFinishPending: { win: boolean; elapsed: number } | null = null;
   public outcome: any = null;
   public lastBattleSnapshot: any[] = [];
   public storyStage = 1;
@@ -151,6 +152,22 @@ export class CocosBootstrap extends Component implements ScreenContext {
       this.ui.updateProgress('AdProgress', 0, 40, 540, ratio);
       this.ui.setText('AdTimer', ratio >= 1 ? '播放完成 · 可领取奖励' : `播放中… ${Math.ceil(this.adSeconds)} 秒 · ${Math.floor(ratio * 100)}%`);
     }
+    // If the finishing hit is an SSR ultimate, leave the resolved battlefield up long
+    // enough for its full-screen scene to render. Rules are already settled by step();
+    // this only delays the result transition and advances the visual clock.
+    if (this.battleFinishPending) {
+      const speed = store.getState().settings.autoBattleSpeed || 1;
+      const advance = Math.min(0.1, dt) * speed;
+      BattleFx.tick(dt, speed);
+      this.battleFinishPending.elapsed += advance;
+      if ((BattleFx.ultimateScenesLive === 0 && this.battleFinishPending.elapsed >= 0.24) ||
+          this.battleFinishPending.elapsed >= BattleFx.ultimateSceneMaxTail) {
+        const win = this.battleFinishPending.win;
+        this.battleFinishPending = null;
+        this.finishBattle(win);
+      }
+      return;
+    }
     if (this.fighting && this.autoSession.state.status !== 'suspended') {
       const speed = store.getState().settings.autoBattleSpeed || 1;
       const step = this.fighting.step(Math.min(0.1, dt) * speed);
@@ -161,7 +178,10 @@ export class CocosBootstrap extends Component implements ScreenContext {
       if (this.page === 'battle') BattleFx.feed(step.events, snap, this.ui, this.content);
       BattleFx.tick(dt, speed);
       const refreshGap = 0.3 / speed;
-      if (step.done) this.finishBattle(step.winner === 'A');
+      if (step.done) {
+        if (this.page === 'battle' && BattleFx.ultimateScenesLive > 0) this.battleFinishPending = { win: step.winner === 'A', elapsed: 0 };
+        else this.finishBattle(step.winner === 'A');
+      }
       else if (this.page === 'battle' && this.refreshTime > refreshGap) {
         this.refreshTime = 0;
         battleScreens.refreshBattleView(this);
@@ -192,7 +212,7 @@ export class CocosBootstrap extends Component implements ScreenContext {
     ArtService.releasePortraits();
     // P1-① 防御清场（第二轮走查）：战斗 fx overlay 挂在常驻 fxLayer 上，任何非战斗页渲染时强制清空——
     // 无论泄漏链路（自动连战/跳过/中断）如何，用户可见症状必然消失；战斗页刷新不受影响
-    if (page !== 'battle') BattleFx.onBattleEnd();
+    if (page !== 'battle') { this.battleFinishPending = null; BattleFx.onBattleEnd(); }
     const verticalScale=Math.max(1,view.getVisibleSize().height/1280);
     const U = this.ui = new CocosUi(this.content,verticalScale,platform.safeAreaInsets()), s = store.getState();
     U.rect('Backdrop', 0, 0, 720, 1280, hexColor('#171009'));
@@ -472,6 +492,7 @@ export class CocosBootstrap extends Component implements ScreenContext {
     this.go('battle');
   }
   private finishBattle(win: boolean) {
+    this.battleFinishPending = null;
     if (this.replaying) {
       const duration=this.fighting?.result()?.duration || 0;
       const snapshot=this.fighting?.snapshot() || [];

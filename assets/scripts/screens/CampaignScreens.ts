@@ -219,14 +219,15 @@ export function stagePreview(ctx: ScreenContext) {
   U.text('StageEnemyTitle',enemy.isBoss?'名将镇守 · 首通奖励':'敌阵与首通奖励',-155,289,311,21,GOLD);
   enemy.units.slice(0,5).forEach((unit:any,i:number)=>{
     // 关卡预览优先用敌将立绘；小兵混编单位仍由阵营色印章兜底。
-    const fName=(config.FACTIONS as any)[(unit.hero?unit.hero.faction:unit.faction)]?.name||'';
     const uname=unit.hero?unit.hero.name:unit.name;
     const faction=unit.hero?unit.hero.faction:unit.faction;
     const x=-240+i*120;
     U.panel('StageEnemyCard'+i,x,204,108,126,tone('#30251b'),7,unit.isBoss?GOLD:tone('#725b39'));
     U.heroIcon('StageEnemyPortrait'+i,x,226,68,76,{surname:uname.slice(0,1),faction,rarity:unit.hero?.rarity||unit.rarity||1,artKey:unit.hero?.id||unit.heroId});
-    U.text('StageEnemy'+i,uname,x,176,102,16,LIGHT);
-    U.text('StageEnemyMeta'+i,`${fName} · Lv.${unit.level}${unit.isBoss?' · 首领':unit.soldier?' · 小兵':''}`,x,156,103,13,dim);
+    U.text('StageEnemy'+i,uname,x,176,102,18,LIGHT);
+    // Narrow phone cards have only ~52 CSS px for metadata. Keep it one short line;
+    // the portrait and name already carry faction/identity, so avoid wrapped overflow.
+    U.text('StageEnemyMeta'+i,unit.isBoss?`首领 · Lv.${unit.level}`:`Lv.${unit.level}`,x,156,103,16,dim);
   });
   const fCount:any={};
   enemy.units.forEach((unit:any)=>{const f=unit.hero?unit.hero.faction:unit.faction;fCount[f]=(fCount[f]||0)+1;});
@@ -257,16 +258,17 @@ export function stagePreview(ctx: ScreenContext) {
     U.text('StageIdle',`挂机铜钱/时 +${fmt.fmtNum(gain)}`,0,-55,582,17,GOLD);
   }
   const team=store.getState().formation.map((id:string|null)=>id?heroes.getHero(id)?.name:null).filter(Boolean).join(' · ');
-  U.text('StageStarRule','评星 · 通关 / 限时 60 秒 / 存活 4 人',0,-125,620,16,dim);
-  U.text('StageOurTeam',`我方阵容 · ${team||'尚未编队'}`,0,-158,610,18,dim);
+  U.text('StageStarRule','评星 · 通关 / 限时 60 秒 / 存活 4 人',0,-125,620,18,dim);
+  U.text('StageOurTeam',`我方阵容 · ${team||'尚未编队'}`,0,-158,610,19,dim);
   // 战前排兵三选一（试玩 P1 修补：与自动出征按钮完全错开，不再叠压）
-  U.text('StageTacticTitle','战前战术 · 可选',0,-207,300,18,tone('#a9bd9f'));
+  U.text('StageTacticTitle','战前战术 · 可选',0,-207,300,20,tone('#a9bd9f'));
   (config.BATTLE_TACTICS as any[]).forEach((t:any,i:number)=>{
     const x=-196+i*196;
     const armed=(ctx as any).armedTactic===t.id;
     U.panel('StageTactic'+i,x,-248,186,46,armed?tone('#45321b'):tone('#312218'),7,armed?GOLD:tone('#5a452a'));
-    U.text('StageTacticName'+i,t.name,x,-235,178,17,armed?GOLD:LIGHT);
-    U.text('StageTacticDesc'+i,t.desc,x,-260,178,15,tone('#ad9977'));
+    U.text('StageTacticName'+i,t.name,x,-235,178,19,armed?GOLD:LIGHT);
+    const shortEffect=t.id==='assault'?'攻+10% · 防−5%':t.id==='phalanx'?'防+10% · 攻−5%':'速+5% · 血−4%';
+    U.text('StageTacticDesc'+i,shortEffect,x,-260,178,18,tone('#ad9977'));
     U.tap('StageTacticTap'+i,x,-248,186,46,()=>{(ctx as any).armedTactic=(ctx as any).armedTactic===t.id?null:t.id;ctx.show('stagePreview');});
   });
   const armedT=(config.BATTLE_TACTICS as any[]).find((t:any)=>t.id===(ctx as any).armedTactic);
@@ -954,17 +956,18 @@ export function arena(ctx: ScreenContext) {
       U.panel('Arena'+i,0,y,682,126,tone('#312218'),9,o.diff>1.2?GOLD:tone('#8c6a3a'));
       U.text('ArenaEnemy'+i,o.name,-155,y+43,330,24,GOLD);
       U.text('ArenaDifficulty'+i,o.diff>1.2?'凶险':'寻常',267,y+32,115,18,o.diff>1.2?palette.red:tone('#ad9977'));
-      U.text('ArenaEnemyPower'+i,`Lv.${enemy.units[0].level} · ${fmt.fmtNum(power)}` ,45,y-42,198,16,tone('#d8c69f'));
+      U.text('ArenaEnemyPower'+i,`Lv.${enemy.units[0].level} · ${fmt.fmtNum(power)}` ,80,y-42,150,18,tone('#d8c69f'));
       const fCountA:any={};
       enemy.units.forEach((unit:any)=>{fCountA[unit.hero.faction]=(fCountA[unit.hero.faction]||0)+1;});
       const domA=Object.keys(fCountA).sort((a:string,b:string)=>fCountA[b]-fCountA[a])[0];
       const domNameA=(config.FACTIONS as any)[domA]?.name||'';
       const counterA=Object.keys(config.BEATS).find((k:any)=>(config.BEATS as any)[k]===domA);
-      U.text('ArenaFaction'+i,`${domNameA}×${fCountA[domA]} · ${counterA?(config.FACTIONS as any)[counterA]?.name:''}克`,45,y-20,198,15,tone('#ad9977'));
+      U.text('ArenaFaction'+i,`${domNameA}×${fCountA[domA]} · ${counterA?(config.FACTIONS as any)[counterA]?.name:''}克`,80,y-20,150,17,tone('#ad9977'));
       enemy.units.slice(0,5).forEach((unit:any,j:number)=>{
-        const hero=unit.hero, x=-242+j*45;
-        U.heroIcon(`ArenaEnemyFace${i}_${j}`,x,y-4,38,45,{surname:hero?.name?.slice(0,1)||unit.name?.slice(0,1)||'兵',faction:hero?.faction||unit.faction,rarity:hero?.rarity||1,artKey:hero?.id||unit.heroId});
+        const hero=unit.hero, captain=j===0, x=captain?-232:-158+(j-1)*43;
+        U.heroIcon(`ArenaEnemyFace${i}_${j}`,x,y+(captain?-1:-5),captain?52:34,captain?60:41,{surname:hero?.name?.slice(0,1)||unit.name?.slice(0,1)||'兵',faction:hero?.faction||unit.faction,rarity:hero?.rarity||1,artKey:hero?.id||unit.heroId});
       });
+      U.text('ArenaCaptain'+i,'主将',-232,y-43,66,15,GOLD);
       U.button('ArenaFight'+i,'切 磋',244,y-20,174,54,()=>ctx.startArenaBattle(o.diff,day*97+i*13),palette.red);
     });
     U.text('ArenaRule1','赛季每周一刷新 · 积分保留 50% · 周段位奖按本周最高发放',0,-252,660,18,LIGHT);
