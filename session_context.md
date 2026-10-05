@@ -17,6 +17,18 @@
 
 ## 最近交接（新 → 旧）
 
+### 剧情推图衔接批次二+三（战后台词气泡 + 剧情页升级） · zcode 实施代理 · 已实施待验收
+
+时间：2026-10-05；执行者：zcode 实施代理；状态：已实施待验收（未提交 git，按任务指令不执行 git，待收口人提交）。
+
+- **批次二（战后台词气泡）**：①`utils/progression.js` 新增纯选择函数 `battleResultQuote(input)`：取数优先级=传入对白末句（调用方仅在名将关首通时传 `story.stage.dialogue` 末句，who 已解析武将名）→ 出战阵容 quote 池按「关序号+日期」取模轮换（同日同关取句稳定、跨日/跨关换句）→ 池空返回 null；②`BattleScreens.ts` resultView 凯旋时渲染 `ResultQuote` 描金气泡（深底金边圆角+金字，面板上方压暗区 y=292，与面板内全部既有行零冲突）；败北/回放/非 campaign 不显示。**偏差说明**：方案原文「复用 ResultGlory 槽位排版先例」实测 boss 首通时 Glory 行（FLAVOR/宝箱）与台词同行必撞，改为面板上方独立气泡位，单一位置覆盖首通/重复/普通关全部情形；「同日同关不重复」按「同日同关取句确定性稳定」实现（纯函数无存档态）。文案零新增（120 quote + 24 对白全复用）。
+- **批次三（剧情页升级）**：①`CampaignScreens.ts` storyView 重构为逐段演出：旁白一段（首段大字打字机，进对白后缩为顶部引文常驻）+ 对白逐段点击推进；对白卡左侧说话人立绘头像（复用 `heroIcon`，ArtService 有图用图、无图回退姓氏印章+阵营底+品质边，与全工程契约一致）；②打字机为 `StoryTyper` Component（约 0.02s/字，引擎 update 驱动、帧率无关，随节点销毁自动清理，点按立即补完）；③末段显示「开战」（手动）/「看完开战 · 继续出征」（自动）按钮；前段同位显示「跳过剧情 »」（手动，直接 markStorySeen+开战，保 P1 可跳过）；自动模式「跳过 · 继续连战」常驻（批次一契约不破坏）；回顾模式按钮不变；④面包屑重叠修复：`CocosBootstrap.ts` show() 面包屑豁免列表加入 `'story'`（battle 同款，剧情页 y=479 关名与面包屑 y=484 同带重叠，实拍确认消失）。
+- **改动文件**：`utils/progression.js`、镜像 `domain/progression.ts`（脚本生成）、`assets/scripts/screens/BattleScreens.ts`、`assets/scripts/screens/CampaignScreens.ts`、`assets/scripts/CocosBootstrap.ts`（仅面包屑豁免一行）、`test/smoke.js`。**未触碰** ArtService.ts/CocosUi.ts/docs/README.md（并行美术线未提交工作）。
+- **验证**：镜像 sync+`--check` 通过；tsc 通过；smoke **607 全绿**（597→607，新增 Z2 段 10 断言：对白末句优先/池轮换同参稳定/跨日跨关换句/空池空对白回退/负 seed 防御/真实数据链=10 关对白末句可取+120 将 quote 全覆盖）；200 种子仿真四锚持平基线：通关 P50=14（P10/P90=12/16）、满星日 27、SSR 11.15；web-mobile 构建成功（产物含批次二/三代码）；无头实拍 **14 断言全过**（`/tmp/tk-batch23/`，Playwright headless 720×1280）：A 组新档手动（A1/A2 打字机部分字→全文、A3 普通关首通池源气泡「廖化：蜀中无大将」、A4 重复挑战池源气泡）；B 组补档 cleared=9 手动打名将关（B3 对白段打字机中段截字、B4 张角头像卡、B5 末段刘备头像+「开战」按钮、B6 战败结算无气泡=败北不显示、面包屑重叠消失）；D 组强档首通胜利（D2 **对白源气泡**「刘备：妖言惑众…替天行道」与 Glory FLAVOR 行同屏无冲突、D3 重复挑战回退池源气泡「关羽：青龙偃月」）；C 组批次一自动暂停链路（C1 暂停弹剧情页+跳过常驻、C2/C3 升级生效=打字机+头像+末段「看完开战」、跳过后 battle→result 链恢复）。
+- **重要发现（变更建议，未直接改）**：ArtService.loadPortrait 现以 `heroBundle.load(id, SpriteFrame)` 按名加载立绘，但 art-heroes 分包构建产物 config.json 的 paths 为 uuid 键、names 映射为空（web/微信包均然），运行时唯一可用 key 是 `<将id>/spriteFrame`——实测 `load('zhangjiao')` 报 "doesn't contain zhangjiao"、`load('zhangjiao/spriteFrame')` 成功（600×800）。**这是全工程立绘不显示的根因**（战斗/编队/剧情页全部走印章回退），建议美术线 owner 在 loadPortrait/releasePortraits 内将 load/release key 改为 `id + '/spriteFrame'`（3 处，缓存键 frames.set(id) 不变）；修复后剧情页头像自动获得立绘，批次三代码无需再动。诊断证据：/tmp/tk-batch23/diag-art2.js、diag-art3.js。
+- **边界**：工作区内 ArtService.ts/CocosUi.ts/docs/README.md 仍为并行美术线未提交工作，本批未触碰（其 loadPortrait 曾在本轮实施期间被并行线再次实时修改，故未代改 key 缺陷）；实拍为 Web 构建，微信真机/分包加载速度/打字机低端机帧率待验收；打字机在游戏切后台时随引擎暂停（与飞字/补间一致）。
+- **下一步**：收口人提交；批次四（章节过场+bossIntro 上线，复用 StoryTyper）与批次五（已读语义+回顾入口）可依方案推进；美术线修立绘 key 后建议重拍剧情页/战斗页立绘实拍。
+
 ### 剧情推图衔接批次一（自动出征剧情保底+静默已读修复） · zcode 实施代理 · 已实施待验收
 
 时间：2026-10-05；执行者：zcode 实施代理；状态：已实施待验收（未提交 git，待收口人提交）。
@@ -96,6 +108,16 @@
 - **I6 审计**：15 触发点 vs 13 键——**quad/season/relics 三键缺失**（浮层静默跳过，三新系统从未给过说明）已补齐（5e6a765）；老档防浮层雨天然兼容；覆盖表入方案文档 6.8 节。
 - **I5 代码完成**（HeroScreens 抽卡逐张揭示：卡背按序揭除/SSR 压轴金框/点屏跳过/总时长 ≤1.1s）——tsc 本文件零错误、smoke 578；**构建+实拍等 A4 编译窗口**（其 BattleFx 中间态曾污染全项目编译），A4 完成通知后一并收口。
 - A4 实施代理仍在验证阶段。三线进度：UI 5/6 · 交互 4.5/6 · 动画 A0-A3（A4 施工中）。
+
+### 剧情批次二三完成 + 全工程立绘根因修复 · zcode · 已实施待验收
+
+时间：2026-10-05 14:30（Asia/Shanghai）；执行者：zcode（批次二三实施代理施工+收口复核；立绘根因修复主执行者）；状态：已实施待验收（ea965c2/c7963c1）。
+
+- **批次二**：结算页战后台词气泡——名将关首通用该关故事对白末句、普通/重复挑战用出战阵容 quote 池按关序+日期轮换（纯函数确定性，同日同句）；胜利专属。
+- **批次三**：剧情页逐段演出——旁白大字打字机（StoryTyper Component 引擎帧驱动）、对白逐段点击推进、说话人立绘头像卡、手动模式跳过常驻；story 页入面包屑豁免（修"战役>关卡"压关名）。
+- **【全工程级根因修复】立绘不显示**：ArtService.loadPortrait 按裸 id load 查不到——分包构建产物 config.paths 运行时为空 Map（size=2 是 _map/_count）、真实键是 uuid/值是 '<id>/spriteFrame'；三段探针实证按路径 load('zhangfei/spriteFrame') 成功 600×800 → loadPortrait 改按路径加载。**顺修 frames 释放键错位**（releaseKey 带 /spriteFrame 而 frames 删除用 id → 已释放 frame 仍被引用 → Sprite UV null 报错 220 次）。修后实拍：群英录 9 卡全真立绘、剧情页演出生效、40+34 张分包立绘**全线生效**。
+- 验证：镜像一致、tsc、smoke **607**、多页实拍（heroes/formation/summon/story）零 pageerror。
+- 剧情队列剩余：批次四（章节过场仪式/bossIntro 上线）、批次五（回顾可达+已读语义）。
 
 ### 剧情批次一完成：自动剧情保底 + 静默已读修复 · zcode · 已实施待验收
 
