@@ -7,6 +7,9 @@ import * as heroData from '../domain/heroes';
  * 每帧消费 `fighting.step().events` 与一次 `snapshot()`，生成/驱动八类 fx：
  * - dmgNum：伤害数字（hit）——overlay，挂 fxLayer；A5 暴击弹跳：crit 字首帧 scale 1.6，
  *   0.18s easeOut 收拢至 1（普通字不写缩放、样式分级照旧橙 32/淡黄 24）。
+ *   T2 数字类型化：同一出口按事件分支——治疗 22 绿带「+」（heal）、HOT 逐跳 18 绿小字
+ *   （heal+fxHot 消费端推断）、护盾吸收 18 蓝带「盾」（shieldHit）、反伤 18 灰
+ *   （hit kind=reflect）；字号层级 暴击 32 > 伤害 24 > 治疗 22 > 杂项 18，杂项层 0.6s 快消。
  * - ultBanner：大招横幅（ult）——overlay，挂 fxLayer；A4 入场增强：自上 14px 滑入
  *   （90ms easeOut）+ 亮金描边叠加层自 255 衰减（描边加亮后回落金框），1.2s 淡出照旧。
  * - lunge：攻击位移（act）——驱动既有 `Fighter{i}`+`FighterGlyph{i}` 朝事件目标突进回弹；
@@ -60,7 +63,10 @@ import * as heroData from '../domain/heroes';
 const GOLD = hexColor('#e3ba70'); // 现状 UltPopup 金框/金字
 const GOLD_HI = hexColor('#ffe9b0'); // A4 亮金：呼吸 rim 交替的第二色 + 横幅入场描边加亮
 const MEND_GREEN = hexColor('#8fe5b8'); // T1 医将治疗绿波：与治疗数字同色系（职业身份色）
+const SHIELD_BLUE = hexColor('#87c9f7'); // T2 护盾吸收数字：蓝系（与魏阵营光效同源的既有蓝）
+const REFLECT_GRAY = hexColor('#b9b9b9'); // T2 反伤数字：中性灰（杂项层级，压低战场噪声）
 const DMG_LIFE = 0.8;             // 伤害数字寿命秒（现状 800ms；×N 倍速由 tick 按 speed 压缩）
+const AUX_DMG_LIFE = 0.6;         // T2 杂项数字（护盾/反伤/HOT 逐跳）寿命秒：18 号小字快消，防逐跳常驻刷屏
 const DMG_RISE = 60;              // 上飘距离（现状线性 60px）
 const ULT_LIFE = 1.2;             // 横幅寿命（前 0.9s 全亮 230，末 0.3s 淡出）
 const MAX_DMG_NUM = 24;           // 同屏伤害数字上限（规格 6.3 预算）
@@ -145,7 +151,7 @@ interface PendingNumber {
   light: SkillLight;
   elapsed: number;
   delay: number;
-  ev: { e: string; uid: string; src?: string; amount: number; crit?: boolean; kind?: string };
+  ev: { e: string; uid: string; src?: string; amount: number; crit?: boolean; kind?: string; fxHot?: boolean };
   recipient: Node;
   layer: Node;
   ui: CocosUi;
@@ -253,6 +259,7 @@ export class BattleFx {
     BattleFx.scanEnergy(snapshot, ui, indexByUid, content);
     if (events && events.length) {
       const layer = CocosUi.ensureFxLayer(content);
+      BattleFx.markHotTicks(events); // T2：heal 事件消费端推断 HOT 逐跳（打 fxHot 表现标注）
       const ultLights = new Map<string, SkillLight>();
       for (let eventIndex = 0; eventIndex < events.length; eventIndex++) {
         const ev = events[eventIndex];
@@ -269,6 +276,11 @@ export class BattleFx {
           if (castLight) {
             BattleFx.queueNumber(castLight, layer, ui, ev, indexByUid);
           } else BattleFx.spawnDmgNum(layer, ui, ev, indexByUid);
+        } else if (ev.e === 'shieldHit') {
+          // T2 护盾吸收数字（蓝字带「盾」前缀）：只出数字不抖动（吸收不是受创反馈）；
+          // 大招期内同样排队到命中段重放。
+          if (castLight) BattleFx.queueNumber(castLight, layer, ui, ev, indexByUid);
+          else BattleFx.spawnDmgNum(layer, ui, ev, indexByUid);
         } else if (ev.e === 'ult') {
           const caster = snapshot[indexByUid.get(ev.uid)!];
           const definition = caster && caster.heroId ? heroData.getHero(caster.heroId) : null;
@@ -887,7 +899,7 @@ export class BattleFx {
     if (!recipient) return;
     BattleFx.pendingNumbers.push({ light, elapsed: 0,
       delay: Math.max(0, SKILL_CHARGE + SKILL_RELEASE - light.elapsed),
-      ev: { e: ev.e, uid: ev.uid, src: ev.src, amount: ev.amount, crit: ev.crit, kind: ev.kind },
+      ev: { e: ev.e, uid: ev.uid, src: ev.src, amount: ev.amount, crit: ev.crit, kind: ev.kind, fxHot: ev.fxHot },
       recipient, layer, ui, indexByUid });
   }
 
@@ -1123,26 +1135,70 @@ export class BattleFx {
       : dist * (1 - BattleFx.easeInOutQuad(Math.min(1, (elapsed - out) / (dur - out))));
   }
 
-  /** 伤害数字（hit 事件）：受击者头顶 ±40 抖动，暴击 32 号橙/普通 24 号淡黄，0.8s 上飘 60px 线性淡出。 */
+  /**
+   * T2 数字类型化：heal 事件在规则层无 kind（utils/battle.js 单点 emit），HOT 逐跳与直接
+   * 治疗在事件层同构。此处按 step() 的确定性阶段顺序在消费端推断，给 heal 打 fxHot 表现
+   * 标注（events 与事件对象均为 step 每步新建的字面量副本，标注随帧丢弃、不改规则语义）：
+   * 批内顺序 = [援军][env 全场真伤] → 逐单位 [HOT 逐跳 heal → dot 逐跳 hit(src=null)]
+   * → 单位行动 [act|ult → hit/shieldHit → 吸血 heal(uid=src) / ult 治疗效果 heal]。
+   * 规则（overtime=逐单位结算区）：
+   * - 批首即 overtime（首单位的 HOT 先于其行动）；act/ult/reinforce/end 进行动区；
+   * - src=null 且 kind 为 env/dot:* 的 hit 只在结算区出现 → 回 overtime（reflect 同为
+   *   src=null 但只在行动区出现，不改变区域）；
+   * - heal 分类：overtime 内 → HOT；行动区且紧邻前一事件为 hit(src==heal.uid) → 吸血
+   *   （吸血只回攻者，且本单位结算区已过）；带 cast 元数据 → 大招作用域（castUlt
+   *   try/finally 包裹，HOT 逐跳永不带 cast）；其余（无 cast 非吸血的行动区 heal，只能是
+   *   下一单位的 HOT 紧跟上一单位行动）→ HOT。
+   */
+  private static markHotTicks(events: any[]) {
+    let overtime = true;
+    let prev: any = null;
+    for (const ev of events) {
+      if (!ev) continue;
+      if (ev.e === 'hit' && ev.src == null
+        && (ev.kind === 'env' || String(ev.kind || '').indexOf('dot:') === 0)) {
+        overtime = true;
+      } else if (ev.e === 'act' || ev.e === 'ult' || ev.e === 'reinforce' || ev.e === 'end') {
+        overtime = false;
+      } else if (ev.e === 'heal') {
+        const vamp = !!(prev && prev.e === 'hit' && prev.src != null && prev.src === ev.uid);
+        if (overtime || (!vamp && !ev.cast)) ev.fxHot = true;
+      }
+      prev = ev;
+    }
+  }
+
+  /**
+   * 战斗数字唯一出口（含大招排队重放路径）：按事件分支样式——
+   * 暴击 32 橙（A5 弹跳）/伤害 24 淡黄（既有伤害体系不动）/治疗 22 绿带「+」/
+   * HOT 逐跳 18 绿小字/护盾吸收 18 蓝带「盾」前缀/反伤 18 灰。
+   * 字号层级 暴击 32 > 伤害 24 > 治疗 22 > 杂项 18；杂项层用 AUX_DMG_LIFE 0.6s 快消
+   * （HOT 每秒一跳，短寿命防常驻刷屏），其余 0.8s 照旧；受击者头顶 ±40 抖动、
+   * 上飘 60px 线性淡出不变。
+   */
   private static spawnDmgNum(layer: Node, ui: CocosUi, ev: any, indexByUid: Map<string, number>) {
     if (BattleFx.countKind('dmgNum') >= MAX_DMG_NUM) return;
     const anchor = BattleFx.anchorOf(indexByUid, ui, ev.uid);
     if (!anchor) return;
     const heal = ev.e === 'heal';
-    const crit = !heal && !!ev.crit;
-    const fontSize = crit ? 32 : 24;
-    const node = new Node(heal ? 'BfxHeal' : 'BfxDmg');
+    const hot = !!(heal && ev.fxHot);
+    const shieldHit = ev.e === 'shieldHit';
+    const reflect = ev.e === 'hit' && ev.kind === 'reflect';
+    const crit = !heal && !shieldHit && !!ev.crit;
+    const fontSize = crit ? 32 : (shieldHit || reflect || hot) ? 18 : heal ? 22 : 24;
+    const node = new Node(shieldHit ? 'BfxShield' : hot ? 'BfxHot' : reflect ? 'BfxReflect' : heal ? 'BfxHeal' : 'BfxDmg');
     // Glyph 锚点位于全身立绘中心；数字从头顶上方冒出，避免盖住血条。
     const baseX = anchor.x + Math.floor(Math.random() * 80 - 40);
     const baseY = anchor.y + 98;
     node.setPosition(new Vec3(baseX, baseY, 0));
     node.addComponent(UITransform).setContentSize(120, Math.max(fontSize * 2.4, 46));
     const label = node.addComponent(Label);
-    label.string = (heal ? '+' : '') + String(ev.amount);
+    label.string = (shieldHit ? '盾' : heal ? '+' : '') + String(ev.amount);
     label.fontFamily = 'sans-serif';
     label.fontSize = fontSize;
     label.lineHeight = fontSize * 1.3;
-    label.color = heal ? hexColor('#8fe5b8') : crit ? new Color(255, 120, 40, 255) : new Color(255, 255, 200, 255);
+    label.color = heal ? MEND_GREEN : shieldHit ? SHIELD_BLUE : reflect ? REFLECT_GRAY
+      : crit ? new Color(255, 120, 40, 255) : new Color(255, 255, 200, 255);
     label.horizontalAlign = Label.HorizontalAlign.CENTER;
     label.verticalAlign = Label.VerticalAlign.CENTER;
     label.overflow = Label.Overflow.SHRINK;
@@ -1154,7 +1210,8 @@ export class BattleFx {
     layer.addChild(node);
     if (crit) node.setScale(new Vec3(DMG_POP_FROM, DMG_POP_FROM, 1)); // A5 暴击弹跳首帧
     const opacity = node.addComponent(UIOpacity);
-    BattleFx.items.push({ kind: 'dmgNum', node, driven: [], opacity, glowOp: null, elapsed: 0, duration: DMG_LIFE, data: { baseX, baseY, pop: crit } });
+    BattleFx.items.push({ kind: 'dmgNum', node, driven: [], opacity, glowOp: null, elapsed: 0,
+      duration: fontSize >= 22 ? DMG_LIFE : AUX_DMG_LIFE, data: { baseX, baseY, pop: crit } });
   }
 
   /**
