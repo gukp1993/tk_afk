@@ -5,6 +5,7 @@ import * as stages from './domain/stages';
 import * as config from './domain/config';
 import * as battleRules from './domain/battle';
 import * as fmt from './domain/fmt';
+import * as platform from './domain/platform';
 import * as rewarded from './services/RewardedService';
 import { AutoBattleSession } from './services/AutoBattleSession';
 import { ArtService } from './services/ArtService';
@@ -99,7 +100,7 @@ export class CocosBootstrap extends Component implements ScreenContext {
   }
 
   private drawInitialLoading() {
-    const U = this.ui = new CocosUi(this.content, Math.max(1, view.getVisibleSize().height / 1280));
+    const U = this.ui = new CocosUi(this.content, Math.max(1, view.getVisibleSize().height / 1280), platform.safeAreaInsets());
     U.rect('StartupBackdrop', 0, 0, 720, 1280, new Color(12, 29, 26));
     U.panel('StartupFrame', 0, 20, 610, 310, new Color(19, 43, 35, 235), 14, new Color(157, 126, 72, 145), false);
     U.line('StartupTitleRule', [[-170, 25], [170, 25]], 1, palette.gold);
@@ -181,7 +182,7 @@ export class CocosBootstrap extends Component implements ScreenContext {
   private hookDiag() {
     if (this.diagHooked) return;
     this.diagHooked = true;
-    (globalThis as any).__tkDiag = () => ({ diag: store.diagSnapshot(), page: this.page, notice: this.notice, sceneKey: this.sceneKey, fx: BattleFx.live });
+    (globalThis as any).__tkDiag = () => ({ diag: store.diagSnapshot(), page: this.page, notice: this.notice, sceneKey: this.sceneKey, fx: BattleFx.live, ultimateScenes: BattleFx.ultimateScenesLive });
     (globalThis as any).__tkNav = (p: string) => { try { this.show(p as any); return true; } catch (e) { return false; } };
   }
   public show(page: Page) {
@@ -193,10 +194,10 @@ export class CocosBootstrap extends Component implements ScreenContext {
     // 无论泄漏链路（自动连战/跳过/中断）如何，用户可见症状必然消失；战斗页刷新不受影响
     if (page !== 'battle') BattleFx.onBattleEnd();
     const verticalScale=Math.max(1,view.getVisibleSize().height/1280);
-    const U = this.ui = new CocosUi(this.content,verticalScale), s = store.getState();
+    const U = this.ui = new CocosUi(this.content,verticalScale,platform.safeAreaInsets()), s = store.getState();
     U.rect('Backdrop', 0, 0, 720, 1280, hexColor('#171009'));
     // 页面背景（2026-10-03 美术阶段）：分包 scene_<page>.jpg 有图用图、无图回退纯色；叠压暗层保 UI 可读
-    const sceneKey = ({ home: 'scene_home', journey: 'scene_journey', campaign: 'scene_campaign', stagePreview: 'scene_campaign', heroes: 'scene_heroes', bag: 'scene_bag', shop: 'scene_bag', armory: 'scene_armory', armoryCatalog: 'scene_armory', armoryBox: 'scene_armory' } as Record<string, string | undefined>)[page];
+    const sceneKey = ({ home: 'scene_home', journey: 'scene_journey', campaign: 'scene_campaign', stagePreview: 'scene_campaign', heroes: 'scene_heroes', bag: 'scene_bag', shop: 'scene_bag', armory: 'scene_armory', armoryCatalog: 'scene_armory', armoryBox: 'scene_armory', arena: 'scene_arena_v2', arenaBoard: 'scene_arena_v2', tower: 'scene_heroic_hall', hall: 'scene_heroic_hall', storyArchive: 'scene_heroic_hall', codex: 'scene_heroic_hall', achv: 'scene_heroic_hall' } as Record<string, string | undefined>)[page];
     const sceneFrame = sceneKey ? ArtService.frame(sceneKey) : null;
     if (sceneFrame) {
       U.image('BackdropArt', sceneFrame, 0, 0, 720, 1280);
@@ -607,8 +608,9 @@ export class CocosBootstrap extends Component implements ScreenContext {
     {
       const cap=config.REPLAYS.capture;
       const specBase={ v:1 as const, seed:battleSeed, timeLimit:config.BATTLE.TIME_LIMIT,
-        team:store.playerUnits((this as any).armedTactic,false).map((u:any)=>({uid:u.uid,name:u.name,faction:u.faction,cls:u.cls,level:u.level,row:u.row,stats:u.stats,ult:u.ult,passive:u.passive,isBoss:false})),
-        enemy:enemy.units.map((u:any)=>{const e2=store.enemyUnits([u])[0];return {uid:e2.uid,name:e2.name,faction:e2.faction,cls:e2.cls,level:e2.level,row:e2.row,stats:e2.stats,ult:e2.ult,passive:e2.passive,isBoss:!!e2.isBoss};}),
+        // 回归巡检 R-中修复：快照补 heroId（立绘 key）——此前裁掉导致回放全程字卡；旧战报缺 heroId 回退字卡向后兼容
+        team:store.playerUnits((this as any).armedTactic,false).map((u:any)=>({uid:u.uid,name:u.name,faction:u.faction,cls:u.cls,level:u.level,row:u.row,stats:u.stats,ult:u.ult,passive:u.passive,isBoss:false,heroId:u.heroId})),
+        enemy:enemy.units.map((u:any)=>{const e2=store.enemyUnits([u])[0];return {uid:e2.uid,name:e2.name,faction:e2.faction,cls:e2.cls,level:e2.level,row:e2.row,stats:e2.stats,ult:e2.ult,passive:e2.passive,isBoss:!!e2.isBoss,heroId:(e2 as any).heroId};}),
         effects:effects||null };
       if(mode==='hall'&&cap.hall){
         this.lastReplaySpec=Object.assign(specBase,{mode:'hall',seat:index,lineupId:_hallLineup.id,lineupName:_hallLineup.name,name:_hallLineup.name});

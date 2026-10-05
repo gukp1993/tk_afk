@@ -218,19 +218,24 @@ export function stagePreview(ctx: ScreenContext) {
   U.text('StageHeading',`第 ${stage} 关${stage>stages.CHAPTERS.length*stages.STAGES_PER_CH?'（循环乱世）':''}${enemy.elite?' · 精锐':enemy.mods&&enemy.mods.length?' · 机制':''} · ${enemy.story?.stage?.name||enemy.name||'两军对阵'}`,0,343,600,30,GOLD);
   U.text('StageEnemyTitle',enemy.isBoss?'名将镇守 · 首通奖励':'敌阵与首通奖励',-155,289,311,21,GOLD);
   enemy.units.slice(0,5).forEach((unit:any,i:number)=>{
-    // 小兵混编单位无 hero 字段（soldier:true，阵营/名在顶层）——统一取值防预览半页中断（性能代理 2026-10-02 发现）
+    // 关卡预览优先用敌将立绘；小兵混编单位仍由阵营色印章兜底。
     const fName=(config.FACTIONS as any)[(unit.hero?unit.hero.faction:unit.faction)]?.name||'';
     const uname=unit.hero?unit.hero.name:unit.name;
-    U.text('StageEnemy'+i,`${fName}·${uname} Lv.${unit.level}${unit.isBoss?'·首领':unit.soldier?'·小兵':''}`,-163,249-i*38,310,19,LIGHT);
+    const faction=unit.hero?unit.hero.faction:unit.faction;
+    const x=-240+i*120;
+    U.panel('StageEnemyCard'+i,x,204,108,126,tone('#30251b'),7,unit.isBoss?GOLD:tone('#725b39'));
+    U.heroIcon('StageEnemyPortrait'+i,x,226,68,76,{surname:uname.slice(0,1),faction,rarity:unit.hero?.rarity||unit.rarity||1,artKey:unit.hero?.id||unit.heroId});
+    U.text('StageEnemy'+i,uname,x,176,102,16,LIGHT);
+    U.text('StageEnemyMeta'+i,`${fName} · Lv.${unit.level}${unit.isBoss?' · 首领':unit.soldier?' · 小兵':''}`,x,156,103,13,dim);
   });
   const fCount:any={};
   enemy.units.forEach((unit:any)=>{const f=unit.hero?unit.hero.faction:unit.faction;fCount[f]=(fCount[f]||0)+1;});
   const domFaction=Object.keys(fCount).sort((a:string,b:string)=>fCount[b]-fCount[a])[0];
   if(enemy.mods&&enemy.mods.length){
     const modNames=enemy.mods.map((m:any)=>(config.CAMPAIGN_MODS.meta as any)[m]).filter(Boolean);
-    U.text('StageModsHint',`机制：${modNames.map((m:any)=>m.name+' — '+m.desc).join('；')}`,0,70,620,16,palette.red);
+    U.text('StageModsHint',`关卡机制 · ${modNames.map((m:any)=>m.name).join(' · ')}`,0,119,620,18,palette.red);
   } else if(enemy.bossMod){
-    U.text('StageModsHint',`敌方主将机制：${enemy.bossMod.name} — ${enemy.bossMod.desc}`,0,70,620,16,palette.red);
+    U.text('StageModsHint',`主将机制 · ${enemy.bossMod.name}：${enemy.bossMod.desc.slice(0,20)}`,0,119,620,18,palette.red);
   }
   if(fCount[domFaction]>=4){
     const counterKey=Object.keys(config.BEATS).find((k:any)=>(config.BEATS as any)[k]===domFaction);
@@ -238,37 +243,37 @@ export function stagePreview(ctx: ScreenContext) {
     // 光环显示按 ENEMY_FACTION_AURA 折算后的实际生效值，与战斗内一致
     const baseAura=config.factionBonus(fCount[domFaction]).atk;
     const realAura=Math.round(baseAura*(config as any).ENEMY_FACTION_AURA*1000)/10;
-    U.text('StageAuraHint',`敌军同阵营×${fCount[domFaction]}（光环生效 +${realAura}%）· ${counterName}阵营对其伤害+25%`,0,46,610,17,tone('#d9a94e'));
+    U.text('StageAuraHint',`同阵营 ${fCount[domFaction]} 人 · 光环 +${realAura}% · ${counterName}克制`,0,91,610,17,tone('#d9a94e'));
   }
-  U.panel('StageRewardPanel',0,-45,616,165,tone('#302a1c'),7);
+  U.panel('StageRewardPanel',0,-18,616,160,tone('#302a1c'),7);
   if(reward.first){
-    U.text('StageRewards',`首通必得：元宝 +${reward.totals.gem} · 铜钱 +${fmt.fmtNum(reward.totals.gold)}${reward.totals.scroll?` · 招募令 +${reward.totals.scroll}`:''}`,0,14,589,18,LIGHT);
-    U.text('StageArmory','概率奖励：65% 获得随机军械（以实际掉落为准）',0,-22,582,17,dim);
+    U.text('StageRewards',`首通奖励 · 元宝 +${reward.totals.gem} · 铜钱 +${fmt.fmtNum(reward.totals.gold)}${reward.totals.scroll?` · 招募令 +${reward.totals.scroll}`:''}`,0,11,589,18,LIGHT);
+    U.text('StageArmory','军械掉落概率 65%',0,-22,582,17,dim);
     const msLabels=(reward.milestones||[]).map((m:any)=>m.label);
-    U.text('StageIdle',msLabels.length?`里程碑：${msLabels.join('；')}`:`挂机铜钱/时：通关后 +${fmt.fmtNum(gain)}`,0,-62,582,17,GOLD);
+    U.text('StageIdle',msLabels.length?`里程碑 · ${msLabels.join(' · ')}`:`挂机铜钱/时 +${fmt.fmtNum(gain)}`,0,-55,582,17,GOLD);
   } else {
-    U.text('StageRewards',`重复挑战：铜钱 +${fmt.fmtNum(reward.gold)}（无首通奖励）`,0,14,589,18,LIGHT);
-    U.text('StageArmory','首通奖励已在首次通关时发放',0,-22,582,17,dim);
-    U.text('StageIdle',`挂机铜钱/时：通关后 +${fmt.fmtNum(gain)}`,0,-62,582,17,GOLD);
+    U.text('StageRewards',`重复挑战 · 铜钱 +${fmt.fmtNum(reward.gold)}`,0,11,589,18,LIGHT);
+    U.text('StageArmory','首通奖励已领取',0,-22,582,17,dim);
+    U.text('StageIdle',`挂机铜钱/时 +${fmt.fmtNum(gain)}`,0,-55,582,17,GOLD);
   }
   const team=store.getState().formation.map((id:string|null)=>id?heroes.getHero(id)?.name:null).filter(Boolean).join(' · ');
-  U.text('StageStarRule','评星：★1 通关 · ★2 限时 ≤60秒（精锐/机制关 70 秒）· ★3 存活 ≥4',0,-130,620,15,dim);
-  U.text('StageOurTeam',`出战：${team||'尚未编队'}`,0,-159,610,18,dim);
+  U.text('StageStarRule','评星 · 通关 / 限时 60 秒 / 存活 4 人',0,-125,620,16,dim);
+  U.text('StageOurTeam',`我方阵容 · ${team||'尚未编队'}`,0,-158,610,18,dim);
   // 战前排兵三选一（试玩 P1 修补：与自动出征按钮完全错开，不再叠压）
-  U.text('StageTacticTitle','战前战术（可选）',0,-247,300,16,tone('#8a9a7a'));
+  U.text('StageTacticTitle','战前战术 · 可选',0,-207,300,18,tone('#a9bd9f'));
   (config.BATTLE_TACTICS as any[]).forEach((t:any,i:number)=>{
     const x=-196+i*196;
     const armed=(ctx as any).armedTactic===t.id;
-    U.panel('StageTactic'+i,x,-284,186,46,armed?tone('#45321b'):tone('#312218'),7,armed?GOLD:tone('#5a452a'));
-    U.text('StageTacticName'+i,t.name,x,-271,178,16,armed?GOLD:LIGHT);
-    U.text('StageTacticDesc'+i,t.desc,x,-296,178,14,tone('#ad9977'));
-    U.tap('StageTacticTap'+i,x,-284,186,46,()=>{(ctx as any).armedTactic=(ctx as any).armedTactic===t.id?null:t.id;ctx.show('stagePreview');});
+    U.panel('StageTactic'+i,x,-248,186,46,armed?tone('#45321b'):tone('#312218'),7,armed?GOLD:tone('#5a452a'));
+    U.text('StageTacticName'+i,t.name,x,-235,178,17,armed?GOLD:LIGHT);
+    U.text('StageTacticDesc'+i,t.desc,x,-260,178,15,tone('#ad9977'));
+    U.tap('StageTacticTap'+i,x,-248,186,46,()=>{(ctx as any).armedTactic=(ctx as any).armedTactic===t.id?null:t.id;ctx.show('stagePreview');});
   });
   const armedT=(config.BATTLE_TACTICS as any[]).find((t:any)=>t.id===(ctx as any).armedTactic);
   const autoLbl=armedT?`自动出征 · 战术：${armedT.name}`:'自动出征 · 连战';
-  U.button('StageAuto',autoLbl,152,-345,290,54,()=>ctx.startAuto('campaign'),tone('#3d6653'));
+  U.button('StageAuto',autoLbl,152,-336,290,54,()=>ctx.startAuto('campaign'),tone('#3d6653'));
   // 单场出战（2026-09-30 补）：唯一的手动首战入口，未读剧情会先插剧情页；败北可看处方单
-  U.button('StageOnce','出战一次',-152,-345,290,54,()=>ctx.startBattle('campaign',stage),palette.red);
+  U.button('StageOnce','出战一次',-152,-336,290,54,()=>ctx.startBattle('campaign',stage),palette.red);
   U.text('StageClose','×',302,345,43,28,GOLD);
   U.tap('StageCloseTap',302,345,44,44,()=>ctx.back('campaign'));
 }
@@ -947,15 +952,19 @@ export function arena(ctx: ScreenContext) {
       const y=134-i*142,enemy=stages.makeArenaEnemies(store.teamPower(),day*97+i*13,o.diff);
       const power=Math.floor(enemy.units.reduce((sum:number,unit:any)=>sum+heroes.heroPower(unit.hero,unit.level,unit.star),0)*(o.diff>1?o.diff*.98:o.diff));
       U.panel('Arena'+i,0,y,682,126,tone('#312218'),9,o.diff>1.2?GOLD:tone('#8c6a3a'));
-      U.text('ArenaEnemy'+i,o.name,-161,y+32,320,26,GOLD);
+      U.text('ArenaEnemy'+i,o.name,-155,y+43,330,24,GOLD);
       U.text('ArenaDifficulty'+i,o.diff>1.2?'凶险':'寻常',267,y+32,115,18,o.diff>1.2?palette.red:tone('#ad9977'));
-      U.text('ArenaEnemyPower'+i,`守军约 Lv.${enemy.units[0].level} · 战力 ${fmt.fmtNum(power)}`,-138,y-26,369,18,tone('#ad9977'));
+      U.text('ArenaEnemyPower'+i,`Lv.${enemy.units[0].level} · ${fmt.fmtNum(power)}` ,45,y-42,198,16,tone('#d8c69f'));
       const fCountA:any={};
       enemy.units.forEach((unit:any)=>{fCountA[unit.hero.faction]=(fCountA[unit.hero.faction]||0)+1;});
       const domA=Object.keys(fCountA).sort((a:string,b:string)=>fCountA[b]-fCountA[a])[0];
       const domNameA=(config.FACTIONS as any)[domA]?.name||'';
       const counterA=Object.keys(config.BEATS).find((k:any)=>(config.BEATS as any)[k]===domA);
-      U.text('ArenaFaction'+i,`${domNameA}×${fCountA[domA]} · ${counterA?(config.FACTIONS as any)[counterA]?.name:''}克`,105,y+32,180,16,tone('#ad9977'));
+      U.text('ArenaFaction'+i,`${domNameA}×${fCountA[domA]} · ${counterA?(config.FACTIONS as any)[counterA]?.name:''}克`,45,y-20,198,15,tone('#ad9977'));
+      enemy.units.slice(0,5).forEach((unit:any,j:number)=>{
+        const hero=unit.hero, x=-242+j*45;
+        U.heroIcon(`ArenaEnemyFace${i}_${j}`,x,y-4,38,45,{surname:hero?.name?.slice(0,1)||unit.name?.slice(0,1)||'兵',faction:hero?.faction||unit.faction,rarity:hero?.rarity||1,artKey:hero?.id||unit.heroId});
+      });
       U.button('ArenaFight'+i,'切 磋',244,y-20,174,54,()=>ctx.startArenaBattle(o.diff,day*97+i*13),palette.red);
     });
     U.text('ArenaRule1','赛季每周一刷新 · 积分保留 50% · 周段位奖按本周最高发放',0,-252,660,18,LIGHT);

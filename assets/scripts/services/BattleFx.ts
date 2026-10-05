@@ -1,5 +1,7 @@
-import { Color, Graphics, Label, LabelOutline, Node, UIOpacity, UITransform, Vec3 } from 'cc';
+import { Color, Graphics, Label, LabelOutline, Node, Sprite, UIOpacity, UITransform, Vec3 } from 'cc';
 import { CocosUi, hexColor } from '../ui/CocosUi';
+import { ArtService } from './ArtService';
+import * as heroData from '../domain/heroes';
 
 /**
  * A0~A5 战斗表现层管线（三线打磨 A 线，纯表现层、零规则改动）：
@@ -92,6 +94,33 @@ const SKILL_RELEASE = 0.28;
 const SKILL_IMPACT = 0.32;
 const ATTACK_RELEASE = 0.18;
 const ATTACK_IMPACT = 0.16;
+const ULT_SCENE_LIFE = 0.9;
+const MAX_ULT_SCENE_QUEUE = 2;
+const ULT_SCENE_FIELD_TOP = 535;
+const ULT_SCENE_FIELD_BOTTOM = -520;
+
+type UltimateMotif = 'blossom'|'dragon'|'shock'|'multi'|'bagua'|'arrow'|'command'|'eclipse'|'crossed'|'charge'|'wave'|'spear'|'firegrid'|'halberd'|'dance'|'vortex';
+interface UltimateSceneSpec { uid: string; heroId: string; name: string; faction: string; skill: string }
+interface UltimateSceneFx { root: Node; motif: Node; portrait: Node | null; elapsed: number; spec: UltimateSceneSpec }
+interface UltimateTheme { motif: UltimateMotif; primary: Color; accent: Color }
+const ULTIMATE_THEMES: Record<string, UltimateTheme> = {
+  liubei: { motif:'blossom', primary:hexColor('#73c9a2'), accent:hexColor('#f3cf79') },
+  guanyu: { motif:'dragon', primary:hexColor('#4cc2b4'), accent:hexColor('#e7d28b') },
+  zhangfei: { motif:'shock', primary:hexColor('#dc6b50'), accent:hexColor('#f5c36c') },
+  zhaoyun: { motif:'multi', primary:hexColor('#a8d5e7'), accent:hexColor('#eaf5ff') },
+  zhugeliang: { motif:'bagua', primary:hexColor('#54cbb5'), accent:hexColor('#f4d77f') },
+  huangzhong: { motif:'arrow', primary:hexColor('#efbe56'), accent:hexColor('#fff0ae') },
+  caocao: { motif:'command', primary:hexColor('#d0a657'), accent:hexColor('#efe0b2') },
+  simayi: { motif:'eclipse', primary:hexColor('#7897db'), accent:hexColor('#bdc7ed') },
+  dianwei: { motif:'crossed', primary:hexColor('#ce8054'), accent:hexColor('#f0cd8b') },
+  zhangliao: { motif:'charge', primary:hexColor('#e0a94d'), accent:hexColor('#fff0bd') },
+  zhouyu: { motif:'wave', primary:hexColor('#ef7845'), accent:hexColor('#ffd16c') },
+  sunce: { motif:'spear', primary:hexColor('#d84f3d'), accent:hexColor('#f7cd77') },
+  luxun: { motif:'firegrid', primary:hexColor('#ee7440'), accent:hexColor('#ffd76d') },
+  lvbu: { motif:'halberd', primary:hexColor('#bd5e70'), accent:hexColor('#f3c86f') },
+  diaochan: { motif:'dance', primary:hexColor('#cf8ecb'), accent:hexColor('#f5d9ec') },
+  dongzhuo: { motif:'vortex', primary:hexColor('#ba5847'), accent:hexColor('#d6a447') },
+};
 
 type SkillStyle = 'melee' | 'ranged' | 'magic' | 'pulse';
 interface LightPart { node: Node; op: UIOpacity }
@@ -148,6 +177,9 @@ export class BattleFx {
   private static items: BfxItem[] = [];
   /** 与既有八类动效分开驱动，只读单位节点、不接管卡面坐标/缩放/透明度。 */
   private static lights: SkillLight[] = [];
+  /** SSR专属全场大招演出：只允许一场覆盖战场，最多排两场以避免同帧大招互相盖住。 */
+  private static ultimateScene: UltimateSceneFx | null = null;
+  private static ultimateSceneQueue: UltimateSceneSpec[] = [];
   /** 纯表现队列：大招数字到命中段才播，血量/效果在规则层仍即时结算。 */
   private static pendingNumbers: PendingNumber[] = [];
   /** A4 怒气呼吸跨帧状态：uid → 常驻呼吸态（feed 按 snapshot 状态机进出；reset 清，跨场不残留）。 */
@@ -164,8 +196,11 @@ export class BattleFx {
   /** 现存 fx 数（__tkDiag().fx 机检：跨场残留断言用）。A4 起计入呼吸态（rim overlay 不入
    * items，泄漏时 fx 仍须非 0 才能被机检捕获；reset 双清，结算断言语义不变）。 */
   static get live(): number {
-    return BattleFx.items.length + BattleFx.breaths.size + BattleFx.lights.length + BattleFx.pendingNumbers.length;
+    return BattleFx.items.length + BattleFx.breaths.size + BattleFx.lights.length + BattleFx.pendingNumbers.length
+      + (BattleFx.ultimateScene ? 1 : 0) + BattleFx.ultimateSceneQueue.length;
   }
+
+  static get ultimateScenesLive() { return (BattleFx.ultimateScene ? 1 : 0) + BattleFx.ultimateSceneQueue.length; }
 
   /** 新战斗/离场重置：driven 节点先逐像素归位（防中途结束残留位移），overlay 全部销毁。
    * A3：淡出/复活遗留的半程透明度一并复位 255（节点通常随 show() 重建，此处兜节点复用场景），
@@ -183,6 +218,8 @@ export class BattleFx {
       if (f.node && f.node.isValid) { f.node.removeFromParent(); f.node.destroy(); }
     }
     BattleFx.items = [];
+    BattleFx.destroyUltimateScene();
+    BattleFx.ultimateSceneQueue = [];
     for (const light of BattleFx.lights) BattleFx.destroyLight(light);
     BattleFx.lights = [];
     BattleFx.pendingNumbers = [];
@@ -230,6 +267,13 @@ export class BattleFx {
             BattleFx.queueNumber(castLight, layer, ui, ev, indexByUid);
           } else BattleFx.spawnDmgNum(layer, ui, ev, indexByUid);
         } else if (ev.e === 'ult') {
+          const caster = snapshot[indexByUid.get(ev.uid)!];
+          const definition = caster && caster.heroId ? heroData.getHero(caster.heroId) : null;
+          if (caster && definition && definition.rarity === 4) {
+            BattleFx.queueUltimateScene(layer, {
+              uid: ev.uid, heroId: caster.heroId, name: caster.name || '', faction: caster.faction || '', skill: String(ev.skill || '')
+            });
+          }
           const light = BattleFx.spawnLight(layer, ui, indexByUid, snapshot, ev.uid,
             BattleFx.ultTargets(events, eventIndex, ev.uid), true);
           if (light) ultLights.set(ev.uid, light);
@@ -239,6 +283,7 @@ export class BattleFx {
           if (ev.type === 'atk' && ev.tgt) BattleFx.spawnLight(layer, ui, indexByUid, snapshot, ev.uid, [ev.tgt], false);
           BattleFx.spawnLunge(ui, ev, indexByUid);
         } else if (ev.e === 'death') {
+          BattleFx.cancelUltimateScene(ev.uid);
           BattleFx.cancelPendingNumbers(ev.uid);
           BattleFx.cancelCharge(ev.uid);
           BattleFx.spawnDeathFade(ui, indexByUid, ev.uid);
@@ -407,6 +452,7 @@ export class BattleFx {
     // 到达命中边界时先放出数字，再驱动光效同帧切入命中段。
     BattleFx.tickPendingNumbers(advance);
     BattleFx.tickLights(advance);
+    BattleFx.tickUltimateScene(advance);
     // A4 怒气满常驻呼吸：每帧对态内单位重写缩放（tick 最后写 = 终态权威，正交于只写位移的
     // lunge/shake）并按 3Hz 切 rim visible（Graphics 已预制，零逐帧重绘）。节点按 view 每帧
     // 重新解析——整页重绘重建后自愈，无需 deadFaded 式状态机。
@@ -423,6 +469,163 @@ export class BattleFx {
         if (st.rimGold && st.rimGold.isValid) st.rimGold.active = !hi;
         if (st.rimHi && st.rimHi.isValid) st.rimHi.active = hi;
       }
+    }
+  }
+
+  private static queueUltimateScene(layer: Node, spec: UltimateSceneSpec) {
+    if (!ULTIMATE_THEMES[spec.heroId]) return;
+    if (!BattleFx.ultimateScene) {
+      BattleFx.ultimateScene = BattleFx.createUltimateScene(layer, spec);
+      return;
+    }
+    // 保留最新施法者：最旧待播场景让位，队列有界且每位SSR仍有机会登场。
+    if (BattleFx.ultimateSceneQueue.length >= MAX_ULT_SCENE_QUEUE) BattleFx.ultimateSceneQueue.shift();
+    BattleFx.ultimateSceneQueue.push(spec);
+  }
+
+  private static cancelUltimateScene(uid: string) {
+    BattleFx.ultimateSceneQueue = BattleFx.ultimateSceneQueue.filter(s => s.uid !== uid);
+    const active = BattleFx.ultimateScene;
+    if (active && active.spec.uid === uid && active.elapsed < 0.18) BattleFx.destroyUltimateScene();
+  }
+
+  private static createUltimateScene(layer: Node, spec: UltimateSceneSpec): UltimateSceneFx {
+    const theme = ULTIMATE_THEMES[spec.heroId];
+    const root = new Node('BfxUltimateScene_' + spec.heroId);
+    root.addComponent(UITransform).setContentSize(720, 1280);
+    const rootOpacity = root.addComponent(UIOpacity);
+    const wash = new Node('SceneWash');
+    wash.addComponent(UITransform).setContentSize(720, ULT_SCENE_FIELD_TOP - ULT_SCENE_FIELD_BOTTOM);
+    wash.setPosition(0, (ULT_SCENE_FIELD_TOP + ULT_SCENE_FIELD_BOTTOM) / 2, 0);
+    const wg = wash.addComponent(Graphics);
+    wg.fillColor = new Color(theme.primary.r, theme.primary.g, theme.primary.b, 24);
+    wg.rect(-350, -(ULT_SCENE_FIELD_TOP - ULT_SCENE_FIELD_BOTTOM) / 2, 700, ULT_SCENE_FIELD_TOP - ULT_SCENE_FIELD_BOTTOM);
+    wg.fill();
+    root.addChild(wash);
+
+    const motif = new Node('SceneMotif_' + theme.motif);
+    motif.addComponent(UITransform).setContentSize(680, 900);
+    const mg = motif.addComponent(Graphics);
+    BattleFx.drawUltimateMotif(mg, theme.motif, theme.primary, theme.accent);
+    root.addChild(motif);
+
+    let portrait: Node | null = null;
+    const frame = ArtService.frame(spec.heroId);
+    if (frame) {
+      portrait = new Node('ScenePortrait_' + spec.heroId);
+      portrait.addComponent(UITransform).setContentSize(268, 358);
+      const sprite = portrait.addComponent(Sprite);
+      sprite.spriteFrame = frame;
+      sprite.sizeMode = Sprite.SizeMode.CUSTOM;
+      sprite.trim = false;
+      portrait.getComponent(UITransform)!.setContentSize(268, 358);
+      const opacity = portrait.addComponent(UIOpacity);
+      opacity.opacity = 174;
+      root.addChild(portrait);
+    }
+    layer.addChild(root);
+    rootOpacity.opacity = 0;
+    motif.setScale(new Vec3(0.72, 0.72, 1));
+    return { root, motif, portrait, elapsed: 0, spec };
+  }
+
+  private static destroyUltimateScene() {
+    const f = BattleFx.ultimateScene;
+    if (!f) return;
+    if (f.root.isValid) { f.root.removeFromParent(); f.root.destroy(); }
+    BattleFx.ultimateScene = null;
+  }
+
+  private static tickUltimateScene(advance: number) {
+    if (!BattleFx.ultimateScene && BattleFx.ultimateSceneQueue.length) {
+      const next = BattleFx.ultimateSceneQueue.shift()!;
+      const layer = CocosUi.fxLayer;
+      if (layer && layer.isValid) BattleFx.ultimateScene = BattleFx.createUltimateScene(layer, next);
+    }
+    const f = BattleFx.ultimateScene;
+    if (!f) return;
+    if (!f.root.isValid) { BattleFx.ultimateScene = null; return; }
+    f.elapsed += advance;
+    const t = Math.min(1, f.elapsed / ULT_SCENE_LIFE);
+    const opacity = f.elapsed < 0.16 ? 205 * BattleFx.easeOutQuad(f.elapsed / 0.16)
+      : f.elapsed < 0.57 ? 205 : 205 * (1 - BattleFx.easeInOutQuad((f.elapsed - 0.57) / (ULT_SCENE_LIFE - 0.57)));
+    const rootOp = f.root.getComponent(UIOpacity);
+    if (rootOp) rootOp.opacity = Math.max(0, Math.round(opacity));
+    const impact = f.elapsed < 0.48 ? 0 : Math.min(1, (f.elapsed - 0.48) / 0.42);
+    const scale = f.elapsed < 0.18 ? 0.72 + 0.32 * BattleFx.easeOutQuad(f.elapsed / 0.18)
+      : 1.04 + 0.12 * BattleFx.easeOutQuad(impact);
+    f.motif.setScale(new Vec3(scale, scale, 1));
+    f.motif.angle = (f.spec.heroId === 'simayi' || f.spec.heroId === 'zhugeliang' ? 28 : -12) * t;
+    if (f.portrait && f.portrait.isValid) {
+      const s = 0.76 + 0.16 * BattleFx.easeOutQuad(Math.min(1, f.elapsed / 0.34));
+      f.portrait.setScale(new Vec3(s, s, 1));
+      f.portrait.setPosition(0, -14 * impact, 0);
+    }
+    if (f.elapsed >= ULT_SCENE_LIFE) BattleFx.destroyUltimateScene();
+  }
+
+  /** One pre-rendered native Graphics motif per SSR; animation only transforms/alpha-blends nodes. */
+  private static drawUltimateMotif(g: Graphics, motif: UltimateMotif, primary: Color, accent: Color) {
+    const ring = (r: number, color = primary, width = 3) => { g.strokeColor = color; g.lineWidth = width; g.circle(0, 0, r); g.stroke(); };
+    const ray = (x1: number, y1: number, x2: number, y2: number, color = primary, width = 5) => {
+      g.strokeColor = color; g.lineWidth = width; g.moveTo(x1, y1); g.lineTo(x2, y2); g.stroke();
+    };
+    const star = (x: number, y: number, r: number) => { g.fillColor = accent; BattleFx.star(g, x, y, r); };
+    ring(314, primary, 3); ring(286, accent, 1.5);
+    switch (motif) {
+      case 'blossom':
+        for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; const x = Math.cos(a) * 160, y = Math.sin(a) * 160;
+          g.strokeColor = i % 2 ? accent : primary; g.lineWidth = 3; g.circle(x, y, 29); g.stroke(); star(Math.cos(a) * 220, Math.sin(a) * 220, 11); }
+        ring(105, accent, 4); break;
+      case 'dragon':
+        g.strokeColor = primary; g.lineWidth = 13; g.moveTo(-285, -115); g.bezierCurveTo(-120, 305, 110, 305, 288, -116); g.stroke();
+        g.strokeColor = accent; g.lineWidth = 4; g.moveTo(-250, -185); g.bezierCurveTo(-35, 170, 70, 230, 255, -185); g.stroke(); star(0, 220, 22); break;
+      case 'shock':
+        ring(90, accent, 7); ring(168, primary, 6); ring(250, accent, 4);
+        ray(-190, 130, -40, -22, accent, 8); ray(-40, -22, 68, 60, primary, 6); ray(68, 60, 185, -142, accent, 8); break;
+      case 'multi':
+        for (let i = 0; i < 4; i++) { const a = i * Math.PI / 4 - 0.5; ray(Math.cos(a) * 280, Math.sin(a) * 280, -Math.cos(a) * 150, -Math.sin(a) * 150, i % 2 ? accent : primary, 7); star(Math.cos(a) * 205, Math.sin(a) * 205, 13); } break;
+      case 'bagua':
+        g.strokeColor = primary; g.lineWidth = 4; g.moveTo(0, 238); g.lineTo(168, 168); g.lineTo(238, 0); g.lineTo(168, -168); g.lineTo(0, -238); g.lineTo(-168, -168); g.lineTo(-238, 0); g.lineTo(-168, 168); g.close(); g.stroke();
+        ring(130, accent, 3); for (let i = 0; i < 8; i++) star(Math.cos(i * Math.PI / 4) * 206, Math.sin(i * Math.PI / 4) * 206, 10); break;
+      case 'arrow':
+        ray(-295, 0, 280, 0, accent, 8); ray(-195, -12, 195, -12, primary, 2); ring(150, primary, 4); ring(92, accent, 3);
+        ray(280, 0, 228, 27, accent, 6); ray(280, 0, 228, -27, accent, 6); break;
+      case 'command':
+        ray(-218, -236, -218, 236, accent, 6); ray(-218, 236, 36, 169, primary, 5); ray(36, 169, -218, 105, primary, 5);
+        ray(-218, 105, 36, 38, primary, 5); ray(36, 38, -218, -28, primary, 5); ring(218, accent, 2); star(150, -215, 20); break;
+      case 'eclipse':
+        ring(198, primary, 10); ring(166, accent, 2); g.fillColor = new Color(8, 14, 32, 90); g.circle(0, 0, 148); g.fill();
+        for (let i = 0; i < 6; i++) star(Math.cos(i * Math.PI / 3) * 258, Math.sin(i * Math.PI / 3) * 258, 10); break;
+      case 'crossed':
+        ray(-210, -245, 208, 245, primary, 12); ray(-208, 245, 210, -245, accent, 12);
+        ring(158, accent, 4); star(0, 0, 28); break;
+      case 'charge':
+        for (let i = 0; i < 3; i++) { ray(-280 + i * 24, -220, 210 + i * 24, 220, i === 1 ? accent : primary, i === 1 ? 10 : 4); }
+        ring(260, accent, 2); star(230, 200, 20); break;
+      case 'wave':
+        for (let i = 0; i < 5; i++) { const y = -190 + i * 95; g.strokeColor = i % 2 ? accent : primary; g.lineWidth = 9 - i;
+          g.moveTo(-330, y); g.bezierCurveTo(-185, y + 85, -50, y - 72, 80, y + 7); g.bezierCurveTo(190, y + 70, 260, y - 45, 330, y + 20); g.stroke(); }
+        break;
+      case 'spear':
+        ray(-240, -220, 220, 220, accent, 10); ray(-270, -95, -72, 100, primary, 5); ray(72, -100, 270, 96, primary, 5);
+        ring(178, accent, 3); star(218, 218, 20); break;
+      case 'firegrid':
+        g.strokeColor = primary; g.lineWidth = 3;
+        for (let x = -240; x <= 240; x += 80) { g.moveTo(x, -220); g.lineTo(x, 220); }
+        for (let y = -200; y <= 200; y += 80) { g.moveTo(-240, y); g.lineTo(240, y); }
+        g.stroke();
+        for (let i = 0; i < 13; i++) star(-220 + (i % 5) * 104, -180 + Math.floor(i / 5) * 112, 9 + i % 3 * 3); break;
+      case 'halberd':
+        ray(0, -275, 0, 270, accent, 9); ray(-18, 120, -202, 238, primary, 13); ray(-202, 238, -128, 72, primary, 10);
+        ray(18, 120, 194, 222, primary, 11); ray(194, 222, 152, 60, primary, 9); ring(174, accent, 3); break;
+      case 'dance':
+        for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; const x = Math.cos(a) * 164, y = Math.sin(a) * 164;
+          g.strokeColor = i % 2 ? accent : primary; g.lineWidth = 4; g.ellipse(x - 32, y - 16, 32, 16); g.stroke(); star(Math.cos(a) * 254, Math.sin(a) * 254, 9); }
+        ring(106, accent, 2); break;
+      case 'vortex':
+        for (let i = 0; i < 4; i++) ring(74 + i * 54, i % 2 ? accent : primary, 8 - i);
+        ray(-255, -165, -85, -45, accent, 7); ray(255, 165, 85, 45, primary, 7); star(0, 0, 25); break;
     }
   }
 

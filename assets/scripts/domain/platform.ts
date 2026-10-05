@@ -34,3 +34,19 @@ export function onAppShow(fn: (query: Record<string, string>) => void): () => vo
   } catch (_) { /* 静默 */ }
   return () => {};
 }
+// 统一返回720宽设计坐标系中的安全区留白；读取失败/网页端返回0，不依赖页面直接访问平台全局。
+export function safeAreaInsets(): { top: number; bottom: number } {
+  try {
+    if (!miniApi) return { top: 0, bottom: 0 };
+    const info = miniApi.getWindowInfo ? miniApi.getWindowInfo() : (miniApi.getSystemInfoSync ? miniApi.getSystemInfoSync() : null);
+    const safe = info && info.safeArea;
+    const width = Number(info && (info.windowWidth || info.screenWidth));
+    const height = Number(info && (info.screenHeight || info.windowHeight));
+    if (!safe || !width || !height) return { top: 0, bottom: 0 };
+    const scale = 720 / width;
+    return {
+      top: Math.max(0, Math.min(100, Number(safe.top || 0) * scale)),
+      bottom: Math.max(0, Math.min(100, (height - Number(safe.bottom || height)) * scale))
+    };
+  } catch (_) { return { top: 0, bottom: 0 }; }
+}

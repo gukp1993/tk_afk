@@ -23,9 +23,13 @@ export class CocosUi {
   private nodes = new Map<string, Node>();
   private deferredPortraits: Array<{ id: string; rarity: number; node: Node }> = [];
   private deferPortraitLoads = false;
-  constructor(private parent: Node, private verticalScale = 1) {}
+  constructor(private parent: Node, private verticalScale = 1, private safeInsets: { top?: number; bottom?: number } = {}) {}
 
-  private y(value: number) { return value * this.verticalScale; }
+  private y(value: number) {
+    // Keep title/nav content inside device cutout and gesture areas while leaving the playfield grid stable.
+    const edgeInset = value >= 540 ? -(this.safeInsets.top || 0) : value <= -545 ? (this.safeInsets.bottom || 0) : 0;
+    return (value + edgeInset) * this.verticalScale;
+  }
   private height(value: number) { return value >= 1000 ? value * this.verticalScale : value; }
 
   /** Artwork stays inside the existing box; sliced borders keep their thickness. */
@@ -414,7 +418,10 @@ export class CocosUi {
   tap(name: string, x: number, y: number, w: number, h: number, action: () => void) {
     const node = new Node(name);
     node.setPosition(new Vec3(x, this.y(y), 0));
-    node.addComponent(UITransform).setContentSize(w, this.height(h));
+    const backTarget = /BackBarTap/.test(name);
+    const closeTarget = /(?:Close|Dismiss)(?:Tap|Touch)?$/.test(name);
+    node.addComponent(UITransform).setContentSize(backTarget ? Math.max(120, w) : closeTarget ? Math.max(80, w) : w,
+      this.height(backTarget || closeTarget ? Math.max(64, h) : h));
     let startX = 0, startY = 0;
     // 按压态（研讨会七 P1）：按下缩至 0.97 提供触觉反馈，松开/取消还原
     node.on(Node.EventType.TOUCH_START, (event: EventTouch) => {
@@ -497,20 +504,22 @@ export class CocosUi {
   text(name: string, value: string, x: number, y: number, w: number, size = 24, color = palette.text, align = Label.HorizontalAlign.CENTER) {
     const node = new Node(name);
     node.setPosition(new Vec3(x, this.y(y), 0));
-    node.addComponent(UITransform).setContentSize(w, Math.max(size * 2.4, 46));
+    // A modest lift for dense phone copy avoids tiny labels without changing each page's vertical rhythm.
+    const readableSize = size < 20 ? size + 1 : size;
+    node.addComponent(UITransform).setContentSize(w, Math.max(readableSize * 2.4, 46));
     const label = node.addComponent(Label);
     label.string = value;
     // Decorative headings use serif; dense copy and values use the platform's legible UI face.
     const decorative = size >= 28 && !/Count|Value|Power|Exp|Stats|Timer|Price|Balance/.test(name);
     label.fontFamily = decorative ? 'serif' : 'sans-serif';
-    label.isBold = size >= 28 || (size >= 21 && /Title|Name|Button|Action|NavLabel/.test(name));
-    label.fontSize = size;
-    label.lineHeight = size * 1.3;
+    label.isBold = readableSize >= 28 || (readableSize >= 21 && /Title|Name|Button|Action|NavLabel/.test(name));
+    label.fontSize = readableSize;
+    label.lineHeight = readableSize * 1.3;
     label.color = color;
     label.horizontalAlign = align;
     label.verticalAlign = Label.VerticalAlign.CENTER;
     label.overflow = Label.Overflow.SHRINK;
-    if (size >= 28) {
+    if (readableSize >= 28) {
       const outline = node.addComponent(LabelOutline);
       outline.color = new Color(20, 25, 20, 190);
       outline.width = 1;
