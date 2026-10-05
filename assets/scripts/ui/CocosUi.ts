@@ -199,9 +199,9 @@ export class CocosUi {
       badge.addChild(text);
       node.addChild(badge);
     }
-    if (info.artKey && !info.locked && !frame) {
+    if (info.artKey && !frame) {
       if (this.deferPortraitLoads) this.deferredPortraits.push({ id: info.artKey, rarity, node });
-      else ArtService.loadPortrait(info.artKey, loaded => {
+      else ArtService.loadPortrait(info.artKey, node, loaded => {
         if (loaded && node.isValid) CocosUi.applyPortrait(node, loaded, rarity);
       });
     }
@@ -462,12 +462,14 @@ export class CocosUi {
     const previous = CocosUi.scrollOffsets.get(name) || 0;
     scrolling.scrollToOffset(new Vec2(0, previous), 0);
     const loadVisiblePortraits = () => {
+      if (!viewport.isValid || !layout.isValid) return;
       const clip = viewport.getComponent(UITransform)!.getBoundingBoxToWorld();
       childUi.deferredPortraits.forEach(({ id, rarity, node }) => {
         if (!node.isValid) return;
         const box = node.getComponent(UITransform)?.getBoundingBoxToWorld();
         if (!box || box.xMax <= clip.xMin || box.xMin >= clip.xMax || box.yMax <= clip.yMin || box.yMin >= clip.yMax) return;
-        ArtService.loadPortrait(id, frame => {
+        if (node.getChildByName(node.name + 'Art')) return;
+        ArtService.loadPortrait(id, node, frame => {
           if (frame && node.isValid) CocosUi.applyPortrait(node, frame, rarity);
         });
       });
@@ -476,8 +478,8 @@ export class CocosUi {
     loadVisiblePortraits();
     viewport.on(ScrollView.EventType.SCROLLING, () => {
       CocosUi.scrollOffsets.set(name, Math.max(0, scrolling.getScrollOffset().y));
-      loadVisiblePortraits();
     });
+    viewport.on(ScrollView.EventType.SCROLL_ENDED, loadVisiblePortraits);
     this.nodes.set(name, viewport);
     return scrolling;
   }

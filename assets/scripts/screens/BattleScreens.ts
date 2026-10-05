@@ -258,6 +258,25 @@ export function resultView(ctx: ScreenContext) {
     }
     U.text('ResultGlory',gloryText,0,130,514,18,GOLD);
   }
+  // 战后台词气泡（剧情推图衔接批次二）：凯旋时在结算面板上方浮一条台词——
+  // 名将关首通取该关对白末句（who 解析为武将名），普通关/重复挑战从出战阵容 quote 池
+  // 按「关序号+日期」取模轮换（同日同关稳定、跨日换句）；败北/回放不显示。文案零新增。
+  // 位置选面板上方压暗区（y=292，面板顶 244 之上），与面板内既有行零冲突，-548 红线内。
+  if(r?.win&&!r.replay&&ctx.battleMode==='campaign'){
+    const stageDef=stages.makeStageEnemies(ctx.battleIndex);
+    const dlg=reward.first&&stageDef.isBoss?(((stageDef.story as any)?.stage?.dialogue)||[]).map((l:any)=>({
+      who:(l.who&&heroData.getHero(l.who)?.name)||l.who||'',text:l.text
+    })):null;
+    const team=(ctx.lastBattleSnapshot||[]).filter((u:any)=>u.side==='A').map((u:any)=>{
+      const h=u.heroId?heroData.getHero(u.heroId):null;
+      return h&&h.quote?{name:String(u.name||'').replace('·义',''),quote:h.quote}:null;
+    }).filter(Boolean);
+    const quote=progression.battleResultQuote({dialogue:dlg,team,battleIndex:ctx.battleIndex,day:Math.floor(Date.now()/86400000)});
+    if(quote){
+      U.panel('ResultQuoteBg',0,292,620,52,new Color(20,14,10,222),26,GOLD);
+      U.text('ResultQuote',`${quote.who}：「${quote.text}」`,0,292,592,20,GOLD);
+    }
+  }
   const msLabels=(reward.milestones||[]).map((m:any)=>m.label);
   if(r?.win&&reward.finale)U.text('ResultFinale','第一期主线完成 · 主线 120/120',0,14,500,24,GOLD);
   else if(r?.win&&msLabels.length){

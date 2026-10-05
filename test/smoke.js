@@ -2319,4 +2319,37 @@ function makeRunner(unread, cfg) {
   check('Z1.13 未注入谓词默认按未读', r13.commands.length === 1 && r13.commands[0].type === 'storyPause');
 }
 
+{ // Z2 剧情推图衔接批次二：战后台词气泡纯选择函数（utils/progression.battleResultQuote）
+  const P = require('../utils/progression');
+  head('Z2 战后台词气泡');
+  // Z2.1 名将关首通：对白末句优先（调用方仅在 boss+first 时传 dialogue）
+  const q1 = P.battleResultQuote({
+    dialogue: [{ who: '张角', text: '苍天已死，黄天当立！' }, { who: '刘备', text: '今日我兄弟三人，替天行道！' }],
+    team: [{ name: '刘备', quote: '惟贤惟德，能服于人。' }], battleIndex: 10, day: 100 });
+  check('Z2.1 对白末句优先', q1 && q1.source === 'dialogue' && q1.who === '刘备' && q1.text === '今日我兄弟三人，替天行道！');
+  // Z2.2 普通关/重复挑战：quote 池按 关序+日期 取模轮换，同参确定性（同日同关取句稳定）
+  const team = [{ name: '刘备', quote: '惟贤惟德，能服于人。' }, { name: '关羽', quote: '青龙偃月，忠义千秋。' }, { name: '张飞', quote: '燕人张翼德在此！' }];
+  const q2 = P.battleResultQuote({ team, battleIndex: 3, day: 100 });
+  const q2b = P.battleResultQuote({ team, battleIndex: 3, day: 100 });
+  check('Z2.2 池轮换同参稳定', q2 && q2.source === 'quote' && JSON.stringify(q2) === JSON.stringify(q2b));
+  // Z2.3 跨日换句（每日刷新）与跨关换句
+  const q3 = P.battleResultQuote({ team, battleIndex: 3, day: 101 });
+  const q4 = P.battleResultQuote({ team, battleIndex: 4, day: 100 });
+  check('Z2.3 跨日/跨关换句', q3.text !== q2.text && q4.text !== q2.text);
+  // Z2.4 池为空/输入缺失返回 null（结算页不渲染台词条）；dialogue 为空数组同样回退池
+  check('Z2.4a 空池返回 null', P.battleResultQuote({ team: [], battleIndex: 1, day: 1 }) === null);
+  check('Z2.4b 无输入返回 null', P.battleResultQuote(null) === null && P.battleResultQuote({}) === null);
+  check('Z2.4c 空对白回退池', P.battleResultQuote({ dialogue: [], team, battleIndex: 3, day: 100 }).source === 'quote');
+  // Z2.5 负数取模安全（seed 可为负输入时的防御）
+  const q5 = P.battleResultQuote({ team, battleIndex: -3, day: -100 });
+  check('Z2.5 负 seed 不越界', q5 && team.some(m => m.quote === q5.text));
+  // Z2.6 真实数据链：名将关对白末句可取、出战将 quote 全量存在（120 将各有 1 句）
+  const st10 = stages.makeStageEnemies(10);
+  const lastLine = ((st10.story && st10.story.stage && st10.story.stage.dialogue) || []).slice(-1)[0];
+  check('Z2.6a 名将关对白末句存在', !!lastLine && !!H.getHero(lastLine.who) && !!lastLine.text);
+  check('Z2.6b 120 将 quote 全覆盖', H.HEROES.every(h => typeof h.quote === 'string' && h.quote.length > 0));
+  const q6 = P.battleResultQuote({ dialogue: st10.story.stage.dialogue.map(l => ({ who: H.getHero(l.who).name, text: l.text })), team: [], battleIndex: 10, day: 1 });
+  check('Z2.6c 首通对白链路出句', q6 && q6.source === 'dialogue' && q6.text === lastLine.text);
+}
+
 console.log('\nsmoke: ' + passed + ' passed, ' + failed + ' failed');process.exit(failed ? 1 : 0);

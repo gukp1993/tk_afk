@@ -1,4 +1,4 @@
-import { SpriteFrame, assetManager, resources } from 'cc';
+import { Node, SpriteFrame, assetManager, resources } from 'cc';
 
 /**
  * 美术资源装载层（2026-10-02 美术阶段开启；同日改分包方案）。
@@ -15,7 +15,8 @@ let heroesReady = false;
 let scenesReady = false;
 let heroBundle: any = null;
 const portraitIds = new Set<string>();
-const portraitLoads = new Map<string, Array<(frame: SpriteFrame | null) => void>>();
+const portraitLoads = new Map<string, Array<{ owner: Node; generation: number; done: (frame: SpriteFrame | null) => void }>>();
+let portraitGeneration = 0;
 
 export const ArtService = {
   get ready() { return heroesReady; },
@@ -25,27 +26,34 @@ export const ArtService = {
   frame(key: string): SpriteFrame | null { return frames.get(key) || null; },
   has(key: string) { return frames.has(key); },
   /** Portraits are decoded only when a live UI needs them; callers may safely request the same id concurrently. */
-  loadPortrait(id: string, done: (frame: SpriteFrame | null) => void) {
+  loadPortrait(id: string, owner: Node, done: (frame: SpriteFrame | null) => void) {
     const cached = frames.get(id);
-    if (cached) { done(cached); return; }
-    if (!heroBundle) { done(null); return; }
+    if (cached) { if (owner.isValid) done(cached); return; }
+    if (!heroBundle) { if (owner.isValid) done(null); return; }
     const pending = portraitLoads.get(id);
-    if (pending) { pending.push(done); return; }
-    portraitLoads.set(id, [done]);
-    heroBundle.load(id, SpriteFrame, (err: Error | null, frame: SpriteFrame | null) => {
+    const waiter = { owner, generation: portraitGeneration, done };
+    if (pending) { pending.push(waiter); return; }
+    portraitLoads.set(id, [waiter]);
+    // 实证（探针 artprobe5）：分包内按 `<将id>/spriteFrame` 路径加载成功（按裸 id 查不到——构建产物 paths 键是 uuid）
+    const releaseKey = id + '/spriteFrame';
+    heroBundle.load(releaseKey, SpriteFrame, (err: Error | null, frame: SpriteFrame | null) => {
       const callbacks = portraitLoads.get(id) || [];
       portraitLoads.delete(id);
-      if (!err && frame) {
+      const active = callbacks.filter(cb => cb.generation === portraitGeneration && cb.owner.isValid);
+      if (!err && frame && active.length) {
         frames.set(id, frame);
-        portraitIds.add(id);
+        portraitIds.add(releaseKey);
+      } else if (!err && frame) {
+        heroBundle.release(releaseKey, SpriteFrame);
       }
-      callbacks.forEach(cb => cb(!err ? frame : null));
+      active.forEach(cb => cb.done(!err ? frame : null));
     });
   },
   /** Called after old page nodes are destroyed. Releases decoded portrait textures before the next page loads its needs. */
   releasePortraits() {
+    portraitGeneration++;
     if (heroBundle) portraitIds.forEach(id => heroBundle.release(id, SpriteFrame));
-    portraitIds.forEach(id => frames.delete(id));
+    portraitIds.forEach(key => frames.delete(key.replace('/spriteFrame', '')));
     portraitIds.clear();
   },
   count() { return frames.size; },
@@ -71,8 +79,8 @@ export const ArtService = {
     resources.loadDir('art', SpriteFrame, (err, out) => {
       this.collect(out as SpriteFrame[]);
       iconsReady = true;
-      checkFirstScreen();
       if (done) done(frames.size);
+      checkFirstScreen();
     });
     assetManager.loadBundle('art-heroes', (bErr, bundle) => {
       if (bErr || !bundle) {
@@ -86,8 +94,8 @@ export const ArtService = {
       bundle.loadDir('scenes', SpriteFrame, (sceneErr, scenes) => {
         this.collect(scenes as SpriteFrame[]);
         scenesReady = true;
-        checkFirstScreen();
         if (done) done(frames.size);
+        checkFirstScreen();
         // Portraits load by visible hero id to avoid decoding the entire subpackage into memory.
       });
     });

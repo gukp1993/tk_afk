@@ -218,7 +218,8 @@ export class CocosBootstrap extends Component implements ScreenContext {
     render[page]();
     // 面包屑路径条（I2 交互线）：三级及更深页面显示"祖先 > 当前"，逐环可点直达；两级不显示避免拥挤
     // R4：heroDetail 顶部标题/立绘与面包屑同带（y=484），入豁免列表不再绘制
-    if (this.navigation.length >= 2 && ['battle','result','autoSummary','ad','summonResults','heroDetail'].indexOf(page) < 0) {
+    // 剧情衔接批次三：story 同为全屏沉浸页，页面自带章/关标题（y=479 与面包屑同带重叠，实拍 04/12 截图缺陷），按 battle 同款跳过
+    if (this.navigation.length >= 2 && ['battle','result','autoSummary','ad','summonResults','heroDetail','story'].indexOf(page) < 0) {
       // R6：相邻同名段渲染前去重（机械栈产生的"点将台 > 点将台"类脏链合并为一段）；
       // segIdx 记录各段在真实栈中的下标，面包屑跳转仍按原栈位置截断
       const raw: Page[] = [...this.navigation, page];

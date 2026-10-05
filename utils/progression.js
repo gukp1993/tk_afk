@@ -277,4 +277,23 @@ function buildDefeatPrescriptions(state, api, input) {
   return { attribution, items: items.slice(0, maxItems) };
 }
 
-module.exports = { getNextGoal, getArmoryRecommendations, buildDailyBriefing, buildWeeklyBriefing, buildDefeatPrescriptions };
+// 战后台词（剧情推图衔接批次二）：结算页台词条的纯选择函数，零新文案。
+// 取数优先级（方案批次二清单）：
+//   ① dialogue 非空 → 取末句（调用方仅在「名将关首通」时传入该关 story.dialogue，who/text 已解析为展示名）；
+//   ② 否则从出战阵容 quote 池按 (关序号+日期) 取模轮换——同日同关取句稳定不抖动、跨日自动换句；
+//   ③ 池为空/数据缺失返回 null（调用方不渲染台词条）。败北不渲染（调用方 gating）。
+function battleResultQuote(input) {
+  const src = input || {};
+  const dialogue = Array.isArray(src.dialogue) ? src.dialogue : null;
+  if (dialogue && dialogue.length) {
+    const last = dialogue[dialogue.length - 1];
+    if (last && last.text) return { who: last.who || '', text: last.text, source: 'dialogue' };
+  }
+  const pool = (Array.isArray(src.team) ? src.team : []).filter(m => m && m.name && m.quote);
+  if (!pool.length) return null;
+  const seed = (Math.floor(Number(src.battleIndex) || 0) + Math.floor(Number(src.day) || 0)) % pool.length;
+  const pick = pool[(seed + pool.length) % pool.length];
+  return { who: pick.name, text: pick.quote, source: 'quote' };
+}
+
+module.exports = { getNextGoal, getArmoryRecommendations, buildDailyBriefing, buildWeeklyBriefing, buildDefeatPrescriptions, battleResultQuote };
