@@ -1,4 +1,4 @@
-import { Color, Component, Label, Node, view } from 'cc';
+import { Color, Component, Graphics, Label, Node, view } from 'cc';
 import { palette, hexColor as tone } from '../ui/CocosUi';
 import { Page, ScreenContext } from './ScreenContext';
 import * as store from '../domain/store';
@@ -1193,28 +1193,60 @@ export function storyArchiveView(ctx: ScreenContext) {
   ctx.storyArchiveCh=chIdx;
   ctx.title('剧 情 回 顾');
   U.backBar(()=>ctx.go('campaign'));
-  U.panel('ArcChPanel',0,392,640,126,tone('#312218'),9,GOLD);
-  U.button('ArcPrev','‹',-268,412,84,52,()=>{ctx.storyArchiveCh=Math.max(0,chIdx-1);ctx.show('storyArchive');},chIdx>0?tone('#5a452a'):tone('#332a1e'));
-  U.button('ArcNext','>',268,412,84,52,()=>{ctx.storyArchiveCh=Math.min(maxCh,chIdx+1);ctx.show('storyArchive');},chIdx<maxCh?tone('#5a452a'):tone('#332a1e'));
+  // S4 演义卷·全卷进度（顶部 88 高面板）：160 关已看进度条 + 当前章 10 格印章条。
+  // 数据纯 store.isStorySeen 1..160 推导，零新存档字段；新增文案仅「演义卷/已看」。
+  let volSeen=0;
+  for(let n=1;n<=160;n++)if(store.isStorySeen(n))volSeen++;
+  U.panel('ArcVolPanel',0,410,640,88,tone('#312218'),9,GOLD);
+  U.text('ArcVolTitle','演 义 卷',-262,434,130,20,GOLD);
+  // 全卷进度条：352×18 轨，青铜→描金 16 段插值渐变，每 10 关（章界）一枚暗刻度
+  const track=U.panel('ArcVolTrack',0,434,352,18,tone('#171009'),9,tone('#5a452a'),false);
+  const tg=track.getComponent(Graphics)!;
+  const fillW=344*volSeen/160,segW=344/16,bronze={r:138,g:95,b:48},goldTop={r:232,g:195,b:119};
+  for(let i=0;i<16;i++){
+    const seg=Math.min(segW*(i+1),fillW)-segW*i;
+    if(seg<=0)break;
+    const t=i/15;
+    tg.fillColor=new Color(Math.round(bronze.r+(goldTop.r-bronze.r)*t),Math.round(bronze.g+(goldTop.g-bronze.g)*t),Math.round(bronze.b+(goldTop.b-bronze.b)*t));
+    tg.rect(-172+segW*i,-6,seg+0.5,12);
+    tg.fill();
+  }
+  tg.fillColor=new Color(22,15,9,150);
+  for(let k=1;k<16;k++)tg.rect(-176+k*22-1,-7,2,14);
+  tg.fill();
+  U.text('ArcVolCount',`已看 ${volSeen}/160`,258,434,130,17,tone('#d9b06a'));
+  // 当前章 10 格印章条：已读=朱砂描金印章+内框，未读=暗格描边
+  for(let i=0;i<10;i++){
+    const sx=-279+i*62,seen=store.isStorySeen(chIdx*10+i+1);
+    const cell=U.panel('ArcVolCell'+i,sx,390,54,28,seen?palette.red:tone('#211a11'),6,seen?GOLD:tone('#443623'),false);
+    if(seen){
+      const cg=cell.getComponent(Graphics)!;
+      cg.strokeColor=tone('#f0d9a0');cg.lineWidth=1.5;
+      cg.roundRect(-20,-9,40,18,4);cg.stroke();
+    }
+  }
+  U.panel('ArcChPanel',0,276,640,132,tone('#312218'),9,GOLD);
+  U.button('ArcPrev','‹',-268,298,84,52,()=>{ctx.storyArchiveCh=Math.max(0,chIdx-1);ctx.show('storyArchive');},chIdx>0?tone('#5a452a'):tone('#332a1e'));
+  U.button('ArcNext','>',268,298,84,52,()=>{ctx.storyArchiveCh=Math.min(maxCh,chIdx+1);ctx.show('storyArchive');},chIdx<maxCh?tone('#5a452a'):tone('#332a1e'));
   const chName=stages.chapterOf(chIdx*10+1).name;
   let seenCount=0;
   for(let i=0;i<10;i++)if(store.isStorySeen(chIdx*10+i+1))seenCount++;
-  U.text('ArcChName',chName,0,438,420,26,GOLD);
-  U.text('ArcChSub',`已读 ${seenCount}/10 · 点击已解锁关回看剧情`,0,410,420,16,tone('#ad9977'));
+  U.text('ArcChName',chName,0,312,420,26,GOLD);
+  U.text('ArcChSub',`已读 ${seenCount}/10 · 点击已解锁关回看剧情`,0,284,420,16,tone('#ad9977'));
   // 章叙事（用户指令延伸：intro/finale 此前全 UI 零引用）
   const chDef=(story.CHAPTERS as any[])[chIdx];
   const chapterDone=cleared>=chIdx*10+10;
   if(chDef){
-    U.text('ArcNarrTag',chapterDone?'章末 · 全书回顾':'本章 · 开篇叙事',0,384,420,14,tone('#8a7c5f'));
-    U.textBlock('ArcNarr',chapterDone?chDef.finale:chDef.intro,0,358,600,44,17,tone('#c9b489'));
+    U.text('ArcNarrTag',chapterDone?'章末 · 全书回顾':'本章 · 开篇叙事',0,264,420,14,tone('#8a7c5f'));
+    U.textBlock('ArcNarr',chapterDone?chDef.finale:chDef.intro,0,233,600,44,17,tone('#c9b489'));
   }
-  U.scroll('ArcList',0,-102,682,826,10*68+20,V=>{
+  U.scroll('ArcList',0,-130,682,652,652,V=>{
     for(let i=0;i<10;i++){
       const n=chIdx*10+i+1;
       const st=stages.makeStageEnemies(n).story;
       const seen=store.isStorySeen(n);
       const open=n<=cleared+1;
-      const y=(10*68+20)/2-34-i*68;
+      const y=297-i*66;
       V.panel('ArcRow'+i,0,y,660,58,seen?tone('#2b2418'):tone('#1d1812'),7,seen?tone('#795b34'):tone('#3a2f20'));
       V.text('ArcRowNum'+i,String(n).padStart(2,'0'),-282,y,60,22,seen?GOLD:tone('#7a6c52'));
       V.text('ArcRowName'+i,st?.stage?.name||'—',-160,y,344,22,open?LIGHT:tone('#7a6c52'));
