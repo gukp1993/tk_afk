@@ -13,6 +13,9 @@ const frames = new Map<string, SpriteFrame>();
 let iconsReady = false;
 let heroesReady = false;
 let scenesReady = false;
+let heroBundle: any = null;
+const portraitIds = new Set<string>();
+const portraitLoads = new Map<string, Array<(frame: SpriteFrame | null) => void>>();
 
 export const ArtService = {
   get ready() { return heroesReady; },
@@ -21,6 +24,30 @@ export const ArtService = {
   /** 查已加载立绘/图标；未加载或不存在返回 null（调用方回退占位）。 */
   frame(key: string): SpriteFrame | null { return frames.get(key) || null; },
   has(key: string) { return frames.has(key); },
+  /** Portraits are decoded only when a live UI needs them; callers may safely request the same id concurrently. */
+  loadPortrait(id: string, done: (frame: SpriteFrame | null) => void) {
+    const cached = frames.get(id);
+    if (cached) { done(cached); return; }
+    if (!heroBundle) { done(null); return; }
+    const pending = portraitLoads.get(id);
+    if (pending) { pending.push(done); return; }
+    portraitLoads.set(id, [done]);
+    heroBundle.load(id, SpriteFrame, (err: Error | null, frame: SpriteFrame | null) => {
+      const callbacks = portraitLoads.get(id) || [];
+      portraitLoads.delete(id);
+      if (!err && frame) {
+        frames.set(id, frame);
+        portraitIds.add(id);
+      }
+      callbacks.forEach(cb => cb(!err ? frame : null));
+    });
+  },
+  /** Called after old page nodes are destroyed. Releases decoded portrait textures before the next page loads its needs. */
+  releasePortraits() {
+    if (heroBundle) portraitIds.forEach(id => heroBundle.release(id, SpriteFrame));
+    portraitIds.forEach(id => frames.delete(id));
+    portraitIds.clear();
+  },
   count() { return frames.size; },
   collect(out: SpriteFrame[]) {
     (out || []).forEach(f => {
@@ -54,17 +81,14 @@ export const ArtService = {
         if (done) done(frames.size);
         return;
       }
+      heroBundle = bundle;
+      heroesReady = true;
       bundle.loadDir('scenes', SpriteFrame, (sceneErr, scenes) => {
         this.collect(scenes as SpriteFrame[]);
         scenesReady = true;
         checkFirstScreen();
         if (done) done(frames.size);
-        // 已载场景由资源缓存复用；其余立绘和品牌题字不阻塞首屏地图。
-        bundle.loadDir('', SpriteFrame, (lErr, out) => {
-          this.collect(out as SpriteFrame[]);
-          heroesReady = true;
-          if (done) done(frames.size);
-        });
+        // Portraits load by visible hero id to avoid decoding the entire subpackage into memory.
       });
     });
   }

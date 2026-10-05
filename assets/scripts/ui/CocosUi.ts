@@ -1,4 +1,4 @@
-import { Color, EventTouch, Graphics, Label, LabelOutline, Mask, Node, ScrollView, Sprite, SpriteFrame, UITransform, Vec2, Vec3, Tween, UIOpacity } from 'cc';
+import { Color, Director, director, EventTouch, Graphics, Label, LabelOutline, Mask, Node, ScrollView, Sprite, SpriteFrame, UITransform, Vec2, Vec3, Tween, UIOpacity } from 'cc';
 import { ArtService } from '../services/ArtService';
 
 export const hexColor = (hex: string) => new Color(
@@ -21,6 +21,8 @@ export const rarityColors = ['', '#c8ccd4', '#6f9fd8', '#c99af0', '#f0b95e'];
 export class CocosUi {
   private static scrollOffsets = new Map<string, number>();
   private nodes = new Map<string, Node>();
+  private deferredPortraits: Array<{ id: string; rarity: number; node: Node }> = [];
+  private deferPortraitLoads = false;
   constructor(private parent: Node, private verticalScale = 1) {}
 
   private y(value: number) { return value * this.verticalScale; }
@@ -197,6 +199,12 @@ export class CocosUi {
       badge.addChild(text);
       node.addChild(badge);
     }
+    if (info.artKey && !info.locked && !frame) {
+      if (this.deferPortraitLoads) this.deferredPortraits.push({ id: info.artKey, rarity, node });
+      else ArtService.loadPortrait(info.artKey, loaded => {
+        if (loaded && node.isValid) CocosUi.applyPortrait(node, loaded, rarity);
+      });
+    }
     return node;
   }
 
@@ -216,6 +224,41 @@ export class CocosUi {
   }
 
   static resetScroll(name: string) { this.scrollOffsets.delete(name); }
+
+  private static applyPortrait(node: Node, frame: SpriteFrame, rarity: number) {
+    if (node.getChildByName(node.name + 'Art')) return;
+    const glyph = node.getChildByName(node.name + 'Glyph');
+    if (glyph && glyph.isValid) { glyph.removeFromParent(); glyph.destroy(); }
+    const box = node.getComponent(UITransform);
+    if (!box) return;
+    const { width: w, height: h } = box.contentSize;
+    const holder = new Node(node.name + 'Art');
+    holder.addComponent(UITransform).setContentSize(w, h);
+    holder.addComponent(Mask).type = Mask.Type.GRAPHICS_RECT;
+    const artNode = new Node(node.name + 'Pic');
+    const rect = frame.getOriginalSize();
+    const scale = Math.max(w / rect.width, h / rect.height);
+    artNode.addComponent(UITransform).setContentSize(Math.ceil(rect.width * scale), Math.ceil(rect.height * scale));
+    const sprite = artNode.addComponent(Sprite);
+    sprite.spriteFrame = frame;
+    sprite.sizeMode = Sprite.SizeMode.CUSTOM;
+    sprite.trim = false;
+    artNode.getComponent(UITransform)!.setContentSize(Math.ceil(rect.width * scale), Math.ceil(rect.height * scale));
+    if (w > h) artNode.setPosition(new Vec3(0, -(Math.ceil(rect.height * scale) - h) * 0.35, 0));
+    holder.addChild(artNode);
+    node.addChild(holder);
+    holder.setSiblingIndex(0);
+    const radius = Math.min(14, w * 0.12, h * 0.12);
+    const rim = new Node(node.name + 'Rim');
+    rim.addComponent(UITransform).setContentSize(w, h);
+    const rg = rim.addComponent(Graphics);
+    rg.strokeColor = hexColor(rarityColors[rarity]);
+    rg.lineWidth = 3;
+    rg.roundRect(-w / 2 + 1.5, -h / 2 + 1.5, w - 3, h - 3, radius);
+    rg.stroke();
+    node.addChild(rim);
+    rim.setSiblingIndex(1);
+  }
 
   rect(name: string, x: number, y: number, w: number, h: number, fill: Color) {
     const node = new Node(name);
@@ -413,11 +456,27 @@ export class CocosUi {
     layout.setPosition(0,(actualH-contentH)/2);
     layout.addComponent(UITransform).setContentSize(w,contentH);
     content.addChild(layout);
-    draw(new CocosUi(layout));
+    const childUi = new CocosUi(layout);
+    childUi.deferPortraitLoads = true;
+    draw(childUi);
     const previous = CocosUi.scrollOffsets.get(name) || 0;
     scrolling.scrollToOffset(new Vec2(0, previous), 0);
+    const loadVisiblePortraits = () => {
+      const clip = viewport.getComponent(UITransform)!.getBoundingBoxToWorld();
+      childUi.deferredPortraits.forEach(({ id, rarity, node }) => {
+        if (!node.isValid) return;
+        const box = node.getComponent(UITransform)?.getBoundingBoxToWorld();
+        if (!box || box.xMax <= clip.xMin || box.xMin >= clip.xMax || box.yMax <= clip.yMin || box.yMin >= clip.yMax) return;
+        ArtService.loadPortrait(id, frame => {
+          if (frame && node.isValid) CocosUi.applyPortrait(node, frame, rarity);
+        });
+      });
+    };
+    director.once(Director.EVENT_AFTER_DRAW, loadVisiblePortraits);
+    loadVisiblePortraits();
     viewport.on(ScrollView.EventType.SCROLLING, () => {
       CocosUi.scrollOffsets.set(name, Math.max(0, scrolling.getScrollOffset().y));
+      loadVisiblePortraits();
     });
     this.nodes.set(name, viewport);
     return scrolling;
