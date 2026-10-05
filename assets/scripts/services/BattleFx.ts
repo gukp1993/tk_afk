@@ -36,7 +36,8 @@ import * as heroData from '../domain/heroes';
  *   首次致死只发 cheat、单位始终直立（无前置淡出）→ 从当前状态起播等效一次站立脉冲；
  *   "淡出中/已定格再被复活"的完整回升链路作为防御路径保留（规格 6.4 A3 的幽灵位防线）。
  * 由 `Bootstrap.update` 战斗分支驱动 `feed → tick(dt, speed)`，帧率无关（对齐 CocosUi.floaters 模式）。
- * 追加原生技能光效：按 cls/faction 区分刀光、箭矢、法术/通用脉冲，大招分蓄力/释放/命中；
+ * 追加原生技能光效：按 cls/faction 区分刀光（武）、箭矢（弓）、法术（军师）、通用脉冲，以及
+ * T1 守将盾墙金光/格挡冲击波（guard）与医将治疗绿波/脚底光环（mend），大招分蓄力/释放/命中；
  * 独立 lights 只读卡面锚点，沿真实事件受体驱动，有限数量/短寿命，同步倍速并纳入 live/reset。
  * - 视觉参数照抄旧 combatPopupDisplay/DmgNum/UltPopup 死路渲染路径（寿命/字号/配色/位移）。
  * - overlay 全部挂 `CocosUi.ensureFxLayer`（与 content 同坐标系，跨页存活）——所以进场/离场
@@ -58,6 +59,7 @@ import * as heroData from '../domain/heroes';
 
 const GOLD = hexColor('#e3ba70'); // 现状 UltPopup 金框/金字
 const GOLD_HI = hexColor('#ffe9b0'); // A4 亮金：呼吸 rim 交替的第二色 + 横幅入场描边加亮
+const MEND_GREEN = hexColor('#8fe5b8'); // T1 医将治疗绿波：与治疗数字同色系（职业身份色）
 const DMG_LIFE = 0.8;             // 伤害数字寿命秒（现状 800ms；×N 倍速由 tick 按 speed 压缩）
 const DMG_RISE = 60;              // 上飘距离（现状线性 60px）
 const ULT_LIFE = 1.2;             // 横幅寿命（前 0.9s 全亮 230，末 0.3s 淡出）
@@ -121,7 +123,7 @@ const ULTIMATE_THEMES: Record<string, UltimateTheme> = {
   dongzhuo: { motif:'vortex', primary:hexColor('#ba5847'), accent:hexColor('#d6a447') },
 };
 
-type SkillStyle = 'melee' | 'ranged' | 'magic' | 'pulse';
+type SkillStyle = 'melee' | 'ranged' | 'magic' | 'pulse' | 'guard' | 'mend';
 interface LightPart { node: Node; op: UIOpacity }
 interface LightTarget {
   anchor: Node;
@@ -642,15 +644,21 @@ export class BattleFx {
     return targets.length ? targets : [uid];
   }
 
+  /** T1：职业→光效形态。守将（tank）从与武将共用的刀弧分出 guard（盾墙金光/格挡冲击波），
+   * 医将（support）从与军师共用的法术分出 mend（治疗绿波/脚底光环）；其余映射不变。 */
   private static skillStyle(cls: string): SkillStyle {
-    if (cls === 'tank' || cls === 'warrior') return 'melee';
+    if (cls === 'tank') return 'guard';
+    if (cls === 'support') return 'mend';
+    if (cls === 'warrior') return 'melee';
     if (cls === 'archer') return 'ranged';
-    if (cls === 'mage' || cls === 'support') return 'magic';
+    if (cls === 'mage') return 'magic';
     return 'pulse';
   }
 
   private static lightColor(faction: string, style: SkillStyle): Color {
     if (style === 'pulse') return GOLD;
+    if (style === 'guard') return GOLD;      // T1 盾墙金光：金系职业身份色，不随阵营漂移（同横幅金框色系）
+    if (style === 'mend') return MEND_GREEN; // T1 治疗绿波：绿系职业身份色，不随阵营漂移
     if (faction === 'wei') return hexColor('#87c9f7');
     if (faction === 'shu') return hexColor('#8fe5b8');
     if (faction === 'wu') return hexColor('#ffbd78');
@@ -689,7 +697,31 @@ export class BattleFx {
     g.strokeColor = color; g.lineWidth = 2;
     g.circle(0, 0, 38); g.stroke();
     g.strokeColor = GOLD_HI; g.lineWidth = 1;
-    if (style === 'magic') {
+    if (style === 'guard') {
+      // T1 守将蓄力：立绘前拢起的盾形描线（上缘平直、下端收尖）+ 中脊横梁——蓄势格挡的可读轮廓。
+      g.moveTo(-16, 24); g.lineTo(16, 24);
+      g.bezierCurveTo(16, 8, 13, -10, 0, -26);
+      g.bezierCurveTo(-13, -10, -16, 8, -16, 24);
+      g.stroke();
+      g.moveTo(0, 22); g.lineTo(0, -22);
+      g.moveTo(-12, 8); g.lineTo(12, 8);
+      g.stroke();
+    } else if (style === 'mend') {
+      // T1 医将蓄力：脚底光环椭圆 + 三层旋转涟漪断弧 + 中央治疗十字（相比实心光晕保留立绘可读性）。
+      g.ellipse(0, -56, 26, 8); g.stroke();
+      for (let i = 0; i < 3; i++) {
+        const r = 16 + i * 9;
+        for (let k = 0; k < 3; k++) {
+          const a = k * Math.PI * 2 / 3 + i * 0.55;
+          g.arc(0, -6, r, a, a + 1.05, false); g.stroke();
+        }
+      }
+      g.lineWidth = 2;
+      g.moveTo(0, -14); g.lineTo(0, 2);
+      g.moveTo(-8, -6); g.lineTo(8, -6);
+      g.stroke();
+      g.lineWidth = 1;
+    } else if (style === 'magic') {
       g.circle(0, 0, 29); g.stroke();
       // 断环与六瓣符文，相比实心光晕可保留立绘可读性。
       for (let i = 0; i < 6; i++) {
@@ -722,6 +754,32 @@ export class BattleFx {
       g.strokeColor = GOLD_HI; g.lineWidth = 2 * size;
       g.moveTo(-20 * size, -23 * size);
       g.bezierCurveTo(30 * size, -15 * size, 30 * size, 15 * size, -20 * size, 23 * size); g.stroke();
+    } else if (style === 'guard') {
+      // T1 守将释放：朝行进方向前凸的盾墙冲击波——外厚弧（波身）+ 内亮弧（波前）+ 中央盾面菱形 + 尾迹双线。
+      g.lineWidth = 7 * size;
+      g.arc(6 * size, 0, 22 * size, -1.15, 1.15, false); g.stroke();
+      g.strokeColor = GOLD_HI; g.lineWidth = 2 * size;
+      g.arc(6 * size, 0, 13 * size, -1.0, 1.0, false); g.stroke();
+      g.strokeColor = color; g.fillColor = color;
+      g.moveTo(1 * size, 9 * size); g.lineTo(9 * size, 0); g.lineTo(1 * size, -9 * size); g.lineTo(-7 * size, 0);
+      g.close(); g.fill();
+      g.strokeColor = GOLD_HI; g.lineWidth = 1;
+      g.moveTo(-18 * size, 6 * size); g.lineTo(-7 * size, 6 * size);
+      g.moveTo(-18 * size, -6 * size); g.lineTo(-7 * size, -6 * size);
+      g.stroke();
+    } else if (style === 'mend') {
+      // T1 医将释放：治疗绿波——中央治疗十字 + 包络圆 + 前行涟漪弧 + 两侧上浮光点。
+      g.lineWidth = 3 * size;
+      g.moveTo(0, -9 * size); g.lineTo(0, 9 * size);
+      g.moveTo(-9 * size, 0); g.lineTo(9 * size, 0);
+      g.stroke();
+      g.lineWidth = 1.5 * size;
+      g.circle(0, 0, 14 * size); g.stroke();
+      g.arc(-4 * size, 0, 20 * size, -0.9, 0.9, false); g.stroke();
+      g.strokeColor = GOLD_HI; g.lineWidth = 1;
+      g.moveTo(-6 * size, 13 * size); g.lineTo(-2 * size, 18 * size);
+      g.moveTo(2 * size, 12 * size); g.lineTo(6 * size, 17 * size);
+      g.stroke();
     } else if (style === 'ranged') {
       g.lineWidth = 3 * size;
       g.moveTo(-42 * size, 0); g.lineTo(17 * size, 0); g.stroke();
@@ -752,6 +810,20 @@ export class BattleFx {
     if (style === 'melee') {
       g.moveTo(-r, -r * 0.6); g.lineTo(r, r * 0.6);
       g.moveTo(-r * 0.6, r); g.lineTo(r * 0.6, -r); g.stroke();
+    } else if (style === 'guard') {
+      // T1 格挡冲击波：内环 + 四向对角外扩冲击射线（区别于法术六向内聚符文）。
+      g.circle(0, 0, r * 0.62); g.stroke();
+      for (let i = 0; i < 4; i++) {
+        const a = Math.PI / 4 + i * Math.PI / 2;
+        g.moveTo(Math.cos(a) * r * 0.72, Math.sin(a) * r * 0.72);
+        g.lineTo(Math.cos(a) * r * 1.08, Math.sin(a) * r * 1.08);
+      }
+      g.stroke();
+    } else if (style === 'mend') {
+      // T1 治疗绿波：双层涟漪内环 + 顶部上浮人字（扩散回收的治疗感）。
+      g.circle(0, 0, r * 0.6); g.stroke();
+      g.circle(0, 0, r * 0.32); g.stroke();
+      g.moveTo(-r * 0.26, r * 0.5); g.lineTo(0, r * 0.82); g.lineTo(r * 0.26, r * 0.5); g.stroke();
     } else if (style === 'magic' && ultimate) {
       g.circle(0, 0, r * 0.65); g.stroke();
       for (let i = 0; i < 6; i++) {
@@ -885,7 +957,7 @@ export class BattleFx {
     for (const target of f.targets) {
       const to = target.anchor.position;
       const q = Math.max(0, Math.min(1, release));
-      const travel = f.style === 'melee' ? BattleFx.easeOutQuad(q) : q;
+      const travel = f.style === 'melee' || f.style === 'guard' ? BattleFx.easeOutQuad(q) : q;
       const dx = to.x - from.x, dy = to.y - from.y;
       const angle = Math.atan2(dy, dx) * 180 / Math.PI;
       target.release.node.active = release >= 0 && release < 1;

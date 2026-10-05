@@ -220,18 +220,18 @@ export function heroDetail(ctx: ScreenContext) {
   U.seal('DetailGemIcon',268,587,33,'宝',palette.ink,palette.gold,palette.gold,16,'gem');U.text('DetailGem',fmt.fmtNum(s.res.gem),320,587,76,22,paper);
   U.scroll('HeroDetail:'+h.id,0,8,708,1044,contentH,V=>{
     V.panel('DetailStage',0,top-140,684,260,new Color(16,30,25,170),12,border);
-    V.heroIcon('DetailPortrait',-240,top-140,170,220,{surname:h.surname||h.name[0],faction:h.faction,rarity:h.rarity,formed,artKey:h.id});
+    V.heroIcon('DetailPortrait',-240,top-140,170,180,{surname:h.surname||h.name[0],faction:h.faction,rarity:h.rarity,formed,artKey:h.id});
     V.text('DetailTitle',h.title||'武将',92,top-52,240,30,paper);
     V.text('DetailName',h.name,92,top-112,280,62,gold);
     V.text('DetailIdentity',(faction[h.faction]||h.faction)+' · '+cls,92,top-158,250,24,paper);
-    if(h.quote&&!(bios.BIOS as any)[h.id])V.text('DetailQuote','「'+h.quote+'」',0,top-248,560,19,tone('#c9b489'));
+    if(h.quote&&!(bios.BIOS as any)[h.id])V.text('DetailQuote','「'+h.quote+'」',0,top-254,560,19,tone('#c9b489'));
     V.panel('DetailRarity',-52,top-210,139,48,new Color(147,98,37,248),5,gold);
     V.text('DetailRarityText',rarityNames[h.rarity],-52,top-210,131,30,gold);
     V.text('DetailStars','★'.repeat(own.star||0)+'☆'.repeat(Math.max(0,max-(own.star||0))),130,top-210,220,26,gold);
-    V.panel('DetailStatus',0,top-305,660,70,new Color(12,34,30,240),5,gold);
-    V.seal('DetailFormationIcon',-263,top-305,34,'阵',palette.ink,palette.gold,palette.gold,17,'formation');
-    V.text('DetailLevel','全军共享 Lv.'+h.level,-140,top-305,262,25,paper);
-    V.text('DetailFormationState',formed?'已上阵':'未上阵',232,top-305,150,25,formed?gold:dim);
+    V.panel('DetailStatus',0,top-316,660,70,new Color(12,34,30,240),5,gold);
+    V.seal('DetailFormationIcon',-263,top-316,34,'阵',palette.ink,palette.gold,palette.gold,17,'formation');
+    V.text('DetailLevel','全军共享 Lv.'+h.level,-140,top-316,262,25,paper);
+    V.text('DetailFormationState',formed?'已上阵':'未上阵',232,top-316,150,25,formed?gold:dim);
     V.text('StatsHeading','武将属性',-242,top-375,195,29,gold);
     V.panel('StatsPanel',0,top-450,666,112,new Color(19,37,32,244),5,border);
     const statTones=[tone('#7fbd94'),tone('#bb614c'),tone('#4d91bd')];
@@ -244,8 +244,8 @@ export function heroDetail(ctx: ScreenContext) {
       '暴击：'+pct(h.stats.crit||0)+'    同名卡：'+(own.cards||0)+' 张','当前面板值仅供参考，战斗效果以实战结算为准。']));
     // 小传入口（研讨会六 C3）：台词行兼作按钮，有传记的将点击弹四句小传
     const bioLines=(bios.BIOS as any)[h.id];
-    if(bioLines)V.tap('BioTap',0,top-248,684,26,()=>heroInfoModal(ctx,'武将小传 · '+h.name,bioLines));
-    if(h.quote)V.text('DetailQuote','「'+h.quote+'」'+(bioLines?'  ·  小传 >':''),0,top-248,560,19,tone('#c9b489'));
+    if(bioLines)V.tap('BioTap',0,top-254,684,26,()=>heroInfoModal(ctx,'武将小传 · '+h.name,bioLines));
+    if(h.quote)V.text('DetailQuote','「'+h.quote+'」'+(bioLines?'  ·  小传 >':''),0,top-254,560,19,tone('#c9b489'));
     V.text('SkillsHeading','武将技能',-242,top-535,195,29,gold);
     const skills=[{name:h.ult.name,desc:h.ult.desc,glyph:'杀',fill:palette.red,kind:'必杀技能'},
       {name:h.passiveDef.name,desc:h.passiveDef.desc,glyph:'守',fill:palette.green,kind:'被动技能'}];

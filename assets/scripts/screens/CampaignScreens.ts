@@ -64,25 +64,25 @@ export function campaign(ctx: ScreenContext) {
     U.panel('CurrentStage',labelX,labelY,176,32,tone('#3c6255'),5,undefined,false);
     U.text('CurrentStageText',`第${stage}关${stage>stages.CHAPTERS.length*stages.STAGES_PER_CH?'·循环':''}`,labelX,labelY,165,17,LIGHT);
   }
-  U.text('MilestoneHint','主线里程碑：40/100 自选券 · 90/110/150 自选箱 · 120/140/160 完成礼',0,404,560,15,ArtService.has('map_campaign_v2')?INK:LIGHT);
+  U.text('MilestoneHint','主线里程碑：40/100 自选券 · 90/110/150 自选箱 · 120/140/160 完成礼',0,430,560,15,ArtService.has('map_campaign_v2')?INK:LIGHT);
   const sd=store.sevenDayInfo();
   const fdBanner=store.fourteenDayInfo();
   if(sd.allDone&&!fdBanner.allDone){
-    U.panel('FourteenBanner',-60,372,500,44,fdBanner.canClaim?tone('#3a2c17'):tone('#2b2118'),7,fdBanner.canClaim?GOLD:tone('#6b5837'));
-    U.text('FourteenBannerText',fdBanner.canClaim?'第二周目标 · 有奖励可领 >':`第二周目标 · 第 ${fdBanner.ageDays} 天 >`,-60,372,470,18,fdBanner.canClaim?GOLD:LIGHT);
-    U.tap('FourteenBannerTap',-60,372,500,44,()=>ctx.go('sevenDay'));
+    U.panel('FourteenBanner',-60,366,500,44,fdBanner.canClaim?tone('#3a2c17'):tone('#2b2118'),7,fdBanner.canClaim?GOLD:tone('#6b5837'));
+    U.text('FourteenBannerText',fdBanner.canClaim?'第二周目标 · 有奖励可领 >':`第二周目标 · 第 ${fdBanner.ageDays} 天 >`,-60,366,470,18,fdBanner.canClaim?GOLD:LIGHT);
+    U.tap('FourteenBannerTap',-60,366,500,44,()=>ctx.go('sevenDay'));
   }
   if(!sd.allDone&&!sd.expired){
     const claimable=sd.canClaim;
-    U.panel('SevenDayBanner',-60,372,500,44,claimable?tone('#3a2c17'):tone('#2b2118'),7,claimable?GOLD:tone('#6b5837'));
-    U.text('SevenDayBannerText',claimable?'七日目标 · 今天有奖励可领 >':`七日目标 · 第 ${sd.cur} 天 >`,-60,372,470,18,claimable?GOLD:LIGHT);
-    U.tap('SevenDayBannerTap',-60,372,500,44,()=>ctx.go('sevenDay'));
+    U.panel('SevenDayBanner',-60,366,500,44,claimable?tone('#3a2c17'):tone('#2b2118'),7,claimable?GOLD:tone('#6b5837'));
+    U.text('SevenDayBannerText',claimable?'七日目标 · 今天有奖励可领 >':`七日目标 · 第 ${sd.cur} 天 >`,-60,366,470,18,claimable?GOLD:LIGHT);
+    U.tap('SevenDayBannerTap',-60,366,500,44,()=>ctx.go('sevenDay'));
   }
   const starInfo=store.campaignStarChestInfo();
   if(starInfo.claimable){
-    U.panel('StarChestBanner',-60,336,500,40,tone('#3a2c17'),7,GOLD);
-    U.text('StarChestText','章节星宝箱可领 · 点击领取 >',-60,336,470,18,GOLD);
-    U.tap('StarChestTap',-60,336,500,40,()=>{
+    U.panel('StarChestBanner',-60,310,500,40,tone('#3a2c17'),7,GOLD);
+    U.text('StarChestText','章节星宝箱可领 · 点击领取 >',-60,310,470,18,GOLD);
+    U.tap('StarChestTap',-60,310,500,40,()=>{
       const r=store.claimStarChests();
       ctx.tell(r,r.ok?`已领取：${(r.got||[]).join('；')}`:'');
     });
@@ -901,7 +901,10 @@ export function formationPick(ctx: ScreenContext) {
         else {ctx.notice=result.msg;ctx.show('formationPick');}
       });
     });
-    if(!list.length)V.text('PickEmptyText','没有可上阵的武将了',0,contentH/2-80,525,22,tone('#ad9977'));
+    if(!list.length){
+      V.text('PickEmptyText','当前可用武将都已上阵',0,contentH/2-100,525,22,tone('#ad9977'));
+      V.button('PickSummon','前往召唤',0,contentH/2-174,260,54,()=>ctx.go('summon'),tone('#806136'));
+    }
   });
   U.button('PickBack','返回编队',0,-477,354,63,()=>ctx.back('formation'),palette.paperDark);
 }

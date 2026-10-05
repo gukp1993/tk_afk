@@ -26,9 +26,13 @@ export class CocosUi {
   constructor(private parent: Node, private verticalScale = 1, private safeInsets: { top?: number; bottom?: number } = {}) {}
 
   private y(value: number) {
-    // Keep title/nav content inside device cutout and gesture areas while leaving the playfield grid stable.
-    const edgeInset = value >= 540 ? -(this.safeInsets.top || 0) : value <= -545 ? (this.safeInsets.bottom || 0) : 0;
-    return (value + edgeInset) * this.verticalScale;
+    // Map the whole 1280-design coordinate space into the device safe rectangle.
+    // Per-element edge thresholds split shared headers/footers (e.g. campaign power vs. lord name).
+    const top = this.safeInsets.top || 0, bottom = this.safeInsets.bottom || 0;
+    const visibleH = 1280 * this.verticalScale;
+    const safeScale = visibleH > 0 ? Math.max(0.8, (visibleH - top - bottom) / visibleH) : 1;
+    const safeCenter = (bottom - top) / 2;
+    return value * this.verticalScale * safeScale + safeCenter;
   }
   private height(value: number) { return value >= 1000 ? value * this.verticalScale : value; }
 
@@ -264,7 +268,7 @@ export class CocosUi {
   /** 整幅图片层（页面背景用）：有图由调用方传入 SpriteFrame，随 CocosUi 纵向缩放铺满。 */
   image(name: string, frame: SpriteFrame, x: number, y: number, w: number, h: number) {
     const node = new Node(name);
-    node.setPosition(new Vec3(x, this.y(y), 0));
+    node.setPosition(new Vec3(x, h >= 1000 ? y * this.verticalScale : this.y(y), 0));
     node.addComponent(UITransform).setContentSize(w, this.height(h));
     const sprite = node.addComponent(Sprite);
     sprite.spriteFrame = frame;
@@ -315,7 +319,8 @@ export class CocosUi {
 
   rect(name: string, x: number, y: number, w: number, h: number, fill: Color) {
     const node = new Node(name);
-    node.setPosition(new Vec3(x, this.y(y), 0));
+    // Full-screen art and dim layers must continue under the cutout and home indicator.
+    node.setPosition(new Vec3(x, h >= 1000 ? y * this.verticalScale : this.y(y), 0));
     const drawnH=h*this.verticalScale;
     node.addComponent(UITransform).setContentSize(w, drawnH);
     const graphics = node.addComponent(Graphics);
@@ -479,7 +484,7 @@ export class CocosUi {
 
   tap(name: string, x: number, y: number, w: number, h: number, action: () => void) {
     const node = new Node(name);
-    node.setPosition(new Vec3(x, this.y(y), 0));
+    node.setPosition(new Vec3(x, h >= 1000 ? y * this.verticalScale : this.y(y), 0));
     const backTarget = /BackBarTap/.test(name);
     const closeTarget = /(?:Close|Dismiss)(?:Tap|Touch)?$/.test(name);
     node.addComponent(UITransform).setContentSize(backTarget ? Math.max(120, w) : closeTarget ? Math.max(80, w) : w,
