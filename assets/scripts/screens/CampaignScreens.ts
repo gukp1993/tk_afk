@@ -137,6 +137,10 @@ export function campaign(ctx: ScreenContext) {
     :s.campaign.cleared>=storyEnd?`主线全通 ${storyEnd}/${storyEnd} · 循环乱世继续开放`
     :`二期征途 ${s.campaign.cleared}/${storyEnd} · 通关越多，挂机收益越高`;
   U.text('GoalHint',goalText,-151,-528,400,16,LIGHT);
+  // 剧情回顾入口提级（批次五①）：由「征途→本章地图→剧情回顾」三级提为战役页一键直达；
+  // 热区 64..176 与 GoalTap（-352..52）、双倍快收（188..368）各留 ≥11px 间隙不叠压
+  U.text('StoryEntry','剧情回顾 >',120,-528,110,17,GOLD);
+  U.tap('StoryEntryTap',120,-528,112,40,()=>ctx.go('storyArchive'));
   U.text('IdleMore','双倍 / 快收',278,-528,180,18,GOLD);
   U.tap('GoalTap',-150,-528,405,40,()=>ctx.go('stagePreview'));
   U.tap('IdleMoreTap',278,-528,180,40,()=>ctx.idleClaimChoice());
@@ -1025,45 +1029,78 @@ let storySegIdx = 0;
 let storySegKey = '';
 let storyTyper: StoryTyper | null = null;
 
+// 剧情页（批次四段化重构）：段序列 = [BOSS 开场白]（名将关，立绘+双横幅）→ [章节引子]（新章首关）
+// → 旁白 → 对白逐段。打字机+点击推进贯穿全部段；乱世合成章无过场数据，自然回落原两段形态。
 export function storyView(ctx: ScreenContext) {
-    const story=stages.makeStageEnemies(ctx.storyStage).story;
+    const st=stages.makeStageEnemies(ctx.storyStage).story;
     const U=ctx.ui;
-    const narration=story?.stage.narration || '两军列阵，战鼓已鸣。';
-    const dialogue=((story?.stage as any)?.dialogue || []) as Array<{who:string;text:string}>;
-    // 段序列：旁白一段 + 对白逐段（批次三 ③ 点击推进）；末段显示开战/看完按钮
-    const total=1+dialogue.length;
+    const narration=st?.stage.narration || '两军列阵，战鼓已鸣。';
+    const dialogue=((st?.stage as any)?.dialogue || []) as Array<{who:string;text:string}>;
+    const trans=story.getChapterTransition(ctx.storyStage);
+    const bossIntroRows=(st&&st.isBoss&&!(st as any).synthetic?(((st.ch as any)?.bossIntro||[]) as Array<{text:string;sub:string}>):[]);
+    type StorySeg={kind:'boss'|'intro'|'narr'|'line';text?:string;line?:{who:string;text:string}};
+    const segs:StorySeg[]=[];
+    if(bossIntroRows.length)segs.push({kind:'boss'});
+    if(trans&&trans.kind==='intro'&&trans.text)segs.push({kind:'intro',text:trans.text});
+    segs.push({kind:'narr',text:narration});
+    dialogue.forEach(l=>segs.push({kind:'line',line:l}));
+    const total=segs.length;
     const segKey=`${ctx.storyStage}:${ctx.storyReview?'r':'p'}`;
     if(storySegKey!==segKey){storySegKey=segKey;storySegIdx=0;}
     if(storySegIdx>total-1)storySegIdx=total-1;
+    const seg=segs[storySegIdx];
     const isLast=storySegIdx>=total-1;
     const advance=()=>{
       if(storyTyper&&storyTyper.isValid&&!storyTyper.done){storyTyper.finish();return;}
       if(storySegIdx<total-1){storySegIdx++;ctx.show('story');}
     };
     U.rect('StoryBackdrop',0,0,720,1280,tone('#20160e'));
-    U.text('StoryChapter',story?.ch.name || '乱世纷争',0,535,645,39,GOLD);
-    U.text('StoryStage',story?.stage.name || `第 ${ctx.storyStage} 关`,0,479,640,23,tone('#a99778'));
+    U.text('StoryChapter',st?.ch.name || '乱世纷争',0,535,645,39,GOLD);
+    U.text('StoryStage',st?.stage.name || `第 ${ctx.storyStage} 关`,0,479,640,23,tone('#a99778'));
     U.panel('StoryPaper',0,64,654,708,tone('#e6d7b3'),12,tone('#a8834f'));
-    // 旁白：第 0 段大字打字机逐字浮现；进入对白段后缩为顶部引文常驻（压缩羊皮纸空白）
-    if(storySegIdx===0){
-      const nNode=U.textBlock('StoryNarration','',0,150,564,200,26,INK);
-      storyTyper=StoryTyper.attach(nNode,narration,50);
-    } else {
-      U.textBlock('StoryNarration',narration,0,330,564,96,21,tone('#6e6350'));
-    }
-    if(storySegIdx>0){
-      // 对白卡（一次一段）：说话人立绘头像（ArtService 分包立绘，无图回退姓氏印章）+ 打字机台词
-      const line=dialogue[storySegIdx-1];
-      const hero=line.who?heroes.getHero(line.who):null;
-      const speakerName=hero?.name||line.who||'？';
-      U.panel('StoryDialogue',0,120,585,240,tone('#d6c49e'),9,tone('#a8834f'));
-      U.heroIcon('StoryFace',-208,122,132,176,{
-        surname:speakerName.slice(0,1),faction:hero?.faction,rarity:hero?.rarity||1,
-        artKey:hero?line.who:undefined
+    if(seg.kind==='boss'){
+      // BOSS 开场白段（批次四 ①，ch01–08 存量数据上线、09–16 新补）：主将立绘 + 双横幅开场白
+      const bossId=((st?.stage as any)?.foes||[])[0] as string|undefined;
+      const bossHero=bossId?heroes.getHero(bossId):null;
+      U.text('StoryBossTag','— 名 将 登 场 —',0,384,320,17,tone('#8a7c5f'));
+      U.heroIcon('StoryBossFace',0,262,132,176,{
+        surname:bossHero?.name?.slice(0,1)||'？',faction:bossHero?.faction,rarity:bossHero?.rarity||1,
+        artKey:bossId||undefined
       });
-      U.text('StorySpeaker',speakerName,78,206,400,21,tone('#6b4f2a'));
-      const lNode=U.textBlock('StoryLine','',78,110,410,140,23,INK);
-      storyTyper=StoryTyper.attach(lNode,line.text,50);
+      U.text('StoryBossName',bossHero?`${bossHero.name}${bossHero.title?' · '+bossHero.title:''}`:'未知名将',0,148,480,24,tone('#6b4f2a'));
+      bossIntroRows.slice(0,2).forEach((b,i)=>{
+        const y=44-i*108;
+        U.panel('StoryBossBanner'+i,0,y,600,80,tone('#2c1f12'),9,tone('#a8834f'));
+        if(i===0){
+          const bNode=U.text('StoryBossText0','',0,y+16,560,26,GOLD);
+          storyTyper=StoryTyper.attach(bNode,b.text,40);
+        } else U.text('StoryBossText1',b.text,0,y+16,560,26,GOLD);
+        U.text('StoryBossSub'+i,b.sub||'',0,y-18,560,16,tone('#a99778'));
+      });
+    } else {
+      // 已演过内容的顶部回显：对白段收旁白为引文（批次三形态）；旁白段收章节引子为引文（批次四）
+      if(seg.kind==='line')U.textBlock('StoryNarration',narration,0,330,564,96,21,tone('#6e6350'));
+      else if(seg.kind==='narr'&&storySegIdx>0&&trans&&trans.kind==='intro'&&trans.text)
+        U.textBlock('StoryIntroQuote',trans.text,0,330,564,44,17,tone('#c9b489'));
+      if(seg.kind==='narr'||seg.kind==='intro'){
+        // 旁白/章节引子：大字打字机逐字浮现（批次三 ② 形态复用）
+        const nNode=U.textBlock('StoryNarration','',0,150,564,200,26,INK);
+        storyTyper=StoryTyper.attach(nNode,seg.kind==='intro'?(seg.text||''):narration,50);
+      }
+      if(seg.kind==='line'){
+        // 对白卡（一次一段）：说话人立绘头像（ArtService 分包立绘，无图回退姓氏印章）+ 打字机台词
+        const line=seg.line!;
+        const hero=line.who?heroes.getHero(line.who):null;
+        const speakerName=hero?.name||line.who||'？';
+        U.panel('StoryDialogue',0,120,585,240,tone('#d6c49e'),9,tone('#a8834f'));
+        U.heroIcon('StoryFace',-208,122,132,176,{
+          surname:speakerName.slice(0,1),faction:hero?.faction,rarity:hero?.rarity||1,
+          artKey:hero?line.who:undefined
+        });
+        U.text('StorySpeaker',speakerName,78,206,400,21,tone('#6b4f2a'));
+        const lNode=U.textBlock('StoryLine','',78,110,410,140,23,INK);
+        storyTyper=StoryTyper.attach(lNode,line.text,50);
+      }
     }
     if(!isLast)U.text('StoryHint','▼ 点击继续',0,-244,300,18,tone('#8a7c5f'));
     // 点击推进热区：盖住羊皮纸区；底部按钮后绘制、热区不重叠
@@ -1089,6 +1126,8 @@ export function storyView(ctx: ScreenContext) {
       U.tap('StorySkipTap',0,-482,460,64,()=>ctx.finishAutoStory());
     } else {
       // 手动模式：末段显示「开战」；前段同位显示「跳过剧情」直进战斗（P1：演出必须可跳过）
+      // 已读语义（批次五②）：markStorySeen 只在此处（玩家实际看到末段或主动跳过）与
+      // CocosBootstrap.finishAutoStory（自动暂停看完/跳过）两处写入——全工程无其他写点
       U.panel('StoryFight',0,-392,460,78,palette.red,9,GOLD);
       U.text('StoryFightText',isLast?'开  战':'跳过剧情 »',0,-392,438,27,LIGHT);
       U.tap('StoryFightTap',0,-392,460,78,()=>{
@@ -1098,6 +1137,34 @@ export function storyView(ctx: ScreenContext) {
       U.tap('StoryBackTap',0,-482,318,45,()=>ctx.back('stagePreview'));
     }
   }
+
+// 章末过场页（批次四 ②）：首通一章末关（第 10/20/…/160 关）后的章末回顾——
+// 章名 + finale 打字机 + 「继续进军」；点击推进（补完打字机）。复用剧情页演出形态；
+// 自动模式不进此页（结算页 1.5s 掠过横幅，不打断连战，见 BattleScreens.resultView）。
+// 章节推导自 campaign.cleared（方案约束：存档不加字段）。
+export function storyTransitionView(ctx: ScreenContext) {
+  const U=ctx.ui,s=store.getState();
+  const cleared=s.campaign.cleared||0;
+  const chIdx=Math.min(stages.CHAPTERS.length-1,Math.max(0,Math.floor((cleared-1)/10)));
+  const trans=story.getChapterTransition(cleared);
+  const finText=trans&&trans.kind==='finale'&&trans.text?trans.text
+    :((story.CHAPTERS as any[])[chIdx]?.finale||'乱世征途，仍在继续。');
+  U.rect('StoryBackdrop',0,0,720,1280,tone('#20160e'));
+  U.text('StoryChapter',stages.chapterOf(chIdx*10+1).name,0,535,645,39,GOLD);
+  U.text('StoryStage','章 末 回 顾',0,479,640,23,tone('#a99778'));
+  U.panel('StoryPaper',0,64,654,708,tone('#e6d7b3'),12,tone('#a8834f'));
+  U.text('StoryFinaleTag','— 本 章 终 —',0,384,320,17,tone('#8a7c5f'));
+  const fNode=U.textBlock('StoryFinale','',0,40,564,240,26,INK);
+  storyTyper=StoryTyper.attach(fNode,finText,40);
+  U.tap('StoryAdvance',0,64,654,708,()=>{
+    if(storyTyper&&storyTyper.isValid&&!storyTyper.done)storyTyper.finish();
+  });
+  U.panel('StoryFight',0,-392,460,78,palette.red,9,GOLD);
+  U.text('StoryFightText','继续进军 »',0,-392,438,27,LIGHT);
+  U.tap('StoryFightTap',0,-392,460,78,()=>ctx.startBattle('campaign',cleared+1));
+  U.text('StoryBackText','返回战役',0,-482,318,20,GOLD);
+  U.tap('StoryBackTap',0,-482,318,45,()=>ctx.go('campaign'));
+}
 
 export function storyArchiveView(ctx: ScreenContext) {
   const U=ctx.ui,s=store.getState();

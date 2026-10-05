@@ -65,7 +65,7 @@ export class CocosBootstrap extends Component implements ScreenContext {
     heroDetail: '武将详情', summon: '点将台', summonResults: '召唤结果', armory: '军械', armoryCatalog: '军械图鉴',
     armoryBox: '军械箱', shop: '集市', formation: '编队', formationPick: '选择武将', quests: '任务', tower: '群英塔',
     arena: '演武场', arenaBoard: '演武排行', dungeon: '军屯', weekboss: '魔王讨伐', settings: '设置', story: '剧情',
-    storyArchive: '剧情回顾', sevenDay: '七日目标', bounty: '悬赏', forge: '锻造台', codex: '图鉴', achv: '成就',
+    storyTransition: '过场', storyArchive: '剧情回顾', sevenDay: '七日目标', bounty: '悬赏', forge: '锻造台', codex: '图鉴', achv: '成就',
     expedition: '远征', hall: '名人堂', quad: '四方台', relics: '神兵阁', season: '四时战纪', seasonScenes: '名场面'
   };
 
@@ -213,13 +213,15 @@ export class CocosBootstrap extends Component implements ScreenContext {
       heroes: () => heroScreens.heroes(this), heroDetail: () => heroScreens.heroDetail(this), summon: () => heroScreens.summon(this), summonResults: () => heroScreens.summonResults(this), bag: () => campaignScreens.bag(this),
       armory: () => heroScreens.armory(this), armoryCatalog: () => heroScreens.armoryCatalog(this), armoryBox: () => heroScreens.armoryBox(this), shop: () => campaignScreens.shop(this), formation: () => campaignScreens.formation(this), formationPick: () => campaignScreens.formationPick(this), quests: () => campaignScreens.quests(this),
       tower: () => campaignScreens.tower(this), arena: () => campaignScreens.arena(this), arenaBoard: () => campaignScreens.arenaBoard(this), dungeon: () => campaignScreens.dungeonView(this), weekboss: () => campaignScreens.weekBossView(this), settings: () => campaignScreens.settingsView(this), story: () => campaignScreens.storyView(this), storyArchive: () => campaignScreens.storyArchiveView(this), sevenDay: () => campaignScreens.sevenDayView(this), bounty: () => campaignScreens.bountyView(this), forge: () => heroScreens.forgeView(this), codex: () => heroScreens.codexView(this), achv: () => heroScreens.achvView(this), expedition: () => campaignScreens.expeditionView(this), hall: () => campaignScreens.hallView(this), quad: () => campaignScreens.quadTowerView(this), relics: () => heroScreens.relicsView(this), season: () => campaignScreens.seasonView(this), seasonScenes: () => campaignScreens.seasonScenesView(this),
-      battle: () => battleScreens.battleView(this), result: () => battleScreens.resultView(this), autoSummary: () => battleScreens.autoSummary(this, this.autoSession.summary), ad: () => this.adView()
+      battle: () => battleScreens.battleView(this), result: () => battleScreens.resultView(this), autoSummary: () => battleScreens.autoSummary(this, this.autoSession.summary), ad: () => this.adView(),
+      storyTransition: () => campaignScreens.storyTransitionView(this)
     };
     render[page]();
     // 面包屑路径条（I2 交互线）：三级及更深页面显示"祖先 > 当前"，逐环可点直达；两级不显示避免拥挤
     // R4：heroDetail 顶部标题/立绘与面包屑同带（y=484），入豁免列表不再绘制
     // 剧情衔接批次三：story 同为全屏沉浸页，页面自带章/关标题（y=479 与面包屑同带重叠，实拍 04/12 截图缺陷），按 battle 同款跳过
-    if (this.navigation.length >= 2 && ['battle','result','autoSummary','ad','summonResults','heroDetail','story'].indexOf(page) < 0) {
+    // 批次四：storyTransition（章末过场）同为沉浸页，同款豁免
+    if (this.navigation.length >= 2 && ['battle','result','autoSummary','ad','summonResults','heroDetail','story','storyTransition'].indexOf(page) < 0) {
       // R6：相邻同名段渲染前去重（机械栈产生的"点将台 > 点将台"类脏链合并为一段）；
       // segIdx 记录各段在真实栈中的下标，面包屑跳转仍按原栈位置截断
       const raw: Page[] = [...this.navigation, page];

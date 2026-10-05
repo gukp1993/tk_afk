@@ -2352,4 +2352,42 @@ function makeRunner(unread, cfg) {
   check('Z2.6c 首通对白链路出句', q6 && q6.source === 'dialogue' && q6.text === lastLine.text);
 }
 
+{ // Z3 剧情推图衔接批次四+五：bossIntro 全量上线 / 章节过场触发 / 已读语义回归
+  const S = require('../utils/story');
+  head('Z3 章节过场与已读语义');
+  // Z3.1 bossIntro 数据完整：16 章各 2 条 text+sub（批次四：ch01-08 存量上线、ch09-16 新补）
+  check('Z3.1a 16 章 bossIntro 全覆盖', S.CHAPTERS.length === 16
+    && S.CHAPTERS.every(c => Array.isArray(c.bossIntro) && c.bossIntro.length === 2));
+  check('Z3.1b bossIntro 条目字段完整', S.CHAPTERS.every(c =>
+    c.bossIntro.every(b => typeof b.text === 'string' && b.text.length > 0
+      && typeof b.sub === 'string' && b.sub.length > 0)));
+  // Z3.2 后 8 章新补文案长度红线：text/sub 各 ≤30 字（方案批次四验收）
+  check('Z3.2 后 8 章 bossIntro 每条 ≤30 字', S.CHAPTERS.slice(8).every(c =>
+    c.bossIntro.every(b => b.text.length <= 30 && b.sub.length <= 30)));
+  // Z3.3 过场触发条件（story.getChapterTransition）：章末关→finale、新章首关→intro、中段/越界→null
+  const t10 = S.getChapterTransition(10), t11 = S.getChapterTransition(11), t1 = S.getChapterTransition(1);
+  check('Z3.3a 第 10 关→ch01 finale', t10 && t10.kind === 'finale' && t10.chIdx === 0 && t10.text === S.CHAPTERS[0].finale);
+  check('Z3.3b 第 1/11 关→intro', t1 && t1.kind === 'intro' && t1.chIdx === 0 && t11 && t11.kind === 'intro' && t11.chIdx === 1 && t11.text === S.CHAPTERS[1].intro);
+  check('Z3.3c 第 151/160 关→ch16 intro/finale', (() => {
+    const a = S.getChapterTransition(151), b = S.getChapterTransition(160);
+    return a && a.kind === 'intro' && a.chIdx === 15 && b && b.kind === 'finale' && b.chIdx === 15;
+  })());
+  check('Z3.3d 中段关与越界（0/7/161）无过场', S.getChapterTransition(7) === null
+    && S.getChapterTransition(0) === null && S.getChapterTransition(161) === null);
+  // Z3.4 过场立绘数据链：每章第 10 关 foes[0] 主将可解析（BOSS 开场白立绘/姓名可用）
+  check('Z3.4 名将关主将可解析', S.CHAPTERS.every(c => !!H.getHero(c.stages[9].foes[0])));
+  // Z3.5 已读语义（批次五②）：战斗开始/结算全流程不写 storySeen；仅显式 markStorySeen 写入
+  {
+    const storeZ = freshStore(); storeZ.load();
+    const started = storeZ.beginBattle({ mode: 'campaign', index: 1, referenceLevel: 1 });
+    check('Z3.5a beginBattle 不写已读', started.ok && !storeZ.isStorySeen(1) && !storeZ.isStorySeen(10));
+    storeZ.settleBattle(started.id, { win: true, duration: 5, aliveCount: 5 });
+    check('Z3.5b 战斗结算不写已读（路过不烧已读）', !storeZ.isStorySeen(1) && !storeZ.isStorySeen(10));
+    storeZ.markStorySeen(10);
+    check('Z3.5c 显式 markStorySeen 后可读', !!storeZ.isStorySeen(10) && !storeZ.isStorySeen(1));
+    storeZ.markStorySeen(10);
+    check('Z3.5d 重复标记幂等不抛错', !!storeZ.isStorySeen(10));
+  }
+}
+
 console.log('\nsmoke: ' + passed + ' passed, ' + failed + ' failed');process.exit(failed ? 1 : 0);

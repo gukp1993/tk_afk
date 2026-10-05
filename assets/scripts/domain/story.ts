@@ -1,9 +1,10 @@
 // @ts-nocheck
 // Generated from utils/story.js by scripts/cocos-sync-domain.js. Do not edit here.
 
-// 演义剧情关卡表：12 章 × 10 关（对照《三国演义》名场面改编，全部原创文案）
+// 演义剧情关卡表：16 章 × 10 关（对照《三国演义》名场面改编，全部原创文案）
 // 数据约束（smoke 有断言锁定）：
 //   - 每章恰 10 关，第 10 关为名将关（foes[0] 为主将），须带 dialogue 对白
+//   - 每章 bossIntro 双横幅 2 条（text+sub，批次四上线全 16 章，后 8 章每条 ≤30 字）
 //   - 所有 foes / dialogue.who 的 id 必须能在 heroes.HEROES 解析
 //   - 超出本表的关卡由 stages.js 的循环乱世兜底（兜底表也从本表派生，单一数据源）
 // 数值（强度曲线/等级/星级）不在此表——由 stages.makeStageEnemies 统一生成。
@@ -272,6 +273,7 @@ const CHAPTERS = [
   },
   {
     id: 'ch09', name: '荆州易帜', subtitle: '白衣渡江 · 败走麦城',
+    bossIntro: [{ text: "白衣渡江", sub: "烽燧尽赚 · 江陵易帜 · 荆州危殆" }, { text: "败走麦城", sub: "孤城求援不至 · 将星陨落临沮" }],
     intro: '水淹七军，威震华夏。然而烽火台看不见的地方，白衣商人正在渡江。',
     finale: '荆州易帜，大将星陨。刘备恨极，起倾国之兵东征——夷陵的火，将把两家的国运一起烧尽。',
     stages: [
@@ -303,6 +305,7 @@ const CHAPTERS = [
   },
   {
     id: 'ch10', name: '火烧连营', subtitle: '夷陵 · 书生拜将',
+    bossIntro: [{ text: "火烧连营", sub: "七百里连营 · 一夜尽成焦土" }, { text: "白帝托孤", sub: "永安宫中 · 君臣之托 · 千古涕零" }],
     intro: '桃园之誓犹在耳，二弟三弟相继惨亡。七十万大军东征，连营七百里。',
     finale: '夷陵火熄，白帝托孤。吴蜀重修旧好，共抗曹魏——南中却在此时反了。',
     stages: [
@@ -334,6 +337,7 @@ const CHAPTERS = [
   },
   {
     id: 'ch11', name: '南征南中', subtitle: '七擒孟获',
+    bossIntro: [{ text: "七擒七纵", sub: "攻心为上 · 攻城为下 · 蛮王心服" }, { text: "南人不复反", sub: "泸水盟誓 · 丞相天威 · 南中遂安" }],
     intro: '南中三郡皆反，蛮王孟获拥众十万犯境。丞相亲征——这一战，攻心为上。',
     finale: '南中已定，物阜民丰。丞相上出师表，六出祁山——这是他最后的执念。',
     stages: [
@@ -365,6 +369,7 @@ const CHAPTERS = [
   },
   {
     id: 'ch12', name: '星落五丈原', subtitle: '六出祁山 · 将星陨落',
+    bossIntro: [{ text: "秋风五丈原", sub: "将星欲坠 · 汉祚维艰 · 鞠躬尽瘁" }, { text: "死诸葛走生仲达", sub: "将星虽陨 · 余威犹在 · 仲达自愧" }],
     intro: '「鞠躬尽瘁，死而后已。」六出祁山，北伐中原，这是丞相最后的执念。',
     finale: '将星陨落，鼓声渐远。出师未捷身先死，长使英雄泪满襟——而丞相的忠诚，永照后人。',
     stages: [
@@ -400,6 +405,7 @@ const CHAPTERS = [
   },
   {
     id: 'ch13', name: '三分归晋', subtitle: '天下大势 · 分久必合',
+    bossIntro: [{ text: "三分归晋", sub: "楼船下益州 · 金陵王气收" }, { text: "分久必合", sub: "天下大势 · 英雄故事 · 永不落幕" }],
     intro: '魏蜀吴三国鼎立，英雄迟暮。然天下大势，分久必合，新的乱世序幕悄然拉开。',
     finale: '三国归晋，乱世终结。然英雄的故事，永不落幕。',
     stages: [
@@ -431,6 +437,7 @@ const CHAPTERS = [
   },
   {
     id: 'ch14', name: '群英梦影', subtitle: '英魂不灭 · 再战三国',
+    bossIntro: [{ text: "梦回三国", sub: "英魂不灭 · 昔年对手 · 再决高下" }, { text: "英雄终章", sub: "群英集结 · 战鼓再擂 · 谁执牛耳" }],
     intro: '三分归晋，然英雄魂魄不灭。梦中重回三国战场，与昔年对手再决高下。',
     finale: '梦醒时分，英雄已远。但那面战旗，仍在心中飘扬。',
     stages: [
@@ -463,6 +470,7 @@ const CHAPTERS = [
   },
   {
     id: 'ch15', name: '乱世再临', subtitle: '梦醒 · 烽烟又起',
+    bossIntro: [{ text: "狼烟再起", sub: "黄巾复燃 · 贼寇并起 · 中原震动" }, { text: "决战塞外", sub: "胡骑扣关 · 铁壁合围 · 不破不还" }],
     intro: '梦醒之后，天下并未太平。黄巾余烬复燃，四方贼寇并起，边地狼烟再度席卷中原。',
     finale: '草原之主授首，边患暂平。然狼烟未熄，真正的天命之争才刚开场。',
     stages: [
@@ -494,6 +502,7 @@ const CHAPTERS = [
   },
   {
     id: 'ch16', name: '天命之战', subtitle: '群雄逐鹿 · 终章',
+    bossIntro: [{ text: "五路发难", sub: "群雄并起 · 逐鹿天下 · 天命之争" }, { text: "天命所归", sub: "胜负一役 · 传奇不灭 · 由我续写" }],
     intro: '异族既平，群雄再聚。五路大军同时发难，逐鹿天下——天命之战，全面爆发。',
     finale: '五路皆平，天命归于仁德。三国的传奇，将由主公亲手续写。',
     stages: [
@@ -586,4 +595,19 @@ function getStoryChapter(chIdx) {
   return CHAPTERS[chIdx] || null;
 }
 
-export { CHAPTERS, getStoryStage, getStoryChapter, getChaosStory, CHAOS_BOSS_ROTATION };
+// 章节过场触发（剧情推图衔接批次四）：章末关（第 10/20/…/160 关）→ 该章 finale（章末回顾）；
+// 新章首关（第 1/11/…/151 关）→ 该章 intro（开篇引子）。中段关与乱世循环（>160）无过场——
+// 乱世章为合成数据，无 intro/finale 文案，过场只覆盖 16 章正传。纯派生不落存档。
+function getChapterTransition(globalStage) {
+  const n = Math.floor(Number(globalStage) || 0);
+  if (n < 1 || n > CHAPTERS.length * 10) return null;
+  const inCh = (n - 1) % 10;
+  if (inCh !== 0 && inCh !== 9) return null;
+  const chIdx = Math.floor((n - 1) / 10);
+  const ch = CHAPTERS[chIdx];
+  return inCh === 9
+    ? { kind: 'finale', chIdx, ch, text: ch.finale }
+    : { kind: 'intro', chIdx, ch, text: ch.intro };
+}
+
+export { CHAPTERS, getStoryStage, getStoryChapter, getChapterTransition, getChaosStory, CHAOS_BOSS_ROTATION };

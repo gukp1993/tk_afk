@@ -3,6 +3,7 @@ import { CocosUi, hexColor as tone, rarityColors } from '../ui/CocosUi';
 import { ScreenContext } from './ScreenContext';
 import * as store from '../domain/store';
 import * as stages from '../domain/stages';
+import * as story from '../domain/story';
 import * as items from '../domain/items';
 import * as config from '../domain/config';
 import * as fmt from '../domain/fmt';
@@ -323,6 +324,10 @@ export function resultView(ctx: ScreenContext) {
     U.button('ResultRetry','再战',139,-165,232,59,()=>ctx.battleMode==='arena'?ctx.startArenaBattle(ctx.battleDiff,ctx.battleArenaSeed):ctx.startBattle(ctx.battleMode,ctx.battleIndex,ctx.battleDiff),tone('#3a2b20'));
   }
   if(!ctx.auto){
+    // 章节过场入口（批次四 ②）：首通章末关（第 10/20/…/160 关）后「挑战下一关」升级为
+    // 「章末回顾 · 继续进军」，先过章末过场页再进新章首关（过场页可返回战役=可跳过）
+    const chapterFinale=ctx.battleMode==='campaign'&&!!r?.win&&!!reward.first
+      &&ctx.battleIndex%10===0&&ctx.battleIndex<=stages.CHAPTERS.length*stages.STAGES_PER_CH;
     if(ctx.battleMode==='campaign'&&!r?.win){
       // 卡关处方单（研讨会二 P1）：归因 + 按资源可完成度生成的处方按钮（rx 已在行文案前计算）
       if(rx){
@@ -343,8 +348,9 @@ export function resultView(ctx: ScreenContext) {
         // 演武败北：'再战'已可重打，不再重复渲染'重新挑战'
         U.text('ResultArenaTip','调整布阵或升级军械后再来切磋',139,-228,232,20,DIM);
       } else {
-        U.button('ResultNext',r?.win&&['campaign','tower'].includes(ctx.battleMode)?'挑战下一关':r?.win&&ctx.battleMode==='trial'?'返回英雄':r?.win?'返回玩法':'重新挑战',139,-228,232,53,()=>{
-          if(r?.win&&ctx.battleMode==='campaign')ctx.startBattle('campaign',ctx.battleIndex+1);
+        U.button('ResultNext',chapterFinale?'章末回顾 · 继续进军':r?.win&&['campaign','tower'].includes(ctx.battleMode)?'挑战下一关':r?.win&&ctx.battleMode==='trial'?'返回英雄':r?.win?'返回玩法':'重新挑战',139,-228,232,53,()=>{
+          if(chapterFinale)ctx.go('storyTransition');
+          else if(r?.win&&ctx.battleMode==='campaign')ctx.startBattle('campaign',ctx.battleIndex+1);
           else if(r?.win&&ctx.battleMode==='tower')ctx.startBattle('tower',ctx.battleIndex+1);
           else if(r?.win)ctx.go(returnPage(ctx));
           else if(ctx.battleMode==='arena')ctx.startArenaBattle(ctx.battleDiff,ctx.battleArenaSeed);
@@ -353,6 +359,25 @@ export function resultView(ctx: ScreenContext) {
       }
     }
   }else U.text('NextAuto','自动出征 · 即将继续',0,-218,500,22,GOLD);
+  // 自动模式章节过场（批次四 ③）：首通章末关的结算停留期（resultDelay 1.5s）叠加章末回顾，
+  // 随下一场开战自然掠过——不打断连战（P1），完整回顾可在剧情回顾页找回（P4）
+  if(ctx.auto&&ctx.battleMode==='campaign'&&r?.win&&!!reward.first
+    &&ctx.battleIndex%10===0&&ctx.battleIndex<=stages.CHAPTERS.length*stages.STAGES_PER_CH){
+    const fin=story.getChapterTransition(ctx.battleIndex);
+    const nextIntro=story.getChapterTransition(ctx.battleIndex+1);
+    if(fin&&fin.kind==='finale'){
+      // 近不透明压暗：结算面板/台词气泡不得透过过场横幅（实拍 D2 发现叠影，当批修掉）
+      U.rect('CeremonyShade',0,0,720,1280,new Color(8,6,4,248));
+      U.text('CeremonyChapter',stages.chapterOf(ctx.battleIndex).name,0,300,640,34,GOLD);
+      U.text('CeremonyTag','— 章 末 回 顾 —',0,256,400,18,tone('#a99778'));
+      U.textBlock('CeremonyText',fin.text,0,140,560,150,24,PAPER);
+      if(nextIntro&&nextIntro.kind==='intro'&&nextIntro.text){
+        U.text('CeremonyIntroTag','— 下章开篇 —',0,28,400,17,GOLD);
+        U.textBlock('CeremonyIntro',nextIntro.text,0,-70,560,130,19,tone('#c9b489'));
+      }
+      U.text('CeremonyNext','休整片刻 · 即将进军下一章',0,-330,560,19,GOLD);
+    }
+  }
   // 战斗详情弹层（研讨会十）：点击 DPS 榜展开完整战报
   if(battleDetailOpen&&r?.stats){
     U.rect('BDShade',0,0,720,1280,new Color(10,8,6,220));
