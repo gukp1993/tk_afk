@@ -1006,6 +1006,16 @@ export function storyView(ctx: ScreenContext) {
       U.panel('StoryFight',0,-420,460,78,tone('#3a2b20'),9,GOLD);
       U.text('StoryFightText','返回剧情回顾',0,-420,438,27,LIGHT);
       U.tap('StoryFightTap',0,-420,460,78,()=>{ctx.storyReview=false;ctx.go('storyArchive');});
+    } else if(ctx.auto){
+      // 自动出征剧情暂停（批次一）：ctx.auto 在剧情页上仅见于自动暂停点（手动进剧情页会被
+      // startBattle 的 auto 拦截确认）。看完/跳过都恢复连战；不提供「返回关卡预览」出口，
+      // 防止自动会话悬停在剧情页；重复点击由 finishAutoStory 的状态守卫兜底
+      U.panel('StoryFight',0,-392,460,78,palette.red,9,GOLD);
+      U.text('StoryFightText','看完开战 · 继续出征',0,-392,438,27,LIGHT);
+      U.tap('StoryFightTap',0,-392,460,78,()=>ctx.finishAutoStory());
+      U.panel('StorySkip',0,-482,460,64,tone('#3d6653'),9,GOLD);
+      U.text('StorySkipText','跳过 · 继续连战',0,-482,438,24,LIGHT);
+      U.tap('StorySkipTap',0,-482,460,64,()=>ctx.finishAutoStory());
     } else {
       U.panel('StoryFight',0,-392,460,78,palette.red,9,GOLD);
       U.text('StoryFightText','开始战斗',0,-392,438,27,LIGHT);

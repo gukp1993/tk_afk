@@ -46,6 +46,8 @@ export interface ScreenContext {
   shareResult(title: string, query?: string): void;
   startAuto(mode: 'campaign'|'training'): void;
   stopAuto(afterBattle?: boolean): void;
+  /** 自动出征剧情暂停（批次一）的出口：看完/跳过后恢复连战。 */
+  finishAutoStory(): void;
   skipBattle(): void;
   summonDraw(type: string): void;
   startReplay(record: any): void;

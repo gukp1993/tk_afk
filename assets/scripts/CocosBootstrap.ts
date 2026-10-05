@@ -188,6 +188,7 @@ export class CocosBootstrap extends Component implements ScreenContext {
     if (this.initialArtPending) { this.page = page; return; }
     this.page = page;
     for (const child of this.content.children.slice()) child.destroy();
+    ArtService.releasePortraits();
     // P1-① 防御清场（第二轮走查）：战斗 fx overlay 挂在常驻 fxLayer 上，任何非战斗页渲染时强制清空——
     // 无论泄漏链路（自动连战/跳过/中断）如何，用户可见症状必然消失；战斗页刷新不受影响
     if (page !== 'battle') BattleFx.onBattleEnd();
@@ -512,12 +513,24 @@ export class CocosBootstrap extends Component implements ScreenContext {
     this.autoStopPending = !!this.autoSession.state.stopAfterBattle;
     for (const command of commands) {
       if (command.type === 'startBattle') this.startBattle(command.mode, command.index || 0, 1, true);
+      if (command.type === 'storyPause') {
+        // 剧情暂停（批次一）：自动出征遇未读剧情节点，弹剧情页；看完/跳过后经 finishAutoStory 恢复连战
+        this.storyStage = command.index; this.storyReview = false; this.go('story');
+      }
       if (command.type === 'interruptBattle') {
         const stopped = store.interruptBattle(command.battleId, 'auto-stopped');
         if (stopped.ok) { this.fighting = null; this.battleId = ''; }
       }
       if (command.type === 'stopped') { this.auto = false; this.show('autoSummary'); }
     }
+  }
+
+  /** 自动剧情暂停的出口：看完或跳过均标记已读（看过≠细读，防反复打断），随后恢复连战。 */
+  public finishAutoStory() {
+    if (this.autoSession.state.status !== 'story') return;
+    const idx = this.autoSession.state.storyStage;
+    if (idx && !store.isStorySeen(idx)) { store.markStorySeen(idx); store.save(); }
+    this.autoAction(this.autoSession.storyDone());
   }
 
   public startArenaBattle(diff: number, seed: number) { this.startBattle('arena',0,diff,false,seed); }
@@ -549,7 +562,8 @@ export class CocosBootstrap extends Component implements ScreenContext {
     if(mode==='campaign'&&!fromAuto&&!store.isStorySeen(index)&&stages.makeStageEnemies(index).story){
       this.storyStage=index;this.storyReview=false;this.go('story');return;
     }
-    if(mode==='campaign'&&fromAuto&&!store.isStorySeen(index)){store.markStorySeen(index);store.save();}
+    // 剧情推图衔接批次一（2026-10-05 方案）：删除自动出征对未读剧情的静默 markStorySeen——
+    // 自动路过不再烧掉补看资格；自动链路的剧情展示由状态机 storyPause 暂停点负责（见 autoAction）
     const effectiveArenaSeed=arenaSeed||Date.now();
     let _hallLineup:any=null;
     if(mode==='hall'){const bh=store.beginHall(index);if(!bh.ok)return this.tell(bh,'');_hallLineup=bh.lineup;}

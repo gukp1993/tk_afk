@@ -35,6 +35,8 @@ const MAX_LEVEL = 200;
 const PLAYER_LEVEL = { max: MAX_LEVEL, baseXP: 100, stepXP: 20 };
 const BATTLE_XP = { base: 40, perEnemyLevel: 10, campaignFirst: 3, campaignRepeat: 1, towerFirst: 2, arenaWin: 1, training: 0.6 };
 // 前台自动出征会话参数；连续运行有明确上限，不影响单场手动战斗。
+// storyPause（剧情推图衔接批次一，2026-10-05 方案）：自动出征遇未读剧情节点暂停弹剧情页，
+// 看完/跳过后继续连战；storyPause=false 一键回退为旧版纯连战（不再静默烧掉剧情已读）。
 const AUTO_BATTLE = {
   defaultSpeed: 4,
   resultDelaySeconds: 1.5,
@@ -42,7 +44,10 @@ const AUTO_BATTLE = {
   recoveryMaxWins: 10,
   recoveryMaxRounds: 2,
   trainingBatchMaxWins: 10,
-  trainingBatchLevelGain: 2
+  trainingBatchLevelGain: 2,
+  storyPause: true,
+  storyPauseEvery: 10,
+  storyPauseMaxPerSession: 1
 };
 
 const FOOD_VALUE = { 1: 1, 2: 2, 3: 4, 4: 8 };

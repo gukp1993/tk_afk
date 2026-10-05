@@ -2196,4 +2196,127 @@ const storeP2 = freshStore(); storeP2.load();
   check('RT6 版本不变 v8', sR.v === 8);
 }
 
+// ---------- Z1 自动出征剧情暂停（批次一：storyPause 命令 / storyDone 事件 / story 状态） ----------
+head('Z1 自动剧情暂停');
+const ab = require('../utils/auto-battle');
+check('Z1.0 旋钮与限频参数在位', C.AUTO_BATTLE.storyPause === true
+  && C.AUTO_BATTLE.storyPauseMaxPerSession === 1 && C.AUTO_BATTLE.storyPauseEvery === 10);
+const CFG_SP = Object.assign({}, C.AUTO_BATTLE);
+const CFG_OFF = Object.assign({}, C.AUTO_BATTLE, { storyPause: false });
+// 迷你驱动器：unread 集合模拟剧情存档；winBattle 打完当前一场并推进
+function makeRunner(unread, cfg) {
+  let st = ab.createState();
+  const opts = Object.assign({}, cfg || CFG_SP, { storyUnread: i => unread.has(i) });
+  let seq = 0;
+  const send = ev => { const r = ab.transition(st, ev, opts); st = r.state; return r; };
+  return {
+    state: () => st,
+    send,
+    markSeen: idx => unread.delete(idx),
+    start: index => send({ type: 'start', mode: 'campaign', index }),
+    winBattle() {
+      const id = 'b' + (++seq);
+      const c1 = send({ type: 'battleStarted', ok: true, battleId: id, sessionToken: st.sessionToken }).commands;
+      const c2 = send({ type: 'settled', ok: true, battleId: id, sessionToken: st.sessionToken, summary: { outcome: 'win' } }).commands;
+      return c1.concat(c2);
+    },
+    next: () => send({ type: 'tick', dt: 10, sessionToken: st.sessionToken })
+  };
+}
+{ // Z1.1 旋钮关闭：回到旧版纯连战
+  const r = makeRunner(new Set([10]), CFG_OFF);
+  const cmds = r.start(10).commands;
+  check('Z1.1 旋钮关=旧版连战', cmds.length === 1 && cmds[0].type === 'startBattle' && cmds[0].index === 10 && r.state().status === 'fighting');
+}
+{ // Z1.2/Z1.3/Z1.4 未读名将关暂停 → storyDone 恢复 → 重复 storyDone 忽略
+  const r = makeRunner(new Set([10]));
+  const cmds = r.start(10).commands;
+  check('Z1.2 未读剧情关暂停弹页', cmds.length === 1 && cmds[0].type === 'storyPause' && cmds[0].index === 10
+    && r.state().status === 'story' && r.state().storyStage === 10);
+  const done = r.send({ type: 'storyDone', sessionToken: r.state().sessionToken });
+  check('Z1.3 storyDone 恢复开战', done.commands.length === 1 && done.commands[0].type === 'startBattle' && done.commands[0].index === 10
+    && r.state().status === 'fighting' && r.state().awaitingStart === true && r.state().storyStage === null);
+  const again = r.send({ type: 'storyDone', sessionToken: r.state().sessionToken });
+  check('Z1.4 重复 storyDone 忽略', again.commands.length === 0 && again.ignored === 'not-in-story-pause');
+}
+{ // Z1.5 已读关 / 非名将关不暂停
+  const rA = makeRunner(new Set());
+  check('Z1.5a 已读关直连开战', rA.start(10).commands[0].type === 'startBattle');
+  const rB = makeRunner(new Set([11]));
+  check('Z1.5b 非名将关直连开战', rB.start(11).commands[0].type === 'startBattle');
+}
+{ // Z1.6 会话限频：9→20 连推，剧情暂停恰 1 次且停在首个未读节点（第 10 关），第 20 关直连
+  const r = makeRunner(new Set([10, 20]));
+  const pauses = [];
+  r.start(9).commands.forEach(c => { if (c.type === 'storyPause') pauses.push(c.index); });
+  for (let n = 9; n < 20; n++) {
+    r.winBattle();
+    let guard = 0;
+    while (['resultDelay', 'story'].indexOf(r.state().status) >= 0 && guard++ < 4) {
+      if (r.state().status === 'resultDelay') {
+        r.next().commands.forEach(c => { if (c.type === 'storyPause') pauses.push(c.index); });
+      } else { // 玩家看完/跳过（跳过也标已读）
+        r.markSeen(r.state().storyStage);
+        r.send({ type: 'storyDone', sessionToken: r.state().sessionToken });
+      }
+    }
+  }
+  check('Z1.6 每会话限频 1 次且停首遇未读节点', pauses.length === 1 && pauses[0] === 10
+    && r.state().status === 'fighting' && r.state().campaignIndex === 20);
+}
+{ // Z1.7/Z1.7b 剧情页悬空时停止：停止生效且迟到的 storyDone 被忽略
+  const r = makeRunner(new Set([10]));
+  r.start(10);
+  const stopCmds = r.send({ type: 'stop', reason: 'manual-stop' }).commands;
+  check('Z1.7 剧情页上停止生效', stopCmds.some(c => c.type === 'stopped') && r.state().status === 'stopped' && r.state().storyStage === null);
+  const late = r.send({ type: 'storyDone', sessionToken: r.state().sessionToken });
+  check('Z1.7b 停止后 storyDone 忽略', late.commands.length === 0 && late.ignored === 'not-in-story-pause');
+}
+{ // Z1.8 剧情页上「本场后停止」：无在打战斗，立即场间停止，不悬空
+  const r = makeRunner(new Set([10]));
+  r.start(10);
+  const c8 = r.send({ type: 'stopAfterBattle' }).commands;
+  check('Z1.8 剧情页上本场后停止=立即停', c8.length === 1 && c8[0].type === 'stopped' && c8[0].reason === 'stopped-between-battles');
+}
+{ // Z1.9 后台暂停/恢复穿透剧情暂停
+  const r = makeRunner(new Set([10]));
+  r.start(10);
+  r.send({ type: 'pause', reason: 'background' });
+  check('Z1.9a 剧情暂停可被后台暂停覆盖', r.state().status === 'suspended' && r.state().resumeStatus === 'story');
+  r.send({ type: 'resume', reason: 'background' });
+  check('Z1.9b 恢复后回到剧情暂停', r.state().status === 'story' && r.state().storyStage === 10);
+}
+{ // Z1.10 「本场后停止」优先于下一场的剧情暂停
+  const r = makeRunner(new Set([10]));
+  r.start(9);
+  r.send({ type: 'battleStarted', ok: true, battleId: 's1', sessionToken: r.state().sessionToken });
+  r.send({ type: 'stopAfterBattle' });
+  const c10 = r.send({ type: 'settled', ok: true, battleId: 's1', sessionToken: r.state().sessionToken, summary: { outcome: 'win' } }).commands;
+  check('Z1.10 本场后停止优先于剧情暂停', c10.length === 1 && c10[0].type === 'stopped' && c10[0].reason === 'stopped-after-battle');
+}
+{ // Z1.11 异会 storyDone 忽略
+  const r = makeRunner(new Set([10]));
+  r.start(10);
+  const late = r.send({ type: 'storyDone', sessionToken: 999 });
+  check('Z1.11 异会 storyDone 忽略', late.commands.length === 0 && late.ignored === 'stale-session');
+}
+{ // Z1.12 在未读名将关战败→练兵恢复→回到该关时限频不再重复暂停
+  const r = makeRunner(new Set([10]));
+  const cStart = r.start(10).commands;
+  check('Z1.12a 未读名将关暂停', cStart.length === 1 && cStart[0].type === 'storyPause' && r.state().status === 'story');
+  r.markSeen(10);
+  r.send({ type: 'storyDone', sessionToken: r.state().sessionToken });
+  r.send({ type: 'battleStarted', ok: true, battleId: 'l1', sessionToken: r.state().sessionToken });
+  const cA = r.send({ type: 'settled', ok: true, battleId: 'l1', sessionToken: r.state().sessionToken, summary: { outcome: 'loss', levelAfter: 5 } }).commands;
+  check('Z1.12b 战败转入练兵恢复', cA.some(c => c.type === 'startBattle' && c.mode === 'training'));
+  r.send({ type: 'battleStarted', ok: true, battleId: 't1', sessionToken: r.state().sessionToken });
+  const cB = r.send({ type: 'settled', ok: true, battleId: 't1', sessionToken: r.state().sessionToken, summary: { outcome: 'win', gainedXP: 100, levelAfter: 7 } }).commands;
+  check('Z1.12c 恢复回失战名将关不重复暂停', cB.some(c => c.type === 'startBattle' && c.index === 10)
+    && !cB.some(c => c.type === 'storyPause') && r.state().status === 'fighting');
+}
+{ // Z1.13 未注入谓词时默认按未读处理（调用方需自行兜底，文档化行为）
+  const r13 = ab.transition(ab.createState(), { type: 'start', mode: 'campaign', index: 10 }, C.AUTO_BATTLE);
+  check('Z1.13 未注入谓词默认按未读', r13.commands.length === 1 && r13.commands[0].type === 'storyPause');
+}
+
 console.log('\nsmoke: ' + passed + ' passed, ' + failed + ' failed');process.exit(failed ? 1 : 0);

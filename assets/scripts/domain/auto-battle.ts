@@ -28,6 +28,8 @@ function createState() {
     stopAfterBattle: false,
     resumeStatus: null,
     pauseReasons: {},
+    storyStage: null,
+    storyPauseCount: 0,
     reason: null
   };
 }
@@ -50,12 +52,14 @@ function transition(input, event, options) {
     state.recoveryRounds = 0;
     state.trainingWins = 0;
     state.stopAfterBattle = false;
+    state.storyStage = null;
+    state.storyPauseCount = 0;
     state.reason = null;
     if (state.sessionMode === 'training') {
       if (levelOf(event.level) >= cfg.maxLevel) return stop(state, commands, 'level-max');
       beginTraining(state, 'independent', event.level, cfg);
     }
-    launch(state, commands, state.currentMode, state.campaignIndex);
+    launch(state, commands, state.currentMode, state.campaignIndex, cfg);
     return { state, commands };
   }
 
@@ -92,7 +96,7 @@ function transition(input, event, options) {
       if (state.recoveryRounds >= cfg.recoveryMaxRounds) return stop(state, commands, 'recovery-exhausted');
       state.recoveryRounds += 1;
       beginTraining(state, 'recovery', level, cfg);
-      launch(state, commands, 'training', null);
+      launch(state, commands, 'training', null, cfg);
       return { state, commands };
     }
 
@@ -108,13 +112,13 @@ function transition(input, event, options) {
       if (reachedLevel || reachedWins || level >= cfg.maxLevel) {
         if (state.trainingPurpose === 'recovery') {
           state.currentMode = 'campaign';
-          launch(state, commands, 'campaign', state.campaignIndex);
+          launch(state, commands, 'campaign', state.campaignIndex, cfg);
         } else {
           stop(state, commands, reachedLevel ? 'training-level-target' : (level >= cfg.maxLevel ? 'level-max' : 'training-win-limit'));
         }
         return { state, commands };
       }
-      launch(state, commands, 'training', null);
+      launch(state, commands, 'training', null, cfg);
       return { state, commands };
     }
     return stop(state, commands, 'unknown-mode');
@@ -124,7 +128,7 @@ function transition(input, event, options) {
     if (state.status !== 'resultDelay') return ignored('not-waiting');
     const dt = Math.max(0, Number(event.dt) || 0);
     state.delayRemaining = Math.max(0, state.delayRemaining - dt);
-    if (state.delayRemaining <= 1e-9) launch(state, commands, state.currentMode, state.campaignIndex);
+    if (state.delayRemaining <= 1e-9) launch(state, commands, state.currentMode, state.campaignIndex, cfg);
     return { state, commands };
   }
 
@@ -150,6 +154,15 @@ function transition(input, event, options) {
     return { state, commands };
   }
 
+  if (type === 'storyDone') {
+    // 剧情暂停（批次一）：玩家看完/跳过剧情页后由会话层发此事件，恢复连战并开打被暂停的关卡
+    if (state.status !== 'story') return ignored('not-in-story-pause');
+    if (!matchesSession(state, event)) return ignored('stale-session');
+    state.storyStage = null;
+    launch(state, commands, 'campaign', state.campaignIndex, cfg);
+    return { state, commands };
+  }
+
   if (type === 'stop') {
     if ((state.status === 'fighting' || state.status === 'suspended') && (state.currentBattleId || state.awaitingStart)) {
       if (state.currentBattleId) commands.push({ type: 'interruptBattle', battleId: state.currentBattleId, sessionToken: state.sessionToken });
@@ -160,7 +173,8 @@ function transition(input, event, options) {
 
   if (type === 'stopAfterBattle') {
     if (!isRunning(state)) return ignored('not-running');
-    if (state.status === 'resultDelay') return stop(state, commands, 'stopped-between-battles');
+    // 剧情暂停期无在打战斗，「打完这场再停」直接落到场间停止，防止剧情页悬空
+    if (state.status === 'resultDelay' || state.status === 'story') return stop(state, commands, 'stopped-between-battles');
     state.stopAfterBattle = true;
     return { state, commands };
   }
@@ -168,7 +182,19 @@ function transition(input, event, options) {
   return ignored('unknown-event');
 }
 
-function launch(state, commands, mode, index) {
+function launch(state, commands, mode, index, cfg) {
+  if (mode === 'campaign' && storyGate(state, cfg, index)) {
+    // 未读剧情节点（批次一）：不开战，发 storyPause 命令由会话层弹剧情页；
+    // 会话层在看完/跳过后发 storyDone 事件回到这里继续 startBattle
+    state.status = 'story';
+    state.currentMode = mode;
+    state.currentBattleId = null;
+    state.awaitingStart = false;
+    state.storyStage = index;
+    state.storyPauseCount += 1;
+    commands.push({ type: 'storyPause', index, sessionToken: state.sessionToken });
+    return;
+  }
   state.status = 'fighting';
   state.currentMode = mode;
   state.currentBattleId = null;
@@ -178,6 +204,18 @@ function launch(state, commands, mode, index) {
     type: 'startBattle', mode, index: mode === 'campaign' ? index : undefined,
     sessionToken: state.sessionToken, launchId: state.launchSeq
   });
+}
+
+// 剧情暂停闸门：旋钮开 + 本会话未用完次数 + 剧情节点关（每章第 10 关名将关）+ 该关剧情未读。
+// 「未读」判定经 cfg.storyUnread(index) 注入（存档访问留在会话层，状态机保持纯逻辑）；
+// 未注入谓词时默认按未读处理（调用方需自行兜底，如测试/仿真直接传显式配置）。
+function storyGate(state, cfg, index) {
+  if (!cfg || !cfg.storyPause) return false;
+  const max = positiveInt(cfg.storyPauseMaxPerSession, 1);
+  if (state.storyPauseCount >= max) return false;
+  const every = positiveInt(cfg.storyPauseEvery, 10);
+  if (!index || index % every !== 0) return false;
+  return typeof cfg.storyUnread !== 'function' || !!cfg.storyUnread(index);
 }
 
 function scheduleNext(state, cfg) {
@@ -203,6 +241,7 @@ function stop(state, commands, reason) {
   state.delayRemaining = 0;
   state.resumeStatus = null;
   state.pauseReasons = {};
+  state.storyStage = null;
   state.stopAfterBattle = false;
   commands.push({ type: 'stopped', reason, sessionToken: state.sessionToken });
   return { state, commands };
@@ -212,7 +251,7 @@ function matchesSession(state, event) {
   return event.sessionToken === undefined || event.sessionToken === state.sessionToken;
 }
 function isRunning(state) {
-  return ['fighting', 'resultDelay', 'suspended'].indexOf(state.status) >= 0;
+  return ['fighting', 'resultDelay', 'suspended', 'story'].indexOf(state.status) >= 0;
 }
 function levelOf(value) {
   const n = Number(value);

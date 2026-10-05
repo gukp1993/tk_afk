@@ -1,6 +1,7 @@
 import * as rules from '../domain/auto-battle';
 import * as config from '../domain/config';
 import * as store from '../domain/store';
+import * as stages from '../domain/stages';
 
 export interface AutoSummary {
   battles: number;
@@ -28,7 +29,12 @@ export class AutoBattleSession {
   private startedAt = 0;
 
   get running(): boolean {
-    return ['fighting', 'resultDelay', 'suspended'].includes(this.state.status);
+    return ['fighting', 'resultDelay', 'suspended', 'story'].includes(this.state.status);
+  }
+
+  /** 是否正停在剧情页（自动出征剧情暂停，批次一）。 */
+  get storyPaused(): boolean {
+    return this.state.status === 'story';
   }
 
   start(mode: 'campaign'|'training'): any[] {
@@ -69,9 +75,15 @@ export class AutoBattleSession {
   stop(reason: string): any[] { return this.dispatch({ type: 'stop', reason }); }
   pause(reason: string): any[] { return this.dispatch({ type: 'pause', reason }); }
   resume(reason: string): any[] { return this.dispatch({ type: 'resume', reason }); }
+  /** 剧情页看完/跳过后恢复连战（批次一 storyPause 配套事件）。 */
+  storyDone(): any[] { return this.dispatch({ type: 'storyDone', sessionToken: this.state.sessionToken }); }
 
   private dispatch(event: any): any[] {
-    const next = rules.transition(this.state, event, config.AUTO_BATTLE);
+    // 剧情闸门的「未读」判定经 options 注入纯状态机：存档/叙事数据访问留在会话层
+    const options = Object.assign({}, config.AUTO_BATTLE, {
+      storyUnread: (index: number) => !store.isStorySeen(index) && !!stages.makeStageEnemies(index).story
+    });
+    const next = rules.transition(this.state, event, options);
     this.state = next.state;
     if (this.state.status === 'stopped') {
       this.summary.reason = this.state.reason || '已停止';
