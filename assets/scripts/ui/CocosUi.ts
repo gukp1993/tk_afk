@@ -212,6 +212,55 @@ export class CocosUi {
     return node;
   }
 
+  /** Battle-only full-body figure: contain the complete vertical portrait instead of cropping it into a card. */
+  battleFigure(name: string, x: number, y: number, w: number, h: number,
+    info: { heroId?: string; faction?: string; rarity?: number; faceRight?: boolean }) {
+    const node = new Node(name);
+    node.setPosition(new Vec3(x, this.y(y), 0));
+    node.addComponent(UITransform).setContentSize(w, h);
+    const putPortrait = (frame: SpriteFrame) => {
+      const fallback=node.getComponent(Graphics);
+      if(fallback)node.removeComponent(fallback);
+      const picture=new Node(name+'Portrait');
+      const rect=frame.getOriginalSize();
+      const scale=Math.min(w/rect.width,h/rect.height);
+      picture.addComponent(UITransform).setContentSize(Math.ceil(rect.width*scale),Math.ceil(rect.height*scale));
+      const sprite=picture.addComponent(Sprite);
+      sprite.spriteFrame=frame;
+      sprite.sizeMode=Sprite.SizeMode.CUSTOM;
+      sprite.trim=false;
+      picture.getComponent(UITransform)!.setContentSize(Math.ceil(rect.width*scale),Math.ceil(rect.height*scale));
+      picture.setScale(info.faceRight===false?-1:1,1,1);
+      node.addChild(picture);
+    };
+    const frame = info.heroId ? ArtService.frame(info.heroId) : null;
+    if (frame) {
+      putPortrait(frame);
+    } else {
+      // Preserve a visible, faction-colored fallback until the portrait subpackage finishes loading.
+      const g=node.addComponent(Graphics);
+      const tint=hexColor(factionColors[info.faction||'all']||factionColors.all);
+      g.fillColor=new Color(tint.r,tint.g,tint.b,225);
+      g.ellipse(0,-h*0.14,w*0.23,h*0.3);g.fill();
+      g.fillColor=hexColor('#28231c');
+      g.rect(-w*0.14,-h*0.39,w*0.11,h*0.22);g.fill();
+      g.rect(w*0.03,-h*0.39,w*0.11,h*0.22);g.fill();
+      g.fillColor=hexColor(rarityColors[Math.min(4,Math.max(1,Math.round(info.rarity||1)))]);
+      g.circle(0,h*0.29,w*0.13);g.fill();
+      g.fillColor=hexColor('#28231c');
+      g.rect(-w*0.16,h*0.38,w*0.32,h*0.06);g.fill();
+      g.fillColor=hexColor('#d7b66a');
+      g.rect(w*0.29,-h*0.1,w*0.035,h*0.86);g.fill();
+      g.circle(w*0.31,h*0.34,w*0.07);g.fill();
+    }
+    this.parent.addChild(node);
+    this.nodes.set(name,node);
+    if(info.heroId&&!frame)ArtService.loadPortrait(info.heroId,node,loaded=>{
+      if(loaded&&node.isValid)putPortrait(loaded);
+    });
+    return node;
+  }
+
   /** 整幅图片层（页面背景用）：有图由调用方传入 SpriteFrame，随 CocosUi 纵向缩放铺满。 */
   image(name: string, frame: SpriteFrame, x: number, y: number, w: number, h: number) {
     const node = new Node(name);
@@ -612,6 +661,17 @@ export class CocosUi {
     const bounded=Math.max(0.001,Math.min(1,ratio));
     node.setScale(new Vec3(bounded,1,1));
     node.setPosition(new Vec3(x-w*(1-bounded)/2,this.y(y),0));
+  }
+
+  updateProgressSmooth(name: string, x: number, y: number, w: number, ratio: number, duration = 0.16) {
+    const node=this.nodes.get(name);
+    if (!node) return;
+    const bounded=Math.max(0.001,Math.min(1,ratio));
+    Tween.stopAllByTarget(node);
+    new Tween(node).to(duration, {
+      scale: new Vec3(bounded,1,1),
+      position: new Vec3(x-w*(1-bounded)/2,this.y(y),0)
+    }, { easing: 'sineOut' }).start();
   }
 
   line(name: string, points: Array<[number, number]>, width: number, color: Color) {

@@ -96,8 +96,12 @@ export const ArtService = {
         scenesReady = true;
         if (done) done(frames.size);
         checkFirstScreen();
-        // Portraits load by visible hero id to avoid decoding the entire subpackage into memory.
       });
+      // Preload the arena while first-screen artwork is decoding; it is shown as soon as battle begins.
+      bundle.load('battles/bg_main/spriteFrame', SpriteFrame, (battleErr, battleFrame) => {
+        if (!battleErr && battleFrame) this.collect([battleFrame]);
+      });
+      // Portraits load by visible hero id to avoid decoding the entire subpackage into memory.
     });
   }
 };

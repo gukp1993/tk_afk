@@ -16,14 +16,15 @@ import { ArtService } from '../services/ArtService';
 let battleDetailOpen=false;
 let resultFxPlayed:any=null; // A5（规格 6.5-4）：同一 outcome 只播一次大字入场/描边闪（战报详情等重入不重播）
 const GOLD=tone('#e3ba70'), PAPER=tone('#f0dfbd'), DIM=tone('#a69776');
-const BG=tone('#1d120b'), CARD=tone('#2a1a18'), BLUE=tone('#4d91bd');
+const BG=tone('#1d120b');
 const GREEN=tone('#7fbd94'), RED=tone('#bb614c');
 
 function fighterPosition(side: string, slot: number): [number, number] {
-  const frontX=[-215,0,215], backX=[-114,114];
-  // A 侧后排上移到 -405，给底部自动出征面板/按钮行让位（原 -467 会被面板盖住血条与名字）
-  return slot<3 ? [frontX[slot],side==='A'?-208:245]
-    : [backX[slot-3],side==='A'?-405:480];
+  // 左右对垒的三前二后阵型，五行错开，给全身立绘和头顶状态条留足空间。
+  const rowY=[280,140,0,-140,-280];
+  const isBack=slot===1||slot===3;
+  const x=side==='A'?(isBack?-275:-215):(isBack?275:215);
+  return [x,rowY[slot] ?? rowY[slot%5]];
 }
 
 function battleTitle(ctx: ScreenContext) {
@@ -51,16 +52,15 @@ function drawFighter(U: CocosUi, unit: any, index: number) {
   const [x,y]=fighterPosition(unit.side,unit.slot ?? index%5);
   const hero=unit.heroId?heroData.getHero(unit.heroId):null;
   const rarity=hero?.rarity||1;
-  // 两个根名与 90×91 卡面尺寸是 BattleFx 驱动/蓄怒光框契约；立绘与品质框挂在 Glyph 根下同动。
-  U.panel(`Fighter${index}`,x,y,90,91,CARD,13,tone(rarityColors[rarity]),false);
-  U.heroIcon(`FighterGlyph${index}`,x,y,90,91,{
-    surname:unit.name.slice(0,1),faction:unit.faction||hero?.faction,rarity,
-    artKey:hero?unit.heroId:undefined
+  // 保留 Fighter + FighterGlyph 两个 BattleFx 驱动锚点；画面主体改为完整竖版立绘。
+  U.panel(`Fighter${index}`,x,y-65,78,16,new Color(7,10,13,125),8,tone(rarityColors[rarity]),false);
+  U.battleFigure(`FighterGlyph${index}`,x,y,112,146,{
+    heroId:hero?unit.heroId:undefined,faction:unit.faction||hero?.faction,rarity,faceRight:unit.side==='A'
   });
-  if(unit.cc)U.text(`FighterCC${index}`,'✦',x+46,y+48,25,18,GOLD);
-  U.progress(`HP${index}`,x,y-58,105,unit.hp/unit.maxHp,unit.side==='A'?GREEN:RED);
-  U.progress(`Energy${index}`,x,y-69,105,(unit.energy||0)/100,GOLD);
-  U.text(`FighterName${index}`,unit.name,x,y-88,116,17,unit.side==='A'?GOLD:DIM);
+  if(unit.cc)U.text(`FighterCC${index}`,'✦',x+42,y+62,25,18,GOLD);
+  U.progress(`HP${index}`,x,y+79,88,unit.hp/unit.maxHp,unit.side==='A'?GREEN:RED);
+  U.progress(`Energy${index}`,x,y+67,88,(unit.energy||0)/100,GOLD);
+  U.text(`FighterName${index}`,unit.alive?unit.name:`${unit.name} · 阵亡`,x,y-78,108,16,unit.side==='A'?GOLD:DIM);
 }
 
 function battleTimerInfo(ctx: ScreenContext): { text: string; urgent: boolean } {
@@ -78,9 +78,6 @@ function drawField(U: CocosUi, ctx: ScreenContext, snapshot: any[]) {
     U.image('BattleBackdropArt',field,0,0,720,1280);
     U.rect('BattleBackdropShade',0,0,720,1280,new Color(9,15,18,118));
   }
-  // 冷暖环境层位于单位与 fx 之下；只提示双方区域，保持中央大招/伤害数字通道清爽。
-  U.rect('EnemyFieldTone',0,322,720,438,new Color(70,83,109,35));
-  U.rect('AllyFieldTone',0,-294,720,416,new Color(124,88,37,30));
   U.panel('BattleHeader',0,590,696,88,new Color(14,22,25,218),10,undefined,false);
   U.text('BattleTitle',battleTitle(ctx),-75,592,510,27,GOLD);
   const timer=battleTimerInfo(ctx);
@@ -91,21 +88,18 @@ function drawField(U: CocosUi, ctx: ScreenContext, snapshot: any[]) {
   });
   U.panel('BattleVsBg',0,8,108,34,new Color(14,22,25,224),4,GOLD,false);
   U.text('BattleVs','对 阵',0,8,92,18,PAPER);
-  U.panel('EnemyBanner',-278,109,126,32,new Color(34,52,74,220),5,BLUE,false);
-  U.text('EnemyBannerText','敌 军',-278,109,110,19,tone('#bad1e4'));
-  U.panel('AllyBanner',-278,-112,126,32,new Color(80,57,28,220),5,GOLD,false);
-  U.text('AllyBannerText','我 军',-278,-112,110,19,GOLD);
-  U.text('BattleLegend','绿条 生命 · 金条 怒气 · 卡边颜色=品质',0,560,650,16,tone('#c6b99b'));
+  U.text('EnemyBannerText','敌 军',215,462,128,20,tone('#bad1e4'));
+  U.text('AllyBannerText','我 军',-215,-440,128,20,GOLD);
   // 输出对比放在中轴空带：原 y=-437/-455 与后排卡面、血怒条重叠，倍速重绘时尤其明显。
   {
     const tt=(ctx.fighting&&(ctx.fighting as any).sideTotals)?((ctx.fighting as any).sideTotals()):null;
     if(tt&&(tt.a>0||tt.b>0)){
       const total=Math.max(1,tt.a+tt.b);
       const wA=Math.max(0.06,tt.a/total), wB=1-wA;
-      U.rect('DmgBarBkg',0,-62,600,10,new Color(20,14,10,200));
-      U.rect('DmgBarA',-300+300*wA,-62,600*wA,10,new Color(120,180,130,220));
-      U.rect('DmgBarB',-300+600*wA+300*wB,-62,600*wB,10,new Color(190,90,80,220));
-      U.text('DmgBarTxt',`我军输出 ${fmt.fmtNum(tt.a)} · 敌军 ${fmt.fmtNum(tt.b)}`,0,-42,600,14,tone('#b8a888'));
+      U.rect('DmgBarBkg',0,-486,600,10,new Color(20,14,10,200));
+      U.rect('DmgBarA',-300+300*wA,-486,600*wA,10,new Color(120,180,130,220));
+      U.rect('DmgBarB',-300+600*wA+300*wB,-486,600*wB,10,new Color(190,90,80,220));
+      U.text('DmgBarTxt',`我军输出 ${fmt.fmtNum(tt.a)} · 敌军 ${fmt.fmtNum(tt.b)}`,0,-465,600,14,tone('#b8a888'));
     }
   }
   snapshot.forEach((unit,index)=>drawFighter(U,unit,index));
@@ -140,8 +134,8 @@ export function refreshBattleView(ctx: ScreenContext) {
   if(!ctx.fighting)return;
   ctx.fighting.snapshot().forEach((unit: any,i: number)=>{
     const [x,y]=fighterPosition(unit.side,unit.slot ?? i%5);
-    ctx.ui.updateProgress(`HP${i}`,x,y-58,105,unit.hp/unit.maxHp);
-    ctx.ui.updateProgress(`Energy${i}`,x,y-69,105,(unit.energy||0)/100);
+    ctx.ui.updateProgressSmooth(`HP${i}`,x,y+79,88,unit.hp/unit.maxHp,0.14);
+    ctx.ui.updateProgressSmooth(`Energy${i}`,x,y+67,88,(unit.energy||0)/100,0.12);
     ctx.ui.setText(`FighterName${i}`,unit.alive?unit.name:`${unit.name} · 阵亡`);
   });
   ctx.ui.setText('BattleTimer',battleTimerInfo(ctx).text);

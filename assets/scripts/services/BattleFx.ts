@@ -9,8 +9,8 @@ import * as heroData from '../domain/heroes';
  *   0.18s easeOut 收拢至 1（普通字不写缩放、样式分级照旧橙 32/淡黄 24）。
  * - ultBanner：大招横幅（ult）——overlay，挂 fxLayer；A4 入场增强：自上 14px 滑入
  *   （90ms easeOut）+ 亮金描边叠加层自 255 衰减（描边加亮后回落金框），1.2s 淡出照旧。
- * - lunge：攻击位移（act）——驱动既有 `Fighter{i}`+`FighterGlyph{i}` 沿纵轴前冲回弹
- *   （战场上下排布：A 方在下 y<0 向 +y 冲、B 方在上向 -y 冲，按节点 y 符号判向）。
+ * - lunge：攻击位移（act）——驱动既有 `Fighter{i}`+`FighterGlyph{i}` 朝事件目标突进回弹；
+ *   近战明显前压，远程角色原地起手并以箭矢/术法弹道命中目标。
  * - ultLunge（A2）：大招前冲（ult）——同轴更大更慢的一次前冲（18px/0.5s，普通 lunge
  *   12px/0.36s），与 lunge/shake 共用驱动型互斥槽；banner 照常不受互斥影响。
  * - shake：受击抖动（hit 且 src 非空）——驱动同上节点横向 ±3px 三次振荡（x 轴与纵向
@@ -62,19 +62,19 @@ const DMG_LIFE = 0.8;             // 伤害数字寿命秒（现状 800ms；×N 
 const DMG_RISE = 60;              // 上飘距离（现状线性 60px）
 const ULT_LIFE = 1.2;             // 横幅寿命（前 0.9s 全亮 230，末 0.3s 淡出）
 const MAX_DMG_NUM = 24;           // 同屏伤害数字上限（规格 6.3 预算）
-const SHAKE_AMP = 3;              // 受击抖动幅度 px（±3）
+const SHAKE_AMP = 8;              // 全身立绘受击回弹幅度，较旧方卡更易读。
 const SHAKE_CYCLES = 3;           // 0.18s 内三次全振荡（sin 起点/终点均为 0，天然归位）
 const SHAKE_DUR = 0.18;
-const LUNGE_DIST = 12;            // 攻击前冲距离 px（本批规格 10~14 取中）
-const LUNGE_DUR = 0.36;           // 快出慢回：0.12s easeOut 冲出 + 0.24s easeInOut 回弹
-const LUNGE_OUT = 0.12;
+const LUNGE_DIST = 64;            // 近战朝真实目标突进；远程只做短促起手。
+const LUNGE_DUR = 0.42;
+const LUNGE_OUT = 0.15;
 const ULT_LUNGE_DIST = 18;        // A2 大招前冲：比普通 lunge 更大更慢，更有仪式感
 const ULT_LUNGE_DUR = 0.5;        // 0.18s easeOut 冲出 + 0.32s easeInOut 回弹（无过冲，终帧零偏移）
 const ULT_LUNGE_OUT = 0.18;
 const BREATH_AMP = 0.06;          // A4 呼吸幅度：scale=基准+0.06·sin(t·6)（规格字面）
 const BREATH_RATE = 6;            // A4 呼吸角频率 rad/s（≈0.96Hz）
 const RIM_HZ = 3;                 // A4 双 rim visible 交替频率（金↔亮金）
-const RIM_PAD = 2;                // A4 rim 相对卡面（90×91 r13）的外扩距离
+const RIM_PAD = 5;                // A4 呼吸光环相对全身立绘的外扩距离
 const BANNER_SLIDE = 0.09;        // A4 横幅滑入时长（90ms easeOut）
 const BANNER_SLIDE_DIST = 14;     // A4 横幅滑入起始偏移 px（y+14→0，自上落入）
 const BANNER_GLOW = 0.45;         // A4 横幅描边加亮衰减时长（亮金叠加层 255→0）
@@ -150,7 +150,7 @@ interface PendingNumber {
   indexByUid: Map<string, number>;
 }
 
-/** 被驱动的既有节点 + 归位基准（Fighter 与 Glyph 的 y 差 2px，各存各的 base）。
+/** 被驱动的既有节点 + 归位基准（Fighter 地面阴影锚点与 Glyph 立绘中心分别保存）。
  * A3 淡出/复活额外持有透明度主写权：op 为该节点 UIOpacity（spawn 时 ensure 补挂），
  * fromOp 为起播时透明度快照（正常淡出 255 起、定格透明后复活 0 起；被中途终结的
  * 前序 fx 留下的半程值作起点，避免跳变）。 */
@@ -164,7 +164,7 @@ interface BfxItem {
   glowOp: UIOpacity | null;       // A4 ultBanner 亮金描边叠加层透明度（随横幅子节点同毁）
   elapsed: number;
   duration: number;               // 秒；elapsed += dt * speed
-  data: { baseX: number; baseY: number; dir?: number; uid?: string; sunk?: boolean; pop?: boolean };
+  data: { baseX: number; baseY: number; dir?: number; dirX?: number; dirY?: number; dist?: number; uid?: string; sunk?: boolean; pop?: boolean };
 }
 
 /** A4 怒气满常驻呼吸态：uid → 态（进态建、退出/reset 销毁）。rim 两枚 Graphics 各画一次，
@@ -282,7 +282,7 @@ export class BattleFx {
           BattleFx.spawnUltLunge(ui, ev, indexByUid);
         } else if (ev.e === 'act') {
           if (ev.type === 'atk' && ev.tgt) BattleFx.spawnLight(layer, ui, indexByUid, snapshot, ev.uid, [ev.tgt], false);
-          BattleFx.spawnLunge(ui, ev, indexByUid);
+          BattleFx.spawnLunge(ui, ev, indexByUid, snapshot);
         } else if (ev.e === 'death') {
           BattleFx.cancelUltimateScene(ev.uid);
           BattleFx.cancelPendingNumbers(ev.uid);
@@ -326,27 +326,29 @@ export class BattleFx {
     const fighter = ui.node('Fighter' + idx);
     const glyph = ui.node('FighterGlyph' + idx);
     if (!fighter || !fighter.isValid || !glyph || !glyph.isValid) return;
-    const fp = fighter.position;
+    const fp = glyph.position;
     if (!isFinite(fp.x) || !isFinite(fp.y)) return; // 援军 slot=5 越界守卫（6.2-7）
+    const size=glyph.getComponent(UITransform)?.contentSize;
+    const w=size?.width||112,h=size?.height||146;
     let rimGold: Node | null = null, rimHi: Node | null = null;
     const layer = CocosUi.ensureFxLayer(content);
-    rimGold = BattleFx.makeRim('BfxRimG', fp.x, fp.y, GOLD);
-    rimHi = BattleFx.makeRim('BfxRimH', fp.x, fp.y, GOLD_HI);
+    rimGold = BattleFx.makeRim('BfxRimG', fp.x, fp.y, w, h, GOLD);
+    rimHi = BattleFx.makeRim('BfxRimH', fp.x, fp.y, w, h, GOLD_HI);
     layer.addChild(rimGold);
     layer.addChild(rimHi);
     rimHi.active = false; // 起始相：金框亮
     BattleFx.breaths.set(uid, { t: 0, baseF: fighter.scale.x, baseG: glyph.scale.x, rimGold, rimHi });
   }
 
-  /** A4 预制 rim：卡面 90×91 r13 外扩 RIM_PAD 的圆角描边，只画这一次（态内仅切 active）。 */
-  private static makeRim(name: string, x: number, y: number, color: Color): Node {
+  /** A4 预制光环：围绕全身立绘绘制椭圆描边，只画这一次（态内仅切 active）。 */
+  private static makeRim(name: string, x: number, y: number, w: number, h: number, color: Color): Node {
     const node = new Node(name);
     node.setPosition(new Vec3(x, y, 0));
-    node.addComponent(UITransform).setContentSize(90 + RIM_PAD * 2, 91 + RIM_PAD * 2);
+    node.addComponent(UITransform).setContentSize(w + RIM_PAD * 2, h + RIM_PAD * 2);
     const g = node.addComponent(Graphics);
     g.strokeColor = color;
     g.lineWidth = 3;
-    g.roundRect(-45 - RIM_PAD, -45.5 - RIM_PAD, 90 + RIM_PAD * 2, 91 + RIM_PAD * 2, 13 + RIM_PAD);
+    g.ellipse(0,-h*0.08,w*0.48+RIM_PAD,h*0.56+RIM_PAD);
     g.stroke();
     return node;
   }
@@ -396,9 +398,11 @@ export class BattleFx {
           dx = SHAKE_AMP * Math.sin(2 * Math.PI * SHAKE_CYCLES * t);
         } else if (f.kind === 'lunge' || f.kind === 'ultLunge') {
           // lunge 族：快出（easeOut 冲到满幅）慢回（easeInOut 归零），终帧 off=0 与 base 逐像素一致
-          const dist = f.kind === 'lunge' ? LUNGE_DIST : ULT_LUNGE_DIST;
+          const dist = f.kind === 'lunge' ? (f.data.dist || LUNGE_DIST) : ULT_LUNGE_DIST;
           const out = f.kind === 'lunge' ? LUNGE_OUT : ULT_LUNGE_OUT;
-          dy = (f.data.dir || 1) * BattleFx.lungeOffset(f.elapsed, dist, f.duration, out);
+          const travel = BattleFx.lungeOffset(f.elapsed, dist, f.duration, out);
+          dx = (f.data.dirX || 0) * travel;
+          dy = (f.data.dirY || 0) * travel;
         } else if (f.kind === 'deathFade') {
           // A3 阵亡淡出：下沉 10px easeIn（缓慢启动的瘫沉感），终帧位置由 restoreDriven 归 base
           dy = -DEATH_SINK * t * t;
@@ -910,8 +914,7 @@ export class BattleFx {
   private static anchorOf(indexByUid: Map<string, number>, ui: CocosUi, uid: string): { x: number; y: number } | null {
     const idx = indexByUid.get(uid);
     if (idx === undefined) return null;
-    // R2 修复（第二轮走查 P2）：锚点取视觉卡 FighterGlyph{i}（与玩家所见卡位一致）；
-    // 原取 Fighter{i} 隐形面板与视觉卡错位约 130px，B 排数字全部落进两军空带
+    // 锚点取全身立绘 FighterGlyph{i}，让弹道、伤害数字围绕玩家实际看到的角色。
     const node = ui.node('FighterGlyph' + idx) || ui.node('Fighter' + idx);
     if (!node || !node.isValid) return null;
     const p = node.position;
@@ -1055,9 +1058,9 @@ export class BattleFx {
     const crit = !heal && !!ev.crit;
     const fontSize = crit ? 32 : 24;
     const node = new Node(heal ? 'BfxHeal' : 'BfxDmg');
-    // R2：锚点已改为视觉卡 Glyph——偏移收敛为头顶 -40（卡高约 91，上缘 -45 附近），不再叠 -130 死路偏移
+    // Glyph 锚点位于全身立绘中心；数字从头顶上方冒出，避免盖住血条。
     const baseX = anchor.x + Math.floor(Math.random() * 80 - 40);
-    const baseY = anchor.y - 40;
+    const baseY = anchor.y + 98;
     node.setPosition(new Vec3(baseX, baseY, 0));
     node.addComponent(UITransform).setContentSize(120, Math.max(fontSize * 2.4, 46));
     const label = node.addComponent(Label);
@@ -1154,24 +1157,31 @@ export class BattleFx {
   }
 
   /**
-   * 攻击位移（A1）：act 事件驱攻击者 Fighter+Glyph 沿纵轴向目标方向冲 12px 回弹（0.36s 快出慢回）。
-   * 战场上下排布（6.2-1）：攻击者在下（y<0）向 +y 冲、在上向 -y 冲，按节点 y 符号判向。
+   * 攻击位移：近战向 act.tgt 的立绘锚点前压，弓手/法师留位配合真实弹道。
    */
-  private static spawnLunge(ui: CocosUi, ev: any, indexByUid: Map<string, number>) {
+  private static spawnLunge(ui: CocosUi, ev: any, indexByUid: Map<string, number>, snapshot: any[]) {
     if (BattleFx.countKind('lunge') >= MAX_DRIVEN) return;
     if (BattleFx.hasDrivenFx(ev.uid)) return; // 同 uid 活跃即跳过（防抖振/坐标争写）
     if (BattleFx.hasFadeFx(ev.uid)) return;   // A3：淡出/复活活跃期间让位（死亡单位不再 act，理论兜底）
     const driven = BattleFx.drivenOf(indexByUid, ui, ev.uid);
     if (!driven) return;
-    const dir = driven[0].baseY < 0 ? 1 : -1; // A 方（下方）+y、B 方（上方）-y
+    const target=ev.tgt?BattleFx.anchorOf(indexByUid,ui,ev.tgt):null;
+    const source=BattleFx.anchorOf(indexByUid,ui,ev.uid);
+    const unit=snapshot[indexByUid.get(ev.uid)!];
+    const remote=!!(unit&&(unit.cls==='archer'||unit.cls==='mage'||unit.cls==='support'));
+    let dirX=unit&&unit.side==='B'?-1:1,dirY=0;
+    if(target&&source){
+      const dx=target.x-source.x,dy=target.y-source.y,len=Math.max(1,Math.sqrt(dx*dx+dy*dy));
+      dirX=dx/len;dirY=dy/len;
+    }
     BattleFx.items.push({
       kind: 'lunge', node: null, driven, opacity: null, glowOp: null, elapsed: 0, duration: LUNGE_DUR,
-      data: { baseX: driven[0].baseX, baseY: driven[0].baseY, dir, uid: ev.uid },
+      data: { baseX: driven[0].baseX, baseY: driven[0].baseY, dirX, dirY, dist:remote?10:LUNGE_DIST, uid: ev.uid },
     });
   }
 
   /**
-   * 大招前冲（A2）：ult 事件驱施放者 Fighter+Glyph 沿纵轴冲 18px 回弹（0.5s，比普通 lunge
+   * 大招前冲（A2）：ult 事件驱施放者 Fighter+Glyph 朝敌阵横向冲锋（0.5s，比普通 lunge
    * 更大更慢，配合金框横幅构成释放仪式感）。与 lunge/shake 共用驱动型互斥槽：施放瞬间同 uid
    * 有活跃动效则让位（横幅仍在，主反馈不丢）；castUlt 与行动回合错帧，实际几乎必播。
    */
@@ -1181,10 +1191,10 @@ export class BattleFx {
     if (BattleFx.hasFadeFx(ev.uid)) return; // A3：淡出/复活活跃期间让位
     const driven = BattleFx.drivenOf(indexByUid, ui, ev.uid);
     if (!driven) return;
-    const dir = driven[0].baseY < 0 ? 1 : -1; // 同 lunge：朝敌方阵营方向冲
+    const dirX = driven[0].baseX < 0 ? 1 : -1; // 左右阵型：朝敌方阵营方向冲
     BattleFx.items.push({
       kind: 'ultLunge', node: null, driven, opacity: null, glowOp: null, elapsed: 0, duration: ULT_LUNGE_DUR,
-      data: { baseX: driven[0].baseX, baseY: driven[0].baseY, dir, uid: ev.uid },
+      data: { baseX: driven[0].baseX, baseY: driven[0].baseY, dirX, dirY:0, uid: ev.uid },
     });
   }
 
