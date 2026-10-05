@@ -708,15 +708,16 @@ export class BattleFx {
       g.stroke();
     } else if (style === 'mend') {
       // T1 医将蓄力：脚底光环椭圆 + 三层旋转涟漪断弧 + 中央治疗十字（相比实心光晕保留立绘可读性）。
-      g.ellipse(0, -56, 26, 8); g.stroke();
+      g.ellipse(0, -54, 30, 9); g.stroke();
+      g.lineWidth = 1.5;
       for (let i = 0; i < 3; i++) {
-        const r = 16 + i * 9;
+        const r = 18 + i * 10;
         for (let k = 0; k < 3; k++) {
           const a = k * Math.PI * 2 / 3 + i * 0.55;
-          g.arc(0, -6, r, a, a + 1.05, false); g.stroke();
+          g.arc(0, -6, r, a, a + 1.25, false); g.stroke();
         }
       }
-      g.lineWidth = 2;
+      g.lineWidth = 2.2;
       g.moveTo(0, -14); g.lineTo(0, 2);
       g.moveTo(-8, -6); g.lineTo(8, -6);
       g.stroke();
@@ -770,14 +771,14 @@ export class BattleFx {
     } else if (style === 'mend') {
       // T1 医将释放：治疗绿波——中央治疗十字 + 包络圆 + 前行涟漪弧 + 两侧上浮光点。
       g.lineWidth = 3 * size;
-      g.moveTo(0, -9 * size); g.lineTo(0, 9 * size);
-      g.moveTo(-9 * size, 0); g.lineTo(9 * size, 0);
+      g.moveTo(0, -10 * size); g.lineTo(0, 10 * size);
+      g.moveTo(-10 * size, 0); g.lineTo(10 * size, 0);
       g.stroke();
-      g.lineWidth = 1.5 * size;
-      g.circle(0, 0, 14 * size); g.stroke();
-      g.arc(-4 * size, 0, 20 * size, -0.9, 0.9, false); g.stroke();
-      g.strokeColor = GOLD_HI; g.lineWidth = 1;
-      g.moveTo(-6 * size, 13 * size); g.lineTo(-2 * size, 18 * size);
+      g.lineWidth = 2 * size;
+      g.circle(0, 0, 16 * size); g.stroke();
+      g.arc(-4 * size, 0, 22 * size, -0.9, 0.9, false); g.stroke();
+      g.strokeColor = GOLD_HI; g.lineWidth = 1.5;
+      g.moveTo(-6 * size, 14 * size); g.lineTo(-2 * size, 19 * size);
       g.moveTo(2 * size, 12 * size); g.lineTo(6 * size, 17 * size);
       g.stroke();
     } else if (style === 'ranged') {
@@ -821,9 +822,10 @@ export class BattleFx {
       g.stroke();
     } else if (style === 'mend') {
       // T1 治疗绿波：双层涟漪内环 + 顶部上浮人字（扩散回收的治疗感）。
-      g.circle(0, 0, r * 0.6); g.stroke();
-      g.circle(0, 0, r * 0.32); g.stroke();
-      g.moveTo(-r * 0.26, r * 0.5); g.lineTo(0, r * 0.82); g.lineTo(r * 0.26, r * 0.5); g.stroke();
+      g.circle(0, 0, r * 0.62); g.stroke();
+      g.circle(0, 0, r * 0.34); g.stroke();
+      g.lineWidth = 2.5;
+      g.moveTo(-r * 0.3, r * 0.52); g.lineTo(0, r * 0.86); g.lineTo(r * 0.3, r * 0.52); g.stroke();
     } else if (style === 'magic' && ultimate) {
       g.circle(0, 0, r * 0.65); g.stroke();
       for (let i = 0; i < 6; i++) {

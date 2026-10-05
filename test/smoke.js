@@ -1602,8 +1602,31 @@ const storeP2 = freshStore(); storeP2.load();
     && e190.units[0].hero.id === 'zhugeliang' && e200.units[0].hero.id === 'simayi'
     && e170.story.stage.name === '魔影重演' && e180.story.stage.name === '旧梦重临'
     && e190.story.stage.name === '秋风又满五丈原' && e200.story.stage.name === '鹰视狼顾');
-  check('CD2b 第 8 乱世章回绕（230 再回吕布）', st4.makeStageEnemies(230).units[0].hero.id === 'lvbu');
+  check('CD2b 乱世第 7 章起扩容 boss（230 华雄）', st4.makeStageEnemies(230).units[0].hero.id === 'huaxiong');
   check('CD3 非章末乱世关无剧情（162）', st4.makeStageEnemies(162).story === null);
+}
+
+// S3 乱世 boss 池扩充 6→12（第三轮）：12 套完整 / who 可解析 / 章序 1–12 不重复 / 长度锁 / 12 套回绕
+{
+  const stS3 = require('../utils/stages');
+  const rot = require('../utils/story').CHAOS_BOSS_ROTATION;
+  const bosses = [];
+  for (let ch = 1; ch <= 12; ch++) {
+    const s = stS3.makeStageEnemies(160 + ch * 10).story;
+    const d = (s && s.stage && s.stage.dialogue) || [];
+    check('S3a 乱世第' + ch + '章 boss 剧情完整（name+narration+2 对白·narration≤40·对白≤26）',
+      !!s && s.synthetic === true && !!s.stage.name && s.stage.narration.length > 0 && s.stage.narration.length <= 40
+      && d.length === 2 && d.every(l => l.text.length > 0 && l.text.length <= 26));
+    bosses.push(s && s.chaosBoss);
+  }
+  check('S3b 乱世章序 1–12 boss 各不重复且与轮换池一致（12 将）',
+    new Set(bosses).size === 12 && rot.length === 12
+    && bosses.every((b, i) => b === rot[i]));
+  check('S3c 轮换池与 12 套对白 who 全部可解析（heroes.getHero）',
+    rot.every(id => !!H.getHero(id))
+    && bosses.every(b => stS3.makeStageEnemies(160 + rot.indexOf(b) * 10 + 10).story.stage.dialogue
+      .every(l => !!H.getHero(l.who))));
+  check('S3d 12 套回绕（乱世第 13 章回吕布）', stS3.makeStageEnemies(290).units[0].hero.id === 'lvbu');
 }
 
 

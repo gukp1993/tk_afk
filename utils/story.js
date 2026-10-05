@@ -534,9 +534,11 @@ const CHAPTERS = [
 
 // 乱世循环 Boss 对白（研讨会六 C4）：161 关后每章末名将合成剧情，按乱世章序从池中轮换。
 // 纯派生不落存档；对白为原创幽灵重演主题，who 引用真实武将 id。
-// 乱世 Boss 轮换池（内容多样性：避免每章都是吕布）：按乱世章序轮换，对白各说各话
+// 乱世 Boss 轮换池（内容多样性：避免每章都是吕布）：按乱世章序轮换，对白各说各话。
+// S3 池扩充 6→12（2026-10-05 第三轮）：新增华雄/袁绍/孟获/陆逊/赵云/黄忠（董卓系/河北/南蛮/江东/蜀），
+// 乱世章序 1–12 章 boss 各不重复；前 6 序位保持不变（老玩家已见章序映射不变），13 章起 12 套模 12 回绕。
 // S1 败北台词「BOSS 的嘲弄」（2026-10-05 第三轮）：who=主将 id，text ≤20 字毒舌但可敬、留再战钩子。
-// 语气红线：挑衅不羞辱操作；数据置空整批静默回退（数据级旋钮）。乱世 6 boss 复用Rotation 成员。
+// 语气红线：挑衅不羞辱操作；数据置空整批静默回退（数据级旋钮）。乱世 boss 复用 Rotation 成员。
 const BOSS_TAUNTS = {
   10: { who: 'zhangjiao', text: '苍天未死，尔等蚍蜉。不服，再竖一面黄旗来。' },
   20: { who: 'lvbu', text: '就凭这几杆枪？画戟未饮血，回去练练。' },
@@ -560,8 +562,14 @@ const CHAOS_TAUNTS = {
   simayi: '忍到最后的才是赢家。你再忍忍。',
   zhouyu: '曲有误，周郎顾。你的败仗，毫无新意。',
   sunce: '小霸王席前，不斩无名之辈。滚罢。',
+  huaxiong: '温酒的旧账，今日讨回来。',
+  yuanshao: '河北的旗，还没倒完。',
+  menghuo: '蛮王的山寨，你连门都摸不到。',
+  luxun: '书生再次拜将，火已备好。',
+  zhaoyun: '白袍未染尘，你的枪先折了。',
+  huangzhong: '老夫的箭，比你年轻。',
 };
-const CHAOS_BOSS_ROTATION = ['lvbu', 'caocao', 'zhugeliang', 'simayi', 'zhouyu', 'sunce'];
+const CHAOS_BOSS_ROTATION = ['lvbu', 'caocao', 'zhugeliang', 'simayi', 'zhouyu', 'sunce', 'huaxiong', 'yuanshao', 'menghuo', 'luxun', 'zhaoyun', 'huangzhong'];
 const CHAOS_BOSS_STORY = {
   lvbu: { stage: { name: '魔影重演', narration: '倒下的身影再度立起，眼底燃着不散的执念——乱世也不愿谢幕。',
       dialogue: [
@@ -592,6 +600,36 @@ const CHAOS_BOSS_STORY = {
       dialogue: [
         { who: 'sunce', text: '江东的基业替我继续年少，这局我来收尾。' },
         { who: 'zhouyu', text: '主公出枪，公瑾押阵——如当年。' }
+      ] } },
+  huaxiong: { stage: { name: '汜水寒霜', narration: '汜水关的霜刃犹未归鞘，那杯温过的酒，还悬在半空。',
+      dialogue: [
+        { who: 'huaxiong', text: '酒又温好了？可惜——关还是我的关，命还是你的命。' },
+        { who: 'guanyu', text: '上一次酒尚温。这一次，关某陪你重演一遍。' }
+      ] } },
+  yuanshao: { stage: { name: '河北残旗', narration: '官渡的灰烬里又竖起大旗，四世三公的门楣，还想再赌一局。',
+      dialogue: [
+        { who: 'yuanshao', text: '孤的七十万大军——这一局，孤再押一次河北气数。' },
+        { who: 'guanyu', text: '胜败不在兵多。盟主这一局，输在听不进人言。' }
+      ] } },
+  menghuo: { stage: { name: '泸水重盟', narration: '泸水的涛声里又擂响战鼓，南蛮王的骄傲，烧了七次仍未熄。',
+      dialogue: [
+        { who: 'menghuo', text: '七擒七纵是恩，也是约——今日再战，不为反，为礼！' },
+        { who: 'zhugeliang', text: '好。攻心之约，丞相陪你重演千遍。' }
+      ] } },
+  luxun: { stage: { name: '连营余烬', narration: '夷陵的火种沉在江底，书生抬手一挥，余烬便又燎原。',
+      dialogue: [
+        { who: 'luxun', text: '伯言的火烧过一座连营——这一次，只为你重燃。' },
+        { who: 'zhugeliang', text: '八阵图外，亮候你多时。这一局，彼此都不留手。' }
+      ] } },
+  zhaoyun: { stage: { name: '长坂月明', narration: '长坂坡的月光又落在枪尖，那袭白袍，从未退出乱军。',
+      dialogue: [
+        { who: 'zhaoyun', text: '子龙依旧满身是胆。乱军再多，再冲一遍便是。' },
+        { who: 'xuchu', text: '虎痴再陪你走一遭——这回，休想再从俺眼前过去！' }
+      ] } },
+  huangzhong: { stage: { name: '定军山月', narration: '定军山的刀声隔着岁月传来，老将拉满的弓，从未老过。',
+      dialogue: [
+        { who: 'huangzhong', text: '宝刀未老，弓也未老——老夫再斩一面旗给你看！' },
+        { who: 'caocao', text: '老将宝刀，孤在汉中领教过——这局孤依旧不服。' }
       ] } }
 };
 function getChaosStory(globalStage) {

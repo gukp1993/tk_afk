@@ -401,7 +401,8 @@ export function summon(ctx: ScreenContext) {
     const s=store.getState(),U=ctx.ui;
     const layoutScale=Math.max(1,view.getVisibleSize().height/1280);
     // Content budget: balances 632..590, title 587..544, banner 537..321,
-    // probabilities 313..242, draw actions 227..80, auxiliary panels 63..-439.
+    // probabilities 313..242, draw actions 227..80, ad 63..19, points -4..-180,
+    // weekly+ticket panel -200..-416 (P2), univ -423..-505, growth hint -530.
     U.rect('SummonBackdrop',0,0,720,1280,ink);
     U.panel('GemBalance',-175,611,334,40,new Color(21,35,29,225),20,border,false);
     U.seal('GemBalanceIcon',-311,611,29,'宝',palette.ink,gold,gold,15,'gem');
@@ -523,15 +524,27 @@ export function summon(ctx: ScreenContext) {
       if(t.claimable)U.tap('PointTap'+i,x,y,124,78,()=>{const r=store.claimSummonPoints(t.tier);ctx.tell(r,r.ok?'已领取 '+r.label:'');});
     });
     const tk=store.summonTicketInfo();
-    U.panel('TicketPanel',0,-272,686,144*layoutScale,new Color(32,45,35,240),10,border,false);
-    U.text('TicketTitle','定向招募',-256,-222,164,23,gold);
-    U.text('TicketInfo',`券 ${tk.stock} 张 · 本周已用 ${tk.used}/${tk.limit}`,102,-222,454,19,paper);
-    U.text('TicketHint',`每 ${config.SUMMON_TICKET.perPulls} 抽赠券 · 激活后下一组十连，SR 以上 ${Math.round(config.SUMMON_TICKET.focusShare*100)}% 为所选阵营`,0,-255,636,16,dim);
+    // P2 周荐阵营（纯引导层，第三轮）：按 store.quadFactionOfWeek 的周序轮换（与四方台同源，
+    // 只读日期与配置、不改任何状态）；券机制零改动——setSummonFocus 仍只由玩家点按触发，
+    // 「荐」标与文案只是默认视觉引导，玩家可改选任意阵营。
+    const weekFk=store.quadFactionOfWeek(),weekFaction=(config.FACTIONS as any)[weekFk];
+    const weekSsr=heroData.HEROES.filter((hh:any)=>hh.rarity===4&&hh.faction===weekFk);
+    U.panel('TicketPanel',0,-308,686,216*layoutScale,new Color(32,45,35,240),10,border,false);
+    U.text('TicketTitle','定向招募',-256,-218,164,23,gold);
+    U.text('TicketInfo',`券 ${tk.stock} 张 · 本周已用 ${tk.used}/${tk.limit}`,102,-218,454,19,paper);
+    U.text('WeeklyLabel',`本周名将 · ${weekFaction.name}`,0,-248,320,18,gold);
+    weekSsr.forEach((hh:any,i:number)=>{
+      const sc=-(weekSsr.length-1)*50+i*100;
+      U.heroIcon('WeekFace'+i,sc-32,-284,32,40,{surname:hh.surname||hh.name[0],faction:hh.faction,rarity:hh.rarity,artKey:hh.id});
+      U.text('WeekName'+i,hh.name,sc+16,-284,62,17,paper);
+    });
+    U.text('TicketHint',`每 ${config.SUMMON_TICKET.perPulls} 抽赠券 · 激活后下一组十连，SR 以上 ${Math.round(config.SUMMON_TICKET.focusShare*100)}% 为所选阵营`,0,-322,636,16,dim);
+    U.text('WeeklyFocusHint','本周激活定向券更易命中该阵营',0,-344,420,15,gold);
     Object.keys(config.FACTIONS||{}).forEach((fk:any,i:number)=>{
-      const x=-249+i*166,f=(config.FACTIONS as any)[fk],active=tk.activeFocus===fk,can=tk.canArm||active;
-      U.panel('FactionBtn'+i,x,-304,154,48,active?tone('#45321b'):ink,8,active?gold:border,false);
-      U.text('FactionTxt'+i,(active?'● ':'')+f.name+(active?' 定向中':''),x,-304,142,20,active?gold:can?paper:dim);
-      if(can)U.tap('FactionTap'+i,x,-304,154,48,()=>{
+      const x=-249+i*166,f=(config.FACTIONS as any)[fk],active=tk.activeFocus===fk,can=tk.canArm||active,weekly=fk===weekFk&&!active;
+      U.panel('FactionBtn'+i,x,-384,154,48,active?tone('#45321b'):weekly?tone('#2c2317'):ink,8,active||weekly?gold:border,false);
+      U.text('FactionTxt'+i,active?`● ${f.name} 定向中`:weekly?`荐 · ${f.name}`:f.name,x,-384,142,20,active?gold:weekly?(can?gold:tone('#8a744a')):can?paper:dim);
+      if(can)U.tap('FactionTap'+i,x,-384,154,48,()=>{
         const r=store.setSummonFocus(active?null:fk);
         ctx.tell(r,r.ok?(r.focus?'已定向：'+(config.FACTIONS as any)[r.focus].name+'（下一组十连生效）':'已取消定向'):'');
       });
@@ -539,14 +552,15 @@ export function summon(ctx: ScreenContext) {
     const univTargets=heroData.HEROES.filter((hh:any)=>hh.rarity===4&&s.roster[hh.id]&&s.roster[hh.id].star<rarityMax(hh.rarity))
       .sort((x:any,y:any)=>s.roster[x.id].star-s.roster[y.id].star);
     if((s.res as any).univSsr>0){
-      U.panel('UnivPanel',0,-398,686,82*layoutScale,tone('#3a2c17'),9,gold,false);
-      U.text('UnivTitle',`万能 SSR 卡 ×${(s.res as any).univSsr}`,-82,-380,468,22,gold);
-      U.text('UnivHint',univTargets.length?'指定已拥有的未满星 SSR 升星':'SSR 已全部满星，暂无目标',-82,-412,468,17,dim);
-      U.button('UnivUse',univTargets.length?'使 用':'无目标',264,-398,122,56,()=>{
+      // P2 让位：券面板下移扩容后，万能卡面板与升星提示随之顺移（保持 -548 导航红线之上）
+      U.panel('UnivPanel',0,-464,686,82*layoutScale,tone('#3a2c17'),9,gold,false);
+      U.text('UnivTitle',`万能 SSR 卡 ×${(s.res as any).univSsr}`,-82,-446,468,22,gold);
+      U.text('UnivHint',univTargets.length?'指定已拥有的未满星 SSR 升星':'SSR 已全部满星，暂无目标',-82,-478,468,17,dim);
+      U.button('UnivUse',univTargets.length?'使 用':'无目标',264,-464,122,56,()=>{
         if(!univTargets.length)return;univPickOpen=true;CocosUi.resetScroll('UnivTargets');ctx.show('summon');
       },univTargets.length?gold:tone('#423022'));
     }
-    U.text('SummonGrowthHint','同名武将自动升星 · 满星重复卡按品质转化',0,-481,660,17,dim);
+    U.text('SummonGrowthHint','同名武将自动升星 · 满星重复卡按品质转化',0,-522,660,17,dim);
     if(univPickOpen){
       U.rect('UnivShade',0,0,720,1280,new Color(10,12,9,235));
       U.tap('UnivShadeBlock',0,0,720,1280,()=>{});
