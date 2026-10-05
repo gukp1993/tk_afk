@@ -17,6 +17,16 @@
 
 ## 最近交接（新 → 旧）
 
+### 剧情推图衔接批次四+五（章节过场仪式 + 已读语义与回顾可达） · zcode 实施代理 · 已实施待验收
+
+时间：2026-10-05；执行者：zcode 实施代理；状态：已实施待验收（未提交 git，按任务指令不执行 git，待收口人提交）。
+
+- 按 `docs/plans/剧情推图衔接优化.md` 批次四+五实施：**批次四① bossIntro 上线**——`utils/story.js` 补写 ch09–16 bossIntro（8 章 ×2 条 text+sub，每条 ≤30 字，风格对齐 ch01–08 双横幅），全 16 章「名将登场」开场白段接入剧情页：`CampaignScreens.storyView` 段化重构为 [BOSS 开场白（名将关）]→[章节引子（章首关）]→旁白→对白逐段，BOSS 段=主将立绘（ArtService，无图回退印章）+姓名/称号+双横幅（首条打字机），复用批次三 StoryTyper/点击推进/跳过；**批次四② 章节过场**——纯触发函数 `story.getChapterTransition`（章末关 10/20/…/160→finale、章首关 1/11/…/151→intro、中段与 >160 乱世→null），手动：章末关首通结算「挑战下一关」升级「章末回顾 · 继续进军」→新页 `storyTransition`（章名+finale 打字机+继续进军/返回战役，breadcrumb 豁免同 story），继续进军→新章首关剧情页自动带 intro 引子段；自动：结算停留期（resultDelay 1.5s）叠加近不透明「章末回顾+下章开篇」掠过横幅（alpha 248，实拍发现 208 透出结算叠影当批修掉），随下一场开战自然掠过不打断连战；**批次五① 回顾入口提级**——战役页 GoalStrip 增「剧情回顾 >」常驻入口（热区 64..176 与 GoalTap/双倍快收各留 ≥11px，实拍三段无叠压），原「征途→本章地图→剧情回顾」三级降为一级直达；**批次五② 已读语义**——grep 全库核查 `markStorySeen`/`storySeen` 仅两处写点（剧情页手动开战/跳过、`CocosBootstrap.finishAutoStory`），均=玩家实际看过或主动跳过，战斗 begin/settle 零写点（smoke Z3.5 锁定）。
+- 改动文件：`utils/story.js`（+bossIntro 8 章、+getChapterTransition、约束注释）、镜像 `domain/story.ts`（脚本生成）、`assets/scripts/screens/ScreenContext.ts`（Page +storyTransition）、`assets/scripts/CocosBootstrap.ts`（PAGE_NAMES/面包屑豁免/render 注册）、`assets/scripts/screens/CampaignScreens.ts`（storyView 段化+storyTransitionView+GoalStrip 入口）、`assets/scripts/screens/BattleScreens.ts`（ResultNext 章末入口+自动掠过横幅+story import）、`test/smoke.js`（Z3 段）、`docs/plans/剧情推图衔接优化.md`（变更记录）。未触碰并行美术线未提交工作（art-heroes/*.png、docs/README.md）。
+- 验证：镜像 sync+`--check` 通过；tsc 通过；smoke **619 全绿**（607→619，新增 Z3 段 12 断言：16 章 bossIntro 完整/后 8 章 ≤30 字/过场触发 10→finale·11·151→intro·160→finale·0·7·161→null/名将关主将可解析/begin+settle 不写已读/显式标记幂等）；200 种子仿真四锚持平基线：通关 200/200（100%）、通关日 P50=14（P10/P90=12/16）、满星日 27、SSR 11.15；web-mobile 构建成功；无头实拍 **16/16**（`/tmp/tk-batch45/`，Playwright headless 720×1280，探针脚本 probe-batch45.js）：A 组新档第 1 关章节引子段→旁白→开战（普通关结算无章末入口、挑战下一关直达第 2 关剧情页）；B 组补档 cleared=9 强阵手动（B1/B2 第 10 关 BOSS 开场白=张角立绘+双横幅、B4 结算「章末回顾·继续进军」、B5 storyTransition 页、B6 继续进军→第 11 关 ch02 引子段、B7 已读语义=storySeen {10:1} 且 11 未标）；C 组战役页「剧情回顾 >」一键直达 storyArchive；D 组自动出征（D1 storyPause 暂停点即 BOSS 开场白段、D2 跳过恢复连战、D3/D4 结算掠过横幅后自动进军第 11 关不悬停）。实拍当批修复三处视觉：名将登场标签金字→灰棕（羊皮纸上低对比）、BOSS 姓名金字→深棕、自动掠过横幅压暗 208→248。
+- 边界与偏差：①批次三原清单「boss 关顶部渲染双横幅」改为**独立开场白段**（与对白卡同屏会挤压，段化后回看亦可完整重演）；②批次五回顾入口按方案备选落地 **GoalStrip**（右侧快捷位已满 4 卡，第 5 卡与回归/补发横幅带冲突）；③自动模式的 intro 不单独暂停（批次一「每会话限 1 次、仅名将关」契约不变），由掠过横幅的「下章开篇」区承载；④乱世章（>160）为合成数据无 intro/finale，过场只覆盖 16 章正传；⑤实拍为 Web 构建，微信真机/分包立绘首帧/打字机低端机帧率待验收；工作区 art-heroes 与 docs/README.md 为并行美术线未提交工作，本批未触碰。
+- 下一步：收口人提交；剧情推图衔接五批次全部落地，可做整链验收（含微信真机）；美术线立绘 key 修复后 BOSS 开场白/对白头像自动获得真立绘，无需再改本批代码。
+
 ### 剧情推图衔接批次二+三（战后台词气泡 + 剧情页升级） · zcode 实施代理 · 已实施待验收
 
 时间：2026-10-05；执行者：zcode 实施代理；状态：已实施待验收（未提交 git，按任务指令不执行 git，待收口人提交）。
@@ -108,6 +118,15 @@
 - **I6 审计**：15 触发点 vs 13 键——**quad/season/relics 三键缺失**（浮层静默跳过，三新系统从未给过说明）已补齐（5e6a765）；老档防浮层雨天然兼容；覆盖表入方案文档 6.8 节。
 - **I5 代码完成**（HeroScreens 抽卡逐张揭示：卡背按序揭除/SSR 压轴金框/点屏跳过/总时长 ≤1.1s）——tsc 本文件零错误、smoke 578；**构建+实拍等 A4 编译窗口**（其 BattleFx 中间态曾污染全项目编译），A4 完成通知后一并收口。
 - A4 实施代理仍在验证阶段。三线进度：UI 5/6 · 交互 4.5/6 · 动画 A0-A3（A4 施工中）。
+
+### 剧情批次四五完成：5 批全部收官 · zcode · 已实施待验收
+
+时间：2026-10-05 15:00（Asia/Shanghai）；执行者：zcode（实施代理施工+收口复核）；状态：已实施待验收（903adfc）。
+
+- **批次四**：16 章 bossIntro 补齐上线（后 8 章新写，数据躺尸修复）；storyView 段化演出（BOSS 开场白→章节引子→旁白→对白）；章末 finale 过场（手动链结算入口升级/自动链掠过横幅不打断连战）。
+- **批次五**：战役页"剧情回顾>"常驻直达；已读语义全路径核查（零静默残留）。
+- 验证：镜像、tsc、smoke **619**（Z3 12 断言）、**200 种子四锚持平基线**、实拍 16/16（张角开场白立绘/finale 过场/回顾直达/自动链不悬停）。
+- **剧情推图衔接 5 批全部收官**——用户主诉"自动打一点剧情没有"完整闭环：自动保底暂停+台词气泡+剧情页演出+章节过场+回顾直达。遗留=真机验收与 R/N 立绘余量（美术线持续交付）。
 
 ### 剧情批次二三完成 + 全工程立绘根因修复 · zcode · 已实施待验收
 
