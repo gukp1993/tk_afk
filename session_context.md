@@ -17,6 +17,16 @@
 
 ## 最近交接（新 → 旧）
 
+### 战役页徽章、快捷入口与挂机宝箱美术优化 · Codex 主 agent · 已实施待微信验收
+
+时间：2026-10-06 00:50（Asia/Shanghai）；执行者：Codex 主 agent；状态：已实施待微信开发者工具/真机验收。
+
+- 按用户参考图优化战役页三个区域：主公徽章改用新生成的金玉圆章并叠加“汉”字；任务/召唤/背包/军械快捷入口改用统一的现有图标资源；挂机宝箱接入新生成的透明金绿宝箱图，缩短标题与图像的垂直间距。
+- 新资源 `assets/resources/art/icons/main_emblem.png`（14KB）和 `idle_chest.png`（18KB）遵守 ArtService 资源加载路径；Creator Web 构建后已生成对应 `.meta`。
+- 验证：规则镜像检查、Creator TypeScript 检查、smoke 637/0、`./scripts/cocos-build.sh web-mobile` 成功；Playwright 无头实拍 390×844、375×667 两种视口，徽章、四个图标、宝箱均可见且未挤压遮挡。尚需微信开发者工具/真机验收。
+- 本轮没有改动并行中的 `BattleFx.ts`，该文件不纳入本次提交。
+
+
 ### 移动端全页面 UI 走查 · Codex 主 agent · 已实施待验收
 
 时间：2026-10-06 00:28（Asia/Shanghai）；执行者：Codex 主 agent；状态：已实施待微信开发者工具/真机验收。

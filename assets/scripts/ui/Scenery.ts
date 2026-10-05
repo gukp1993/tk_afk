@@ -119,7 +119,7 @@ export function campaignFlag(ui: CocosUi, name: string, px: number, py: number, 
 }
 
 export function campaignCamp(ui: CocosUi) {
-  const chest=ArtService.frame('chest');
+  const chest=ArtService.frame('idle_chest')||ArtService.frame('chest');
   ui.scene('CampaignCampArt',g=>{
     const p=new Paint(g,-241,112,88);
     p.box(0,0,375,88,'#263c31');
@@ -131,7 +131,7 @@ export function campaignCamp(ui: CocosUi) {
     p.line([[x-17,y+16],[x-16,y+51]],'#ead08a',3);p.line([[x+10,y+14],[x+13,y+49]],'#dfbf72',3);
     p.box(x-3,y+30,11,11,'#5c5740');p.box(x,y+32,6,7,'#edcf81');
   });
-  if(chest)ui.image('CampaignChestArt',chest,236,-296,72,72);
+  if(chest)ui.image('CampaignChestArt',chest,236,-292,92,82);
 }
 
 function cityBuilding(p: Paint, x: number, y: number, w: number, h: number, kind: string) {

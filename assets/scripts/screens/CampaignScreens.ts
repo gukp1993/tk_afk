@@ -22,8 +22,9 @@ let formationRecommended: Array<string|null>|null=null;
 function campaignHeader(ctx: ScreenContext, chapter: any, stage: number) {
   const U=ctx.ui,s=store.getState(),level=store.playerLevel(),need=store.playerXpNeeded(level);
   U.rect('CampaignHeader',0,567,720,146,tone('#2d3c35'));
-  U.panel('CampaignEmblem',-291,586,92,91,tone('#5b7057'),12,GOLD);
-  U.text('HanGlyph','汉',-291,587,75,53,GOLD);
+  const emblem=ArtService.frame('main_emblem');
+  if(emblem){U.image('CampaignEmblemArt',emblem,-291,586,92,92);U.text('HanGlyph','汉',-291,586,44,38,GOLD);}
+  else {U.panel('CampaignEmblem',-291,586,92,91,tone('#5b7057'),12,GOLD);U.text('HanGlyph','汉',-291,587,75,53,GOLD);}
   U.text('LordName',s.name||'主公',-183,608,170,29,LIGHT);
   U.text('LordLevel',`Lv.${level}`,-184,573,170,19,tone('#c7cdac'));
   U.panel('GoldPill',70,600,190,49,tone('#24352e'),8);
@@ -88,11 +89,14 @@ export function campaign(ctx: ScreenContext) {
     });
   }
   const shortcuts: [Page,string][] = [['quests','任务'],['summon','召唤'],['bag','背包'],['armory','军械']];
+  const shortcutArt: Record<string,string>={quests:'scroll',summon:'nav_heroes',bag:'nav_bag',armory:'armory_weapon'};
   shortcuts.forEach(([page,label], i) => {
     const y=355-i*91;
     U.panel('Map'+page,294,y,85,77,tone('#e5d5ad'),8,tone('#74684a'));
-    U.text('MapGlyph'+page,label[0],294,y+14,72,31,tone('#536957'));
-    U.text('MapLabel'+page,label,294,y-20,72,19,INK);
+    const icon=ArtService.frame(shortcutArt[page]);
+    if(icon)U.image('MapIcon'+page,icon,294,y+16,38,38);
+    else U.text('MapGlyph'+page,label[0],294,y+14,72,31,tone('#536957'));
+    U.text('MapLabel'+page,label,294,y-21,72,19,INK);
     U.tap('MapTap'+page,294,y,92,82,()=>ctx.go(page));
   });
 
@@ -104,7 +108,7 @@ export function campaign(ctx: ScreenContext) {
     U.heroIcon('CampPortrait'+i,x,-300,64,62*verticalScale,{surname:hero?.name?.[0]||'空',faction:hero?.faction,rarity:hero?.rarity,artKey:id||undefined});
     U.text('CampHero'+i,hero?.name||'空位',x,-340,84,15,LIGHT);
   });
-  U.text('ChestLabel','挂机宝箱',236,-339,132,16,LIGHT);
+  U.text('ChestLabel','挂机宝箱',236,-347,132,16,LIGHT);
   U.tap('CampEditTap',-106,-300,500,106,()=>ctx.go('formation'));
   U.tap('ChestTap',238,-295,150,100,()=>ctx.idleClaimChoice());
 
