@@ -21,6 +21,10 @@ let univPickOpen = false;
 const factions:[string,string][]=[['all','全部'],['wei','魏'],['shu','蜀'],['wu','吴'],['qun','群']];
 const sorts:[string,string][]=[['power','战力'],['rarity','品质'],['star','星级']];
 const previewIds = ['zhaoyun','caocao','zhouyu','diaochan','zhugeliang'];
+// P1 保底期望常数（离线积分，运行时不计算）：期望 SSR 间隔 E = Σ n·r(n)·Π_{k<n}(1-r(k))，
+// 其中 r(n)=2%（n≤30）、2%+7%·(n-30)（31≤n≤39）、100%（n=40 硬保底）→ E=25.01 ≈ 25 抽。
+// 展示口径「期望约 25 抽出一个 SSR」为平均含义，不是保底承诺；若调整 GACHA 概率/保底须离线重算本常数。
+const SSR_EXPECT_PULLS=25;
 let heroFaction='all',heroSort='power',showStarterPick=false,shardTier=0;
 let armoryItemId='';
 
@@ -431,8 +435,51 @@ export function summon(ctx: ScreenContext) {
     const rarity:[string,string,number][]=[['SSR','#e2b95f',4],['SR','#b37ac9',3],['R','#5f90c8',2],['N','#b9bec3',1]];
     U.text('SummonRates',rarity.map(([name])=>`${name} ${Math.round((rates as any)[name.toLowerCase()]*100)}%`).join(' · '),0,301,660,19,dim);
     const soft=config.GACHA.pity?.soft;
-    U.text('SummonSoft',`${soft?`${soft.from} 抽起 SSR 概率递增 · `:''}${pity.ssrHard} 抽必出 SSR`,0,276,660,17,tone('#d9b06a'));
-    U.text('PoolTitle',`武将池 ${heroData.HEROES.length} 将 · SSR 保底 ${pity.sinceSsr}/${pity.ssrHard} 抽`,0,249,660,18,gold);
+    // P1 保底进度可视化（纯表现层，只读 summonPityInfo）：sinceSsr/ssrHard 进度条，
+    // 第 soft.from 抽起整条变金色渐变并挂「概率递增中」微标；softOn 与 rollRarity 口径一致
+    // （下一抽是第 soft.from 抽，即 sinceSsr+1>=from 时进入递增区）。
+    const softOn=!!(soft&&pity.sinceSsr+1>=soft.from);
+    U.scene('PityBar',g=>{
+      const trackX=-95,trackW=470,barY=250,barH=24;
+      const x=trackX-trackW/2,y=barY-barH/2;
+      g.fillColor=tone('#14100a');g.roundRect(x,y,trackW,barH,barH/2);g.fill();
+      g.strokeColor=tone('#5a452a');g.lineWidth=2;g.roundRect(x+1,y+1,trackW-2,barH-2,barH/2-1);g.stroke();
+      const ratio=Math.max(0,Math.min(1,pity.sinceSsr/pity.ssrHard));
+      const fw=(trackW-8)*ratio;
+      if(fw>0){
+        // 递增中：青铜→描金 16 段横向渐变（视觉信号）；未递增：青铜实色
+        const fx=x+4,fy=y+4,fh=barH-8,c0=tone('#8a6a34'),c1=softOn?tone('#f0cf8a'):c0;
+        const segs=16,sw=fw/segs;
+        for(let i=0;i<segs;i++){
+          const t=i/(segs-1);
+          g.fillColor=new Color(c0.r+(c1.r-c0.r)*t,c0.g+(c1.g-c0.g)*t,c0.b+(c1.b-c0.b)*t,255);
+          g.rect(fx+i*sw,fy,Math.ceil(sw),fh);g.fill();
+        }
+      }
+      // 每 10 抽一处暗刻度；软保底起点（第 soft.from 抽左沿）单画一道，递增中点亮
+      g.lineWidth=1.5;
+      for(let k=1;k*10<pity.ssrHard;k++){
+        if(soft&&Math.abs(k*10-(soft.from-1))<0.5)continue;
+        const tx=x+4+(trackW-8)*k*10/pity.ssrHard;
+        g.strokeColor=tone('#4a3a22');g.moveTo(tx,y+3);g.lineTo(tx,y+barH-3);g.stroke();
+      }
+      if(soft){
+        const sx=x+4+(trackW-8)*(soft.from-1)/pity.ssrHard;
+        g.lineWidth=2;g.strokeColor=softOn?tone('#f0cf8a'):tone('#6e5636');
+        g.moveTo(sx,y+1);g.lineTo(sx,y+barH-1);g.stroke();
+      }
+    });
+    {
+      const label=U.text('PityBarLabel',`保底 ${pity.sinceSsr}/${pity.ssrHard} · 还差 ${pity.ssrHard-pity.sinceSsr} 抽必出 SSR`,-95,250,440,14,tone('#ffffff'));
+      label.getComponent(Label)!.outlineColor=new Color(10,7,3,235);label.getComponent(Label)!.outlineWidth=2;
+    }
+    if(softOn){
+      U.panel('PitySoftBadge',245,250,170,24,new Color(40,29,14,255),12,gold,false);
+      U.text('PitySoftBadgeText','概率递增中',245,250,150,14,gold);
+    }else{
+      U.text('PitySoftHint',soft?`${soft.from} 抽起概率递增`:`${pity.ssrHard} 抽必出 SSR`,245,250,170,14,dim);
+    }
+    U.text('PoolTitle',`武将池 ${heroData.HEROES.length} 将 · 期望约 ${SSR_EXPECT_PULLS} 抽出一个 SSR`,0,276,660,18,gold);
     const scrollSingle=config.GACHA.costScroll,scrollTen=scrollSingle*10;
     const draws:[string,string,string,string,number,number,boolean,()=>void][]=[
       ['TenScroll','招募令十连',`招募令 ×${scrollTen}`,'#8c412b',-175,185,true,()=>ctx.confirm('确认招募',`消耗招募令 ×${scrollTen}`,()=>ctx.summonDraw('scroll10'))],
