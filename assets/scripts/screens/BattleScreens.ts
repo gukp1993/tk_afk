@@ -246,6 +246,16 @@ export function resultView(ctx: ScreenContext) {
   }
   else lines=['普通奖励需凯旋后方可领取',defeatDiag(ctx,r,diagBrief)];
   lines.slice(0,3).forEach((line,i)=>U.text(`ResultLine${i}`,line,0,99-i*40,515,22,PAPER));
+  // S1 败北台词「BOSS 的嘲弄」（第三轮）：campaign 败北且该关配置 bossTaunt 时渲染暗红气泡（处方单上方避让）
+  if(ctx.battleMode==='campaign'&&r&&!r.win&&!r.replay&&!ctx.auto&&config.DEFEAT_RX.enabled){
+    const taunt=(story as any).BOSS_TAUNTS && (story as any).BOSS_TAUNTS[ctx.battleIndex];
+    if(taunt&&taunt.text){
+      const tHero=heroData.getHero(taunt.who);
+      U.panel('TauntBubble',0,258,560,64,tone('#3a1512'),16,tone('#a8433a'));
+      U.text('TauntWho',`${tHero?tHero.name:taunt.who}：`,0,272,520,17,tone('#c9827a'));
+      U.text('TauntText',`「${taunt.text}」`,0,246,520,19,tone('#e8b8ad'));
+    }
+  }
   // 名将首通特写（战报中心 P3）：击败每章第 10 关名将的一次性文案，回放态不显示
   if(r?.win&&!r.replay&&ctx.battleMode==='campaign'&&reward.first&&stages.makeStageEnemies(ctx.battleIndex).isBoss){
     const bossName=stages.makeStageEnemies(ctx.battleIndex).units[0]?.hero?.name||'名将';

@@ -538,6 +538,32 @@ const CHAPTERS = [
 // 乱世循环 Boss 对白（研讨会六 C4）：161 关后每章末名将合成剧情，按乱世章序从池中轮换。
 // 纯派生不落存档；对白为原创幽灵重演主题，who 引用真实武将 id。
 // 乱世 Boss 轮换池（内容多样性：避免每章都是吕布）：按乱世章序轮换，对白各说各话
+// S1 败北台词「BOSS 的嘲弄」（2026-10-05 第三轮）：who=主将 id，text ≤20 字毒舌但可敬、留再战钩子。
+// 语气红线：挑衅不羞辱操作；数据置空整批静默回退（数据级旋钮）。乱世 6 boss 复用Rotation 成员。
+const BOSS_TAUNTS = {
+  10: { who: 'zhangjiao', text: '苍天未死，尔等蚍蜉。不服，再竖一面黄旗来。' },
+  20: { who: 'lvbu', text: '就凭这几杆枪？画戟未饮血，回去练练。' },
+  30: { who: 'lvbu', text: '三英尚且留不住我，你，差得远。' },
+  40: { who: 'yuanshao', text: '四世三公的门楣，不是杂兵能撞开的。' },
+  50: { who: 'caoren', text: '八门金锁，专候莽夫。慢些打，我等你。' },
+  60: { who: 'xuchu', text: '裸衣相邀，你却缩了？不够痛快！' },
+  70: { who: 'caocao', text: '横槊赋诗之夜，岂容竖子折戟。再来。' },
+  80: { who: 'caocao', text: '汉中险峻，丞相亲征——你输得不冤。' },
+  90: { who: 'lvmeng', text: '白衣渡江，你连我影子都没看见。' },
+  100: { who: 'luxun', text: '书生统兵，诸位不服。今日火起，可服否？' },
+  110: { who: 'menghuo', text: '七纵之恩未报便想走？再擒你一次也无妨。' },
+  120: { who: 'simayi', text: '忍者无敌。你输，就输在沉不住气。' },
+  150: { who: 'machao', text: '神威天将锦马超，西凉铁骑候你多时。' },
+  160: { who: 'lvbu', text: '天命在我，奉先不败。敢再战否？' },
+};
+const CHAOS_TAUNTS = {
+  lvbu: '天下第一的含金量，你现在懂了。',
+  caocao: '宁教我负天下人——你，排不上号。',
+  zhugeliang: '运筹帷幄之间，你连棋盘都没看见。',
+  simayi: '忍到最后的才是赢家。你再忍忍。',
+  zhouyu: '曲有误，周郎顾。你的败仗，毫无新意。',
+  sunce: '小霸王席前，不斩无名之辈。滚罢。',
+};
 const CHAOS_BOSS_ROTATION = ['lvbu', 'caocao', 'zhugeliang', 'simayi', 'zhouyu', 'sunce'];
 const CHAOS_BOSS_STORY = {
   lvbu: { stage: { name: '魔影重演', narration: '倒下的身影再度立起，眼底燃着不散的执念——乱世也不愿谢幕。',
@@ -610,4 +636,4 @@ function getChapterTransition(globalStage) {
     : { kind: 'intro', chIdx, ch, text: ch.intro };
 }
 
-export { CHAPTERS, getStoryStage, getStoryChapter, getChapterTransition, getChaosStory, CHAOS_BOSS_ROTATION };
+export { CHAPTERS, getStoryStage, getStoryChapter, getChapterTransition, getChaosStory, CHAOS_BOSS_ROTATION, BOSS_TAUNTS };
