@@ -17,6 +17,16 @@
 
 ## 最近交接（新 → 旧）
 
+### 剧情推图衔接批次一（自动出征剧情保底+静默已读修复） · zcode 实施代理 · 已实施待验收
+
+时间：2026-10-05；执行者：zcode 实施代理；状态：已实施待验收（未提交 git，待收口人提交）。
+
+- 按 `docs/plans/剧情推图衔接优化.md` 批次一实施：①删 `CocosBootstrap.ts` startBattle 中自动出征对未读剧情的静默 `markStorySeen`（原 553 行，补看资格不再被烧掉）；②`utils/auto-battle.js` 状态机新增 `story` 状态 + `storyPause` 命令 + `storyDone` 事件：campaign launch 前遇**未读剧情节点**（每章第 10 关名将关）暂停弹剧情页，看完/跳过后恢复连战；限频每会话 1 次；战败练兵恢复回名将关不重复暂停；剧情页悬空时 stop/stopAfterBattle 立即停止防竞态；③config 旋钮 `AUTO_BATTLE.storyPause=true`（false 一键回退旧版连战）+ `storyPauseEvery=10` + `storyPauseMaxPerSession=1`；④剧情页自动暂停分支新增「跳过 · 继续连战」按钮与「看完开战 · 继续出征」，看完/跳过均 markStorySeen。未读判定经 options 谓词注入纯状态机（存档访问留在 AutoBattleSession 层）。
+- 改动文件：`utils/config.js`、`utils/auto-battle.js`、镜像 `domain/auto-battle.ts`/`domain/config.ts`（脚本生成）、`assets/scripts/services/AutoBattleSession.ts`、`assets/scripts/CocosBootstrap.ts`、`assets/scripts/screens/ScreenContext.ts`、`assets/scripts/screens/CampaignScreens.ts`、`test/smoke.js`。
+- 验证：镜像 sync+`--check` 通过；tsc 通过；smoke **597 全绿**（579→597，新增 Z1 段 18 断言：旋钮关/暂停/storyDone/限频/已读与非剧情关直连/停止竞态/后台暂停穿透/本场后停止优先/异会忽略/恢复不重复暂停/无谓词默认）；200 种子仿真四锚持平基线：通关 200/200（100%）、通关日 P50=14（P10/P90=12/16）、满星日 27、SSR 均值 11.15（≤12）；web-mobile 构建成功；无头实拍三步通过（`/tmp/tk-story-batch1/`：11 剧情页弹出、12 跳过后第 10 关战斗恢复、15 自动推进至第 18 关无第二次暂停；存档 storySeen 仅 `{"10":1}`，11-17 关零静默标记——静默已读缺陷确认修复）。
+- 边界与偏差：工作区内 `CocosBootstrap.ts` 的 `ArtService.releasePortraits()` 一行及 `ArtService.ts`/`CocosUi.ts`/`docs/README.md` 改动是并行美术线未提交工作，本批未触碰；实拍为 Web 构建，微信真机待验收；剧情页立绘/打字机属批次三未做。
+- 下一步：收口人提交；批次二（战后台词气泡）/批次三（剧情页表现升级）可并行启动。
+
 ### R品质英雄数量问答 · Codex · 无变更
 
 时间：2026-10-05；执行者：Codex；状态：无变更。直接统计utils/heroes.js的HEROES：蓝R（rarity=2）43名；全品质120名（N37/R43/SR24/SSR16）。仅回答数量，未改游戏代码与产品决定。
@@ -86,6 +96,14 @@
 - **I6 审计**：15 触发点 vs 13 键——**quad/season/relics 三键缺失**（浮层静默跳过，三新系统从未给过说明）已补齐（5e6a765）；老档防浮层雨天然兼容；覆盖表入方案文档 6.8 节。
 - **I5 代码完成**（HeroScreens 抽卡逐张揭示：卡背按序揭除/SSR 压轴金框/点屏跳过/总时长 ≤1.1s）——tsc 本文件零错误、smoke 578；**构建+实拍等 A4 编译窗口**（其 BattleFx 中间态曾污染全项目编译），A4 完成通知后一并收口。
 - A4 实施代理仍在验证阶段。三线进度：UI 5/6 · 交互 4.5/6 · 动画 A0-A3（A4 施工中）。
+
+### 剧情批次一完成：自动剧情保底 + 静默已读修复 · zcode · 已实施待验收
+
+时间：2026-10-05 12:00（Asia/Shanghai）；执行者：zcode（实施代理施工+收口复核）；状态：已实施待验收（e9e0647）。
+
+- 根因修复（用户主诉"自动打一点剧情没有"）：删静默 markStorySeen；自动状态机 story 暂停点（未读剧情关弹页，看完/跳过继续连战，每会话 1 次，回退旋钮 AUTO_BATTLE.storyPause）；剧情页自动分支两按钮。
+- 验证：镜像、tsc、smoke 578→597（Z1 18 断言）、**200 种子四锚持平基线**（通关 100%/P50 14/满星 27/SSR 11.15——动状态机零回归）、实拍三步全过（弹出→跳过→75s 推进至 18 关仅 1 次暂停，11-17 关零静默标记）。
+- 剧情队列剩余：批次二战后台词气泡（复用 quote 零文案）→ 批次三剧情页升级（立绘头像/打字机）→ 批次四章节过场 → 批次五回顾可达。
 
 ### 新指令落地：战斗立绘收口 + 剧情方案产出 · zcode · 已实施待验收
 
