@@ -17,6 +17,14 @@
 
 ## 最近交接（新 → 旧）
 
+### 关羽青龙 16 帧冲锋动画接入 · Codex 主 agent · 已实施待验收
+
+时间：2026-10-06 13:02（Asia/Shanghai）；执行者：Codex 主 agent；状态：已实施待验收。
+
+- 用户要求直接制作帧动画。本轮 ImageGen 生成原创青玉鎏金东方龙 4×4 透明序列帧，裁切为 `fx_guanyu_ult_00`…`fx_guanyu_ult_15` 16 张 SpriteFrame，单帧 160×128，PNG 合计 124,873 bytes（约 122 KB）。`BattleFx` 逐帧播放蓄势、冲锋、命中、消散阶段；龙沿当前 cast 的真实命中目标移动；资源不齐时不启用不完整序列。
+- Web-mobile 实战触发关羽演出，诊断 `ultimateHero=guanyu`、`ultimateTargets=1`、`ultimatePause=true`。规则镜像检查、TypeScript、smoke 650/0、`git diff --check` 均通过；Web-mobile 与微信小游戏 Creator 构建成功，微信 AppID 从配置同步，主包约 4,054,325 bytes（3.87 MiB），16 个帧资源键均在构建配置。
+- 整体动画的逐帧观感、微信开发者工具与真机 FPS 尚未设备验收；本轮是可运行的第一版样板，不代表最终美术验收。方案记录于 `docs/plans/战斗特效样板升级.md`。
+
 ### 关羽青龙冲锋动画工具调研 · Codex 主 agent · 无变更
 
 时间：2026-10-06 12:24（Asia/Shanghai）；执行者：Codex 主 agent；状态：无变更。

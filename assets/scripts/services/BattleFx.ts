@@ -1,4 +1,4 @@
-import { Color, Graphics, Label, LabelOutline, Node, Sprite, UIOpacity, UITransform, Vec3, view } from 'cc';
+import { Color, Graphics, Label, LabelOutline, Node, Sprite, SpriteFrame, UIOpacity, UITransform, Vec3, view } from 'cc';
 import { CocosUi, hexColor } from '../ui/CocosUi';
 import * as heroData from '../domain/heroes';
 import { ArtService } from './ArtService';
@@ -110,7 +110,7 @@ const ULT_SCENE_FIELD_BOTTOM = -520;
 type UltimateMotif = 'blossom'|'dragon'|'shock'|'multi'|'bagua'|'arrow'|'command'|'eclipse'|'crossed'|'charge'|'wave'|'spear'|'firegrid'|'halberd'|'dance'|'vortex';
 interface UltimateSceneSpec { uid: string; heroId: string; name: string; faction: string; skill: string; targetUids: string[]; facing: number }
 interface UltimateSceneImpact { uid: string; node: Node; opacity: UIOpacity; at: number; elapsed: number; triggered: boolean }
-interface UltimateSceneFx { root: Node; motif: Node; elapsed: number; spec: UltimateSceneSpec; dragon: Node | null; source: { x: number; y: number }; targets: Array<{ uid: string; x: number; y: number }>; impacts: UltimateSceneImpact[] }
+interface UltimateSceneFx { root: Node; motif: Node; elapsed: number; spec: UltimateSceneSpec; dragon: Node | null; dragonSprite: Sprite | null; dragonFrames: SpriteFrame[]; dragonFrameIndex: number; source: { x: number; y: number }; targets: Array<{ uid: string; x: number; y: number }>; impacts: UltimateSceneImpact[] }
 interface UltimateTheme { motif: UltimateMotif; primary: Color; accent: Color }
 const ULTIMATE_THEMES: Record<string, UltimateTheme> = {
   liubei: { motif:'blossom', primary:hexColor('#73c9a2'), accent:hexColor('#f3cf79') },
@@ -555,18 +555,25 @@ export class BattleFx {
       return p ? { uid, x: p.x, y: p.y } : null;
     }).filter((p): p is { uid: string; x: number; y: number } => !!p) : [];
     let dragon: Node | null = null;
+    let dragonSprite: Sprite | null = null;
+    const loadedDragonFrames = spec.heroId === 'guanyu'
+      ? Array.from({ length: 16 }, (_, i) => ArtService.frame(`fx_guanyu_ult_${String(i).padStart(2, '0')}`))
+      : [];
+    // Keep the row-major frame indices stable; a partial asset import must never scramble the sequence.
+    const dragonFrames = loadedDragonFrames.length === 16 && loadedDragonFrames.every((f): f is SpriteFrame => !!f)
+      ? loadedDragonFrames as SpriteFrame[] : [];
     const impacts: UltimateSceneImpact[] = [];
     if (spec.heroId === 'guanyu') {
-      const dragonFrame = ArtService.frame('fx_guanyu_ult');
+      const dragonFrame = dragonFrames[0];
       if (dragonFrame) {
         dragon = new Node('SceneDragonRush');
-        dragon.addComponent(UITransform).setContentSize(270, 405);
-        const dragonSprite = dragon.addComponent(Sprite);
+        dragon.addComponent(UITransform).setContentSize(500, 400);
+        dragonSprite = dragon.addComponent(Sprite);
         dragonSprite.spriteFrame = dragonFrame;
         dragonSprite.sizeMode = Sprite.SizeMode.CUSTOM;
         dragonSprite.trim = false;
-        dragon.getComponent(UITransform)!.setContentSize(270, 405);
-        dragon.setScale(new Vec3(spec.facing * 0.72, 0.72, 1));
+        dragon.getComponent(UITransform)!.setContentSize(500, 400);
+        dragon.setScale(new Vec3(spec.facing, 1, 1));
         dragon.setPosition(source.x, source.y, 0);
         const dragonOpacity = dragon.addComponent(UIOpacity);
         dragonOpacity.opacity = 0;
@@ -603,7 +610,7 @@ export class BattleFx {
     layer.addChild(root);
     rootOpacity.opacity = 0;
     motif.setScale(new Vec3(0.72, 0.72, 1));
-    return { root, motif, elapsed: 0, spec, dragon, source, targets, impacts };
+    return { root, motif, elapsed: 0, spec, dragon, dragonSprite, dragonFrames, dragonFrameIndex: -1, source, targets, impacts };
   }
 
   private static destroyUltimateScene() {
@@ -644,21 +651,36 @@ export class BattleFx {
       : 1.04 + 0.12 * BattleFx.easeOutQuad(impact);
     f.motif.setScale(new Vec3(scale, scale, 1));
     f.motif.angle = (f.spec.heroId === 'simayi' || f.spec.heroId === 'zhugeliang' ? 28 : -12) * t;
-    if (f.dragon && f.dragon.isValid && f.targets.length) {
-      const firstHit = f.impacts.length ? f.impacts[0].at : 0.50;
-      const spacing = f.impacts.length > 1 ? 0.16 : 0;
-      const leg = f.impacts.length > 1 && f.elapsed >= firstHit
-        ? Math.min(f.targets.length - 1, 1 + Math.floor((f.elapsed - firstHit) / spacing)) : 0;
-      const legStart = leg === 0 ? f.source : f.targets[leg - 1];
-      const legEnd = f.targets[leg];
-      const legAt = leg === 0 ? firstHit - 0.34 : firstHit + (leg - 1) * spacing;
-      const legDuration = leg === 0 ? 0.34 : Math.max(0.12, spacing);
-      const q = BattleFx.easeOutQuad(Math.max(0, Math.min(1, (f.elapsed - legAt) / legDuration)));
-      f.dragon.setPosition(new Vec3(legStart.x + (legEnd.x - legStart.x) * q, legStart.y + (legEnd.y - legStart.y) * q, 0));
+    if (f.dragon && f.dragon.isValid && f.dragonSprite && f.dragonFrames.length) {
+      const frameIndex = BattleFx.guanyuDragonFrame(f.elapsed, f.impacts);
+      if (frameIndex !== f.dragonFrameIndex) {
+        f.dragonSprite.spriteFrame = f.dragonFrames[frameIndex];
+        f.dragonFrameIndex = frameIndex;
+      }
+      if (f.targets.length) {
+        const firstHit = f.impacts.length ? f.impacts[0].at : 0.50;
+        const sourceLead = { x: f.source.x - f.spec.facing * 120, y: f.source.y };
+        let legStart = sourceLead;
+        let legEnd = { x: f.targets[0].x - f.spec.facing * 120, y: f.targets[0].y };
+        let legAt = 0.12;
+        let legDuration = Math.max(0.12, firstHit - legAt);
+        for (let i = 1; i < f.targets.length; i++) {
+          const previousHit = f.impacts[i - 1]?.at ?? firstHit + (i - 1) * 0.16;
+          const nextHit = f.impacts[i]?.at ?? firstHit + i * 0.16;
+          if (f.elapsed < previousHit + 0.08) break;
+          legStart = { x: f.targets[i - 1].x - f.spec.facing * 120, y: f.targets[i - 1].y };
+          legEnd = { x: f.targets[i].x - f.spec.facing * 120, y: f.targets[i].y };
+          legAt = previousHit + 0.08;
+          legDuration = Math.max(0.04, nextHit - legAt);
+        }
+        const q = BattleFx.easeOutQuad(Math.max(0, Math.min(1, (f.elapsed - legAt) / legDuration)));
+        // A shallow, alternating arc makes the dragon visibly sweep through the enemy line.
+        const arc = Math.sin(q * Math.PI) * (f.spec.facing > 0 ? 34 : -34);
+        f.dragon.setPosition(new Vec3(legStart.x + (legEnd.x - legStart.x) * q, legStart.y + (legEnd.y - legStart.y) * q + arc, 0));
+      }
       const dragonOp = f.dragon.getComponent(UIOpacity);
-      if (dragonOp) dragonOp.opacity = Math.round(255 * Math.min(1, f.elapsed / 0.12) * (f.elapsed < 0.96 ? 1 : Math.max(0, (ULT_SCENE_LIFE - f.elapsed) / (ULT_SCENE_LIFE - 0.96))));
-      const rushScale = 0.72 + 0.12 * Math.sin(Math.min(1, f.elapsed / 0.82) * Math.PI);
-      f.dragon.setScale(new Vec3(f.spec.facing * rushScale, rushScale, 1));
+      const fadeAt = (f.impacts[f.impacts.length - 1]?.at ?? 0.50) + 0.12;
+      if (dragonOp) dragonOp.opacity = Math.round(255 * Math.min(1, f.elapsed / 0.08) * (f.elapsed < fadeAt ? 1 : Math.max(0, (ULT_SCENE_LIFE - f.elapsed) / Math.max(0.01, ULT_SCENE_LIFE - fadeAt))));
     }
     f.impacts.forEach(hit => {
       if (!hit.node.isValid) return;
@@ -675,6 +697,20 @@ export class BattleFx {
       hit.opacity.opacity = p >= 0 && p < 1 ? Math.round(245 * (1 - q)) : 0;
     });
     if (f.elapsed >= ULT_SCENE_LIFE) BattleFx.destroyUltimateScene();
+  }
+
+  /** 16-frame sequence: gather 0–2, rush 3–9, impact 10–11, dissolve 12–15. */
+  private static guanyuDragonFrame(elapsed: number, impacts: UltimateSceneImpact[]): number {
+    if (elapsed < 0.12) return Math.min(2, Math.floor(elapsed / 0.04));
+    const firstHit = impacts[0]?.at ?? 0.50;
+    const lastHit = impacts[impacts.length - 1]?.at ?? firstHit;
+    const hit = impacts.find(item => elapsed >= item.at && elapsed < item.at + 0.12);
+    if (hit) return 10 + Math.min(1, Math.floor((elapsed - hit.at) / 0.06));
+    if (elapsed < firstHit) return Math.min(9, 3 + Math.floor((elapsed - 0.12) / Math.max(0.01, firstHit - 0.12) * 7));
+    if (elapsed < lastHit) return 3 + (Math.floor(elapsed * 24) % 7);
+    const dissolveAt = lastHit + 0.12;
+    if (elapsed < dissolveAt) return 11;
+    return Math.min(15, 12 + Math.floor((elapsed - dissolveAt) / Math.max(0.01, ULT_SCENE_LIFE - dissolveAt) * 4));
   }
 
   /** One pre-rendered native Graphics motif per SSR; animation only transforms/alpha-blends nodes. */
