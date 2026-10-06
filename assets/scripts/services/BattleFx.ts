@@ -110,7 +110,7 @@ const ULT_SCENE_FIELD_BOTTOM = -520;
 type UltimateMotif = 'blossom'|'dragon'|'shock'|'multi'|'bagua'|'arrow'|'command'|'eclipse'|'crossed'|'charge'|'wave'|'spear'|'firegrid'|'halberd'|'dance'|'vortex';
 interface UltimateSceneSpec { uid: string; heroId: string; name: string; faction: string; skill: string; targetUids: string[]; facing: number }
 interface UltimateSceneImpact { uid: string; node: Node; opacity: UIOpacity; at: number; elapsed: number; triggered: boolean }
-interface UltimateSceneFx { root: Node; motif: Node; elapsed: number; spec: UltimateSceneSpec; dragon: Node | null; dragonSprite: Sprite | null; dragonTrail: Node | null; dragonTrailSprite: Sprite | null; dragonFrames: SpriteFrame[]; dragonFrameIndex: number; source: { x: number; y: number }; targets: Array<{ uid: string; x: number; y: number }>; impacts: UltimateSceneImpact[]; heroCutin: Node | null; heroCutinOp: UIOpacity | null; skillTitle: Node | null; skillTitleOp: UIOpacity | null; slashFlash: Node | null; slashFlashOp: UIOpacity | null }
+interface UltimateSceneFx { root: Node; motif: Node; elapsed: number; spec: UltimateSceneSpec; dragon: Node | null; dragonSprite: Sprite | null; dragonTrail: Node | null; dragonTrailSprite: Sprite | null; dragonFrames: SpriteFrame[]; dragonFrameIndex: number; source: { x: number; y: number }; targets: Array<{ uid: string; x: number; y: number }>; impacts: UltimateSceneImpact[]; heroCutin: Node | null; heroCutinOp: UIOpacity | null; skillTitle: Node | null; skillTitleOp: UIOpacity | null }
 interface UltimateTheme { motif: UltimateMotif; primary: Color; accent: Color }
 const ULTIMATE_THEMES: Record<string, UltimateTheme> = {
   liubei: { motif:'blossom', primary:hexColor('#73c9a2'), accent:hexColor('#f3cf79') },
@@ -302,7 +302,11 @@ export class BattleFx {
           const light = BattleFx.spawnLight(layer, ui, indexByUid, snapshot, ev.uid,
             BattleFx.ultTargets(events, eventIndex, ev.uid), true);
           if (light) ultLights.set(ev.uid, light);
-          BattleFx.spawnUltBanner(layer, ui, { ...ev, caster: snapshot[indexByUid.get(ev.uid)!]?.name }, indexByUid);
+          // Guanyu already has a full-screen cinematic title; a second center banner
+          // would sit directly across the dragon's body during its target rush.
+          if (caster?.heroId !== 'guanyu') {
+            BattleFx.spawnUltBanner(layer, ui, { ...ev, caster: snapshot[indexByUid.get(ev.uid)!]?.name }, indexByUid);
+          }
           BattleFx.spawnUltLunge(ui, ev, indexByUid);
         } else if (ev.e === 'act') {
           if (ev.type === 'atk' && ev.tgt) BattleFx.spawnLight(layer, ui, indexByUid, snapshot, ev.uid, [ev.tgt], false);
@@ -550,8 +554,6 @@ export class BattleFx {
     let heroCutinOp: UIOpacity | null = null;
     let skillTitle: Node | null = null;
     let skillTitleOp: UIOpacity | null = null;
-    let slashFlash: Node | null = null;
-    let slashFlashOp: UIOpacity | null = null;
     if (spec.heroId === 'guanyu') {
       // Dedicated close-up gives the pause a clear actor and skill identity before the
       // already-targeted dragon sequence takes over. It is preloaded from art-heroes.
@@ -570,20 +572,6 @@ export class BattleFx {
         heroCutinOp.opacity = 0;
         root.addChild(heroCutin);
       }
-
-      slashFlash = new Node('GuanyuUltimateSlash');
-      slashFlash.addComponent(UITransform).setContentSize(720, 720);
-      slashFlash.setPosition(24 * spec.facing, -4, 0);
-      slashFlash.setScale(new Vec3(spec.facing, 1, 1));
-      const slash = slashFlash.addComponent(Graphics);
-      slash.lineCap = Graphics.LineCap.ROUND;
-      slash.strokeColor = new Color(100, 255, 218, 170); slash.lineWidth = 18;
-      slash.moveTo(-330, -260); slash.lineTo(330, 265); slash.stroke();
-      slash.strokeColor = new Color(255, 239, 174, 235); slash.lineWidth = 5;
-      slash.moveTo(-330, -260); slash.lineTo(330, 265); slash.stroke();
-      slashFlashOp = slashFlash.addComponent(UIOpacity);
-      slashFlashOp.opacity = 0;
-      root.addChild(slashFlash);
 
       skillTitle = new Node('GuanyuUltimateTitle');
       skillTitle.addComponent(UITransform).setContentSize(432, 104);
@@ -647,8 +635,8 @@ export class BattleFx {
         dragonTrailSprite.spriteFrame = dragonFrame;
         dragonTrailSprite.sizeMode = Sprite.SizeMode.CUSTOM;
         dragonTrailSprite.trim = false;
-        dragonTrailSprite.color = new Color(100, 255, 220, 255);
-        dragonTrail.setScale(new Vec3(spec.facing * 0.92, 0.92, 1));
+        dragonTrailSprite.color = Color.WHITE;
+        dragonTrail.setScale(new Vec3(spec.facing * 0.78, 0.78, 1));
         const trailOpacity = dragonTrail.addComponent(UIOpacity);
         trailOpacity.opacity = 0;
         root.addChild(dragonTrail);
@@ -713,12 +701,11 @@ export class BattleFx {
     }
 
     layer.addChild(root);
-    if (slashFlash && slashFlash.isValid) slashFlash.setSiblingIndex(Math.min(2, root.children.length - 1));
     if (heroCutin && heroCutin.isValid) heroCutin.setSiblingIndex(Math.min(3, root.children.length - 1));
     if (skillTitle && skillTitle.isValid) skillTitle.setSiblingIndex(root.children.length - 1);
     rootOpacity.opacity = 0;
     motif.setScale(new Vec3(0.72, 0.72, 1));
-    return { root, motif, elapsed: 0, spec, dragon, dragonSprite, dragonTrail, dragonTrailSprite, dragonFrames, dragonFrameIndex: -1, source, targets, impacts, heroCutin, heroCutinOp, skillTitle, skillTitleOp, slashFlash, slashFlashOp };
+    return { root, motif, elapsed: 0, spec, dragon, dragonSprite, dragonTrail, dragonTrailSprite, dragonFrames, dragonFrameIndex: -1, source, targets, impacts, heroCutin, heroCutinOp, skillTitle, skillTitleOp };
   }
 
   private static destroyUltimateScene() {
@@ -761,10 +748,10 @@ export class BattleFx {
     f.motif.setScale(new Vec3(scale, scale, 1));
     f.motif.angle = (f.spec.heroId === 'simayi' || f.spec.heroId === 'zhugeliang' ? 28 : -12) * t;
     if (f.spec.heroId === 'guanyu') {
-      // 0.0–0.16s reveal the warrior and calligraphy; the cut-in then yields to the
-      // dragon's real-target rush and clears before the impact frame.
+      // Briefly establish the warrior, then clear the portrait before the dragon reaches
+      // the center line so its detailed body and real-target impact remain readable.
       const enter = BattleFx.easeOutQuad(Math.min(1, f.elapsed / 0.16));
-      const leave = f.elapsed <= 0.30 ? 1 : 1 - BattleFx.easeInOutQuad(Math.min(1, (f.elapsed - 0.30) / 0.26));
+      const leave = f.elapsed <= 0.14 ? 1 : 1 - BattleFx.easeInOutQuad(Math.min(1, (f.elapsed - 0.14) / 0.20));
       if (f.heroCutin && f.heroCutin.isValid) {
         f.heroCutin.setScale(new Vec3(f.spec.facing * (0.86 + 0.08 * enter), 0.86 + 0.08 * enter, 1));
         f.heroCutin.setPosition(-145 * f.spec.facing - f.spec.facing * (42 * (1 - enter)), -22, 0);
@@ -774,12 +761,6 @@ export class BattleFx {
         f.skillTitle.setPosition(-48, 460 + 34 * (1 - enter), 0);
         f.skillTitle.setScale(new Vec3(0.94 + 0.06 * enter, 0.94 + 0.06 * enter, 1));
         if (f.skillTitleOp) f.skillTitleOp.opacity = Math.round(255 * enter * leave);
-      }
-      if (f.slashFlash && f.slashFlash.isValid) {
-        const flash = f.elapsed < 0.18 ? enter : f.elapsed < 0.42 ? 1 : Math.max(0, 1 - (f.elapsed - 0.42) / 0.18);
-        f.slashFlash.angle = -8 + 18 * Math.min(1, f.elapsed / 0.42);
-        f.slashFlash.setScale(new Vec3(f.spec.facing * (0.82 + 0.3 * enter), 0.82 + 0.3 * enter, 1));
-        if (f.slashFlashOp) f.slashFlashOp.opacity = Math.round(165 * flash);
       }
     }
     if (f.dragon && f.dragon.isValid && f.dragonSprite && f.dragonFrames.length) {
@@ -824,7 +805,7 @@ export class BattleFx {
         if (f.dragonTrail && f.dragonTrail.isValid) {
           f.dragonTrail.setPosition(new Vec3(x - f.spec.facing * 48, y - 12, 0));
           const trailOp = f.dragonTrail.getComponent(UIOpacity);
-          if (trailOp) trailOp.opacity = f.elapsed >= 0.20 && f.elapsed < (f.impacts[f.impacts.length - 1]?.at ?? firstHit) ? 82 : 0;
+          if (trailOp) trailOp.opacity = f.elapsed >= 0.20 && f.elapsed < (f.impacts[f.impacts.length - 1]?.at ?? firstHit) ? 58 : 0;
         }
       }
       const dragonOp = f.dragon.getComponent(UIOpacity);
