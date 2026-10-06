@@ -102,14 +102,15 @@ const SKILL_RELEASE = 0.28;
 const SKILL_IMPACT = 0.32;
 const ATTACK_RELEASE = 0.18;
 const ATTACK_IMPACT = 0.16;
-const ULT_SCENE_LIFE = 0.9;
+const ULT_SCENE_LIFE = 1.25;
 const MAX_ULT_SCENE_QUEUE = 2;
 const ULT_SCENE_FIELD_TOP = 535;
 const ULT_SCENE_FIELD_BOTTOM = -520;
 
 type UltimateMotif = 'blossom'|'dragon'|'shock'|'multi'|'bagua'|'arrow'|'command'|'eclipse'|'crossed'|'charge'|'wave'|'spear'|'firegrid'|'halberd'|'dance'|'vortex';
-interface UltimateSceneSpec { uid: string; heroId: string; name: string; faction: string; skill: string }
-interface UltimateSceneFx { root: Node; motif: Node; elapsed: number; spec: UltimateSceneSpec }
+interface UltimateSceneSpec { uid: string; heroId: string; name: string; faction: string; skill: string; targetUids: string[]; facing: number }
+interface UltimateSceneImpact { uid: string; node: Node; opacity: UIOpacity; at: number; elapsed: number; triggered: boolean }
+interface UltimateSceneFx { root: Node; motif: Node; elapsed: number; spec: UltimateSceneSpec; dragon: Node | null; source: { x: number; y: number }; targets: Array<{ uid: string; x: number; y: number }>; impacts: UltimateSceneImpact[] }
 interface UltimateTheme { motif: UltimateMotif; primary: Color; accent: Color }
 const ULTIMATE_THEMES: Record<string, UltimateTheme> = {
   liubei: { motif:'blossom', primary:hexColor('#73c9a2'), accent:hexColor('#f3cf79') },
@@ -209,6 +210,10 @@ export class BattleFx {
   }
 
   static get ultimateScenesLive() { return (BattleFx.ultimateScene ? 1 : 0) + BattleFx.ultimateSceneQueue.length; }
+  /** Active cut-in and queued SSR cut-ins pause only battle simulation; the effect clock keeps running. */
+  static get battlePausedForUltimate() { return BattleFx.ultimateScenesLive > 0; }
+  static get activeUltimateHero() { return BattleFx.ultimateScene?.spec.heroId || BattleFx.ultimateSceneQueue[0]?.heroId || ''; }
+  static get activeUltimateTargets() { return BattleFx.ultimateScene?.spec.targetUids.length ?? BattleFx.ultimateSceneQueue[0]?.targetUids.length ?? 0; }
   /** Pending result transition budget: active scene plus the bounded two-scene queue. */
   static get ultimateSceneMaxTail() { return ULT_SCENE_LIFE * (MAX_ULT_SCENE_QUEUE + 1) + 0.15; }
 
@@ -289,7 +294,9 @@ export class BattleFx {
           const definition = caster && caster.heroId ? heroData.getHero(caster.heroId) : null;
           if (caster && definition && definition.rarity === 4) {
             BattleFx.queueUltimateScene(CocosUi.ensureBattleSceneLayer(content, ui.node('BattleHeader')), {
-              uid: ev.uid, heroId: caster.heroId, name: caster.name || '', faction: caster.faction || '', skill: String(ev.skill || '')
+              uid: ev.uid, heroId: caster.heroId, name: caster.name || '', faction: caster.faction || '', skill: String(ev.skill || ''),
+              targetUids: BattleFx.ultAttackTargets(events, eventIndex, ev.uid, snapshot, indexByUid),
+              facing: caster.side === 'B' ? -1 : 1,
             });
           }
           const light = BattleFx.spawnLight(layer, ui, indexByUid, snapshot, ev.uid,
@@ -525,38 +532,86 @@ export class BattleFx {
     wash.addComponent(UITransform).setContentSize(720, ULT_SCENE_FIELD_TOP - ULT_SCENE_FIELD_BOTTOM);
     wash.setPosition(0, (ULT_SCENE_FIELD_TOP + ULT_SCENE_FIELD_BOTTOM) / 2, 0);
     const wg = wash.addComponent(Graphics);
-    wg.fillColor = new Color(theme.primary.r, theme.primary.g, theme.primary.b, 24);
+    // Darken the arena briefly so the ultimate hit and attacker remain the visual focus.
+    wg.fillColor = new Color(4, 10, 12, 96);
     wg.rect(-350, -(ULT_SCENE_FIELD_TOP - ULT_SCENE_FIELD_BOTTOM) / 2, 700, ULT_SCENE_FIELD_TOP - ULT_SCENE_FIELD_BOTTOM);
     wg.fill();
     root.addChild(wash);
 
     const motif = new Node('SceneMotif_' + theme.motif);
     motif.addComponent(UITransform).setContentSize(680, 900);
-    const motifFrame = spec.heroId === 'guanyu' ? ArtService.frame('fx_guanyu_ult') : null;
-    if (motifFrame) {
-      const art = new Node('SceneDragonArt');
-      art.addComponent(UITransform).setContentSize(600, 900);
-      const sprite = art.addComponent(Sprite);
-      sprite.spriteFrame = motifFrame;
-      sprite.sizeMode = Sprite.SizeMode.CUSTOM;
-      sprite.trim = false;
-      art.getComponent(UITransform)!.setContentSize(600, 900);
-      motif.addChild(art);
-    } else {
-      const mg = motif.addComponent(Graphics);
-      BattleFx.drawUltimateMotif(mg, theme.motif, theme.primary, theme.accent);
-    }
+    const mg = motif.addComponent(Graphics);
+    BattleFx.drawUltimateMotif(mg, theme.motif, theme.primary, theme.accent);
+    // Guanyu's moving dragon and target impacts carry the action; keep the full-screen
+    // dragon sigil as a quiet backdrop so it does not compete with the attack path.
+    if (spec.heroId === 'guanyu') motif.addComponent(UIOpacity).opacity = 64;
     root.addChild(motif);
+
+    const state = BattleFx.view;
+    const sourcePoint = state ? BattleFx.anchorOf(state.indexByUid, state.ui, spec.uid) : null;
+    const source = sourcePoint || { x: -spec.facing * 205, y: 0 };
+    const targets = state ? spec.targetUids.map(uid => {
+      const p = BattleFx.anchorOf(state.indexByUid, state.ui, uid);
+      return p ? { uid, x: p.x, y: p.y } : null;
+    }).filter((p): p is { uid: string; x: number; y: number } => !!p) : [];
+    let dragon: Node | null = null;
+    const impacts: UltimateSceneImpact[] = [];
+    if (spec.heroId === 'guanyu') {
+      const dragonFrame = ArtService.frame('fx_guanyu_ult');
+      if (dragonFrame) {
+        dragon = new Node('SceneDragonRush');
+        dragon.addComponent(UITransform).setContentSize(270, 405);
+        const dragonSprite = dragon.addComponent(Sprite);
+        dragonSprite.spriteFrame = dragonFrame;
+        dragonSprite.sizeMode = Sprite.SizeMode.CUSTOM;
+        dragonSprite.trim = false;
+        dragon.getComponent(UITransform)!.setContentSize(270, 405);
+        dragon.setScale(new Vec3(spec.facing * 0.72, 0.72, 1));
+        dragon.setPosition(source.x, source.y, 0);
+        const dragonOpacity = dragon.addComponent(UIOpacity);
+        dragonOpacity.opacity = 0;
+        root.addChild(dragon);
+      }
+      targets.forEach((target, index) => {
+        const idx = state!.indexByUid.get(target.uid);
+        const fighter = idx === undefined ? null : state!.ui.node('FighterGlyph' + idx);
+        if (!fighter || !fighter.isValid) return;
+        const hit = new Node('SceneDragonImpact' + index);
+        hit.addComponent(UITransform).setContentSize(148, 148);
+        const frame = ArtService.frame('fx_impact');
+        if (frame) {
+          const sprite = hit.addComponent(Sprite);
+          sprite.spriteFrame = frame;
+          sprite.sizeMode = Sprite.SizeMode.CUSTOM;
+          sprite.trim = false;
+          hit.getComponent(UITransform)!.setContentSize(148, 148);
+        } else {
+          const g = hit.addComponent(Graphics);
+          g.strokeColor = theme.accent; g.lineWidth = 5;
+          g.circle(0, 0, 48); g.stroke();
+          g.strokeColor = theme.primary; g.lineWidth = 2;
+          g.circle(0, 0, 68); g.stroke();
+        }
+        const opacity = hit.addComponent(UIOpacity);
+        opacity.opacity = 0;
+        fighter.addChild(hit);
+        hit.active = false;
+        impacts.push({ uid: target.uid, node: hit, opacity, at: 0.50 + impacts.length * 0.16, elapsed: 0, triggered: false });
+      });
+    }
 
     layer.addChild(root);
     rootOpacity.opacity = 0;
     motif.setScale(new Vec3(0.72, 0.72, 1));
-    return { root, motif, elapsed: 0, spec };
+    return { root, motif, elapsed: 0, spec, dragon, source, targets, impacts };
   }
 
   private static destroyUltimateScene() {
     const f = BattleFx.ultimateScene;
     if (!f) return;
+    for (const hit of f.impacts) {
+      if (hit.node.isValid) { hit.node.removeFromParent(); hit.node.destroy(); }
+    }
     if (f.root.isValid) { f.root.removeFromParent(); f.root.destroy(); }
     BattleFx.ultimateScene = null;
   }
@@ -589,6 +644,36 @@ export class BattleFx {
       : 1.04 + 0.12 * BattleFx.easeOutQuad(impact);
     f.motif.setScale(new Vec3(scale, scale, 1));
     f.motif.angle = (f.spec.heroId === 'simayi' || f.spec.heroId === 'zhugeliang' ? 28 : -12) * t;
+    if (f.dragon && f.dragon.isValid && f.targets.length) {
+      const firstHit = f.impacts.length ? f.impacts[0].at : 0.50;
+      const spacing = f.impacts.length > 1 ? 0.16 : 0;
+      const leg = f.impacts.length > 1 && f.elapsed >= firstHit
+        ? Math.min(f.targets.length - 1, 1 + Math.floor((f.elapsed - firstHit) / spacing)) : 0;
+      const legStart = leg === 0 ? f.source : f.targets[leg - 1];
+      const legEnd = f.targets[leg];
+      const legAt = leg === 0 ? firstHit - 0.34 : firstHit + (leg - 1) * spacing;
+      const legDuration = leg === 0 ? 0.34 : Math.max(0.12, spacing);
+      const q = BattleFx.easeOutQuad(Math.max(0, Math.min(1, (f.elapsed - legAt) / legDuration)));
+      f.dragon.setPosition(new Vec3(legStart.x + (legEnd.x - legStart.x) * q, legStart.y + (legEnd.y - legStart.y) * q, 0));
+      const dragonOp = f.dragon.getComponent(UIOpacity);
+      if (dragonOp) dragonOp.opacity = Math.round(255 * Math.min(1, f.elapsed / 0.12) * (f.elapsed < 0.96 ? 1 : Math.max(0, (ULT_SCENE_LIFE - f.elapsed) / (ULT_SCENE_LIFE - 0.96))));
+      const rushScale = 0.72 + 0.12 * Math.sin(Math.min(1, f.elapsed / 0.82) * Math.PI);
+      f.dragon.setScale(new Vec3(f.spec.facing * rushScale, rushScale, 1));
+    }
+    f.impacts.forEach(hit => {
+      if (!hit.node.isValid) return;
+      if (!hit.triggered && f.elapsed >= hit.at) {
+        hit.triggered = true;
+        if (BattleFx.view) BattleFx.spawnShake(BattleFx.view.ui, { uid: hit.uid, src: f.spec.uid, kind: 'ult' }, BattleFx.view.indexByUid);
+      }
+      const p = (f.elapsed - hit.at) / 0.25;
+      hit.node.active = p >= 0 && p < 1;
+      hit.elapsed = Math.max(0, p);
+      const q = Math.max(0, Math.min(1, p));
+      const pulse = 0.45 + 1.05 * BattleFx.easeOutQuad(q);
+      hit.node.setScale(new Vec3(pulse, pulse, 1));
+      hit.opacity.opacity = p >= 0 && p < 1 ? Math.round(245 * (1 - q)) : 0;
+    });
     if (f.elapsed >= ULT_SCENE_LIFE) BattleFx.destroyUltimateScene();
   }
 
@@ -670,6 +755,20 @@ export class BattleFx {
       if (targets.length === 3) break;
     }
     return targets.length ? targets : [uid];
+  }
+
+  /** Resolve direct enemy hit events for the cut-in flight path (e.g. Guanyu's front-row strike). */
+  private static ultAttackTargets(events: any[], start: number, uid: string, snapshot: any[], indexByUid: Map<string, number>): string[] {
+    const caster = snapshot[indexByUid.get(uid)!];
+    const targets: string[] = [];
+    for (let i = start + 1; i < events.length; i++) {
+      const ev = events[i];
+      if (!ev || ev.cast !== uid || ev.e !== 'hit' || ev.kind !== 'ult' || !ev.uid || targets.includes(ev.uid)) continue;
+      const target = snapshot[indexByUid.get(ev.uid)!];
+      if (caster && target && target.side !== caster.side) targets.push(ev.uid);
+      if (targets.length === 3) break;
+    }
+    return targets;
   }
 
   /** T1：职业→光效形态。守将（tank）从与武将共用的刀弧分出 guard（盾墙金光/格挡冲击波），

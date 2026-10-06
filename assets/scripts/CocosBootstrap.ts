@@ -170,21 +170,31 @@ export class CocosBootstrap extends Component implements ScreenContext {
     }
     if (this.fighting && this.autoSession.state.status !== 'suspended') {
       const speed = store.getState().settings.autoBattleSpeed || 1;
-      const step = this.fighting.step(Math.min(0.1, dt) * speed);
-      this.refreshTime += dt;
-      // A0 表现层管线：伤害数字/大招横幅由 BattleFx 每帧消费 events 渲染（旧 combatPopupDisplay/
-      // _popupCount/lastUltDisplay 死路渲染已删除，职责整体迁入 BattleFx）
-      const snap = this.fighting.snapshot();
-      if (this.page === 'battle') BattleFx.feed(step.events, snap, this.ui, this.content);
-      BattleFx.tick(dt, speed);
-      const refreshGap = 0.3 / speed;
-      if (step.done) {
-        if (this.page === 'battle' && BattleFx.ultimateScenesLive > 0) this.battleFinishPending = { win: step.winner === 'A', elapsed: 0 };
-        else this.finishBattle(step.winner === 'A');
-      }
-      else if (this.page === 'battle' && this.refreshTime > refreshGap) {
-        this.refreshTime = 0;
-        battleScreens.refreshBattleView(this);
+      if (BattleFx.battlePausedForUltimate) {
+        // Freeze only deterministic battle simulation. The FX clock keeps running so the cut-in can finish.
+        BattleFx.tick(dt, speed);
+        if (!BattleFx.battlePausedForUltimate && this.page === 'battle') {
+          // Refresh bars with already-resolved skill results before the next simulation step.
+          this.refreshTime = 0;
+          battleScreens.refreshBattleView(this);
+        }
+      } else {
+        const step = this.fighting.step(Math.min(0.1, dt) * speed);
+        this.refreshTime += dt;
+        // A0 表现层管线：伤害数字/大招横幅由 BattleFx 每帧消费 events 渲染（旧 combatPopupDisplay/
+        // _popupCount/lastUltDisplay 死路渲染已删除，职责整体迁入 BattleFx）
+        const snap = this.fighting.snapshot();
+        if (this.page === 'battle') BattleFx.feed(step.events, snap, this.ui, this.content);
+        BattleFx.tick(dt, speed);
+        const refreshGap = 0.3 / speed;
+        if (step.done) {
+          if (this.page === 'battle' && BattleFx.ultimateScenesLive > 0) this.battleFinishPending = { win: step.winner === 'A', elapsed: 0 };
+          else this.finishBattle(step.winner === 'A');
+        }
+        else if (this.page === 'battle' && this.refreshTime > refreshGap) {
+          this.refreshTime = 0;
+          battleScreens.refreshBattleView(this);
+        }
       }
     } else if (this.auto) this.autoAction(this.autoSession.tick(dt));
     // 悬赏页停留时周期重绘：倒计时走动、到点自动变"领赏"
@@ -202,7 +212,10 @@ export class CocosBootstrap extends Component implements ScreenContext {
   private hookDiag() {
     if (this.diagHooked) return;
     this.diagHooked = true;
-    (globalThis as any).__tkDiag = () => ({ diag: store.diagSnapshot(), page: this.page, notice: this.notice, sceneKey: this.sceneKey, fx: BattleFx.live, ultimateScenes: BattleFx.ultimateScenesLive });
+    (globalThis as any).__tkDiag = () => ({ diag: store.diagSnapshot(), page: this.page, notice: this.notice, sceneKey: this.sceneKey,
+      fx: BattleFx.live, ultimateScenes: BattleFx.ultimateScenesLive, ultimatePause: BattleFx.battlePausedForUltimate,
+      ultimateHero: BattleFx.activeUltimateHero, ultimateTargets: BattleFx.activeUltimateTargets,
+      battleTime: this.fighting ? this.fighting.result().duration : null });
     (globalThis as any).__tkNav = (p: string) => { try { this.show(p as any); return true; } catch (e) { return false; } };
   }
   public show(page: Page) {

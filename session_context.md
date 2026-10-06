@@ -17,6 +17,15 @@
 
 ## 最近交接（新 → 旧）
 
+### SSR 大招停战与关羽命中动效 · Codex 主 agent · 已实施待验收
+
+时间：2026-10-06 12:18（Asia/Shanghai）；执行者：Codex 主 agent；状态：已实施待验收。
+
+- SSR 场景 active/queued 时跳过 `fighting.step()`，只推进 BattleFx 时钟；队列播完先刷新血条再恢复战斗。关羽青龙按 cast 的实际敌方 hit 事件追击最多三个目标，关羽自身大招冲锋、青龙飞行、命中爆闪与受击回震同场播放。把全屏几何纹样降为轻背景，避免与命中轨迹抢焦点；数值和命中规则不变。
+- 调研依据：Lilith 官方 AFK Journey 介绍的大招时机表达；开发者展示视频的转载转录记录提到 bullet-time；Cocos Creator 3.8 Director 文档说明全局 pause 会停止游戏逻辑 tick，因此使用业务层冻结战斗 step 保持特效动画继续。借鉴节奏/可读性，游戏内容与视觉保持原创。来源与范围记于 `docs/plans/战斗特效样板升级.md`。
+- Web 390×844 实战捕捉到关羽 cast，`battleTime=17.6` 且暂停期间稳定，`ultimateTargets=1`；该场景结束后战斗继续并到达胜利结果页。截图：`docs/reviews/screenshots/关羽大招命中-390.png`。
+- 验证：规则镜像 `--check`、Creator 内置 tsc、smoke 650/650、Cocos Web-mobile 构建、微信小游戏构建均通过；构建日志确认微信 AppID 同步。微信真机动画帧率与手感尚待设备验收；SSR 其他主题与治疗专项视觉仍待抽样，故样板整体不标记为已验收。
+
 ### 战斗特效样板实拍归档补充 · Codex 主 agent · 已实施待验收
 
 时间：2026-10-06 11:45（Asia/Shanghai）；执行者：Codex 主 agent；状态：已实施待微信真机验收。
