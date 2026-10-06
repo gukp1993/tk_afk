@@ -110,7 +110,7 @@ const ULT_SCENE_FIELD_BOTTOM = -520;
 type UltimateMotif = 'blossom'|'dragon'|'shock'|'multi'|'bagua'|'arrow'|'command'|'eclipse'|'crossed'|'charge'|'wave'|'spear'|'firegrid'|'halberd'|'dance'|'vortex';
 interface UltimateSceneSpec { uid: string; heroId: string; name: string; faction: string; skill: string; targetUids: string[]; facing: number }
 interface UltimateSceneImpact { uid: string; node: Node; opacity: UIOpacity; at: number; elapsed: number; triggered: boolean }
-interface UltimateSceneFx { root: Node; motif: Node; elapsed: number; spec: UltimateSceneSpec; dragon: Node | null; dragonSprite: Sprite | null; dragonFrames: SpriteFrame[]; dragonFrameIndex: number; source: { x: number; y: number }; targets: Array<{ uid: string; x: number; y: number }>; impacts: UltimateSceneImpact[] }
+interface UltimateSceneFx { root: Node; motif: Node; elapsed: number; spec: UltimateSceneSpec; dragon: Node | null; dragonSprite: Sprite | null; dragonTrail: Node | null; dragonTrailSprite: Sprite | null; dragonFrames: SpriteFrame[]; dragonFrameIndex: number; source: { x: number; y: number }; targets: Array<{ uid: string; x: number; y: number }>; impacts: UltimateSceneImpact[] }
 interface UltimateTheme { motif: UltimateMotif; primary: Color; accent: Color }
 const ULTIMATE_THEMES: Record<string, UltimateTheme> = {
   liubei: { motif:'blossom', primary:hexColor('#73c9a2'), accent:hexColor('#f3cf79') },
@@ -544,7 +544,6 @@ export class BattleFx {
     BattleFx.drawUltimateMotif(mg, theme.motif, theme.primary, theme.accent);
     // Guanyu's moving dragon and target impacts carry the action; keep the full-screen
     // dragon sigil as a quiet backdrop so it does not compete with the attack path.
-    if (spec.heroId === 'guanyu') motif.addComponent(UIOpacity).opacity = 64;
     root.addChild(motif);
 
     const state = BattleFx.view;
@@ -556,16 +555,37 @@ export class BattleFx {
     }).filter((p): p is { uid: string; x: number; y: number } => !!p) : [];
     let dragon: Node | null = null;
     let dragonSprite: Sprite | null = null;
+    let dragonTrail: Node | null = null;
+    let dragonTrailSprite: Sprite | null = null;
     const loadedDragonFrames = spec.heroId === 'guanyu'
       ? Array.from({ length: 16 }, (_, i) => ArtService.frame(`fx_guanyu_ult_${String(i).padStart(2, '0')}`))
       : [];
     // Keep the row-major frame indices stable; a partial asset import must never scramble the sequence.
     const dragonFrames = loadedDragonFrames.length === 16 && loadedDragonFrames.every((f): f is SpriteFrame => !!f)
       ? loadedDragonFrames as SpriteFrame[] : [];
+    if (spec.heroId === 'guanyu') {
+      // Only hide the faint fallback sigil when both the complete sequence and a real
+      // target anchor are available; never turn an incomplete asset load into an empty cut-in.
+      motif.active = dragonFrames.length !== 16 || targets.length === 0;
+      const motifOpacity = motif.getComponent(UIOpacity) || motif.addComponent(UIOpacity);
+      motifOpacity.opacity = 42;
+    }
     const impacts: UltimateSceneImpact[] = [];
     if (spec.heroId === 'guanyu') {
       const dragonFrame = dragonFrames[0];
-      if (dragonFrame) {
+      if (dragonFrame && targets.length > 0) {
+        dragonTrail = new Node('SceneDragonAfterimage');
+        dragonTrail.addComponent(UITransform).setContentSize(500, 400);
+        dragonTrailSprite = dragonTrail.addComponent(Sprite);
+        dragonTrailSprite.spriteFrame = dragonFrame;
+        dragonTrailSprite.sizeMode = Sprite.SizeMode.CUSTOM;
+        dragonTrailSprite.trim = false;
+        dragonTrailSprite.color = new Color(100, 255, 220, 255);
+        dragonTrail.setScale(new Vec3(spec.facing * 0.92, 0.92, 1));
+        const trailOpacity = dragonTrail.addComponent(UIOpacity);
+        trailOpacity.opacity = 0;
+        root.addChild(dragonTrail);
+
         dragon = new Node('SceneDragonRush');
         dragon.addComponent(UITransform).setContentSize(500, 400);
         dragonSprite = dragon.addComponent(Sprite);
@@ -574,14 +594,14 @@ export class BattleFx {
         dragonSprite.trim = false;
         dragon.getComponent(UITransform)!.setContentSize(500, 400);
         dragon.setScale(new Vec3(spec.facing, 1, 1));
-        dragon.setPosition(source.x, source.y, 0);
+        dragon.setPosition(source.x + spec.facing * 112, source.y + 36, 0);
         const dragonOpacity = dragon.addComponent(UIOpacity);
         dragonOpacity.opacity = 0;
         root.addChild(dragon);
       }
       targets.forEach((target, index) => {
         const idx = state!.indexByUid.get(target.uid);
-        const fighter = idx === undefined ? null : state!.ui.node('FighterGlyph' + idx);
+        const fighter = idx === undefined ? null : (state!.ui.node('FighterGlyph' + idx) || state!.ui.node('Fighter' + idx));
         if (!fighter || !fighter.isValid) return;
         const hit = new Node('SceneDragonImpact' + index);
         hit.addComponent(UITransform).setContentSize(148, 148);
@@ -599,6 +619,24 @@ export class BattleFx {
           g.strokeColor = theme.primary; g.lineWidth = 2;
           g.circle(0, 0, 68); g.stroke();
         }
+        // A pre-rendered radial slash/ring gives the contact point a sharper silhouette
+        // than scaling the soft impact sprite alone. The paths are drawn once at creation.
+        const burst = hit.addComponent(Graphics);
+        burst.lineWidth = 3;
+        burst.strokeColor = new Color(255, 239, 170, 235);
+        burst.circle(0, 0, 31); burst.stroke();
+        burst.strokeColor = new Color(116, 255, 218, 220);
+        burst.circle(0, 0, 53); burst.stroke();
+        for (let ray = 0; ray < 10; ray++) {
+          const angle = Math.PI * 2 * ray / 10;
+          const inner = ray % 2 === 0 ? 39 : 45;
+          const outer = ray % 2 === 0 ? 72 : 62;
+          burst.lineWidth = ray % 2 === 0 ? 4 : 2;
+          burst.strokeColor = ray % 2 === 0 ? new Color(255, 238, 170, 240) : new Color(110, 245, 218, 210);
+          burst.moveTo(Math.cos(angle) * inner, Math.sin(angle) * inner);
+          burst.lineTo(Math.cos(angle) * outer, Math.sin(angle) * outer);
+          burst.stroke();
+        }
         const opacity = hit.addComponent(UIOpacity);
         opacity.opacity = 0;
         fighter.addChild(hit);
@@ -610,7 +648,7 @@ export class BattleFx {
     layer.addChild(root);
     rootOpacity.opacity = 0;
     motif.setScale(new Vec3(0.72, 0.72, 1));
-    return { root, motif, elapsed: 0, spec, dragon, dragonSprite, dragonFrames, dragonFrameIndex: -1, source, targets, impacts };
+    return { root, motif, elapsed: 0, spec, dragon, dragonSprite, dragonTrail, dragonTrailSprite, dragonFrames, dragonFrameIndex: -1, source, targets, impacts };
   }
 
   private static destroyUltimateScene() {
@@ -642,7 +680,8 @@ export class BattleFx {
     }
     f.elapsed += advance;
     const t = Math.min(1, f.elapsed / ULT_SCENE_LIFE);
-    const opacity = f.elapsed < 0.16 ? 205 * BattleFx.easeOutQuad(f.elapsed / 0.16)
+    const revealDuration = f.spec.heroId === 'guanyu' ? 0.075 : 0.16;
+    const opacity = f.elapsed < revealDuration ? 205 * BattleFx.easeOutQuad(f.elapsed / revealDuration)
       : f.elapsed < 0.57 ? 205 : 205 * (1 - BattleFx.easeInOutQuad((f.elapsed - 0.57) / (ULT_SCENE_LIFE - 0.57)));
     const rootOp = f.root.getComponent(UIOpacity);
     if (rootOp) rootOp.opacity = Math.max(0, Math.round(opacity));
@@ -655,28 +694,46 @@ export class BattleFx {
       const frameIndex = BattleFx.guanyuDragonFrame(f.elapsed, f.impacts);
       if (frameIndex !== f.dragonFrameIndex) {
         f.dragonSprite.spriteFrame = f.dragonFrames[frameIndex];
+        if (f.dragonTrailSprite) f.dragonTrailSprite.spriteFrame = f.dragonFrames[Math.max(0, frameIndex - 2)];
         f.dragonFrameIndex = frameIndex;
       }
       if (f.targets.length) {
         const firstHit = f.impacts.length ? f.impacts[0].at : 0.50;
-        const sourceLead = { x: f.source.x - f.spec.facing * 120, y: f.source.y };
+        const sourceLead = { x: f.source.x + f.spec.facing * 112, y: f.source.y + 36 };
         let legStart = sourceLead;
-        let legEnd = { x: f.targets[0].x - f.spec.facing * 120, y: f.targets[0].y };
-        let legAt = 0.12;
+        let legEnd = { x: f.targets[0].x - f.spec.facing * 150, y: f.targets[0].y + 28 };
+        let legAt = 0.10;
         let legDuration = Math.max(0.12, firstHit - legAt);
         for (let i = 1; i < f.targets.length; i++) {
           const previousHit = f.impacts[i - 1]?.at ?? firstHit + (i - 1) * 0.16;
           const nextHit = f.impacts[i]?.at ?? firstHit + i * 0.16;
           if (f.elapsed < previousHit + 0.08) break;
-          legStart = { x: f.targets[i - 1].x - f.spec.facing * 120, y: f.targets[i - 1].y };
-          legEnd = { x: f.targets[i].x - f.spec.facing * 120, y: f.targets[i].y };
+          legStart = { x: f.targets[i - 1].x - f.spec.facing * 150, y: f.targets[i - 1].y + 28 };
+          legEnd = { x: f.targets[i].x - f.spec.facing * 150, y: f.targets[i].y + 28 };
           legAt = previousHit + 0.08;
           legDuration = Math.max(0.04, nextHit - legAt);
         }
         const q = BattleFx.easeOutQuad(Math.max(0, Math.min(1, (f.elapsed - legAt) / legDuration)));
-        // A shallow, alternating arc makes the dragon visibly sweep through the enemy line.
-        const arc = Math.sin(q * Math.PI) * (f.spec.facing > 0 ? 34 : -34);
-        f.dragon.setPosition(new Vec3(legStart.x + (legEnd.x - legStart.x) * q, legStart.y + (legEnd.y - legStart.y) * q + arc, 0));
+        // Lift the charge through the battlefield so the dragon reads as a flying attack,
+        // rather than a flat ground-level texture sliding between unit anchors.
+        const arc = Math.sin(q * Math.PI) * 58;
+        const x = legStart.x + (legEnd.x - legStart.x) * q;
+        const y = legStart.y + (legEnd.y - legStart.y) * q + arc;
+        const dragonFadeAt = (f.impacts[f.impacts.length - 1]?.at ?? firstHit) + 0.12;
+        const dragonScale = f.elapsed < 0.10
+          ? 0.45 + 0.25 * BattleFx.easeOutQuad(f.elapsed / 0.10)
+          : f.elapsed < 0.28
+            ? 0.70 + 0.32 * BattleFx.easeOutQuad((f.elapsed - 0.10) / 0.18)
+            : f.elapsed < dragonFadeAt
+              ? 1.02
+              : 1.02 - 0.14 * Math.max(0, Math.min(1, (f.elapsed - dragonFadeAt) / Math.max(0.01, ULT_SCENE_LIFE - dragonFadeAt)));
+        f.dragon.setScale(new Vec3(f.spec.facing * dragonScale, dragonScale, 1));
+        f.dragon.setPosition(new Vec3(x, y, 0));
+        if (f.dragonTrail && f.dragonTrail.isValid) {
+          f.dragonTrail.setPosition(new Vec3(x - f.spec.facing * 48, y - 12, 0));
+          const trailOp = f.dragonTrail.getComponent(UIOpacity);
+          if (trailOp) trailOp.opacity = f.elapsed >= 0.20 && f.elapsed < (f.impacts[f.impacts.length - 1]?.at ?? firstHit) ? 82 : 0;
+        }
       }
       const dragonOp = f.dragon.getComponent(UIOpacity);
       const fadeAt = (f.impacts[f.impacts.length - 1]?.at ?? 0.50) + 0.12;
@@ -694,6 +751,7 @@ export class BattleFx {
       const q = Math.max(0, Math.min(1, p));
       const pulse = 0.45 + 1.05 * BattleFx.easeOutQuad(q);
       hit.node.setScale(new Vec3(pulse, pulse, 1));
+      hit.node.angle = (hit.uid.length % 2 === 0 ? 1 : -1) * q * 38;
       hit.opacity.opacity = p >= 0 && p < 1 ? Math.round(245 * (1 - q)) : 0;
     });
     if (f.elapsed >= ULT_SCENE_LIFE) BattleFx.destroyUltimateScene();
@@ -701,12 +759,12 @@ export class BattleFx {
 
   /** 16-frame sequence: gather 0–2, rush 3–9, impact 10–11, dissolve 12–15. */
   private static guanyuDragonFrame(elapsed: number, impacts: UltimateSceneImpact[]): number {
-    if (elapsed < 0.12) return Math.min(2, Math.floor(elapsed / 0.04));
+    if (elapsed < 0.10) return Math.min(2, Math.floor(elapsed / (0.10 / 3)));
     const firstHit = impacts[0]?.at ?? 0.50;
     const lastHit = impacts[impacts.length - 1]?.at ?? firstHit;
     const hit = impacts.find(item => elapsed >= item.at && elapsed < item.at + 0.12);
     if (hit) return 10 + Math.min(1, Math.floor((elapsed - hit.at) / 0.06));
-    if (elapsed < firstHit) return Math.min(9, 3 + Math.floor((elapsed - 0.12) / Math.max(0.01, firstHit - 0.12) * 7));
+    if (elapsed < firstHit) return Math.min(9, 3 + Math.floor((elapsed - 0.10) / Math.max(0.01, firstHit - 0.10) * 7));
     if (elapsed < lastHit) return 3 + (Math.floor(elapsed * 24) % 7);
     const dissolveAt = lastHit + 0.12;
     if (elapsed < dissolveAt) return 11;

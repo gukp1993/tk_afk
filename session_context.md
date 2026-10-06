@@ -17,6 +17,14 @@
 
 ## 最近交接（新 → 旧）
 
+### 关羽青龙大招画面精修 · Codex 主 agent · 已实施待验收
+
+时间：2026-10-06 13:34（Asia/Shanghai）；执行者：Codex 主 agent；状态：已实施待验收。
+
+- 用户反馈16帧首版太简单。本轮重生成原创4×4序列并替换同名资源，尺寸从160×128提高到200×160，16帧PNG合计164,715 bytes；动作轮廓更明确地从聚气、龙首破势、身体伸展冲锋、龙头撞击到玉金鳞光散去。`BattleFx`新增一层低透明度滞后帧拖影、轻化/隐藏关羽场景圆形符纹，并用只创建一次的Graphics环线和径向风刃增强目标命中；缩小聚气图、提前龙首显形与冲锋。数值和实际命中目标口径未变。
+- 独立代码复评关闭了帧不齐时大招空场、无目标静止播龙和FighterGlyph缺失导致无命中反馈等边界；时间过渡复评无问题。Web截图：[关羽青龙逐帧冲锋-390.png](docs/reviews/screenshots/关羽青龙逐帧冲锋-390.png)，实战诊断捕获 `ultimateHero=guanyu`、`ultimateTargets=2`、`ultimatePause=true`。
+- 验证：规则镜像、Creator TypeScript、smoke 650/0、diff检查、Web-mobile和微信小游戏构建通过；配置含16个帧键。微信主包4,095,692 bytes（3.906 MiB），距4 MiB余98,612 bytes。微信开发者工具/真机的艺术观感与FPS仍待设备验收。实施和验收口径更新在 `docs/plans/战斗特效样板升级.md`。
+
 ### 关羽青龙 16 帧冲锋动画接入 · Codex 主 agent · 已实施待验收
 
 时间：2026-10-06 13:02（Asia/Shanghai）；执行者：Codex 主 agent；状态：已实施待验收。
