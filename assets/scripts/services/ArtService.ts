@@ -5,7 +5,8 @@ import { Node, SpriteFrame, assetManager, resources } from 'cc';
  * 约定：**文件名（不含扩展名）即 key**，两处目录：
  *   assets/art-heroes/<将id>.png  — 武将立绘，配置为微信小游戏分包（不占主包 4MB 限额），
  *                                    启动后异步 loadBundle 预载，未载完页面上先显示占位；
- *   assets/resources/art/icons/<key>.png — 界面图标（seal/指定 artKey 处套用），随主包。
+ *   assets/resources/art/icons/<key>.png — 界面图标（seal/指定 artKey 处套用），随主包；
+ *   assets/resources/art/fx/<key>.png — 战斗视觉特效贴图，随主包由同一 art 资源目录预载。
  *   assets/resources/art/ui/ui_<key>.png — 通用按钮/面板/题字，随主包，边框使用九宫格。
  * 页面绘制时同步查表——有图用图，无图回退原占位绘制；美术按 docs/美术资源接入指南.md 逐张交付。
  */

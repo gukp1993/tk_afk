@@ -1,6 +1,7 @@
-import { Color, Graphics, Label, LabelOutline, Node, UIOpacity, UITransform, Vec3, view } from 'cc';
+import { Color, Graphics, Label, LabelOutline, Node, Sprite, UIOpacity, UITransform, Vec3, view } from 'cc';
 import { CocosUi, hexColor } from '../ui/CocosUi';
 import * as heroData from '../domain/heroes';
+import { ArtService } from './ArtService';
 
 /**
  * A0~A5 战斗表现层管线（三线打磨 A 线，纯表现层、零规则改动）：
@@ -93,7 +94,7 @@ const REVIVE_DUR = 0.6;           // A3 复活回升：opacity→255 + 回升 + 
 const DMG_POP = 0.18;             // A5 暴击弹跳：首帧 scale 1.6→1（0.18s easeOut），普通字不变
 const DMG_POP_FROM = 1.6;         // A5 暴击弹跳起始缩放（规格字面）
 const MAX_DRIVEN = 12;            // 驱动型 fx（三类动效 + A3 淡出/复活按 kind 各自计）同类并存上限（场上单位 ≤11 含援军，足额）
-// 原生技能光效：最多 4 大招、8 普攻，每序列最多 11 节点（含根），只在生成时绘制 Graphics。
+// 原生技能光效：最多 4 大招、8 普攻，每序列最多 11 节点（含根）；优先复用 Sprite 贴图，缺图时生成 Graphics 回退。
 const MAX_SKILL_FX = 4;
 const MAX_ATTACK_FX = 8;
 const SKILL_CHARGE = 0.20;
@@ -273,6 +274,8 @@ export class BattleFx {
             BattleFx.spawnShake(ui, ev, indexByUid);
           }
         } else if (ev.e === 'heal') {
+          // HOT 每秒逐跳不重复喷光；实际治疗在受疗者脚下扩散玉色绽光。
+          if (!ev.fxHot) BattleFx.spawnLight(layer, ui, indexByUid, snapshot, ev.uid, [ev.uid], false, 'mend');
           if (castLight) {
             BattleFx.queueNumber(castLight, layer, ui, ev, indexByUid);
           } else BattleFx.spawnDmgNum(layer, ui, ev, indexByUid);
@@ -299,7 +302,8 @@ export class BattleFx {
           BattleFx.spawnLunge(ui, ev, indexByUid, snapshot);
         } else if (ev.e === 'death') {
           BattleFx.cancelUltimateScene(ev.uid);
-          BattleFx.cancelPendingNumbers(ev.uid);
+          // 击杀目标仍要播完已排队的命中数字；若死者是施法者，则取消其未完成数字。
+          BattleFx.cancelPendingNumbers(ev.uid, false);
           BattleFx.cancelCharge(ev.uid);
           BattleFx.spawnDeathFade(ui, indexByUid, ev.uid);
         }
@@ -528,8 +532,20 @@ export class BattleFx {
 
     const motif = new Node('SceneMotif_' + theme.motif);
     motif.addComponent(UITransform).setContentSize(680, 900);
-    const mg = motif.addComponent(Graphics);
-    BattleFx.drawUltimateMotif(mg, theme.motif, theme.primary, theme.accent);
+    const motifFrame = spec.heroId === 'guanyu' ? ArtService.frame('fx_guanyu_ult') : null;
+    if (motifFrame) {
+      const art = new Node('SceneDragonArt');
+      art.addComponent(UITransform).setContentSize(600, 900);
+      const sprite = art.addComponent(Sprite);
+      sprite.spriteFrame = motifFrame;
+      sprite.sizeMode = Sprite.SizeMode.CUSTOM;
+      sprite.trim = false;
+      art.getComponent(UITransform)!.setContentSize(600, 900);
+      motif.addChild(art);
+    } else {
+      const mg = motif.addComponent(Graphics);
+      BattleFx.drawUltimateMotif(mg, theme.motif, theme.primary, theme.accent);
+    }
     root.addChild(motif);
 
     layer.addChild(root);
@@ -685,11 +701,20 @@ export class BattleFx {
     return node && node.isValid && isFinite(node.position.x) && isFinite(node.position.y) ? node : null;
   }
 
-  private static makeLightPart(root: Node, name: string, draw: (g: Graphics) => void): LightPart {
+  private static makeLightPart(root: Node, name: string, draw: (g: Graphics) => void,
+    spriteKey?: string, width = 120, height = 120): LightPart {
     const node = new Node(name);
-    node.addComponent(UITransform).setContentSize(120, 120);
-    const g = node.addComponent(Graphics);
-    draw(g);
+    node.addComponent(UITransform).setContentSize(width, height);
+    const frame = spriteKey ? ArtService.frame(spriteKey) : null;
+    if (frame) {
+      const sprite = node.addComponent(Sprite);
+      sprite.spriteFrame = frame;
+      sprite.sizeMode = Sprite.SizeMode.CUSTOM;
+      sprite.trim = false;
+      node.getComponent(UITransform)!.setContentSize(width, height);
+    } else {
+      draw(node.addComponent(Graphics));
+    }
     const op = node.addComponent(UIOpacity);
     root.addChild(node);
     node.active = false;
@@ -854,7 +879,7 @@ export class BattleFx {
   }
 
   private static spawnLight(layer: Node, ui: CocosUi, indexByUid: Map<string, number>, snapshot: any[],
-    uid: string, targetUids: string[], ultimate: boolean): SkillLight | null {
+    uid: string, targetUids: string[], ultimate: boolean, styleOverride?: SkillStyle): SkillLight | null {
     const source = BattleFx.lightAnchor(ui, indexByUid, uid);
     if (!source) return null;
     // 不叠加同一施法者的同类序列；大招接管自己的短普攻，避免轮廓噪声。
@@ -870,7 +895,7 @@ export class BattleFx {
       .map(t => BattleFx.lightAnchor(ui, indexByUid, t)).filter((n): n is Node => !!n);
     if (!targetNodes.length) return null;
     const unit = snapshot[indexByUid.get(uid)!];
-    const style = BattleFx.skillStyle(unit && unit.cls);
+    const style = styleOverride || BattleFx.skillStyle(unit && unit.cls);
     const color = BattleFx.lightColor(unit && unit.faction, style);
     const root = new Node(ultimate ? 'BfxSkill_' + style : 'BfxAttack_' + style);
     root.addComponent(UITransform).setContentSize(720, 1280);
@@ -878,8 +903,12 @@ export class BattleFx {
     const charge = ultimate ? BattleFx.makeLightPart(root, 'BfxCharge', g => BattleFx.drawCharge(g, style, color)) : null;
     const targets = targetNodes.map(anchor => ({
       anchor,
-      release: BattleFx.makeLightPart(root, 'BfxRelease', g => BattleFx.drawRelease(g, style, color, ultimate)),
-      impact: BattleFx.makeLightPart(root, 'BfxImpact', g => BattleFx.drawImpact(g, style, color, ultimate)),
+      release: BattleFx.makeLightPart(root, 'BfxRelease', g => BattleFx.drawRelease(g, style, color, ultimate),
+        style === 'melee' ? 'fx_slash' : style === 'ranged' ? 'fx_projectile' : undefined,
+        style === 'ranged' ? 196 : 154, style === 'ranged' ? 58 : 126),
+      impact: BattleFx.makeLightPart(root, 'BfxImpact', g => BattleFx.drawImpact(g, style, color, ultimate),
+        style === 'melee' || style === 'ranged' ? 'fx_impact' : style === 'mend' ? 'fx_mend' : undefined,
+        style === 'mend' ? 142 : 124, style === 'mend' ? 142 : 124),
       spark: ultimate ? BattleFx.makeLightPart(root, 'BfxSparks', g => {
         g.fillColor = color;
         BattleFx.star(g, -22, 5, 4); BattleFx.star(g, 19, 12, 3);
@@ -903,8 +932,9 @@ export class BattleFx {
       recipient, layer, ui, indexByUid });
   }
 
-  private static cancelPendingNumbers(uid: string) {
-    BattleFx.pendingNumbers = BattleFx.pendingNumbers.filter(n => n.ev.uid !== uid && n.light.uid !== uid);
+  private static cancelPendingNumbers(uid: string, cancelRecipient = true) {
+    BattleFx.pendingNumbers = BattleFx.pendingNumbers.filter(n => n.light.uid !== uid
+      && (!cancelRecipient || n.ev.uid !== uid));
   }
 
   private static tickPendingNumbers(advance: number) {
