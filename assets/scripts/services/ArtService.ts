@@ -102,6 +102,11 @@ export const ArtService = {
       bundle.load('battles/bg_main/spriteFrame', SpriteFrame, (battleErr, battleFrame) => {
         if (!battleErr && battleFrame) this.collect([battleFrame]);
       });
+      // The first ultimate should never reveal an empty portrait while an async request is in flight.
+      // Keep this one high-impact cut-in decoded alongside the battle arena from the hero bundle.
+      bundle.load('guanyu_ult_cutin/spriteFrame', SpriteFrame, (cutinErr, cutinFrame) => {
+        if (!cutinErr && cutinFrame) this.collect([cutinFrame]);
+      });
       // Portraits load by visible hero id to avoid decoding the entire subpackage into memory.
     });
   }

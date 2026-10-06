@@ -17,6 +17,16 @@
 
 ## 最近交接（新 → 旧）
 
+### 关羽单角色必杀技近景演出 · Codex 主 agent · 已实施待验收
+
+时间：2026-10-06 16:33（Asia/Shanghai）；执行者：Codex 主 agent；状态：已实施待验收。
+
+- 用户要求先完成关羽个人大招。本轮在既有短暂停战、青龙16帧冲锋及真实受击目标反馈上，增加专属近景冲锋立绘、上方「青龙偃月斩」题名牌、玉金斩光；演出顺序为战场压暗→关羽近景切入/题名入场→青龙沿本次 cast 的目标冲锋→目标爆闪与受击回震→清场续战。未做组合技、未改伤害/规则/存档。
+- ImageGen 原创关羽近景资产 `assets/art-heroes/guanyu_ult_cutin.png`（816×1088，约668KB），ArtService 启动时随 `art-heroes` 分包预载，技能首次触发不等异步请求。临时 390×844 手机截图已归档：[关羽必杀演出](docs/reviews/screenshots/关羽必杀演出-390.png)。
+- Web 实战诊断：施放期间 `ultimateHero=guanyu`、`ultimateTargets=2`、`ultimatePause=true`；动画结束后 `ultimateScenes=0`、`ultimatePause=false` 并进入正常结算，页面错误 0。另检查题名牌不遮右上敌军标签。截图是触发中帧，不是设备录屏。
+- 验证：规则镜像检查、Creator 内置 TypeScript、smoke 650/0、Cocos Web Mobile 与微信小游戏构建均通过；构建配置把新 SpriteFrame `guanyu_ult_cutin` 放在 art-heroes 分包。微信开发者工具与真机帧率/音效/手感仍待验收。
+- 下一步：用户验收关羽大招观感，再决定是否给其余 SSR 各自制作单人技能演出。
+
 ### 单角色必杀特效视频实播复核 · Codex 主 agent · 已确认决定
 
 时间：2026-10-06 13:53（Asia/Shanghai）；执行者：Codex 主 agent；状态：已确认决定。
