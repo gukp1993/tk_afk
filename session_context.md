@@ -17,6 +17,13 @@
 
 ## 最近交接（新 → 旧）
 
+### 关羽青龙冲锋动画工具调研 · Codex 主 agent · 无变更
+
+时间：2026-10-06 12:24（Asia/Shanghai）；执行者：Codex 主 agent；状态：无变更。
+
+- 用户指出当前青龙大招效果质感不足并要求调研工具/资源方案。本轮确认现有 `fx_guanyu_ult.png` 是 448×672 单张透明静帧；工程已启用 Cocos 3.8 的 Spine 3.8、DragonBones 与 Particle System 2D 模块，但没有随引擎附带可直接套用的关羽龙动画。Cocos Animation Clip 能播 sprite frames；复杂形变建议 Spine/DragonBones，素材与动作仍需自制或合法采购。
+- 建议评估 Spine/DragonBones 骨骼青龙主动画 + Cocos 2D 轨迹/粒子尾焰 + 命中震屏/受击反馈；技术依据与版权/授权边界待讨论，未改代码、资源或产品基线。来源见对话中的 Cocos Creator 3.8 与 Spine 文档链接。
+
 ### SSR 大招停战与关羽命中动效 · Codex 主 agent · 已实施待验收
 
 时间：2026-10-06 12:18（Asia/Shanghai）；执行者：Codex 主 agent；状态：已实施待验收。
