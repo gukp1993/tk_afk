@@ -626,6 +626,21 @@ check('重复挑战不再发奖', hs1s.ok && hs1s.reward.hallReward.firstKill ==
 s4b.hall.honor = 99;
 const ht = store4b.winHall(1, stages.hallWeeklyLineups(F.isoWeekKey())[1], 1);
 check('荣耀过 100 自动授称号', ht.honor > 0 && s4b.hall.titlesClaimed.indexOf('常胜将军') >= 0 && (s4b.titles || []).indexOf('常胜将军') >= 0);
+// 名将挑战评级（第三轮 P4）：名人堂胜局记最佳评级（S>A>B 只升不降），纯展示不发奖
+{
+  const hKey0 = s4b.week.weekId + ':' + hf.lineup.id;
+  check('P4.1 名人堂 40s 零阵亡首杀记评级 S', s4b.hall.rating[hKey0] === 'S' && store4b.hallInfo().seats[0].rating === 'S');
+  const hLineup1 = stages.hallWeeklyLineups(F.isoWeekKey())[1];
+  const hKey1 = s4b.week.weekId + ':' + hLineup1.id;
+  store4b.winHall(1, hLineup1, 1, null, 'B');
+  check('P4.2 winHall 记入 B', s4b.hall.rating[hKey1] === 'B');
+  store4b.winHall(1, hLineup1, 2, null, 'A');
+  check('P4.3 评级只升不降 B→A', s4b.hall.rating[hKey1] === 'A');
+  store4b.winHall(1, hLineup1, 2, null, 'B');
+  check('P4.4 低评级不覆盖已有 A', s4b.hall.rating[hKey1] === 'A');
+  store4b.winHall(1, hLineup1, 3);
+  check('P4.5 缺评级入参不动已有记录', s4b.hall.rating[hKey1] === 'A');
+}
 // 回放决定论
 // 波次 5：觉醒（满 5★ SSR 长线，荣耀+碎片门控）
 store4b.grantCard('zhaoyun');
@@ -968,6 +983,7 @@ storage._map.set(SAVE_KEY, JSON.parse(JSON.stringify(v6Save)));
 const store6 = freshStore(); store6.load();
 s = store6.getState();
 check('旧档升到 v7', s.v === 7);
+check('P4 旧档无 hall.rating 字段回填空表', !!s.hall.rating && typeof s.hall.rating === 'object' && Object.keys(s.hall.rating).length === 0);
 check('补发 5 个新增里程碑', Array.isArray(s.campaign.retroGrants) && s.campaign.retroGrants.length === 5);
 check('补发 2 张 SSR 券', s.vouchers.ssr === 2);
 check('补发 2 只 SSR 箱', s.armory.boxes[3] === 2);
@@ -2387,6 +2403,25 @@ function makeRunner(unread, cfg) {
   check('Z2.6b 120 将 quote 全覆盖', H.HEROES.every(h => typeof h.quote === 'string' && h.quote.length > 0));
   const q6 = P.battleResultQuote({ dialogue: st10.story.stage.dialogue.map(l => ({ who: H.getHero(l.who).name, text: l.text })), team: [], battleIndex: 10, day: 1 });
   check('Z2.6c 首通对白链路出句', q6 && q6.source === 'dialogue' && q6.text === lastLine.text);
+}
+
+{ // Z4 名将挑战评级（第三轮 P4）：纯展示不发奖不改评星，S/A/B 口径与阈值旋钮
+  const P = require('../utils/progression');
+  head('Z4 名将挑战评级');
+  check('Z4.1 限时内零阵亡=S（含 60s 边界）', P.challengeRating(45, 0) === 'S' && P.challengeRating(60, 0) === 'S');
+  check('Z4.2 零阵亡超时=A', P.challengeRating(61, 0) === 'A' && P.challengeRating(90, 0) === 'A');
+  check('Z4.3 限时内有阵亡=A', P.challengeRating(45, 1) === 'A' && P.challengeRating(60, 2) === 'A');
+  check('Z4.4 超时且有阵亡=B', P.challengeRating(61, 1) === 'B' && P.challengeRating(90, 5) === 'B');
+  check('Z4.5 缺省/异常输入不抛错且归 S', P.challengeRating(undefined, undefined) === 'S'
+    && P.challengeRating(-5, -1) === 'S' && P.challengeRating('x', 'y') === 'S');
+  check('Z4.6 评级阈值旋钮锚定', !!C.CHALLENGE_RATING && C.CHALLENGE_RATING.S.maxTime === 60
+    && C.CHALLENGE_RATING.S.maxDeaths === 0 && C.CHALLENGE_RATING.A.maxTime === 60);
+  check('Z4.7 评级不影响奖励（同局 S/B 两评奖赏一致）', (() => {
+    const l2 = stages.hallWeeklyLineups(F.isoWeekKey())[2];
+    const a = store4b.winHall(2, l2, 2, null, 'S');
+    const b = store4b.winHall(2, l2, 2, null, 'B');
+    return a.honor === b.honor && a.gem === b.gem && a.shard === b.shard && a.token === b.token;
+  })());
 }
 
 { // Z3 剧情推图衔接批次四+五：bossIntro 全量上线 / 章节过场触发 / 已读语义回归

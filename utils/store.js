@@ -67,7 +67,7 @@ function defaultState() {
     achv: { claimed: {} },
     seals: 0,
     week: null,
-    hall: { kills: {}, stars: {}, threeClaimed: {}, weeklyClearWeek: '', honor: 0, titlesClaimed: [], killsTotal: 0 },
+    hall: { kills: {}, stars: {}, rating: {}, threeClaimed: {}, weeklyClearWeek: '', honor: 0, titlesClaimed: [], killsTotal: 0 },
     replays: [],
     formationPresets: {},
     lastSeenTs: Date.now()
@@ -334,7 +334,7 @@ function checkWeeklyReset(today) {
     seasonBought: {}
   };
   // 修剪旧周名人堂键（防存档无限增长）
-  ['kills', 'stars', 'threeClaimed'].forEach(f => {
+  ['kills', 'stars', 'rating', 'threeClaimed'].forEach(f => {
     if (state.hall && state.hall[f]) Object.keys(state.hall[f]).forEach(k => { if (k.indexOf(weekKey) !== 0) delete state.hall[f][k]; });
   });
   if (state.formationPresets) {
@@ -533,7 +533,9 @@ function beginHall(seat) {
   if (!lineup) return { ok: false, msg: '该席不存在' };
   return { ok: true, lineup, seat };
 }
-function winHall(seat, lineup, stars, hallWeek) {
+// 名将挑战评级最佳值排序（第三轮 P4，纯展示不发奖）：S > A > B
+const RATING_RANK = { B: 1, A: 2, S: 3 };
+function winHall(seat, lineup, stars, hallWeek, rating) {
   const w = state.week;
   // 跨周边界：开战在上周、结算已换周 → 不发奖不记首杀（极低频，防预支新周奖励与脏键）
   if (hallWeek && hallWeek !== w.weekId) {
@@ -562,6 +564,8 @@ function winHall(seat, lineup, stars, hallWeek) {
     reward.shard += C.HALL.firstThreeStar.shard;
   }
   state.hall.stars[key] = Math.max(state.hall.stars[key] || 0, stars);
+  // 最佳评级只升不降（第三轮 P4）：S>A>B；rating 缺省（旧调用方）不改动已有记录
+  if (rating && (RATING_RANK[rating] || 0) > (RATING_RANK[state.hall.rating[key]] || 0)) state.hall.rating[key] = rating;
   // 周全胜：本周三席全胜（每周一次）
   const lineups = require('./stages').hallWeeklyLineups(w.weekId);
   const allKilled = lineups.every(l => state.hall.kills[w.weekId + ':' + l.id]);
@@ -597,7 +601,7 @@ function hallInfo() {
     const key = state.week.weekId + ':' + l.id;
     return { seat, id: l.id, name: l.name, faction: l.faction, members: l.members,
       trait: l.trait ? traitDesc(l.trait) : '',
-      killed: !!state.hall.kills[key], stars: state.hall.stars[key] || 0 };
+      killed: !!state.hall.kills[key], stars: state.hall.stars[key] || 0, rating: state.hall.rating[key] || '' };
   });
   const allKilled = seats.every(x => x.killed);
   return { seats, honor: state.hall.honor || 0, weeklyClear: state.week.weeklyClearWeek === state.week.weekId,
@@ -1347,6 +1351,7 @@ function normalizeState(s) {
   if (typeof s.hall.honor !== 'number') s.hall.honor = 0;
   if (typeof s.hall.killsTotal !== 'number') s.hall.killsTotal = 0;
   s.hall.kills = s.hall.kills || {}; s.hall.stars = s.hall.stars || {}; s.hall.threeClaimed = s.hall.threeClaimed || {};
+  s.hall.rating = s.hall.rating || {}; // 名将挑战评级（第三轮 P4，纯展示）：旧档缺字段给空表
   s.hall.titlesClaimed = s.hall.titlesClaimed || [];
   if (!Array.isArray(s.replays)) s.replays = [];
   s.replays = s.replays.slice(-((C.REPLAYS && C.REPLAYS.max) || 20));
@@ -3089,7 +3094,13 @@ function settleBattle(battleId, outcome) {
         const st = require('./stages');
         const stars = st.hallStars(win, outcome.duration || 0, Number(outcome.aliveCount) || 0);
         reward.stars = stars;
-        reward.hallReward = winHall(pending.index, pending.hallLineup || null, stars, pending.hallWeek);
+        // 名将挑战评级（第三轮 P4，纯展示）：deaths 优先取客户端终局快照口径，缺省按 5 席折算
+        const deaths = outcome.deaths != null
+          ? Math.max(0, Math.floor(Number(outcome.deaths) || 0))
+          : Math.max(0, 5 - (Number(outcome.aliveCount) || 0));
+        const rating = require('./progression').challengeRating(outcome.duration || 0, deaths);
+        reward.rating = rating;
+        reward.hallReward = winHall(pending.index, pending.hallLineup || null, stars, pending.hallWeek, rating);
       }
     } else if (pending.mode === 'weekboss') {
       // 伤害百分比结算：Boss 掉血/MaxHp；statistics 由 finishBattle 透传 stats

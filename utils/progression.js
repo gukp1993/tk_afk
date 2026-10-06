@@ -296,4 +296,16 @@ function battleResultQuote(input) {
   return { who: pick.name, text: pick.quote, source: 'quote' };
 }
 
-module.exports = { getNextGoal, getArmoryRecommendations, buildDailyBriefing, buildWeeklyBriefing, buildDefeatPrescriptions, battleResultQuote };
+// 名将挑战评级（第三轮 P4）：纯派生展示函数，不发奖、不改评星。
+// 口径（config.CHALLENGE_RATING 旋钮）：S=限时内胜且零阵亡；A=限时内胜或零阵亡；B=其余胜局。
+// 只对胜局调用；败北无评级（调用方 gating），时长/阵亡为 0 或缺省按 0 处理（跳过快胜同样参与评级）。
+function challengeRating(duration, deaths) {
+  const cr = C.CHALLENGE_RATING || { S: { maxTime: 60, maxDeaths: 0 }, A: { maxTime: 60 } };
+  const t = Math.max(0, Number(duration) || 0);
+  const d = Math.max(0, Math.floor(Number(deaths) || 0));
+  if (t <= ((cr.S && cr.S.maxTime) || 60) && d <= ((cr.S && cr.S.maxDeaths) || 0)) return 'S';
+  if (t <= ((cr.A && cr.A.maxTime) || 60) || d === 0) return 'A';
+  return 'B';
+}
+
+module.exports = { getNextGoal, getArmoryRecommendations, buildDailyBriefing, buildWeeklyBriefing, buildDefeatPrescriptions, battleResultQuote, challengeRating };

@@ -1,4 +1,4 @@
-import { Color, Component, Graphics, Label, Node, view } from 'cc';
+import { Color, Component, Graphics, Label, Node, UIOpacity, UITransform, view } from 'cc';
 import { palette, hexColor as tone } from '../ui/CocosUi';
 import { Page, ScreenContext } from './ScreenContext';
 import * as store from '../domain/store';
@@ -18,6 +18,7 @@ const INK = tone('#3d4337'), PAPER = tone('#eee3bf'), GOLD = tone('#edcf88'), LI
 let chapterMapOpen=false;
 let chapterMapCh=-1; // 地图浏览章（-1=当前章）
 let formationRecommended: Array<string|null>|null=null;
+let idleChestOpen=false; // P3 挂机宝箱：主城开箱小层（≥1h 宝箱态专用；轻决策层，遮罩可关）
 
 function campaignHeader(ctx: ScreenContext, chapter: any, stage: number) {
   const U=ctx.ui,s=store.getState(),level=store.playerLevel(),need=store.playerXpNeeded(level);
@@ -284,6 +285,44 @@ export function stagePreview(ctx: ScreenContext) {
   U.tap('StageCloseTap',302,345,44,44,()=>ctx.back('campaign'));
 }
 
+/** 挂机宝箱动画（第三轮 P3 仪式感批）：开箱四资源数字滚动（easeOut 约 0.9s）与按钮描金脉冲呼吸。
+ *  挂在面板节点上随引擎每帧驱动（帧率无关）；随节点销毁自动清理，无遗留计时器（同 StoryTyper 约定）。 */
+class ChestFx extends Component {
+  private rollElapsed = 0;
+  private rollDone = false;
+  private pulseT = Math.PI / 2; // 从最亮处起振，实拍首帧即可见描金圈
+  private ring: Node | null = null;
+  private rows: Array<{ label: Label | null; to: number }> = [];
+  static attachRoll(node: Node, rows: Array<{ label: Label | null; to: number }>) {
+    const fx = node.addComponent(ChestFx);
+    fx.rows = rows;
+    return fx;
+  }
+  static attachPulse(node: Node, ring: Node) {
+    const fx = node.addComponent(ChestFx);
+    fx.ring = ring;
+    return fx;
+  }
+  update(dt: number) {
+    if (!this.isValid) return;
+    if (!this.rollDone) {
+      this.rollElapsed += dt;
+      const t = Math.min(1, this.rollElapsed / 0.9);
+      const k = 1 - (1 - t) * (1 - t);
+      this.rows.forEach(r => { if (r.label && r.label.isValid) r.label.string = fmt.fmtNum(Math.round(r.to * k)); });
+      if (t >= 1) this.rollDone = true;
+    }
+    if (this.ring) {
+      this.pulseT += dt;
+      const op = this.ring.getComponent(UIOpacity);
+      if (op) {
+        const wave = (Math.sin(this.pulseT * Math.PI * 2 / 1.2) + 1) / 2;
+        op.opacity = Math.round(90 + 150 * wave);
+      }
+    }
+  }
+}
+
 export function home(ctx: ScreenContext) {
     const s = store.getState(),U=ctx.ui,stage=s.campaign.cleared+1,chapter=stages.chapterOf(stage);
     cityMap(U);
@@ -342,9 +381,29 @@ export function home(ctx: ScreenContext) {
     const idle=store.idlePending(),mins=Math.floor(idle.hours*60);
     U.text('CityIdleTitle','挂机宝箱',-256,-493,165,18,INK);
     U.text('CityIdleTime',`已积累 ${Math.floor(mins/60)}时${mins%60}分`,-248,-518,200,15,tone('#766a51'));
-    U.panel('CityIdleClaim',62,-505,228,52,palette.gold,7);
-    U.text('CityIdleClaimText',idle.gold||idle.iron?'一键收获':'积累中',62,-505,210,19,INK);
-    U.tap('CityIdleClaimTap',62,-505,228,52,()=>ctx.tell(store.claimFreeRewards(),'挂机收益已领取'));
+    // P3 挂机宝箱仪式（第三轮）：离线 ≥1h 切宝箱态（描金脉冲+离线时长小字），点击弹开箱层；
+    // <1h 保持原按钮直领不变。结算仍全部走 claimIdle / claimFreeRewards，零数值变化。
+    const chestMode=idle.hours>=1&&!!(idle.gold||idle.iron);
+    if(chestMode){
+      U.panel('CityIdleClaim',62,-505,228,52,tone('#4a3418'),7,GOLD);
+      U.text('CityIdleClaimText','开启宝箱',62,-493,210,20,GOLD);
+      U.text('CityIdleChestSub',`离线 ${Math.floor(mins/60)}时${mins%60}分`,62,-518,210,13,tone('#d9bd7b'));
+      U.tap('CityIdleClaimTap',62,-505,228,52,()=>{idleChestOpen=true;ctx.show('home');});
+      const claimNode=U.node('CityIdleClaim');
+      if(claimNode){
+        const ring=new Node('CityIdleChestRing');
+        ring.addComponent(UITransform).setContentSize(236,62);
+        const rg=ring.addComponent(Graphics);
+        rg.strokeColor=GOLD;rg.lineWidth=2.5;rg.roundRect(-118,-31,236,62,11);rg.stroke();
+        ring.addComponent(UIOpacity);
+        claimNode.addChild(ring);
+        ChestFx.attachPulse(claimNode,ring);
+      }
+    } else {
+      U.panel('CityIdleClaim',62,-505,228,52,palette.gold,7);
+      U.text('CityIdleClaimText',idle.gold||idle.iron?'一键收获':'积累中',62,-505,210,19,INK);
+      U.tap('CityIdleClaimTap',62,-505,228,52,()=>ctx.tell(store.claimFreeRewards(),'挂机收益已领取'));
+    }
     U.panel('CityIdleMore',277,-505,145,52,tone('#3a291a'),7,GOLD);
     U.text('CityIdleMoreText','双倍 / 快收',277,-505,137,16,LIGHT);
     U.tap('CityIdleMoreTap',277,-505,145,52,()=>ctx.idleClaimChoice());
@@ -363,6 +422,46 @@ export function home(ctx: ScreenContext) {
       U.text('CityResLabel'+key,label,x+18,531,105,13,tone('#766a51'));
       U.text('CityResValue'+key,fmt.fmtNum(value),x+18,513,105,18,INK);
     });
+    // P3 挂机宝箱开箱小层：四资源逐项数字滚动 + 元宝额度行 + 双倍领取广告按钮（自 idleClaimChoice 原样搬运）。
+    // 结算只走现有 claimIdle(false) 与 claimIdleInternal(true)，零数值变化；点击遮罩可关（轻决策类）；
+    // 面板底缘 -295，留足导航条 -548 红线上方空间，层内行距互不叠压。
+    if(idleChestOpen){
+      const pend=store.idlePending(),pmins=Math.floor(pend.hours*60);
+      const loot: Array<[string,string,number,string]>=[
+        ['铜钱','gold',pend.gold,'钱'],['精铁','iron',pend.iron,'铁'],['元宝','gem',pend.gem.claimable,'宝'],['招募令','scroll',pend.scroll,'令'],
+      ];
+      if(!loot.some(entry=>entry[2]>0))idleChestOpen=false; // 空箱不弹层（回落直领态提示）
+      else{
+        U.rect('ChestShade',0,0,720,1280,new Color(12,10,8,190));
+        U.tap('ChestShadeTap',0,0,720,1280,()=>{idleChestOpen=false;ctx.show('home');});
+        U.panel('ChestPanel',0,-25,658,540,tone('#251b14'),14,GOLD);
+        U.tap('ChestPanelBlock',0,-25,658,540,()=>{});
+        U.text('ChestTitle','挂 机 宝 箱',0,208,440,30,GOLD);
+        U.text('ChestSub',`已积累 ${Math.floor(pmins/60)}时${pmins%60}分`,0,174,560,17,tone('#ad9977'));
+        const rollRows: Array<{label:Label|null;to:number}>=[];
+        loot.forEach(([label,key,val,glyph],i)=>{
+          const y=122-i*58;
+          U.panel('ChestRow'+i,0,y,600,52,tone('#30251b'),7,tone('#5a452a'));
+          U.seal('ChestRowIcon'+i,-238,y,38,glyph,tone('#443421'),GOLD,GOLD,17,key);
+          U.text('ChestRowName'+i,label,-146,y,160,20,LIGHT);
+          const valNode=U.text('ChestRowVal'+i,'0',186,y,240,24,GOLD);
+          rollRows.push({label:valNode.getComponent(Label),to:val});
+        });
+        U.text('ChestGemLine',`今日元宝额度 ${pend.gem.claimedGem}/${pend.gem.cap} · 待领 ${fmt.fmtNum(pend.gem.pending)} · 00:00 重置`,0,-104,600,16,tone('#c9b489'));
+        U.button('ChestClaim','一键收获',-155,-170,290,60,()=>{
+          idleChestOpen=false;
+          const r=store.claimIdle(false);
+          ctx.tell(r,`获得铜钱 ${fmt.fmtNum(r.gold)}${r.gem?` · 元宝 ${fmt.fmtNum(r.gem)}`:''} · 精铁 ${r.iron}`);
+        },palette.green);
+        U.button('ChestClaim2x','双倍 · 看模拟广告',155,-170,290,60,()=>{
+          idleChestOpen=false;
+          ctx.playAd('idle2x',()=>store.claimIdleInternal(true),'双倍领取挂机收益');
+        },palette.gold);
+        U.text('ChestNote','双倍只加倍铜钱，不倍增元宝',0,-234,560,15,tone('#a99778'));
+        const panelNode=U.node('ChestPanel');
+        if(panelNode)ChestFx.attachRoll(panelNode,rollRows);
+      }
+    }
   }
 
 export function journey(ctx: ScreenContext) {
@@ -1278,7 +1377,8 @@ export function hallView(ctx: ScreenContext) {
     U.text('HallSeatMembers'+i,names,-170,y-10,420,16,LIGHT);
     if(x.trait)U.text('HallSeatTrait'+i,'主将特质：'+x.trait,-170,y-34,420,14,tone('#d9b06a'));
     if(x.killed){
-      U.text('HallState'+i,`已胜 ★${x.stars} · 重复挑战可刷评星`,180,y+24,340,17,tone('#6f8a5f'));
+      // P4 最佳评级（第三轮）：只升不降（S>A>B）；旧档无评级记录保持原文案
+      U.text('HallState'+i,x.rating?`已胜 ★${x.stars} · 最佳 ${x.rating}`:`已胜 ★${x.stars} · 重复挑战可刷评星`,180,y+24,340,17,tone('#6f8a5f'));
     } else {
       U.button('HallFight'+i,'挑 战',230,y+14,170,52,()=>ctx.startBattle('hall',x.seat),palette.red);
     }

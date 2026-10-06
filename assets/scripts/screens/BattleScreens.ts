@@ -155,6 +155,11 @@ function defeatDiag(ctx: ScreenContext, r: any, brief=false): string {
   return `我方被击败 · ${top.name}仍剩 ${topPct}% 血 · 试试克制阵营或调整布阵`;
 }
 
+// P4 挑战评级：我方阵亡数取终局快照（含借义从 6 席口径准确）；仅胜局调用，败北/回放由调用方 gating
+function battleDeaths(ctx: ScreenContext): number {
+  return (ctx.lastBattleSnapshot||[]).filter((u:any)=>u.side==='A'&&!u.alive).length;
+}
+
 export function resultView(ctx: ScreenContext) {
   const r=ctx.outcome,U=ctx.ui;
   drawField(U,ctx,ctx.lastBattleSnapshot||[]);
@@ -204,7 +209,7 @@ export function resultView(ctx: ScreenContext) {
       if(hr.firstKill)parts.push('首杀荣耀 +'+(hr.firstKillHonor||0));
       if(hr.firstThreeStar)parts.push('三星评价 +'+(hr.threeStarHonor||0)+' 荣耀 · 碎片 +'+(hr.shard||0));
       if(hr.weeklyClear)parts.push('周全胜！演武令 +'+hr.token);
-      lines=[parts.join(' · ')||'挑战成功（重复挑战不发奖）','名人堂荣耀 '+((store as any).hallInfo().honor)];
+      lines=[parts.join(' · ')||'挑战成功（重复挑战不发奖）',`名人堂荣耀 ${((store as any).hallInfo().honor)}${reward.rating?' · 评级 '+reward.rating:''}`];
       if(hr.title)lines.push('获得称号：'+hr.title);
     }
   }
@@ -296,8 +301,12 @@ export function resultView(ctx: ScreenContext) {
       :'随机军械：本次未掉落（65% 概率）',0,-20,515,18,DIM);
   }
   if(r?.win&&reward.armoryBox)U.text('ResultBox',`${['','R','SR','SSR'][reward.armoryBox]||''}军械自选箱 ×1 · 待选择`,0,-46,480,19,GOLD);
-  const starText=ctx.battleMode==='campaign'&&r?.win?`评星 ${'★'.repeat(Math.max(1,Math.min(3,r.stars||1)))} · `:'';
-  U.text('ResultDuration',`${starText}用时 ${Math.round((r?.duration||0)*10)/10} 秒`,0,-96,470,19,DIM);
+  // P4 评星旁挑战评级（第三轮）：星级读结算 reward.stars（r.stars 从未赋值，历史恒显 ★1 的显示缺陷一并修正）
+  const starText=ctx.battleMode==='campaign'&&r?.win?`评星 ${'★'.repeat(Math.max(1,Math.min(3,reward.stars||r.stars||1)))} · `:'';
+  // P4 名将关挑战评级（第三轮）：评星旁纯展示——S=限时内胜且零阵亡 / A=限时内胜或零阵亡 / B=其余胜局；回放无评级
+  const ratingText=ctx.battleMode==='campaign'&&r?.win&&!r.replay&&stages.makeStageEnemies(ctx.battleIndex).isBoss
+    ?`评级 ${progression.challengeRating(r.duration||0,battleDeaths(ctx))} · `:'';
+  U.text('ResultDuration',`${starText}${ratingText}用时 ${Math.round((r?.duration||0)*10)/10} 秒`,0,-96,470,19,DIM);
   // DPS 结算榜（研讨会八方案 5）：数据已就绪，复用 settled.stats 按输出排序 TOP3
   if(r?.stats&&r.win){
     const dps=Object.entries(r.stats as Record<string,{dmg:number}>)

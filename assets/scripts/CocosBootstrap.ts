@@ -505,9 +505,10 @@ export class CocosBootstrap extends Component implements ScreenContext {
     const duration=this.fighting?.result()?.duration || 0;
     this.lastBattleSnapshot=this.fighting?.snapshot() || [];
     const aliveCount=this.lastBattleSnapshot.filter((u:any)=>u.side==='A'&&u.alive).length;
+    const deathCount=this.lastBattleSnapshot.filter((u:any)=>u.side==='A'&&!u.alive).length;
     const battleStats=this.fighting?.result()?.stats||null;
     const bossMaxHp=this.battleMode==='weekboss'?(this.lastBattleSnapshot.find((u:any)=>u.side==='B')?.maxHp||0):0;
-    const settled=store.settleBattle(this.battleId,{win,duration,aliveCount,stats:battleStats,maxHp:bossMaxHp});
+    const settled=store.settleBattle(this.battleId,{win,duration,aliveCount,deaths:deathCount,stats:battleStats,maxHp:bossMaxHp});
     if(this.lastReplaySpec){
       // 战报中心：名人堂带 hallStars；战役带评星（首通挑战），其余模式 stars 置 0
       const stars=this.battleMode==='hall'?(settled.reward&&settled.reward.hallStars||0):(settled.reward&&settled.reward.stars||0);
