@@ -17,6 +17,15 @@
 
 ## 最近交接（新 → 旧）
 
+### 第四轮 S1 败北台词补全 + 连败变奏 · zcode 实施代理 · 已实施待验收
+
+时间：2026-10-07 23:55（Asia/Shanghai）；执行者：zcode 实施代理（第四轮 S1 批）；状态：已实施待验收。依据：`docs/plans/打磨三线-第四轮.md` 批次表 S1（代码基线 86b6fa7）。
+
+- 改动面：① `utils/story.js` BOSS_TAUNTS 补 130（司马懿「分久必合——你输的不是兵，是耐心。再来。」）与 140（吕布「梦是旧的，败局是新的。醒了？再来过。」）首句，16 关各加 `taunt2` 第二句（12~16 字/条，语气「嘲弄→认真起来」，新增文案合计 268 字 ≤350 预算）；② `utils/config.js` 新增 `TAUNT_VARIATION={enabled:true,after:2}` 旋钮（已导出）；③ `utils/progression.js` 新增纯函数 `pickBossTaunt(bossTaunts,battleIndex,lossStreak)`（连败 ≥after 换 taunt2，返回 {who,text,variant,streak}，异常输入回落首句、无嘲弄关返回 null）；④ `utils/store.js` settleBattle campaign 分支加同关连败计数（败 +1/胜清零）+ normalizeState 旧档缺字段兜底空表（非对象输入也兜底）；⑤ `assets/scripts/screens/BattleScreens.ts` 败北气泡改走 pickBossTaunt，连败态右上角加「· 再X」徽标。规则镜像由脚本重新生成（domain/story|config|progression|store.ts），未手改。
+- 验证：镜像 `--check` 通过；Creator tsc 通过；smoke **666/0**（基线 650 + 新增 Z5 批 16 断言：数据覆盖 4、pickBossTaunt 取句 8、settleBattle 计数 3、旧档兼容 1）；200 种子仿真四锚持平（通关 200/200=100%、通关日 P50 14、满星 27/27/27、满星 SSR 均值 11.15≤12）；web-mobile 构建通过；无头实拍（Playwright chromium 720×1280）五帧全过且 pageerror=0：130 首败见司马懿首句、同关再败见第二句+「·再2」徽标（存档 lossStreak[130]=2 实证）、强档预置连败 2 后胜利（cleared 129→130 且 lossStreak[130] 清 0 实证）、140 首败见吕布首句、自动出征受阻终局 autoSummary 无嘲弄气泡。实拍底图在 /tmp/tk_s1_shots/（临时目录不入库）。
+- 偏差说明：① 新档首次败北会弹「卡关处方单」新手浮层（研讨会四既有行为）盖住结算页，点任意处关闭后即可见气泡——实拍即按此流程；② 实拍用存档由 /tmp/tk_s1_saves.js 现造（弱档 3/3 败、强档 8/8 胜经战斗引擎预验证），非入库 fixture；③ `docs/reviews/回归基线.md` smoke 计数 650→666 待收口人随批次提交时更新（热点文件不由本代理直改）。
+- 下一步：收口人合并回归 + 提交（本代理未执行 git）；S2（试炼/周魔王败北台词）与本批同文件 BattleScreens.ts，须串行。
+
 ### 关羽单角色必杀技近景演出 · Codex 主 agent · 已实施待验收
 
 时间：2026-10-06 16:33（Asia/Shanghai）；执行者：Codex 主 agent；状态：已实施待验收。
