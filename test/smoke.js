@@ -2462,4 +2462,76 @@ function makeRunner(unread, cfg) {
   }
 }
 
+{ // Z5 败北嘲弄补全 + 连败变奏（第四轮 S1）：数据全覆盖 / pickBossTaunt 取句 / lossStreak 计数与旧档兼容
+  const S = require('../utils/story');
+  const P = require('../utils/progression');
+  head('Z5 败北嘲弄连败变奏');
+  // Z5.1 数据补全：16 章名将关（10..160）全覆盖，130/140 首句就位、每关 taunt2 第二句非空且 ≤16 字
+  const tauntKeys = Object.keys(S.BOSS_TAUNTS).map(Number);
+  check('Z5.1a 16 章嘲弄全覆盖', S.CHAPTERS.every((_, i) => tauntKeys.indexOf((i + 1) * 10) >= 0) && tauntKeys.length === 16);
+  check('Z5.1b 130/140 首句就位且主将可解析', !!S.BOSS_TAUNTS[130] && !!S.BOSS_TAUNTS[140]
+    && !!H.getHero(S.BOSS_TAUNTS[130].who) && !!H.getHero(S.BOSS_TAUNTS[140].who)
+    && S.BOSS_TAUNTS[130].text.length <= 20 && S.BOSS_TAUNTS[140].text.length <= 20);
+  check('Z5.1c 每关第二句 taunt2 非空且 ≤16 字', S.CHAPTERS.every((_, i) => {
+    const t = S.BOSS_TAUNTS[(i + 1) * 10];
+    return t && typeof t.taunt2 === 'string' && t.taunt2.length >= 6 && t.taunt2.length <= 16;
+  }));
+  check('Z5.1d 连败句与首句不同', tauntKeys.every(k => S.BOSS_TAUNTS[k].taunt2 !== S.BOSS_TAUNTS[k].text));
+  // Z5.2 pickBossTaunt（纯函数）：连败 <2 首句、≥2 换第二句、异常输入回落、旋钮双回退
+  const t130 = S.BOSS_TAUNTS[130];
+  check('Z5.2a 连败 0/1 回首句', P.pickBossTaunt(S.BOSS_TAUNTS, 130, 0).text === t130.text
+    && P.pickBossTaunt(S.BOSS_TAUNTS, 130, 1).variant === 1);
+  check('Z5.2b 连败 ≥2 换第二句', P.pickBossTaunt(S.BOSS_TAUNTS, 130, 2).text === t130.taunt2
+    && P.pickBossTaunt(S.BOSS_TAUNTS, 130, 2).variant === 2
+    && P.pickBossTaunt(S.BOSS_TAUNTS, 130, 5).text === t130.taunt2);
+  check('Z5.2c 返回主将与连败数', P.pickBossTaunt(S.BOSS_TAUNTS, 130, 3).who === 'simayi'
+    && P.pickBossTaunt(S.BOSS_TAUNTS, 130, 3).streak === 3);
+  check('Z5.2d 异常连败数安全回落', P.pickBossTaunt(S.BOSS_TAUNTS, 130, -2).variant === 1
+    && P.pickBossTaunt(S.BOSS_TAUNTS, 130, 'x').variant === 1
+    && P.pickBossTaunt(S.BOSS_TAUNTS, 130, undefined).variant === 1);
+  check('Z5.2e 无嘲弄关/空表返回 null', P.pickBossTaunt(S.BOSS_TAUNTS, 3, 5) === null
+    && P.pickBossTaunt(S.BOSS_TAUNTS, 161, 5) === null && P.pickBossTaunt(null, 10, 5) === null);
+  check('Z5.2f 第二句缺失回单句版', (() => {
+    const single = { 10: { who: 'lvbu', text: '首句' } };
+    const r = P.pickBossTaunt(single, 10, 9);
+    return r.text === '首句' && r.variant === 1;
+  })());
+  check('Z5.2g 旋钮关闭回单句版', (() => {
+    const saved = C.TAUNT_VARIATION.enabled;
+    C.TAUNT_VARIATION.enabled = false;
+    const r = P.pickBossTaunt(S.BOSS_TAUNTS, 130, 5);
+    C.TAUNT_VARIATION.enabled = saved;
+    return r.text === t130.text && r.variant === 1;
+  })());
+  check('Z5.2h 变奏旋钮锚定 after=2', C.TAUNT_VARIATION.enabled === true && C.TAUNT_VARIATION.after === 2);
+  // Z5.3 settleBattle 同关连败计数：败 +1、胜清零、异关互不干扰、不影响战斗链路
+  {
+    const storeZ5 = freshStore(); storeZ5.load();
+    const b1 = storeZ5.beginBattle({ mode: 'campaign', index: 130, referenceLevel: 1 });
+    storeZ5.settleBattle(b1.id, { win: false, duration: 5, aliveCount: 0 });
+    const b2 = storeZ5.beginBattle({ mode: 'campaign', index: 130, referenceLevel: 1 });
+    storeZ5.settleBattle(b2.id, { win: false, duration: 5, aliveCount: 0 });
+    check('Z5.3a 两连败计数=2', b1.ok && b2.ok && (storeZ5.getState().campaign.lossStreak[130] || 0) === 2);
+    const b3 = storeZ5.beginBattle({ mode: 'campaign', index: 130, referenceLevel: 1 });
+    storeZ5.settleBattle(b3.id, { win: true, duration: 5, aliveCount: 5 });
+    check('Z5.3b 胜局清零回首句态', b3.ok && (storeZ5.getState().campaign.lossStreak[130] || 0) === 0);
+    const b4 = storeZ5.beginBattle({ mode: 'campaign', index: 131, referenceLevel: 1 });
+    storeZ5.settleBattle(b4.id, { win: false, duration: 5, aliveCount: 0 });
+    check('Z5.3c 异关独立计数', (storeZ5.getState().campaign.lossStreak[131] || 0) === 1
+      && (storeZ5.getState().campaign.lossStreak[130] || 0) === 0);
+  }
+  // Z5.4 旧档兼容：v8 档缺 lossStreak 载入兜底空表，不丢既有 campaign 字段
+  {
+    const storeZ6 = freshStore(); storeZ6.load();
+    const snap = JSON.parse(JSON.stringify(storeZ6.getState()));
+    delete snap.campaign.lossStreak;
+    snap.campaign.cleared = 5; snap.campaign.storySeen = { 10: 1 };
+    storage.setStorageSync(SAVE_KEY, snap); // 平台桩直存对象（wx 存储序列化由适配层负责）
+    const storeZ7 = freshStore(); storeZ7.load();
+    const st = storeZ7.getState();
+    check('Z5.4 旧档缺 lossStreak 兜底空表不丢字段', !!st.campaign.lossStreak
+      && Object.keys(st.campaign.lossStreak).length === 0 && st.campaign.cleared === 5 && !!st.campaign.storySeen[10]);
+  }
+}
+
 console.log('\nsmoke: ' + passed + ' passed, ' + failed + ' failed');process.exit(failed ? 1 : 0);

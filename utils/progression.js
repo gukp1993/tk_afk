@@ -308,4 +308,19 @@ function challengeRating(duration, deaths) {
   return 'B';
 }
 
-module.exports = { getNextGoal, getArmoryRecommendations, buildDailyBriefing, buildWeeklyBriefing, buildDefeatPrescriptions, battleResultQuote, challengeRating };
+// 败北嘲弄取句（第四轮 S1 连败变奏）：纯选择函数，零副作用、不读存档。
+// 入参：bossTaunts=story.BOSS_TAUNTS 表（键=全局关号）；battleIndex=当前关号；
+// lossStreak=同关连败次数（调用方从 campaign.lossStreak[关号] 读取，胜局清零在 settleBattle）。
+// 取句：TAUNT_VARIATION.enabled 且同关连败 ≥ after 且配有第二句 → 换 taunt2（语气「认真起来」），
+// 否则回落首句。回退旋钮：enabled=false / taunt2 置空即回单句版；关无嘲弄返回 null（调用方不渲染）。
+function pickBossTaunt(bossTaunts, battleIndex, lossStreak) {
+  const knob = C.TAUNT_VARIATION || { enabled: true, after: 2 };
+  const entry = bossTaunts && bossTaunts[Math.floor(Number(battleIndex) || 0)];
+  if (!entry || !entry.text) return null;
+  const streak = Math.max(0, Math.floor(Number(lossStreak) || 0));
+  const after = Math.max(1, Math.floor(Number(knob.after) || 2));
+  const useAlt = knob.enabled !== false && streak >= after && !!entry.taunt2;
+  return { who: entry.who, text: useAlt ? entry.taunt2 : entry.text, variant: useAlt ? 2 : 1, streak };
+}
+
+module.exports = { getNextGoal, getArmoryRecommendations, buildDailyBriefing, buildWeeklyBriefing, buildDefeatPrescriptions, battleResultQuote, challengeRating, pickBossTaunt };

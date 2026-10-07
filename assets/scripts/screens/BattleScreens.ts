@@ -245,14 +245,18 @@ export function resultView(ctx: ScreenContext) {
   }
   else lines=['普通奖励需凯旋后方可领取',defeatDiag(ctx,r,diagBrief)];
   lines.slice(0,3).forEach((line,i)=>U.text(`ResultLine${i}`,line,0,99-i*40,515,22,PAPER));
-  // S1 败北台词「BOSS 的嘲弄」（第三轮）：campaign 败北且该关配置 bossTaunt 时渲染暗红气泡（处方单上方避让）
+  // S1 败北台词「BOSS 的嘲弄」（第三轮；第四轮 S1 连败变奏）：campaign 败北渲染暗红气泡（处方单上方避让）。
+  // 取句走 progression.pickBossTaunt：同关连败 ≥ config.TAUNT_VARIATION.after 换第二句（语气升级），
+  // 右上角「· 再 X」徽标提示连败次数；胜局清零在 settleBattle；回放/自动链路不渲染。
   if(ctx.battleMode==='campaign'&&r&&!r.win&&!r.replay&&!ctx.auto&&config.DEFEAT_RX.enabled){
-    const taunt=(story as any).BOSS_TAUNTS && (story as any).BOSS_TAUNTS[ctx.battleIndex];
+    const taunt=progression.pickBossTaunt((story as any).BOSS_TAUNTS,ctx.battleIndex,
+      (store.getState().campaign.lossStreak||{})[ctx.battleIndex]||0);
     if(taunt&&taunt.text){
       const tHero=heroData.getHero(taunt.who);
       U.panel('TauntBubble',0,258,560,64,tone('#3a1512'),16,tone('#a8433a'));
       U.text('TauntWho',`${tHero?tHero.name:taunt.who}：`,0,272,520,17,tone('#c9827a'));
       U.text('TauntText',`「${taunt.text}」`,0,246,520,19,tone('#e8b8ad'));
+      if(taunt.variant===2)U.text('TauntStreak',`· 再${taunt.streak}`,236,272,68,14,tone('#c96a5e'));
     }
   }
   // 名将首通特写（战报中心 P3）：击败每章第 10 关名将的一次性文案，回放态不显示

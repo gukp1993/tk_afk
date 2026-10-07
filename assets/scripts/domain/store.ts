@@ -1407,6 +1407,11 @@ function normalizeState(s) {
   const clearedNow = Math.max(0, Math.floor(s.campaign.cleared || 0));
   for (let i = 1; i <= clearedNow; i++) { if (!s.campaign.stars[i]) s.campaign.stars[i] = 1; }
   s.campaign.starChests = s.campaign.starChests || {};
+  // 同关连败计数（第四轮 S1）：旧档缺字段兜底空表；键=关号，值非负整数
+  if (!s.campaign.lossStreak || typeof s.campaign.lossStreak !== 'object') s.campaign.lossStreak = {};
+  Object.keys(s.campaign.lossStreak).forEach(k => {
+    s.campaign.lossStreak[k] = Math.max(0, Math.floor(Number(s.campaign.lossStreak[k]) || 0));
+  });
   if (!Array.isArray(s.campaign.retroGrants)) s.campaign.retroGrants = null;
   s.campaign.retroGrantsSeen = !!s.campaign.retroGrantsSeen;
   if (!Array.isArray(s.formation)) s.formation = [null, null, null, null, null];
@@ -3078,6 +3083,10 @@ function settleBattle(battleId, outcome) {
     let reward = null;
     let convertedTotal = 0; // 本场结算中满级折算铜钱的总量（屯兵直发 + 结算经验两处合并）
     if (pending.mode === 'campaign') {
+      // 同关连败计数（第四轮 S1 连败变奏）：败北 +1、胜局清零；取句 progression.pickBossTaunt。
+      // 仅计数不参与任何奖励/评星逻辑；旧档缺字段由 normalizeSave 兜底空表。
+      state.campaign.lossStreak = state.campaign.lossStreak || {};
+      state.campaign.lossStreak[pending.index] = win ? 0 : (state.campaign.lossStreak[pending.index] || 0) + 1;
       if (win) {
         const relaxed = __domain_stages.isEliteStage(pending.index) || (__domain_stages.resolveMods(pending.index).length > 0);
         const stageStars = __domain_stages.stageStars(win, outcome.duration || 0,
