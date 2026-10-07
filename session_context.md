@@ -17,6 +17,24 @@
 
 ## 最近交接（新 → 旧）
 
+### 第四轮 T1 页面转场淡入 · zcode 实施代理 · 已实施待验收
+
+时间：2026-10-08 00:56（Asia/Shanghai）；执行者：zcode 实施代理（第四轮 T1 批）；状态：已实施待验收。依据：`docs/plans/打磨三线-第四轮.md` 批次表 T1（基线 9242342，S1/S2 之后执行）。
+
+- 改动面：仅 `assets/scripts/CocosBootstrap.ts`（+23 行，最小侵入）。① 常驻 `GameContent` 节点挂 `UIOpacity` 作整页淡入载体（onLoad 一次，随 show 重建子节点不受影响）；② `show()` 末尾新增 `applyShowTransition`：真实跨页切换时整页 UIOpacity 0→255 淡入 0.15s（`new Tween(op).to(...)`，与 CocosUi `updateProgressSmooth` 同款补间模式）；③ 豁免保持瞬切：`battle/result/autoSummary/summonResults/ad` 五页 + `this.auto` 连战全程 + 同页重绘（toast/notice 消隐/悬赏定时刷新/前台回归/预载重绘——以 `lastShownPage` 判定真实跨页）；④ 转场中重复 show() 经 `Tween.stopAllByTarget` 打断不叠加；onDestroy 补停补间。场景相机清屏色已是深色（Main.scene `_color` r23 g31 b30），淡入全程无白屏可能。纯表现批：不动 utils/数值/存档/规则镜像，零新文案。
+- 验证：镜像 `--check` 通过（纯 UI 零变化）；Creator tsc 通过；smoke **675/0**（基线持平，纯 UI 批无新断言）；web-mobile 构建通过；无头实拍（Playwright chromium headless 720×1280 + CDP screencast 逐帧录屏打本地 web-mobile，pageerror=0，全帧最大亮度 136.8 无白屏/闪烁）：A1 手动 home→heroes（导航条真实点击）帧序 136.8→29.2→52.5→62.0→62.4（淡入斜坡可见 ≈150ms）；A2 豁免页 ad 帧序 136.8→44.5 一步瞬切零中间帧；A3 快速连点 5 页每次淡入独立重启、终态稳态 136.8 无卡死；B2 自动出征中跳 heroes（非豁免页）67.1→62.4 直接切换无斜坡（ctx.auto 豁免实证）；B3 60s 自动链路 4 次转场（result↔battle）入场帧亮度均等于目标页稳态（result→battle 68.4/68.3 vs 稳态 67.1 瞬切）；B5 自动结束后 heroes 淡入恢复（29.2→54.3→60.2→63.5）。目检 heroes/result/ad/autoSummary 稳态截图布局零叠压。实拍底图 /tmp/tk_t1_shots/（临时目录不入库），脚本 /tmp/tk_t1_shots/run.js。
+- 偏差说明：① 计划中 `config.UI_TRANSITION={enabled:true,ms:160}` 旋钮未落 `utils/config.js`——本批纪律限定只动 CocosBootstrap.ts/CocosUi.ts 且 utils/config.js 为多 agent 热点文件，改为 CocosBootstrap 内局部常量 `FADE_SEC=0.15`（任务指令 0.15s，计划 0.16s 取指令值）；收口人如需统一旋钮可后续随 utils 批次收编，回退等价于删 `applyShowTransition` 调用；② 自动链路 result 页（底色 lum≈25 接近转场暗底 27）亮度判别力弱，其瞬切由 TRANSITION_EXEMPT 代码路径 + 亮页判别（B2/battle 入场帧）交叉证明；③ 200 种子仿真未跑——本批零 utils 改动，按计划验收口径「动 utils 批次」才要求仿真。
+- 下一步：收口人合并回归 + 提交（本代理未执行 git）；真机验收按计划补 T1 低端机与 ×4 倍速帧率项。
+
+### 第四轮 S2 试炼/周魔王败北台词 · zcode 实施代理 · 已实施待验收
+
+时间：2026-10-08 00:40（Asia/Shanghai）；执行者：zcode 实施代理（第四轮 S2 批）；状态：已实施待验收。依据：`docs/plans/打磨三线-第四轮.md` 批次表 S2（基线 d023663，S1 之后串行执行）。
+
+- 改动面：① `utils/story.js` 导出 `CHAOS_TAUNTS`（12 条乱世嘲弄自第三轮 S1 引入后从未被消费，本批首次激活——此前计划审计表「已激活」与代码不符）；② `utils/progression.js` 新增纯函数 `pickDefeatQuote({who,quotes})`（按优先级取首个非空候选句，trim/异常输入安全，全空返回 null 不渲染）；③ `BattleScreens.ts` trial/weekboss 败北分支渲染浅金台词气泡（复用 ResultQuote y=292 描金位先例：试炼=该将 quote「败给你的将是你想收的将」；周魔王=从终局快照反查 boss heroId（换皮周 bossName 是皮肤名、名称反查不稳）→ CHAOS_TAUNTS 优先、该将 quote 兜底；gate `r.ok&&!r.win&&!r.replay&&!ctx.auto`）。零新文案（预算 0 达成）；规则镜像由脚本重新生成（domain/story|progression.ts），未手改。
+- 验证：镜像 `--check` 通过；Creator tsc 通过；smoke **675/0**（基线 666 + 新增 Z6 批 9 断言：数据覆盖 3、pickDefeatQuote 取句 6）；200 种子仿真四锚持平（通关 200/200=100%、通关日 P50 14、满星 27/27/27、满星 SSR 均值 11.15≤12）；web-mobile 构建通过；无头实拍（Playwright chromium 720×1280）两帧全过且 pageerror=0（404 仅 favicon）：试炼败北见张飞 quote 气泡、周魔王败北见「黄天魔王·张角」quote 气泡（本周恰为换皮张角，同时实证 CHAOS_TAUNTS miss→quote 兜底路径），气泡与档位奖/诊断行零叠压。实拍用存档由 /tmp/tk_s2_craft.js 现造（单廖化编队必败，双场景经战斗引擎预验证 winner=B），底图 /tmp/tk_s2_shots/（临时目录不入库）。
+- 偏差说明：① 计划中「现有诊断行下移避让」未实施——y=292 气泡位于结算面板顶 258 之上压暗区，与面板内行几何零冲突（实拍证实），无需下移；② 回放态实拍被任务指令收窄取消（计划为三态）——结构性安全：`lastReplaySpec` 仅 hall 模式设置、trial/weekboss 不产生回放记录，且回放 outcome 无 `ok` 字段 + `!r.replay` 双保险，气泡不可能在回放渲染；③ 试炼 16 将 quote 语气兼容败北语境已抽检（开放问题 6）：全部成立（司马懿「善败者不亡」最贴），无需 bios 尾句兜底；④ smoke 计数基线 666→675 的 `docs/reviews/回归基线.md` 更新仍待收口人（热点文件不由本代理直改）。
+- 下一步：收口人合并回归 + 提交（本代理未执行 git）。
+
 ### 第四轮 S1 败北台词补全 + 连败变奏 · zcode 实施代理 · 已实施待验收
 
 时间：2026-10-07 23:55（Asia/Shanghai）；执行者：zcode 实施代理（第四轮 S1 批）；状态：已实施待验收。依据：`docs/plans/打磨三线-第四轮.md` 批次表 S1（代码基线 86b6fa7）。

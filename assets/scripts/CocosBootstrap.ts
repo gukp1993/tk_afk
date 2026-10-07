@@ -1,4 +1,4 @@
-import { _decorator, Color, Component, game, Game, Node, profiler, ResolutionPolicy, view } from 'cc';
+import { _decorator, Color, Component, game, Game, Node, profiler, ResolutionPolicy, Tween, UIOpacity, view } from 'cc';
 import { CocosUi, hexColor, palette } from './ui/CocosUi';
 import * as store from './domain/store';
 import * as stages from './domain/stages';
@@ -22,6 +22,8 @@ const { ccclass } = _decorator;
 export class CocosBootstrap extends Component implements ScreenContext {
   public page: Page = 'campaign';
   private content!: Node;
+  private uiOpacity: UIOpacity | null = null; // T1 页面转场：整页淡入载体（挂在常驻 content 上，随 show 重建子节点不受影响）
+  private lastShownPage: Page | null = null; // T1：上一个完成渲染的页面，用于判定"真实跨页切换"
   private initialArtPending = true;
   private initialArtElapsed = 0;
   public ui!: CocosUi;
@@ -62,6 +64,10 @@ export class CocosBootstrap extends Component implements ScreenContext {
   private adSuccessText = '';
   public lastSummon: any[] = [];
   private navigation: Page[] = [];
+  // T1 页面转场淡入（第四轮）：0.15s 单淡入，表达页面层级、消除硬切闪烁感；
+  // 战斗/结算/自动小结/召唤结果/广告五页与 ctx.auto 连战全程豁免，防止转场吃掉战斗与放置节奏。
+  private static readonly FADE_SEC = 0.15;
+  private static readonly TRANSITION_EXEMPT: Page[] = ['battle', 'result', 'autoSummary', 'summonResults', 'ad'];
   private static readonly PAGE_NAMES: Record<string, string> = {
     home: '主城', journey: '玩法', campaign: '战役', heroes: '英雄', bag: '背包', stagePreview: '关卡',
     heroDetail: '武将详情', summon: '点将台', summonResults: '召唤结果', armory: '军械', armoryCatalog: '军械图鉴',
@@ -81,6 +87,7 @@ export class CocosBootstrap extends Component implements ScreenContext {
     if (pending) store.interruptBattle(pending.id, 'cocos-restart');
     this.content = new Node('GameContent');
     this.node.addChild(this.content);
+    this.uiOpacity = this.content.addComponent(UIOpacity); // T1：整页透明度载体，子节点重建不受影响
     game.on(Game.EVENT_HIDE, this.onHide, this);
     game.on(Game.EVENT_SHOW, this.onShow, this);
     this.drawInitialLoading();
@@ -119,6 +126,7 @@ export class CocosBootstrap extends Component implements ScreenContext {
   onDestroy() {
     game.off(Game.EVENT_HIDE, this.onHide, this);
     game.off(Game.EVENT_SHOW, this.onShow, this);
+    if (this.uiOpacity) Tween.stopAllByTarget(this.uiOpacity); // T1：节点树销毁前停掉转场补间
     store.save();
   }
   private onHide() {
@@ -220,6 +228,8 @@ export class CocosBootstrap extends Component implements ScreenContext {
   }
   public show(page: Page) {
     if (this.initialArtPending) { this.page = page; return; }
+    // T1：仅"真实跨页切换"做淡入；同页重绘（toast/notice 消隐/悬赏定时刷新/前台回归/预载完成重绘）保持瞬切防闪烁
+    const switched = page !== this.lastShownPage;
     this.page = page;
     for (const child of this.content.children.slice()) child.destroy();
     ArtService.releasePortraits();
@@ -294,6 +304,17 @@ export class CocosBootstrap extends Component implements ScreenContext {
         U.tap('Nav'+p,x,-594,138,90,()=>this.go(p));
       });
     }
+    this.applyShowTransition(page, switched);
+    this.lastShownPage = page;
+  }
+  /** T1 页面转场：跨页切换时对新 content 整页 UIOpacity 0→255 淡入（0.15s）；豁免页与 ctx.auto 连战全程保持瞬切；转场中重复 show() 直接打断不叠加。 */
+  private applyShowTransition(page: Page, switched: boolean) {
+    const op = this.uiOpacity;
+    if (!op || !op.isValid) return;
+    Tween.stopAllByTarget(op);
+    if (!switched || this.auto || CocosBootstrap.TRANSITION_EXEMPT.indexOf(page) >= 0) { op.opacity = 255; return; }
+    op.opacity = 0;
+    new Tween(op).to(CocosBootstrap.FADE_SEC, { opacity: 255 }).start();
   }
   public go(page: Page) {
     if (this.page==='battle' && page!=='battle' && this.fighting && !this.auto) {
