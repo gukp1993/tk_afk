@@ -2534,4 +2534,42 @@ function makeRunner(unread, cfg) {
   }
 }
 
+{ // Z6 试炼/周魔王败北台词（第四轮 S2）：quote 全覆盖 / CHAOS_TAUNTS 导出激活 / pickDefeatQuote 取句
+  const S = require('../utils/story');
+  const P = require('../utils/progression');
+  head('Z6 试炼周魔王败北台词');
+  // Z6.1 数据面：试炼 16 将人人有非空 quote；周魔王候选池（SSR-黑名单+换皮 boss）嘲弄/quote 全兜底
+  const trialIds = Object.keys(C.TRIALS.trials);
+  check('Z6.1a 试炼 16 将人人有非空 quote', trialIds.length === 16
+    && trialIds.every(id => typeof H.getHero(id).quote === 'string' && !!H.getHero(id).quote.trim()));
+  const wbBlacklist = { zhangfei: 1, huatuo: 1, diaochan: 1 };
+  const wbPool = [...new Set([
+    ...H.HEROES.filter(h => h.rarity === 4 && !wbBlacklist[h.id]).map(h => h.id),
+    ...Object.values((C.SEASON && C.SEASON.weekBossSkin) || {}).map(s => s.bossId)
+  ])];
+  check('Z6.1b 周魔王候选池嘲弄/quote 全兜底', wbPool.length >= 14 && wbPool.every(id =>
+    (typeof S.CHAOS_TAUNTS[id] === 'string' && !!S.CHAOS_TAUNTS[id].trim())
+    || (typeof H.getHero(id).quote === 'string' && !!H.getHero(id).quote.trim())));
+  check('Z6.1c CHAOS_TAUNTS 已导出：12 条非空且 who 均为真实武将', (() => {
+    const keys = Object.keys(S.CHAOS_TAUNTS || {});
+    return keys.length === 12 && keys.every(k => typeof S.CHAOS_TAUNTS[k] === 'string'
+      && !!S.CHAOS_TAUNTS[k].trim() && !!H.getHero(k));
+  })());
+  // Z6.2 pickDefeatQuote（纯函数）：优先级取首可用句 / 回落 / null / 异常输入安全
+  check('Z6.2a 首个非空候选胜出（周魔王嘲弄优先序）', P.pickDefeatQuote({ who: '吕布', quotes: ['嘲弄句', 'quote句'] }).text === '嘲弄句');
+  check('Z6.2b 首候选为空回落次选（quote 兜底）', P.pickDefeatQuote({ who: '吕布', quotes: ['', null, 'quote句'] }).text === 'quote句');
+  check('Z6.2c 全候选不可用/无说话人返回 null', P.pickDefeatQuote({ who: '吕布', quotes: ['', '   '] }) === null
+    && P.pickDefeatQuote({ who: '', quotes: ['x'] }) === null
+    && P.pickDefeatQuote({ quotes: ['x'] }) === null);
+  check('Z6.2d 异常输入安全回落 null', P.pickDefeatQuote(null) === null
+    && P.pickDefeatQuote({ who: 'x' }) === null
+    && P.pickDefeatQuote({ who: 'x', quotes: 'nope' }) === null
+    && P.pickDefeatQuote({ who: 42, quotes: ['x'] }) === null);
+  check('Z6.2e 返回说话人并 trim 首尾空白', (() => {
+    const r = P.pickDefeatQuote({ who: ' 司马懿 ', quotes: [' 善败者不亡。 '] });
+    return r.who === '司马懿' && r.text === '善败者不亡。';
+  })());
+  check('Z6.2f 试炼取句形：单候选 quote 即取', P.pickDefeatQuote({ who: '关羽', quotes: ['青龙偃月，忠义千秋。'] }).text === '青龙偃月，忠义千秋。');
+}
+
 console.log('\nsmoke: ' + passed + ' passed, ' + failed + ' failed');process.exit(failed ? 1 : 0);

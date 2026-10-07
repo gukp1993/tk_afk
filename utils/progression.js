@@ -323,4 +323,18 @@ function pickBossTaunt(bossTaunts, battleIndex, lossStreak) {
   return { who: entry.who, text: useAlt ? entry.taunt2 : entry.text, variant: useAlt ? 2 : 1, streak };
 }
 
-module.exports = { getNextGoal, getArmoryRecommendations, buildDailyBriefing, buildWeeklyBriefing, buildDefeatPrescriptions, battleResultQuote, challengeRating, pickBossTaunt };
+// 败北台词取句（第四轮 S2 试炼/周魔王）：纯选择函数，零副作用、不读存档、零新文案。
+// 入参：{ who: 说话人展示名, quotes: 候选句数组（按优先级排列，允许混入空串/非字符串项） }。
+// 取句：第一个非空字符串候选（优先级由调用方场景决定——试炼 [该将 quote]；
+// 周魔王 [CHAOS_TAUNTS 嘲弄, 该将 quote 兜底]）。全候选不可用/无说话人返回 null（调用方不渲染）。
+function pickDefeatQuote(input) {
+  const src = input || {};
+  const who = typeof src.who === 'string' ? src.who.trim() : '';
+  if (!who) return null;
+  const pool = (Array.isArray(src.quotes) ? src.quotes : [])
+    .filter(t => typeof t === 'string' && t.trim());
+  if (!pool.length) return null;
+  return { who, text: pool[0].trim() };
+}
+
+module.exports = { getNextGoal, getArmoryRecommendations, buildDailyBriefing, buildWeeklyBriefing, buildDefeatPrescriptions, battleResultQuote, challengeRating, pickBossTaunt, pickDefeatQuote };

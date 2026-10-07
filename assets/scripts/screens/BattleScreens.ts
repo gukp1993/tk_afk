@@ -259,6 +259,27 @@ export function resultView(ctx: ScreenContext) {
       if(taunt.variant===2)U.text('TauntStreak',`· 再${taunt.streak}`,236,272,68,14,tone('#c96a5e'));
     }
   }
+  // S2 败北台词（第四轮）：试炼/周魔王败北复用既有数据渲染浅金台词气泡（ResultQuote y=292 描金位先例，
+  // 面板顶 258 之上压暗区，与面板内诊断/档位行零冲突）。试炼=该将 quote（败给你的将是你想收的将）；
+  // 周魔王=CHAOS_TAUNTS 嘲弄优先、该将 quote 兜底——boss heroId 从终局快照反查（换皮周 bossName 是
+  // 皮肤名，名称反查不稳）。回放/自动链路不渲染；异常数据一律静默不渲染（pickDefeatQuote 返回 null）。
+  if(r&&r.ok&&!r.win&&!r.replay&&!ctx.auto&&(ctx.battleMode==='trial'||ctx.battleMode==='weekboss')){
+    let who='';const quotes:any[]=[];
+    if(ctx.battleMode==='trial'){
+      const th=heroData.getHero((ctx as any).trialHeroId||'');
+      if(th){who=th.name;quotes.push(th.quote);}
+    }else{
+      const boss=(ctx.lastBattleSnapshot||[]).find((u:any)=>u.side==='B');
+      const bh=boss&&boss.heroId?heroData.getHero(boss.heroId):null;
+      who=store.weekBossInfo().bossName||'';
+      if(bh)quotes.push((story as any).CHAOS_TAUNTS[bh.id],bh.quote);
+    }
+    const dq=progression.pickDefeatQuote({who,quotes});
+    if(dq){
+      U.panel('DefeatQuoteBg',0,292,620,52,new Color(52,40,20,235),26,GOLD);
+      U.text('DefeatQuote',`${dq.who}：「${dq.text}」`,0,292,592,20,tone('#ecc98a'));
+    }
+  }
   // 名将首通特写（战报中心 P3）：击败每章第 10 关名将的一次性文案，回放态不显示
   if(r?.win&&!r.replay&&ctx.battleMode==='campaign'&&reward.first&&stages.makeStageEnemies(ctx.battleIndex).isBoss){
     const bossName=stages.makeStageEnemies(ctx.battleIndex).units[0]?.hero?.name||'名将';

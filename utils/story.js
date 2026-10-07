@@ -691,4 +691,6 @@ function getChapterTransition(globalStage) {
     : { kind: 'intro', chIdx, ch, text: ch.intro };
 }
 
-module.exports = { CHAPTERS, getStoryStage, getStoryChapter, getChapterTransition, getChaosStory, CHAOS_BOSS_ROTATION, BOSS_TAUNTS };
+// CHAOS_TAUNTS 导出（第四轮 S2）：周魔王败北台词复用本池（嘲弄优先、该将 quote 兜底），
+// 首次有真实消费方——此前仅数据躺尸，零新文案。
+module.exports = { CHAPTERS, getStoryStage, getStoryChapter, getChapterTransition, getChaosStory, CHAOS_BOSS_ROTATION, CHAOS_TAUNTS, BOSS_TAUNTS };
