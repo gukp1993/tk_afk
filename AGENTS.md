@@ -10,7 +10,7 @@
 
 ## 旧版目录清理（2026-09-27）
 
-- 已删除旧版工具与目录：根目录 `build.js`、`assets_gen/`、`legacy-miniprogram/`、`preview/`、`test/`。旧 Canvas 打包同步、离屏截图、旧版自动化测试不可再运行。
+- 已删除旧版工具与目录：根目录 `build.js`、`assets_gen/`、`legacy-miniprogram/`、`preview/`。旧 Canvas 打包同步、离屏截图、旧版自动化测试不可再运行。**注意**：`test/` 目录于 09-30 重建且现行可用（smoke.js 622 断言 + simulation.js 200 种子仿真 + fixtures），与已删除表述无关的旧引用（static-check 等）仍不可运行。
 - 原 `src/`、`wechat/`、`douyin/` 已删除；Cocos 广告桥接生成源位于 `scripts/rewarded-bridge.js`，小游戏 AppID 集中于 `scripts/cocos-appids.json`。
 - `utils/` 继续作为规则源码，生成 `assets/scripts/domain/`；Cocos 检查与构建使用下方命令。
 
@@ -51,7 +51,7 @@ node /Applications/Cocos/Creator/3.8.8/CocosCreator.app/Contents/Resources/app.a
 ./scripts/cocos-build.sh wechatgame
 ```
 
-- 旧版 `test/`、`preview/` 与 `build.js` 已删除，不要再把旧 Canvas 检查命令列为可用流程。修改 Cocos/规则镜像后运行规则镜像检查与 TypeScript 检查；需要小游戏包时运行对应 Creator 构建命令。
+- `test/`（smoke+simulation+fixtures）于 09-30 重建且现行可用；旧 Canvas 的 preview/ 与 build.js 已删除，不要再把旧 Canvas 检查命令列为可用流程。修改 Cocos/规则镜像后运行规则镜像检查与 TypeScript 检查；需要小游戏包时运行对应 Creator 构建命令。
 - 无 npm/构建链：不要引入构建步骤或第三方运行时依赖，除非用户明确要求。
 
 ## UI 与交互整洁原则（2026-09-29 用户指令）
@@ -99,7 +99,7 @@ node /Applications/Cocos/Creator/3.8.8/CocosCreator.app/Contents/Resources/app.a
 - `scripts/rewarded-bridge.js` — Cocos 广告桥接的生成源。
 - `scripts/cocos-appids.json` — 当前微信构建使用的 AppID 配置；其中抖音字段为历史配置。
 - `utils/` — 共享游戏内核和 Cocos 规则镜像源：`platform.js`、`config.js`、`heroes.js`、`story.js`、`stages.js`、`items.js`、`battle.js`、`store.js`、`rng.js`、`fmt.js` 等纯 JS 模块。
-- `preview/`、`legacy-miniprogram/`、`test/`、根目录 `build.js`、`assets_gen/`、旧 `src/`、`wechat/`、`douyin/` — 已按 2026-09-27 用户指令删除；旧预览、旧小程序快照和旧 Canvas 包不再随仓库提供。
+- `preview/`、`legacy-miniprogram/`、根目录 `build.js`、`assets_gen/`、旧 `src/`、`wechat/`、`douyin/` — 已按 2026-09-27 用户指令删除；旧预览、旧小程序快照和旧 Canvas 包不再随仓库提供。**注意**：`test/`（smoke+simulation+fixtures）于 09-30 重建且现行可用，不在删除范围。
 - 根目录是 Cocos Creator 项目目录；根目录不放旧版 `game.js`/`game.json`/`project.config.json`，当前交付的微信小游戏包位于 `build/wechatgame/`。
 
 ## 架构边界（改动前必读）
